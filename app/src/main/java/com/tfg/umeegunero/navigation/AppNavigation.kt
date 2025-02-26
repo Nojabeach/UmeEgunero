@@ -1,3 +1,4 @@
+// Modificamos AppNavigation.kt para pasar la función de cierre
 package com.tfg.umeegunero.navigation
 
 import androidx.compose.runtime.Composable
@@ -47,7 +48,10 @@ sealed class AppScreens(val route: String) {
  * Navegación principal de la aplicación
  */
 @Composable
-fun AppNavigation(navController: NavHostController = rememberNavController()) {
+fun AppNavigation(
+    navController: NavHostController = rememberNavController(),
+    onCloseApp: () -> Unit = {} // Agregamos el parámetro para cerrar la app
+) {
     NavHost(
         navController = navController,
         startDestination = AppScreens.Welcome.route
@@ -67,9 +71,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
                 onNavigateToRegister = {
                     navController.navigate(AppScreens.Register.route)
                 },
-                onCloseApp = {
-                    // Dejar vacío, Android Studio Preview no soporta cerrar la app
-                }
+                onCloseApp = onCloseApp // Pasamos la función de cierre
             )
         }
 

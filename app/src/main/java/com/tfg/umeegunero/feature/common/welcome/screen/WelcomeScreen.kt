@@ -103,7 +103,7 @@ fun WelcomeScreen(
             onClick = { onNavigateToLogin(UserType.ADMIN) },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(16.dp)
+                .padding(top = 48.dp, start = 16.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Lock,
@@ -116,7 +116,7 @@ fun WelcomeScreen(
             onClick = onCloseApp,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(16.dp)
+                .padding(top = 48.dp, end = 16.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Close,

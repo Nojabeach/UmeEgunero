@@ -192,10 +192,11 @@ fun RegistroScreen(
                 )
 
                 // Contenido del paso actual
-                Box(
+                Column(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     AnimatedContent(
                         targetState = uiState.currentStep,
@@ -220,7 +221,8 @@ fun RegistroScreen(
                                         ) + fadeOut(animationSpec = tween(300))
                             }
                         },
-                        label = "Step Animation"
+                        label = "Step Animation",
+                        modifier = Modifier.weight(1f)
                     ) { step ->
                         when (step) {
                             1 -> DatosPersonalesStep(
@@ -284,63 +286,71 @@ fun RegistroScreen(
                         }
                     }
 
-                    // Botones de navegación
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    // Botones de navegación al final de la columna
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        ),
+                        elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-                        if (uiState.currentStep > 1) {
-                            OutlinedButton(
-                                onClick = { viewModel.previousStep() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp)
-                                )
-                                Text("Anterior")
-                            }
-
-                            Spacer(modifier = Modifier.padding(horizontal = 8.dp))
-                        }
-
-                        if (uiState.currentStep < uiState.totalSteps) {
-                            Button(
-                                onClick = { viewModel.nextStep() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Siguiente")
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
-                        } else {
-                            Button(
-                                onClick = { viewModel.submitRegistration() },
-                                enabled = !uiState.isLoading,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                if (uiState.isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier
-                                            .height(24.dp)
-                                            .padding(end = 8.dp),
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (uiState.currentStep > 1) {
+                                OutlinedButton(
+                                    onClick = { viewModel.previousStep() },
+                                    modifier = Modifier.weight(1f)
+                                ) {
                                     Icon(
-                                        imageVector = Icons.Default.Check,
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = null,
                                         modifier = Modifier.padding(end = 8.dp)
                                     )
+                                    Text("Anterior")
                                 }
-                                Text("Registrarse")
+                            }
+
+                            if (uiState.currentStep < uiState.totalSteps) {
+                                Button(
+                                    onClick = { viewModel.nextStep() },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Siguiente")
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            } else {
+                                Button(
+                                    onClick = { viewModel.submitRegistration() },
+                                    enabled = !uiState.isLoading,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    if (uiState.isLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier
+                                                .height(24.dp)
+                                                .padding(end = 8.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.padding(end = 8.dp)
+                                        )
+                                    }
+                                    Text("Registrarse")
+                                }
                             }
                         }
                     }

@@ -1,3 +1,4 @@
+// Modificamos MainActivity.kt para incluir la función de cierre de app
 package com.tfg.umeegunero
 
 import android.os.Bundle
@@ -21,7 +22,10 @@ class MainActivity : ComponentActivity() {
             UmeEguneroTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
-                    AppNavigation(navController = navController)
+                    AppNavigation(
+                        navController = navController,
+                        onCloseApp = { finish() } // Agregamos la función para cerrar la app
+                    )
                 }
             }
         }
