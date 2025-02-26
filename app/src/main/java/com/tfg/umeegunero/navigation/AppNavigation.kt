@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tfg.umeegunero.data.model.UserType
+import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
@@ -32,7 +33,8 @@ sealed class AppScreens(val route: String) {
     object CentroDashboard : AppScreens("centro_dashboard")
     object ProfesorDashboard : AppScreens("profesor_dashboard")
     object FamiliarDashboard : AppScreens("familiar_dashboard")
-
+    // Pantallas de administración
+    object AddCentro : AppScreens("add_centro")
     // Otras pantallas
     object StudentDetail : AppScreens("student_detail/{studentId}") {
         fun createRoute(studentId: String) = "student_detail/$studentId"
@@ -129,7 +131,14 @@ fun AppNavigation(
                 }
             )
         }
-
+        // Pantalla de añadir centro (admin)
+        composable(route = AppScreens.AddCentro.route) {
+            AddCentroScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                onCentroAdded = { navController.popBackStack() }
+            )
+        }
         // Añade aquí las demás pantallas a medida que las vayas implementando
     }
 }

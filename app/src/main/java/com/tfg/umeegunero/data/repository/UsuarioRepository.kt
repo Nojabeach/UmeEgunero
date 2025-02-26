@@ -192,4 +192,38 @@ class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene todos los usuarios de un tipo específico
+     */
+    suspend fun getUsersByType(tipo: TipoUsuario): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            // Esta consulta es más compleja en Firestore ya que los perfiles son un array
+            // Necesitamos consultar documentos que contengan un perfil con el tipo especificado
+            val query = usuariosCollection.get().await()
+            val usuarios = query.documents
+                .mapNotNull { it.toObject(Usuario::class.java) }
+                .filter { usuario ->
+                    usuario.perfiles.any { perfil -> perfil.tipo == tipo }
+                }
+
+            return@withContext Result.Success(usuarios)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Guarda un usuario en Firestore
+     */
+    suspend fun guardarUsuario(usuario: Usuario): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Usar el DNI como ID del documento
+            usuariosCollection.document(usuario.dni).set(usuario).await()
+            return@withContext Result.Success(usuario.dni)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
 }
