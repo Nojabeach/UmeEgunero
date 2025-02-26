@@ -1,14 +1,10 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
-    // Usar la declaración directa de kapt en lugar del alias
-    id("org.jetbrains.kotlin.kapt")
-    alias(libs.plugins.dagger.hilt)
-    // Google Services para Firebase
-    alias(libs.plugins.google.services)
-    // Añadir plugin de Firebase Crashlytics
-    alias(libs.plugins.firebase.crashlytics)
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.dagger.hilt.android")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
+    id("kotlin-kapt")
 }
 
 android {
@@ -24,7 +20,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Configuración de Room
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments["room.schemaLocation"] = "$projectDir/schemas"
@@ -43,30 +38,33 @@ android {
             )
         }
         debug {
-            // Habilitar reporte de errores en modo debug
             isDebuggable = true
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
-        isCoreLibraryDesugaringEnabled = true // Para funciones modernas de Java en APIs antiguas
+        isCoreLibraryDesugaringEnabled = true
     }
+
     kotlinOptions {
         jvmTarget = "21"
-        // Opciones para Kotlin
         freeCompilerArgs = listOf(
             "-opt-in=kotlin.RequiresOptIn",
             "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
         )
     }
+
     buildFeatures {
         compose = true
     }
+
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -75,7 +73,7 @@ android {
 }
 
 dependencies {
-    // Desugaring para compatibilidad con APIs modernas en dispositivos antiguos
+    // Desugaring
     coreLibraryDesugaring(libs.android.desugarJdkLibs)
 
     // Core Android
@@ -96,30 +94,30 @@ dependencies {
     // Navegación
     implementation(libs.androidx.navigation.compose)
 
-    // 🗄️ Persistencia - Room
+    // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
 
-    // 💉 Inyección de dependencias - Hilt
+    // Hilt
     implementation(libs.dagger.hilt.android)
     kapt(libs.dagger.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.hilt.work)
     kapt(libs.androidx.hilt.compiler)
 
-    // 🔥 Firebase
+    // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
 
-    // 🧵 Corrutinas
+    // Corrutinas
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.coroutines.play.services) // Para Firebase
+    implementation(libs.kotlinx.coroutines.play.services)
 
-    // 🌐 Trabajo en segundo plano
+    // Trabajo en segundo plano
     implementation(libs.androidx.work.runtime.ktx)
 
     // Testing
@@ -136,7 +134,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 }
 
-// Allow references to generated code
+// Configuración de kapt
 kapt {
     correctErrorTypes = true
 }

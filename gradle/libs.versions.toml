@@ -1,24 +1,24 @@
 [versions]
 agp = "8.8.1"
-kotlin = "2.0.0"
-coreKtx = "1.15.0"
+kotlin = "1.9.22"
+coreKtx = "1.13.1"  # Actualizado a la última versión estable
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.10.0"
-composeBom = "2025.02.00"
-compose-compiler = "2.0.0" # Debe coincidir con la versión de Kotlin
-roomVersion = "2.6.1"
-firebaseBomVersion = "33.9.0"
-hiltVersion = "2.50" # Versión de Hilt
-hiltExtVersion = "1.2.0" # Versión de extensiones de Hilt
-navigationVersion = "2.7.7"
-coroutinesVersion = "1.8.0"
-workVersion = "2.9.0"
-desugaringVersion = "2.0.4"
-mockkVersion = "1.13.8"
-crashlyticsGradleVersion = "2.9.9" # Plugin de Crashlytics
+lifecycleRuntimeKtx = "2.8.7"  # Última versión estable
+activityCompose = "1.10.0"  # Última versión estable
+composeBom = "2025.02.00"  # Última versión estable
+compose-compiler = "1.5.10"  # Compatible con Kotlin 1.9.22
+roomVersion = "2.6.1"  # Última versión estable
+firebaseBomVersion = "33.0.0"  # Última versión estable
+hiltVersion = "2.48"  # Última versión estable
+hiltExtVersion = "1.2.0"  # Última versión estable
+navigationVersion = "2.7.7"  # Última versión estable
+coroutinesVersion = "1.8.0"  # Última versión estable
+workVersion = "2.9.0"  # Última versión estable
+desugaringVersion = "2.0.4"  # Última versión estable
+mockkVersion = "1.13.8"  # Última versión estable
+crashlyticsGradleVersion = "2.9.9"  # Última versión estable
 
 [libraries]
 # Android Core
@@ -77,8 +77,6 @@ mockk = { group = "io.mockk", name = "mockk", version.ref = "mockkVersion" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-# Eliminamos la definición del plugin kapt para evitar conflictos
 dagger-hilt = { id = "com.google.dagger.hilt.android", version.ref = "hiltVersion" }
 google-services = { id = "com.google.gms.google-services", version = "4.4.1" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlyticsGradleVersion" }

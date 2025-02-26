@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import com.tfg.umeegunero.data.model.UserType
 import kotlinx.coroutines.delay
 
 // Función auxiliar para determinar si estamos en modo claro u oscuro
@@ -71,17 +72,18 @@ fun isLightTheme(): Boolean {
     return luminance > 0.5
 }
 
+// Nuevo enum con los tipos correctos
 enum class UserType {
-    SCHOOL,
-    TEACHER,
-    PARENT
+    ADMIN,      // Administrador de la aplicación
+    CENTRO,     // Administrador de centro educativo
+    PROFESOR,   // Profesor
+    FAMILIAR    // Padre, madre o tutor
 }
 
 @Composable
 fun WelcomeScreen(
     onNavigateToLogin: (UserType) -> Unit,
     onNavigateToRegister: () -> Unit,
-    onNavigateToAdminLogin: () -> Unit,
     onCloseApp: () -> Unit
 ) {
     val isLight = isLightTheme()
@@ -114,9 +116,9 @@ fun WelcomeScreen(
                 )
             )
     ) {
-        // Admin login button
+        // Admin login button - Ahora usa directamente onNavigateToLogin
         IconButton(
-            onClick = onNavigateToAdminLogin,
+            onClick = { onNavigateToLogin(UserType.ADMIN) },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
@@ -217,10 +219,11 @@ fun WelcomeScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
+                        // Actualizado para utilizar los nuevos tipos de usuario
                         LoginButtons(
-                            onSchoolLogin = { onNavigateToLogin(UserType.SCHOOL) },
-                            onTeacherLogin = { onNavigateToLogin(UserType.TEACHER) },
-                            onParentLogin = { onNavigateToLogin(UserType.PARENT) }
+                            onCentroLogin = { onNavigateToLogin(UserType.CENTRO) },
+                            onProfesorLogin = { onNavigateToLogin(UserType.PROFESOR) },
+                            onFamiliarLogin = { onNavigateToLogin(UserType.FAMILIAR) }
                         )
                     }
                 }
@@ -459,11 +462,12 @@ fun CarouselItemContent(item: CarouselItem) {
     }
 }
 
+// Actualizada la función para reflejar los nuevos tipos de usuario
 @Composable
 fun LoginButtons(
-    onSchoolLogin: () -> Unit,
-    onTeacherLogin: () -> Unit,
-    onParentLogin: () -> Unit
+    onCentroLogin: () -> Unit,
+    onProfesorLogin: () -> Unit,
+    onFamiliarLogin: () -> Unit
 ) {
     val isLight = isLightTheme()
 
@@ -471,9 +475,9 @@ fun LoginButtons(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // School Login Button - Color azul iOS
+        // Centro Login Button - Color azul iOS
         Button(
-            onClick = onSchoolLogin,
+            onClick = onCentroLogin,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
@@ -495,9 +499,9 @@ fun LoginButtons(
             )
         }
 
-        // Teacher Login Button - Color verde iOS
+        // Profesor Login Button - Color verde iOS
         Button(
-            onClick = onTeacherLogin,
+            onClick = onProfesorLogin,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
@@ -519,9 +523,9 @@ fun LoginButtons(
             )
         }
 
-        // Parent Login Button - Color púrpura iOS
+        // Familiar Login Button - Color púrpura iOS
         Button(
-            onClick = onParentLogin,
+            onClick = onFamiliarLogin,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
@@ -537,7 +541,7 @@ fun LoginButtons(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                "Acceso Padres",
+                "Acceso Familiar",  // Cambiado de "Acceso Padres" a "Acceso Familiar"
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal
             )
@@ -552,7 +556,6 @@ fun WelcomeScreenLightPreview() {
         WelcomeScreen(
             onNavigateToLogin = {},
             onNavigateToRegister = {},
-            onNavigateToAdminLogin = {},
             onCloseApp = {}
         )
     }
@@ -565,7 +568,6 @@ fun WelcomeScreenDarkPreview() {
         WelcomeScreen(
             onNavigateToLogin = {},
             onNavigateToRegister = {},
-            onNavigateToAdminLogin = {},
             onCloseApp = {}
         )
     }
