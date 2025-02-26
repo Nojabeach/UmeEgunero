@@ -22,9 +22,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
@@ -145,7 +145,7 @@ fun RegistroScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
@@ -235,13 +235,19 @@ fun RegistroScreen(
                                 onDniChange = { viewModel.updateFormField("dni", it) },
                                 onEmailChange = { viewModel.updateFormField("email", it) },
                                 onPasswordChange = { viewModel.updateFormField("password", it) },
-                                onConfirmPasswordChange = { viewModel.updateFormField("confirmPassword", it) },
+                                onConfirmPasswordChange = {
+                                    viewModel.updateFormField(
+                                        "confirmPassword",
+                                        it
+                                    )
+                                },
                                 onNombreChange = { viewModel.updateFormField("nombre", it) },
                                 onApellidosChange = { viewModel.updateFormField("apellidos", it) },
                                 onTelefonoChange = { viewModel.updateFormField("telefono", it) },
                                 onSubtipoChange = { viewModel.updateSubtipoFamiliar(it) },
                                 errors = uiState.formErrors
                             )
+
                             2 -> DireccionStep(
                                 calle = uiState.form.direccion.calle,
                                 numero = uiState.form.direccion.numero,
@@ -252,11 +258,17 @@ fun RegistroScreen(
                                 onCalleChange = { viewModel.updateFormField("calle", it) },
                                 onNumeroChange = { viewModel.updateFormField("numero", it) },
                                 onPisoChange = { viewModel.updateFormField("piso", it) },
-                                onCodigoPostalChange = { viewModel.updateFormField("codigoPostal", it) },
+                                onCodigoPostalChange = {
+                                    viewModel.updateFormField(
+                                        "codigoPostal",
+                                        it
+                                    )
+                                },
                                 onCiudadChange = { viewModel.updateFormField("ciudad", it) },
                                 onProvinciaChange = { viewModel.updateFormField("provincia", it) },
                                 errors = uiState.formErrors
                             )
+
                             3 -> AlumnosCentroStep(
                                 alumnos = uiState.form.alumnosDni,
                                 centroId = uiState.form.centroId,
@@ -267,714 +279,320 @@ fun RegistroScreen(
                                 onCentroSelect = { viewModel.updateFormField("centroId", it) },
                                 errors = uiState.formErrors
                             )
+
                             else -> Box {}
                         }
                     }
-                }
 
-                // Botones de navegación
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    if (uiState.currentStep > 1) {
-                        OutlinedButton(
-                            onClick = { viewModel.previousStep() },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text("Anterior")
-                        }
-
-                        Spacer(modifier = Modifier.padding(horizontal = 8.dp))
-                    }
-
-                    if (uiState.currentStep < uiState.totalSteps) {
-                        Button(
-                            onClick = { viewModel.nextStep() },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Siguiente")
-                            Icon(
-                                imageVector = Icons.Default.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    } else {
-                        Button(
-                            onClick = { viewModel.submitRegistration() },
-                            enabled = !uiState.isLoading,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .height(24.dp)
-                                        .padding(end = 8.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
+                    // Botones de navegación
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        if (uiState.currentStep > 1) {
+                            OutlinedButton(
+                                onClick = { viewModel.previousStep() },
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
+                                Text("Anterior")
                             }
-                            Text("Registrarse")
+
+                            Spacer(modifier = Modifier.padding(horizontal = 8.dp))
+                        }
+
+                        if (uiState.currentStep < uiState.totalSteps) {
+                            Button(
+                                onClick = { viewModel.nextStep() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Siguiente")
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                        } else {
+                            Button(
+                                onClick = { viewModel.submitRegistration() },
+                                enabled = !uiState.isLoading,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (uiState.isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .height(24.dp)
+                                            .padding(end = 8.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                }
+                                Text("Registrarse")
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
 
-@Composable
-fun DatosPersonalesStep(
-    dni: String,
-    email: String,
-    password: String,
-    confirmPassword: String,
-    nombre: String,
-    apellidos: String,
-    telefono: String,
-    subtipo: SubtipoFamiliar,
-    onDniChange: (String) -> Unit,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onConfirmPasswordChange: (String) -> Unit,
-    onNombreChange: (String) -> Unit,
-    onApellidosChange: (String) -> Unit,
-    onTelefonoChange: (String) -> Unit,
-    onSubtipoChange: (SubtipoFamiliar) -> Unit,
-    errors: Map<String, String>
-) {
-    val scrollState = rememberScrollState()
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    @Composable
+    fun DatosPersonalesStep(
+        dni: String,
+        email: String,
+        password: String,
+        confirmPassword: String,
+        nombre: String,
+        apellidos: String,
+        telefono: String,
+        subtipo: SubtipoFamiliar,
+        onDniChange: (String) -> Unit,
+        onEmailChange: (String) -> Unit,
+        onPasswordChange: (String) -> Unit,
+        onConfirmPasswordChange: (String) -> Unit,
+        onNombreChange: (String) -> Unit,
+        onApellidosChange: (String) -> Unit,
+        onTelefonoChange: (String) -> Unit,
+        onSubtipoChange: (SubtipoFamiliar) -> Unit,
+        errors: Map<String, String>
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // DNI
-                OutlinedTextField(
-                    value = dni,
-                    onValueChange = onDniChange,
-                    label = { Text("DNI") },
-                    leadingIcon = {
-                        Icon(Icons.Default.AccountCircle, contentDescription = null)
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = errors.containsKey("dni"),
-                    supportingText = {
-                        if (errors.containsKey("dni")) {
-                            Text(errors["dni"] ?: "")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+        val scrollState = rememberScrollState()
+        var passwordVisible by remember { mutableStateOf(false) }
+        var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-                // Email
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = onEmailChange,
-                    label = { Text("Email") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Email, contentDescription = null)
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = errors.containsKey("email"),
-                    supportingText = {
-                        if (errors.containsKey("email")) {
-                            Text(errors["email"] ?: "")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Contraseña
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = onPasswordChange,
-                    label = { Text("Contraseña") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Lock, contentDescription = null)
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible) Icons.Default.Close else Icons.Default.Check,
-                                contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
-                            )
-                        }
-                    },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = errors.containsKey("password"),
-                    supportingText = {
-                        if (errors.containsKey("password")) {
-                            Text(errors["password"] ?: "")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Confirmar Contraseña
-                OutlinedTextField(
-                    value = confirmPassword,
-                    onValueChange = onConfirmPasswordChange,
-                    label = { Text("Confirmar Contraseña") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Lock, contentDescription = null)
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                            Icon(
-                                imageVector = if (confirmPasswordVisible) Icons.Default.Close else Icons.Default.Check,
-                                contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
-                            )
-                        }
-                    },
-                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = errors.containsKey("confirmPassword"),
-                    supportingText = {
-                        if (errors.containsKey("confirmPassword")) {
-                            Text(errors["confirmPassword"] ?: "")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        // Datos personales
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Nombre
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = onNombreChange,
-                    label = { Text("Nombre") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null)
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = errors.containsKey("nombre"),
-                    supportingText = {
-                        if (errors.containsKey("nombre")) {
-                            Text(errors["nombre"] ?: "")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Apellidos
-                OutlinedTextField(
-                    value = apellidos,
-                    onValueChange = onApellidosChange,
-                    label = { Text("Apellidos") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null)
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = errors.containsKey("apellidos"),
-                    supportingText = {
-                        if (errors.containsKey("apellidos")) {
-                            Text(errors["apellidos"] ?: "")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Teléfono
-                OutlinedTextField(
-                    value = telefono,
-                    onValueChange = onTelefonoChange,
-                    label = { Text("Teléfono") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Phone, contentDescription = null)
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Phone,
-                        imeAction = ImeAction.Done
-                    ),
-                    isError = errors.containsKey("telefono"),
-                    supportingText = {
-                        if (errors.containsKey("telefono")) {
-                            Text(errors["telefono"] ?: "")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        // Tipo de familiar
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "¿Qué relación tienes con el alumno?",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                TipoFamiliarOptions(
-                    selectedType = subtipo,
-                    onTypeSelected = onSubtipoChange
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun TipoFamiliarOptions(
-    selectedType: SubtipoFamiliar,
-    onTypeSelected: (SubtipoFamiliar) -> Unit
-) {
-    Column {
-        SubtipoFamiliar.values().forEach { tipo ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(
-                    selected = selectedType == tipo,
-                    onClick = { onTypeSelected(tipo) }
-                )
-
-                Text(
-                    text = when(tipo) {
-                        SubtipoFamiliar.PADRE -> "Padre"
-                        SubtipoFamiliar.MADRE -> "Madre"
-                        SubtipoFamiliar.TUTOR -> "Tutor/a legal"
-                        SubtipoFamiliar.OTRO -> "Otro familiar"
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-        }
-    }
-}
-// Componente auxiliar para las previews
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun RegistroScreenPreviewContent(
-    uiState: RegistroUiState,
-    onNavigateBack: () -> Unit,
-    onNextStep: () -> Unit,
-    onPreviousStep: () -> Unit,
-    onSubmit: () -> Unit,
-    onDniChange: (String) -> Unit,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onConfirmPasswordChange: (String) -> Unit,
-    onNombreChange: (String) -> Unit,
-    onApellidosChange: (String) -> Unit,
-    onTelefonoChange: (String) -> Unit,
-    onSubtipoChange: (SubtipoFamiliar) -> Unit,
-    onCalleChange: (String) -> Unit,
-    onNumeroChange: (String) -> Unit,
-    onPisoChange: (String) -> Unit,
-    onCodigoPostalChange: (String) -> Unit,
-    onCiudadChange: (String) -> Unit,
-    onProvinciaChange: (String) -> Unit,
-    onAddAlumno: (String) -> Unit,
-    onRemoveAlumno: (String) -> Unit,
-    onCentroSelect: (String) -> Unit
-) {
-    // Determinar si estamos en modo claro u oscuro
-    val isLight = MaterialTheme.colorScheme.isLight()
-
-    // Crear un gradiente elegante para el fondo, estilo iOS
-    val gradientColors = if (!isLight) {
-        // Gradiente para modo oscuro
-        listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
-        )
-    } else {
-        // Gradiente para modo claro, estilo iOS
-        listOf(
-            Color(0xFFF0F4FF), // Azul muy claro
-            Color(0xFFF8F9FF), // Casi blanco con tinte azul
-            Color(0xFFF0FAFF)  // Azul muy claro con tinte cyan
-        )
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Registro Familiar") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = gradientColors
-                    )
-                )
+                .fillMaxWidth()
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                )
             ) {
-                // Indicador de progreso
-                LinearProgressIndicator(
-                    progress = { uiState.currentStep.toFloat() / uiState.totalSteps.toFloat() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                )
-
-                // Título del paso actual
-                Text(
-                    text = when (uiState.currentStep) {
-                        1 -> "Datos Personales"
-                        2 -> "Dirección"
-                        3 -> "Alumnos y Centro"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-
-                // Contenido del paso actual
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    when (uiState.currentStep) {
-                        1 -> DatosPersonalesStep(
-                            dni = uiState.form.dni,
-                            email = uiState.form.email,
-                            password = uiState.form.password,
-                            confirmPassword = uiState.form.confirmPassword,
-                            nombre = uiState.form.nombre,
-                            apellidos = uiState.form.apellidos,
-                            telefono = uiState.form.telefono,
-                            subtipo = uiState.form.subtipo,
-                            onDniChange = onDniChange,
-                            onEmailChange = onEmailChange,
-                            onPasswordChange = onPasswordChange,
-                            onConfirmPasswordChange = onConfirmPasswordChange,
-                            onNombreChange = onNombreChange,
-                            onApellidosChange = onApellidosChange,
-                            onTelefonoChange = onTelefonoChange,
-                            onSubtipoChange = onSubtipoChange,
-                            errors = uiState.formErrors
-                        )
-                        2 -> DireccionStep(
-                            calle = uiState.form.direccion.calle,
-                            numero = uiState.form.direccion.numero,
-                            piso = uiState.form.direccion.piso,
-                            codigoPostal = uiState.form.direccion.codigoPostal,
-                            ciudad = uiState.form.direccion.ciudad,
-                            provincia = uiState.form.direccion.provincia,
-                            onCalleChange = onCalleChange,
-                            onNumeroChange = onNumeroChange,
-                            onPisoChange = onPisoChange,
-                            onCodigoPostalChange = onCodigoPostalChange,
-                            onCiudadChange = onCiudadChange,
-                            onProvinciaChange = onProvinciaChange,
-                            errors = uiState.formErrors
-                        )
-                        3 -> AlumnosCentroStep(
-                            alumnos = uiState.form.alumnosDni,
-                            centroId = uiState.form.centroId,
-                            centros = uiState.centros,
-                            isLoadingCentros = uiState.isLoadingCentros,
-                            onAddAlumno = onAddAlumno,
-                            onRemoveAlumno = onRemoveAlumno,
-                            onCentroSelect = onCentroSelect,
-                            errors = uiState.formErrors
-                        )
-                        else -> Box {}
-                    }
-                }
+                    // DNI
+                    OutlinedTextField(
+                        value = dni,
+                        onValueChange = onDniChange,
+                        label = { Text("DNI") },
+                        leadingIcon = {
+                            Icon(Icons.Default.AccountCircle, contentDescription = null)
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Next
+                        ),
+                        isError = errors.containsKey("dni"),
+                        supportingText = {
+                            if (errors.containsKey("dni")) {
+                                Text(errors["dni"] ?: "")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                // Botones de navegación
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    if (uiState.currentStep > 1) {
-                        OutlinedButton(
-                            onClick = onPreviousStep,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text("Anterior")
-                        }
+                    // Email
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = onEmailChange,
+                        label = { Text("Email") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, contentDescription = null)
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        ),
+                        isError = errors.containsKey("email"),
+                        supportingText = {
+                            if (errors.containsKey("email")) {
+                                Text(errors["email"] ?: "")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(modifier = Modifier.padding(horizontal = 8.dp))
-                    }
-
-                    if (uiState.currentStep < uiState.totalSteps) {
-                        Button(
-                            onClick = onNextStep,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Siguiente")
-                            Icon(
-                                imageVector = Icons.Default.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    } else {
-                        Button(
-                            onClick = onSubmit,
-                            enabled = !uiState.isLoading,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .height(24.dp)
-                                        .padding(end = 8.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
+                    // Contraseña
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = onPasswordChange,
+                        label = { Text("Contraseña") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Lock, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp)
+                                    imageVector = if (passwordVisible) Icons.Default.Close else Icons.Default.Check,
+                                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
                                 )
                             }
-                            Text("Registrarse")
-                        }
-                    }
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Next
+                        ),
+                        isError = errors.containsKey("password"),
+                        supportingText = {
+                            if (errors.containsKey("password")) {
+                                Text(errors["password"] ?: "")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Confirmar Contraseña
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = onConfirmPasswordChange,
+                        label = { Text("Confirmar Contraseña") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Lock, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (confirmPasswordVisible) Icons.Default.Close else Icons.Default.Check,
+                                    contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                )
+                            }
+                        },
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Next
+                        ),
+                        isError = errors.containsKey("confirmPassword"),
+                        supportingText = {
+                            if (errors.containsKey("confirmPassword")) {
+                                Text(errors["confirmPassword"] ?: "")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
-        }
-    }
-}
 
-// Vista previa para la pantalla completa de registro
-@Preview(showBackground = true)
-@Composable
-fun RegistroScreenPreview() {
-    UmeEguneroTheme {
-        Surface {
-            // Creamos un estado de UI simulado para la vista previa
-            val mockUiState = RegistroUiState(
-                currentStep = 1,
-                totalSteps = 3,
-                form = RegistroUsuarioForm(
-                    dni = "12345678A",
-                    email = "ejemplo@correo.com",
-                    password = "contraseña",
-                    confirmPassword = "contraseña",
-                    nombre = "Juan",
-                    apellidos = "Pérez García",
-                    telefono = "600123456",
-                    subtipo = SubtipoFamiliar.PADRE
-                ),
-                centros = listOf(
-                    Centro(
-                        id = "centro1",
-                        nombre = "Colegio Ejemplo 1",
-                        direccion = Direccion(
-                            calle = "Calle Principal",
-                            numero = "1",
-                            codigoPostal = "28001",
-                            ciudad = "Madrid",
-                            provincia = "Madrid"
-                        ),
-                        contacto = Contacto(
-                            telefono = "912345678",
-                            email = "colegio@ejemplo.com"
-                        )
-                    ),
-                    Centro(
-                        id = "centro2",
-                        nombre = "Colegio Ejemplo 2",
-                        direccion = Direccion(
-                            calle = "Avenida Principal",
-                            numero = "10",
-                            codigoPostal = "28002",
-                            ciudad = "Madrid",
-                            provincia = "Madrid"
-                        ),
-                        contacto = Contacto(
-                            telefono = "912345679",
-                            email = "colegio2@ejemplo.com"
-                        )
-                    )
+            // Datos personales
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                 )
-            )
-
-            // Vista simulada de la pantalla de registro
-            RegistroScreenPreviewContent(
-                uiState = mockUiState,
-                onNavigateBack = {},
-                onNextStep = {},
-                onPreviousStep = {},
-                onSubmit = {},
-                onDniChange = {},
-                onEmailChange = {},
-                onPasswordChange = {},
-                onConfirmPasswordChange = {},
-                onNombreChange = {},
-                onApellidosChange = {},
-                onTelefonoChange = {},
-                onSubtipoChange = {},
-                onCalleChange = {},
-                onNumeroChange = {},
-                onPisoChange = {},
-                onCodigoPostalChange = {},
-                onCiudadChange = {},
-                onProvinciaChange = {},
-                onAddAlumno = {},
-                onRemoveAlumno = {},
-                onCentroSelect = {}
-            )
-        }
-    }
-}
-
-// Vista previa en modo oscuro
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun RegistroScreenDarkPreview() {
-    UmeEguneroTheme(darkTheme = true) {
-        Surface {
-            // Creamos un estado de UI simulado para la vista previa
-            val mockUiState = RegistroUiState(
-                currentStep = 1,
-                totalSteps = 3,
-                form = RegistroUsuarioForm(
-                    dni = "12345678A",
-                    email = "ejemplo@correo.com",
-                    password = "contraseña",
-                    confirmPassword = "contraseña",
-                    nombre = "Juan",
-                    apellidos = "Pérez García",
-                    telefono = "600123456",
-                    subtipo = SubtipoFamiliar.PADRE
-                ),
-                centros = listOf(
-                    Centro(
-                        id = "centro1",
-                        nombre = "Colegio Ejemplo 1"
-                    ),
-                    Centro(
-                        id = "centro2",
-                        nombre = "Colegio Ejemplo 2"
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Nombre
+                    OutlinedTextField(
+                        value = nombre,
+                        onValueChange = onNombreChange,
+                        label = { Text("Nombre") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null)
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Next
+                        ),
+                        isError = errors.containsKey("nombre"),
+                        supportingText = {
+                            if (errors.containsKey("nombre")) {
+                                Text(errors["nombre"] ?: "")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
-                )
-            )
 
-            // Vista simulada de la pantalla de registro
-            RegistroScreenPreviewContent(
-                uiState = mockUiState,
-                onNavigateBack = {},
-                onNextStep = {},
-                onPreviousStep = {},
-                onSubmit = {},
-                onDniChange = {},
-                onEmailChange = {},
-                onPasswordChange = {},
-                onConfirmPasswordChange = {},
-                onNombreChange = {},
-                onApellidosChange = {},
-                onTelefonoChange = {},
-                onSubtipoChange = {},
-                onCalleChange = {},
-                onNumeroChange = {},
-                onPisoChange = {},
-                onCodigoPostalChange = {},
-                onCiudadChange = {},
-                onProvinciaChange = {},
-                onAddAlumno = {},
-                onRemoveAlumno = {},
-                onCentroSelect = {}
-            )
+                    // Apellidos
+                    OutlinedTextField(
+                        value = apellidos,
+                        onValueChange = onApellidosChange,
+                        label = { Text("Apellidos") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null)
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Next
+                        ),
+                        isError = errors.containsKey("apellidos"),
+                        supportingText = {
+                            if (errors.containsKey("apellidos")) {
+                                Text(errors["apellidos"] ?: "")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Teléfono
+                    OutlinedTextField(
+                        value = telefono,
+                        onValueChange = onTelefonoChange,
+                        label = { Text("Teléfono") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Phone, contentDescription = null)
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Phone,
+                            imeAction = ImeAction.Done
+                        ),
+                        isError = errors.containsKey("telefono"),
+                        supportingText = {
+                            if (errors.containsKey("telefono")) {
+                                Text(errors["telefono"] ?: "")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            // Tipo de familiar
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "¿Qué relación tienes con el alumno?",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    TipoFamiliarOptions(
+                        selectedType = subtipo,
+                        onTypeSelected = onSubtipoChange
+                    )
+                }
+            }
         }
     }
 }

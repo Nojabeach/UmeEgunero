@@ -6,17 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -62,22 +52,18 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.data.model.UserType
 import kotlinx.coroutines.delay
 
-// Función auxiliar para determinar si estamos en modo claro u oscuro
 @Composable
 fun isLightTheme(): Boolean {
-    // En Material 3, podemos usar esta aproximación para detectar si estamos en tema claro
     val backgroundColor = MaterialTheme.colorScheme.background
-    // Calculamos un valor aproximado de luminosidad (0.0 - 1.0)
     val luminance = (0.299 * backgroundColor.red + 0.587 * backgroundColor.green + 0.114 * backgroundColor.blue)
     return luminance > 0.5
 }
 
-// Nuevo enum con los tipos correctos
 enum class UserType {
-    ADMIN,      // Administrador de la aplicación
-    CENTRO,     // Administrador de centro educativo
-    PROFESOR,   // Profesor
-    FAMILIAR    // Padre, madre o tutor
+    ADMIN,
+    CENTRO,
+    PROFESOR,
+    FAMILIAR
 }
 
 @Composable
@@ -88,20 +74,17 @@ fun WelcomeScreen(
 ) {
     val isLight = isLightTheme()
 
-    // Crear un gradiente elegante para el fondo, estilo iOS
     val gradientColors = if (!isLight) {
-        // Gradiente para modo oscuro
         listOf(
             MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
             MaterialTheme.colorScheme.background,
             MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
         )
     } else {
-        // Gradiente para modo claro, estilo iOS
         listOf(
-            Color(0xFFF0F4FF), // Azul muy claro
-            Color(0xFFF8F9FF), // Casi blanco con tinte azul
-            Color(0xFFF0FAFF)  // Azul muy claro con tinte cyan
+            Color(0xFFE3F2FD), // Azul claro
+            Color(0xFFFFFFFF), // Blanco
+            Color(0xFFE1F5FE)  // Azul muy claro
         )
     }
 
@@ -116,7 +99,6 @@ fun WelcomeScreen(
                 )
             )
     ) {
-        // Admin login button - Ahora usa directamente onNavigateToLogin
         IconButton(
             onClick = { onNavigateToLogin(UserType.ADMIN) },
             modifier = Modifier
@@ -130,7 +112,6 @@ fun WelcomeScreen(
             )
         }
 
-        // Close app button
         IconButton(
             onClick = onCloseApp,
             modifier = Modifier
@@ -144,29 +125,27 @@ fun WelcomeScreen(
             )
         }
 
-        // Main content (centered)
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly // Distribuye el espacio uniformemente
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            // App logo and name at the top
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 8.dp) // Reduced padding
+                modifier = Modifier.padding(top = 8.dp)
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.app_icon),
                     contentDescription = "App Logo",
                     modifier = Modifier
-                        .size(70.dp) // Reduced size
+                        .size(70.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
 
-                Spacer(modifier = Modifier.height(4.dp)) // Reduced spacing
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "UmeEgunero",
@@ -182,15 +161,12 @@ fun WelcomeScreen(
                 )
             }
 
-            // Carousel
             OnboardingCarousel()
 
-            // Buttons section
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(bottom = 24.dp)
             ) {
-                // Login section with title
                 Text(
                     text = "INICIAR SESIÓN",
                     style = MaterialTheme.typography.labelMedium,
@@ -199,7 +175,6 @@ fun WelcomeScreen(
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
 
-                // Login buttons container
                 Card(
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
@@ -213,13 +188,12 @@ fun WelcomeScreen(
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = if (isLight) 2.dp else 4.dp
                     ),
-                    shape = RoundedCornerShape(16.dp) // Más redondeado, estilo iOS
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        // Actualizado para utilizar los nuevos tipos de usuario
                         LoginButtons(
                             onCentroLogin = { onNavigateToLogin(UserType.CENTRO) },
                             onProfesorLogin = { onNavigateToLogin(UserType.PROFESOR) },
@@ -228,18 +202,16 @@ fun WelcomeScreen(
                     }
                 }
 
-                // Register section with divider
                 Divider(
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .padding(vertical = 8.dp),
                     color = if (isLight)
-                        Color(0xFFD1D1D6) // Gris claro iOS
+                        Color(0xFFD1D1D6)
                     else
                         MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
                 )
 
-                // Register card
                 Card(
                     modifier = Modifier
                         .fillMaxWidth(0.9f),
@@ -258,25 +230,23 @@ fun WelcomeScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(16.dp)
                     ) {
-                        // Texto informativo
                         Text(
                             text = "Si eres familiar y no tienes cuenta",
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isLight)
-                                Color(0xFF8E8E93) // Gris texto iOS
+                                Color(0xFF8E8E93)
                             else
                                 MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.padding(bottom = 12.dp),
                             textAlign = TextAlign.Center
                         )
 
-                        // Botón de registro
                         Button(
                             onClick = onNavigateToRegister,
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isLight)
-                                    Color(0xFFFF9500) // Naranja iOS
+                                    Color(0xFFFF9500)
                                 else
                                     MaterialTheme.colorScheme.secondary
                             ),
@@ -325,10 +295,9 @@ fun OnboardingCarousel() {
 
     var currentPage by remember { mutableIntStateOf(0) }
 
-    // Auto-scroll effect
     LaunchedEffect(key1 = true) {
-        while(true) {
-            delay(5000) // Change slide every 5 seconds
+        while (true) {
+            delay(5000)
             currentPage = (currentPage + 1) % items.size
         }
     }
@@ -336,7 +305,6 @@ fun OnboardingCarousel() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Carousel card with content
         ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
@@ -350,10 +318,9 @@ fun OnboardingCarousel() {
                 else
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
             ),
-            shape = RoundedCornerShape(16.dp) // Esquinas más redondeadas, estilo iOS
+            shape = RoundedCornerShape(16.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                // Contenido actual del carrusel
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -366,7 +333,6 @@ fun OnboardingCarousel() {
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Pagination indicators
         Row(
             modifier = Modifier.padding(top = 4.dp),
             horizontalArrangement = Arrangement.Center
@@ -388,9 +354,9 @@ fun OnboardingCarousel() {
                         .background(
                             if (isLight) {
                                 if (currentPage == index)
-                                    Color(0xFF007AFF) // Azul iOS
+                                    Color(0xFF007AFF)
                                 else
-                                    Color(0xFFD1D1D6) // Gris claro iOS
+                                    Color(0xFFD1D1D6)
                             } else {
                                 if (currentPage == index)
                                     MaterialTheme.colorScheme.primary
@@ -407,7 +373,7 @@ fun OnboardingCarousel() {
 }
 
 data class CarouselItem(
-    val icon: Any, // Can be ImageVector or Painter
+    val icon: Any,
     val title: String,
     val description: String
 )
@@ -419,13 +385,12 @@ fun CarouselItemContent(item: CarouselItem) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        // Icon
         when (item.icon) {
             is androidx.compose.ui.graphics.vector.ImageVector -> {
                 Icon(
                     imageVector = item.icon,
                     contentDescription = item.title,
-                    modifier = Modifier.size(48.dp), // Smaller icon
+                    modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -433,36 +398,33 @@ fun CarouselItemContent(item: CarouselItem) {
                 Icon(
                     painter = item.icon,
                     contentDescription = item.title,
-                    modifier = Modifier.size(48.dp), // Smaller icon
+                    modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp)) // Less space
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Title
         Text(
             text = item.title,
-            style = MaterialTheme.typography.titleMedium, // Smaller text
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(8.dp)) // Less space
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Description
         Text(
             text = item.description,
-            style = MaterialTheme.typography.bodySmall, // Smaller text
+            style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 8.dp),
-            lineHeight = 18.sp // Smaller line height
+            lineHeight = 18.sp
         )
     }
 }
 
-// Actualizada la función para reflejar los nuevos tipos de usuario
 @Composable
 fun LoginButtons(
     onCentroLogin: () -> Unit,
@@ -475,16 +437,15 @@ fun LoginButtons(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Centro Login Button - Color azul iOS
         Button(
             onClick = onCentroLogin,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isLight) Color(0xFF007AFF) else MaterialTheme.colorScheme.primary // Azul iOS
+                containerColor = if (isLight) Color(0xFF007AFF) else MaterialTheme.colorScheme.primary
             ),
-            shape = RoundedCornerShape(12.dp) // Más redondeado, estilo iOS
+            shape = RoundedCornerShape(12.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.School,
@@ -495,18 +456,17 @@ fun LoginButtons(
             Text(
                 "Acceso Centro",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal // Fuente más ligera como iOS
+                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal
             )
         }
 
-        // Profesor Login Button - Color verde iOS
         Button(
             onClick = onProfesorLogin,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isLight) Color(0xFF34C759) else MaterialTheme.colorScheme.secondary // Verde iOS
+                containerColor = if (isLight) Color(0xFF34C759) else MaterialTheme.colorScheme.secondary
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -523,14 +483,13 @@ fun LoginButtons(
             )
         }
 
-        // Familiar Login Button - Color púrpura iOS
         Button(
             onClick = onFamiliarLogin,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isLight) Color(0xFF5856D6) else MaterialTheme.colorScheme.tertiary // Púrpura iOS
+                containerColor = if (isLight) Color(0xFF5856D6) else MaterialTheme.colorScheme.tertiary
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -541,7 +500,7 @@ fun LoginButtons(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                "Acceso Familiar",  // Cambiado de "Acceso Padres" a "Acceso Familiar"
+                "Acceso Familiar",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal
             )

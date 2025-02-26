@@ -159,18 +159,150 @@ class RegistroViewModel @Inject constructor(
             )
         }
     }
+    /**
+     * Validaciones de formato
+     */
+    private fun isDniValid(dni: String): Boolean {
+        // DNI español: 8 números y 1 letra
+        val dniPattern = Regex("^\\d{8}[A-HJ-NP-TV-Z]$")
+        if (!dniPattern.matches(dni.uppercase())) return false
+
+        // Validación de letra de control
+        val letras = "TRWAGMYFPDXBNJZSQVHLCKE"
+        val numero = dni.substring(0, 8).toInt()
+        val letra = dni[8]
+        return letra == letras[numero % 23]
+    }
+
+    /**
+     * Validación de email
+     */
+    private fun isEmailValid(email: String): Boolean {
+        val emailPattern = Regex("[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+        return emailPattern.matches(email)
+    }
+
+    /**
+     * Validación de teléfono
+     */
+    private fun isTelefonoValid(telefono: String): Boolean {
+        // Formato español: 9 dígitos, puede empezar por 6, 7, 8 o 9
+        val telefonoPattern = Regex("^(\\+34|0034|34)?[6-9]\\d{8}$")
+        return telefonoPattern.matches(telefono.replace("[\\s-]".toRegex(), ""))
+    }
+
+    /**
+     * Validación de código postal
+     */
+    private fun isCodigoPostalValid(codigoPostal: String): Boolean {
+        // Código postal español: 5 dígitos
+        val cpPattern = Regex("^\\d{5}$")
+        return cpPattern.matches(codigoPostal)
+    }
+
+    /**
+     * Limpia los errores
+     */
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Reinicia el estado
+     */
+    fun resetState() {
+        _uiState.update {
+            RegistroUiState(centros = it.centros)
+        }
+    }
 
     /**
      * Avanza al siguiente paso del formulario
      */
     fun nextStep() {
-        // Validar el paso actual antes de avanzar
-        if (validateCurrentStep()) {
-            _uiState.update {
-                it.copy(
-                    currentStep = it.currentStep + 1,
-                    error = null
-                )
+        val currentStep = _uiState.value.currentStep
+        val form = _uiState.value.form
+        val errors = mutableMapOf<String, String>()
+
+        // Validaciones más flexibles por paso
+        when (currentStep) {
+            1 -> {
+                // Validaciones de datos personales
+                if (form.dni.isBlank()) errors["dni"] = "El DNI es obligatorio"
+                if (form.email.isBlank()) errors["email"] = "El email es obligatorio"
+                if (form.nombre.isBlank()) errors["nombre"] = "El nombre es obligatorio"
+                if (form.apellidos.isBlank()) errors["apellidos"] = "Los apellidos son obligatorios"
+                if (form.telefono.isBlank()) errors["telefono"] = "El teléfono es obligatorio"
+
+                // Validaciones de formato adicionales
+                if (form.dni.isNotBlank() && !isDniValid(form.dni))
+                    errors["dni"] = "El DNI no tiene un formato válido"
+
+                if (form.email.isNotBlank() && !isEmailValid(form.email))
+                    errors["email"] = "El formato del email no es válido"
+
+                // Si no hay errores críticos, avanzar
+                if (errors.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            currentStep = it.currentStep + 1,
+                            formErrors = emptyMap(),
+                            error = null
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(formErrors = errors) }
+                }
+            }
+            2 -> {
+                // Validaciones de dirección
+                if (form.direccion.calle.isBlank()) errors["calle"] = "La calle es obligatoria"
+                if (form.direccion.numero.isBlank()) errors["numero"] = "El número es obligatorio"
+                if (form.direccion.codigoPostal.isBlank()) errors["codigoPostal"] = "El código postal es obligatorio"
+                if (form.direccion.ciudad.isBlank()) errors["ciudad"] = "La ciudad es obligatoria"
+                if (form.direccion.provincia.isBlank()) errors["provincia"] = "La provincia es obligatoria"
+
+                // Validación de formato de código postal
+                if (form.direccion.codigoPostal.isNotBlank() && !isCodigoPostalValid(form.direccion.codigoPostal))
+                    errors["codigoPostal"] = "El código postal debe tener 5 dígitos"
+
+                // Si no hay errores críticos, avanzar
+                if (errors.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            currentStep = it.currentStep + 1,
+                            formErrors = emptyMap(),
+                            error = null
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(formErrors = errors) }
+                }
+            }
+            3 -> {
+                // Validaciones de alumnos y centro
+                if (form.alumnosDni.isEmpty()) errors["alumnos"] = "Debe indicar al menos un alumno"
+
+                // Validar DNI de cada alumno
+                form.alumnosDni.forEachIndexed { index, dni ->
+                    if (!isDniValid(dni))
+                        errors["alumno_$index"] = "El DNI del alumno ${index + 1} no es válido"
+                }
+
+                if (form.centroId.isBlank()) errors["centro"] = "Debe seleccionar un centro"
+
+                // Si no hay errores críticos, avanzar
+                if (errors.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            currentStep = it.currentStep + 1,
+                            formErrors = emptyMap(),
+                            error = null
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(formErrors = errors) }
+                }
             }
         }
     }
@@ -190,95 +322,61 @@ class RegistroViewModel @Inject constructor(
     }
 
     /**
-     * Valida el paso actual del formulario
-     */
-    private fun validateCurrentStep(): Boolean {
-        val currentStep = _uiState.value.currentStep
-        val form = _uiState.value.form
-        val errors = mutableMapOf<String, String>()
-
-        when (currentStep) {
-            1 -> {
-                // Validación de datos personales
-                if (form.dni.isBlank()) errors["dni"] = "El DNI es obligatorio"
-                else if (!isDniValid(form.dni)) errors["dni"] = "El formato del DNI no es válido"
-
-                if (form.email.isBlank()) errors["email"] = "El email es obligatorio"
-                else if (!isEmailValid(form.email)) errors["email"] = "El formato del email no es válido"
-
-                if (form.password.isBlank()) errors["password"] = "La contraseña es obligatoria"
-                else if (form.password.length < 6) errors["password"] = "La contraseña debe tener al menos 6 caracteres"
-
-                if (form.confirmPassword != form.password) errors["confirmPassword"] = "Las contraseñas no coinciden"
-
-                if (form.nombre.isBlank()) errors["nombre"] = "El nombre es obligatorio"
-                if (form.apellidos.isBlank()) errors["apellidos"] = "Los apellidos son obligatorios"
-                if (form.telefono.isBlank()) errors["telefono"] = "El teléfono es obligatorio"
-                else if (!isTelefonoValid(form.telefono)) errors["telefono"] = "El formato del teléfono no es válido"
-            }
-            2 -> {
-                // Validación de dirección
-                if (form.direccion.calle.isBlank()) errors["calle"] = "La calle es obligatoria"
-                if (form.direccion.numero.isBlank()) errors["numero"] = "El número es obligatorio"
-                if (form.direccion.codigoPostal.isBlank()) errors["codigoPostal"] = "El código postal es obligatorio"
-                else if (!isCodigoPostalValid(form.direccion.codigoPostal)) errors["codigoPostal"] = "El formato del código postal no es válido"
-
-                if (form.direccion.ciudad.isBlank()) errors["ciudad"] = "La ciudad es obligatoria"
-                if (form.direccion.provincia.isBlank()) errors["provincia"] = "La provincia es obligatoria"
-            }
-            3 -> {
-                // Validación de alumnos y centro
-                if (form.alumnosDni.isEmpty()) errors["alumnos"] = "Debe indicar al menos un alumno"
-
-                // Validar que cada DNI de alumno tenga formato correcto
-                form.alumnosDni.forEachIndexed { index, dni ->
-                    if (!isDniValid(dni)) errors["alumno_$index"] = "El DNI del alumno ${index + 1} no tiene un formato válido"
-                }
-
-                if (form.centroId.isBlank()) errors["centro"] = "Debe seleccionar un centro educativo"
-            }
-        }
-
-        _uiState.update { it.copy(formErrors = errors) }
-        return errors.isEmpty()
-    }
-
-    /**
-     * Validaciones de formato
-     */
-    private fun isDniValid(dni: String): Boolean {
-        // DNI español: 8 números y 1 letra (puede tener espacios o guiones que ignoramos)
-        val dniPattern = Regex("^\\d{8}[A-Z]$")
-        return dniPattern.matches(dni.replace("[\\s-]".toRegex(), "").uppercase())
-    }
-
-    private fun isEmailValid(email: String): Boolean {
-        val emailPattern = Regex("[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
-        return emailPattern.matches(email)
-    }
-
-    private fun isTelefonoValid(telefono: String): Boolean {
-        // Formato español: +34 seguido de 9 dígitos (puede tener espacios o guiones que ignoramos)
-        val telefonoPattern = Regex("^(\\+34|0034|34)?[6789]\\d{8}$")
-        return telefonoPattern.matches(telefono.replace("[\\s-]".toRegex(), ""))
-    }
-
-    private fun isCodigoPostalValid(codigoPostal: String): Boolean {
-        // Código postal español: 5 dígitos
-        val cpPattern = Regex("^\\d{5}$")
-        return cpPattern.matches(codigoPostal)
-    }
-
-    /**
      * Envía el formulario de registro
      */
     fun submitRegistration() {
         // Validar todos los pasos
-        for (step in 1.._uiState.value.totalSteps) {
-            _uiState.update { it.copy(currentStep = step) }
-            if (!validateCurrentStep()) {
-                return
+        var isValid = true
+        val allErrors = mutableMapOf<String, String>()
+
+        // Validación completa de datos personales
+        val form = _uiState.value.form
+        if (form.dni.isBlank() || !isDniValid(form.dni))
+            allErrors["dni"] = "DNI inválido"
+        if (form.email.isBlank() || !isEmailValid(form.email))
+            allErrors["email"] = "Email inválido"
+        if (form.password.isBlank() || form.password.length < 6)
+            allErrors["password"] = "Contraseña inválida"
+        if (form.confirmPassword != form.password)
+            allErrors["confirmPassword"] = "Las contraseñas no coinciden"
+        if (form.nombre.isBlank())
+            allErrors["nombre"] = "Nombre obligatorio"
+        if (form.apellidos.isBlank())
+            allErrors["apellidos"] = "Apellidos obligatorios"
+        if (form.telefono.isBlank() || !isTelefonoValid(form.telefono))
+            allErrors["telefono"] = "Teléfono inválido"
+
+        // Validación de dirección
+        if (form.direccion.calle.isBlank())
+            allErrors["calle"] = "Calle obligatoria"
+        if (form.direccion.numero.isBlank())
+            allErrors["numero"] = "Número obligatorio"
+        if (form.direccion.codigoPostal.isBlank() || !isCodigoPostalValid(form.direccion.codigoPostal))
+            allErrors["codigoPostal"] = "Código postal inválido"
+        if (form.direccion.ciudad.isBlank())
+            allErrors["ciudad"] = "Ciudad obligatoria"
+        if (form.direccion.provincia.isBlank())
+            allErrors["provincia"] = "Provincia obligatoria"
+
+        // Validación de alumnos y centro
+        if (form.alumnosDni.isEmpty())
+            allErrors["alumnos"] = "Debe indicar al menos un alumno"
+        form.alumnosDni.forEachIndexed { index, dni ->
+            if (!isDniValid(dni))
+                allErrors["alumno_$index"] = "DNI del alumno ${index + 1} inválido"
+        }
+        if (form.centroId.isBlank())
+            allErrors["centro"] = "Debe seleccionar un centro"
+
+        // Si hay errores, actualizar estado
+        if (allErrors.isNotEmpty()) {
+            _uiState.update {
+                it.copy(
+                    formErrors = allErrors,
+                    currentStep = 1  // Vuelve al primer paso para mostrar errores
+                )
             }
+            return
         }
 
         // Enviar formulario
@@ -304,22 +402,6 @@ class RegistroViewModel @Inject constructor(
                 }
                 else -> { /* Ignorar estado Loading */ }
             }
-        }
-    }
-
-    /**
-     * Limpia los errores
-     */
-    fun clearError() {
-        _uiState.update { it.copy(error = null) }
-    }
-
-    /**
-     * Reinicia el estado
-     */
-    fun resetState() {
-        _uiState.update {
-            RegistroUiState(centros = it.centros)
         }
     }
 }
