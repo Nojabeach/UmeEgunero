@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1045944201521",
+    "project_id": "umeegunero",
+    "storage_bucket": "umeegunero.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1045944201521:android:1d17f66b49657aef2ac010",
+        "android_client_info": {
+          "package_name": "com.tfg.umeegunero"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCO6F98FkXnEoHGS_svEgtWiZdbI3IcVaY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

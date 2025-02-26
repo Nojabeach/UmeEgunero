@@ -1,31 +1,57 @@
 package com.tfg.umeegunero.feature.common.welcome.screen
 
 import android.content.res.Configuration
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.GroupWork
+import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,454 +59,502 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
-data class ButtonData(
-    val text: String,
-    val userType: String,
-    val color: Color,
-    val contentColor: Color
-)
+// Función auxiliar para determinar si estamos en modo claro u oscuro
+@Composable
+fun isLightTheme(): Boolean {
+    // En Material 3, podemos usar esta aproximación para detectar si estamos en tema claro
+    val backgroundColor = MaterialTheme.colorScheme.background
+    // Calculamos un valor aproximado de luminosidad (0.0 - 1.0)
+    val luminance = (0.299 * backgroundColor.red + 0.587 * backgroundColor.green + 0.114 * backgroundColor.blue)
+    return luminance > 0.5
+}
 
-@OptIn(ExperimentalFoundationApi::class)
+enum class UserType {
+    SCHOOL,
+    TEACHER,
+    PARENT
+}
+
 @Composable
 fun WelcomeScreen(
-    onNavigateToLogin: (userType: String) -> Unit = {},
-    onNavigateToRegister: () -> Unit = {},
-    onNavigateToAdminLogin: () -> Unit = {},
-    onCloseApp: () -> Unit = {}
+    onNavigateToLogin: (UserType) -> Unit,
+    onNavigateToRegister: () -> Unit,
+    onNavigateToAdminLogin: () -> Unit,
+    onCloseApp: () -> Unit
 ) {
-    val pagerState = rememberPagerState { 4 }
-    val coroutineScope = rememberCoroutineScope()
+    val isLight = isLightTheme()
+
+    // Crear un gradiente elegante para el fondo, estilo iOS
+    val gradientColors = if (!isLight) {
+        // Gradiente para modo oscuro
+        listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+            MaterialTheme.colorScheme.background,
+            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+        )
+    } else {
+        // Gradiente para modo claro, estilo iOS
+        listOf(
+            Color(0xFFF0F4FF), // Azul muy claro
+            Color(0xFFF8F9FF), // Casi blanco con tinte azul
+            Color(0xFFF0FAFF)  // Azul muy claro con tinte cyan
+        )
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
+                brush = Brush.linearGradient(
+                    colors = gradientColors,
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                 )
             )
     ) {
-        // Admin access button con efecto de elevación
-        Card(
+        // Admin login button
+        IconButton(
+            onClick = onNavigateToAdminLogin,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
-                .size(48.dp),
-            shape = CircleShape,
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 4.dp
-            ),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
-            )
         ) {
-            IconButton(
-                onClick = { onNavigateToAdminLogin() },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = stringResource(R.string.admin_access),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = "Admin Login",
+                tint = if (isLight) Color(0xFF007AFF) else MaterialTheme.colorScheme.primary
+            )
         }
 
-        // Close app button con efecto de elevación
-        Card(
+        // Close app button
+        IconButton(
+            onClick = onCloseApp,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(16.dp)
-                .size(48.dp),
-            shape = CircleShape,
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 4.dp
-            ),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
-            )
         ) {
-            IconButton(
-                onClick = { onCloseApp() },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.close_app),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close App",
+                tint = if (isLight) Color(0xFFFF3B30) else MaterialTheme.colorScheme.error
+            )
         }
 
+        // Main content (centered)
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            verticalArrangement = Arrangement.SpaceEvenly // Distribuye el espacio uniformemente
         ) {
-            Spacer(modifier = Modifier.height(72.dp))
-
-            // Logo y título de la app con estilo más atractivo
+            // App logo and name at the top
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(top = 8.dp) // Reduced padding
             ) {
-                // Círculo decorativo para el logo
-                Box(
+                Image(
+                    painter = painterResource(id = R.drawable.app_icon),
+                    contentDescription = "App Logo",
                     modifier = Modifier
-                        .size(100.dp)
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = CircleShape,
-                            spotColor = MaterialTheme.colorScheme.primary
-                        )
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.primary
-                                )
-                            ),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "U",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
+                        .size(70.dp) // Reduced size
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(4.dp)) // Reduced spacing
 
                 Text(
-                    text = stringResource(id = R.string.app_name),
+                    text = "UmeEgunero",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.sp,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
-                    text = "Conectando familias y escuelas",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Light,
+                    text = "Comunicación escolar",
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            // Carousel
+            OnboardingCarousel()
 
-            // Card para el onboarding con efecto de elevación y bordes redondeados
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(350.dp)
-                    .padding(horizontal = 8.dp)
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                    ),
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                ),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 0.dp
-                )
+            // Buttons section
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(bottom = 24.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Login section with title
+                Text(
+                    text = "INICIAR SESIÓN",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+
+                // Login buttons container
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .padding(bottom = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isLight)
+                            Color.White.copy(alpha = 0.95f)
+                        else
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = if (isLight) 2.dp else 4.dp
+                    ),
+                    shape = RoundedCornerShape(16.dp) // Más redondeado, estilo iOS
                 ) {
-                    // Onboarding Carousel dentro de la card
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    ) { page ->
-                        OnboardingPage(page = page)
-                    }
-
-                    // Pager Indicators con animación
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.Center
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        repeat(4) { iteration ->
-                            val isSelected = pagerState.currentPage == iteration
-                            val size by animateFloatAsState(
-                                targetValue = if (isSelected) 12f else 8f,
-                                label = "indicator_size_animation"
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .size(size.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isSelected)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
-                                    )
-                            )
-                        }
+                        LoginButtons(
+                            onSchoolLogin = { onNavigateToLogin(UserType.SCHOOL) },
+                            onTeacherLogin = { onNavigateToLogin(UserType.TEACHER) },
+                            onParentLogin = { onNavigateToLogin(UserType.PARENT) }
+                        )
                     }
+                }
 
-                    // Botones de navegación del carrusel
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                // Register section with divider
+                Divider(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .padding(vertical = 8.dp),
+                    color = if (isLight)
+                        Color(0xFFD1D1D6) // Gris claro iOS
+                    else
+                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                )
+
+                // Register card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isLight)
+                            Color.White.copy(alpha = 0.95f)
+                        else
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = if (isLight) 2.dp else 4.dp
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        TextButton(
-                            onClick = {
-                                if (pagerState.currentPage > 0) {
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                                    }
-                                }
-                            },
-                            enabled = pagerState.currentPage > 0
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.back),
-                                color = if (pagerState.currentPage > 0)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
-                            )
-                        }
+                        // Texto informativo
+                        Text(
+                            text = "Si eres familiar y no tienes cuenta",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isLight)
+                                Color(0xFF8E8E93) // Gris texto iOS
+                            else
+                                MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                            textAlign = TextAlign.Center
+                        )
 
-                        TextButton(
-                            onClick = {
-                                if (pagerState.currentPage < 3) {
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                                    }
-                                }
-                            },
-                            enabled = pagerState.currentPage < 3
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.next),
-                                color = if (pagerState.currentPage < 3)
-                                    MaterialTheme.colorScheme.primary
+                        // Botón de registro
+                        Button(
+                            onClick = onNavigateToRegister,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isLight)
+                                    Color(0xFFFF9500) // Naranja iOS
                                 else
-                                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                                    MaterialTheme.colorScheme.secondary
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.HowToReg,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Regístrate",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Botones de acceso utilizando el patrón mejorado
-            AccessButtons(
-                onNavigateToLogin = onNavigateToLogin,
-                onNavigateToRegister = onNavigateToRegister
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
 @Composable
-fun AccessButtons(
-    onNavigateToLogin: (userType: String) -> Unit,
-    onNavigateToRegister: () -> Unit
-) {
-    val buttonDataList = listOf(
-        ButtonData(
-            text = stringResource(R.string.school_admin_access),
-            userType = "school",
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+fun OnboardingCarousel() {
+    val isLight = isLightTheme()
+
+    val items = listOf(
+        CarouselItem(
+            icon = Icons.Default.School,
+            title = "Comunicación Escuela-Familia",
+            description = "Información diaria sobre la actividad de tu hijo/a en el centro educativo."
         ),
-        ButtonData(
-            text = stringResource(R.string.teacher_access),
-            userType = "teacher",
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        CarouselItem(
+            icon = Icons.Default.Chat,
+            title = "Chat Privado",
+            description = "Comunicación directa y segura con profesores para resolver cualquier duda."
         ),
-        ButtonData(
-            text = stringResource(R.string.parent_access),
-            userType = "parent",
-            color = MaterialTheme.colorScheme.tertiaryContainer,
-            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+        CarouselItem(
+            icon = Icons.Default.Build,
+            title = "Informes Diarios",
+            description = "Control de comidas, descanso y actividades, siempre actualizado."
         )
     )
 
+    var currentPage by remember { mutableIntStateOf(0) }
+
+    // Auto-scroll effect
+    LaunchedEffect(key1 = true) {
+        while(true) {
+            delay(5000) // Change slide every 5 seconds
+            currentPage = (currentPage + 1) % items.size
+        }
+    }
+
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        buttonDataList.forEach { buttonData ->
-            ElevatedButton(
-                onClick = { onNavigateToLogin(buttonData.userType) },
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(56.dp),
-                colors = ButtonDefaults.elevatedButtonColors(
-                    containerColor = buttonData.color,
-                    contentColor = buttonData.contentColor
-                ),
-                elevation = ButtonDefaults.elevatedButtonElevation(
-                    defaultElevation = 6.dp,
-                    pressedElevation = 2.dp
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    text = buttonData.text,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+        // Carousel card with content
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .height(220.dp),
+            elevation = CardDefaults.elevatedCardElevation(
+                defaultElevation = if (isLight) 2.dp else 4.dp
+            ),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = if (isLight)
+                    Color.White.copy(alpha = 0.9f)
+                else
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            ),
+            shape = RoundedCornerShape(16.dp) // Esquinas más redondeadas, estilo iOS
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Contenido actual del carrusel
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    CarouselItemContent(item = items[currentPage])
+                }
             }
         }
 
-        OutlinedButton(
-            onClick = { onNavigateToRegister() },
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(
-                width = 2.dp,
-                color = MaterialTheme.colorScheme.primary
-            )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Pagination indicators
+        Row(
+            modifier = Modifier.padding(top = 4.dp),
+            horizontalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = stringResource(R.string.register_as_parent),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            repeat(items.size) { index ->
+                val width by animateDpAsState(
+                    targetValue = if (currentPage == index) 20.dp else 8.dp,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    label = "indicator width"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 3.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isLight) {
+                                if (currentPage == index)
+                                    Color(0xFF007AFF) // Azul iOS
+                                else
+                                    Color(0xFFD1D1D6) // Gris claro iOS
+                            } else {
+                                if (currentPage == index)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            }
+                        )
+                        .width(width)
+                        .height(8.dp)
+                )
+            }
         }
     }
 }
 
+data class CarouselItem(
+    val icon: Any, // Can be ImageVector or Painter
+    val title: String,
+    val description: String
+)
+
 @Composable
-fun OnboardingPage(page: Int) {
+fun CarouselItemContent(item: CarouselItem) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
-        val titles = listOf(
-            stringResource(R.string.onboarding_title_1),
-            stringResource(R.string.onboarding_title_2),
-            stringResource(R.string.onboarding_title_3),
-            stringResource(R.string.onboarding_title_4)
-        )
-
-        val descriptions = listOf(
-            stringResource(R.string.onboarding_desc_1),
-            stringResource(R.string.onboarding_desc_2),
-            stringResource(R.string.onboarding_desc_3),
-            stringResource(R.string.onboarding_desc_4)
-        )
-
-        // Seleccionamos el icono según la página
-        val icons = listOf(
-            Icons.Default.School,      // Escuela para comunicación con el centro
-            Icons.Default.GroupWork,   // Trabajo en grupo para seguimiento diario
-            Icons.Default.Chat,        // Chat para la comunicación directa
-            Icons.Default.WifiOff      // Funcionalidad sin internet
-        )
-
-        // Asegurarse de que page esté dentro del rango válido
-        val safePageIndex = if (page in 0..3) page else 0
-
-        val title = titles[safePageIndex]
-        val description = descriptions[safePageIndex]
-        val icon = icons[safePageIndex]
-
-        // Diseño más atractivo para el indicador de página con iconos
-        val colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.secondary,
-            MaterialTheme.colorScheme.tertiary,
-            MaterialTheme.colorScheme.primary
-        )
-
-        Card(
-            modifier = Modifier
-                .size(100.dp)
-                .padding(bottom = 16.dp),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = colors[safePageIndex]
-            )
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                // Mostramos un ícono representativo de la característica
+        // Icon
+        when (item.icon) {
+            is androidx.compose.ui.graphics.vector.ImageVector -> {
                 Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    modifier = Modifier.size(48.dp),
-                    tint = Color.White
+                    imageVector = item.icon,
+                    contentDescription = item.title,
+                    modifier = Modifier.size(48.dp), // Smaller icon
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            is Painter -> {
+                Icon(
+                    painter = item.icon,
+                    contentDescription = item.title,
+                    modifier = Modifier.size(48.dp), // Smaller icon
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp)) // Less space
 
-        // Aumentamos el tamaño y mejoramos la visibilidad del título
+        // Title
         Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
+            text = item.title,
+            style = MaterialTheme.typography.titleMedium, // Smaller text
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 16.dp),
-            color = MaterialTheme.colorScheme.onSurface  // Mejoramos el contraste
+            textAlign = TextAlign.Center
         )
 
-        // Aumentamos el tamaño y mejoramos la visibilidad de la descripción
+        Spacer(modifier = Modifier.height(8.dp)) // Less space
+
+        // Description
         Text(
-            text = description,
-            style = MaterialTheme.typography.bodyLarge,
+            text = item.description,
+            style = MaterialTheme.typography.bodySmall, // Smaller text
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),  // Aumentamos la opacidad
-            lineHeight = 24.sp,
-            modifier = Modifier.padding(horizontal = 8.dp)  // Añadimos padding horizontal
+            modifier = Modifier.padding(horizontal = 8.dp),
+            lineHeight = 18.sp // Smaller line height
         )
+    }
+}
+
+@Composable
+fun LoginButtons(
+    onSchoolLogin: () -> Unit,
+    onTeacherLogin: () -> Unit,
+    onParentLogin: () -> Unit
+) {
+    val isLight = isLightTheme()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // School Login Button - Color azul iOS
+        Button(
+            onClick = onSchoolLogin,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isLight) Color(0xFF007AFF) else MaterialTheme.colorScheme.primary // Azul iOS
+            ),
+            shape = RoundedCornerShape(12.dp) // Más redondeado, estilo iOS
+        ) {
+            Icon(
+                imageVector = Icons.Default.School,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Acceso Centro",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal // Fuente más ligera como iOS
+            )
+        }
+
+        // Teacher Login Button - Color verde iOS
+        Button(
+            onClick = onTeacherLogin,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isLight) Color(0xFF34C759) else MaterialTheme.colorScheme.secondary // Verde iOS
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Acceso Profesor",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal
+            )
+        }
+
+        // Parent Login Button - Color púrpura iOS
+        Button(
+            onClick = onParentLogin,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isLight) Color(0xFF5856D6) else MaterialTheme.colorScheme.tertiary // Púrpura iOS
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Chat,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Acceso Padres",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal
+            )
+        }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun WelcomeScreenPreview() {
-    UmeEguneroTheme {
-        WelcomeScreen()
+fun WelcomeScreenLightPreview() {
+    UmeEguneroTheme(darkTheme = false) {
+        WelcomeScreen(
+            onNavigateToLogin = {},
+            onNavigateToRegister = {},
+            onNavigateToAdminLogin = {},
+            onCloseApp = {}
+        )
     }
 }
 
@@ -488,14 +562,11 @@ fun WelcomeScreenPreview() {
 @Composable
 fun WelcomeScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        WelcomeScreen()
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun OnboardingPagePreview() {
-    UmeEguneroTheme {
-        OnboardingPage(page = 0)
+        WelcomeScreen(
+            onNavigateToLogin = {},
+            onNavigateToRegister = {},
+            onNavigateToAdminLogin = {},
+            onCloseApp = {}
+        )
     }
 }
