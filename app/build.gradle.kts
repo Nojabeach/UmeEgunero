@@ -132,6 +132,9 @@ dependencies {
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    //Tiber
+    implementation(libs.timber)
 }
 
 // Configuración de kapt

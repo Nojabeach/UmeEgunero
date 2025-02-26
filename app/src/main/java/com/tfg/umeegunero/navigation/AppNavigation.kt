@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tfg.umeegunero.data.model.UserType
+import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
 
@@ -94,23 +95,25 @@ fun AppNavigation(
                 }
             }
 
-            // Aquí irá la pantalla de inicio de sesión cuando la implementes
-            // LoginScreen(
-            //     userType = userType,
-            //     viewModel = hiltViewModel(),
-            //     onNavigateBack = { navController.popBackStack() },
-            //     onLoginSuccess = {
-            //         val route = when(userType) {
-            //             UserType.ADMIN -> AppScreens.AdminDashboard.route
-            //             UserType.CENTRO -> AppScreens.CentroDashboard.route
-            //             UserType.PROFESOR -> AppScreens.ProfesorDashboard.route
-            //             UserType.FAMILIAR -> AppScreens.FamiliarDashboard.route
-            //         }
-            //         navController.navigate(route) {
-            //             popUpTo(AppScreens.Welcome.route) { inclusive = true }
-            //         }
-            //     }
-            // )
+            LoginScreen(
+                userType = userType,
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                onLoginSuccess = {
+                    val route = when(userType) {
+                        UserType.ADMIN -> AppScreens.AdminDashboard.route
+                        UserType.CENTRO -> AppScreens.CentroDashboard.route
+                        UserType.PROFESOR -> AppScreens.ProfesorDashboard.route
+                        UserType.FAMILIAR -> AppScreens.FamiliarDashboard.route
+                    }
+                    navController.navigate(route) {
+                        popUpTo(AppScreens.Welcome.route) { inclusive = true }
+                    }
+                },
+                onForgotPassword = {
+                    // TODO: Implementar recuperación de contraseña
+                }
+            )
         }
 
         // Pantalla de registro
