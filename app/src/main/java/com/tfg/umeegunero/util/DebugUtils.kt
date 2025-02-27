@@ -30,22 +30,51 @@ class DebugUtils @Inject constructor(
     fun ensureAdminExists() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Comprobar si ya existe un admin
-                val result = usuarioRepository.getUsersByType(TipoUsuario.ADMIN_APP)
+                // Primero intentamos iniciar sesión con las credenciales de administrador para verificar si ya existe
+                try {
+                    Log.d("DebugUtils", "Intentando iniciar sesión como administrador para verificar si existe...")
+                    val authResult = FirebaseAuth.getInstance().signInWithEmailAndPassword(
+                        DEFAULT_ADMIN_EMAIL,
+                        DEFAULT_ADMIN_PASSWORD
+                    ).await()
 
-                if (result is com.tfg.umeegunero.data.repository.Result.Success && result.data.isEmpty()) {
-                    Log.d("DebugUtils", "No existe ningún administrador. Creando uno por defecto...")
-                    createDefaultAdmin()
-                } else {
-                    Log.d("DebugUtils", "Ya existe al menos un administrador. No es necesario crear uno.")
+                    // Si llegamos aquí, la autenticación fue exitosa, el admin ya existe
+                    Log.d("DebugUtils", "Inicio de sesión como admin exitoso. Admin ya existe.")
+
+                    // Cerramos sesión para no interferir con la experiencia del usuario
+                    FirebaseAuth.getInstance().signOut()
+
+                } catch (authError: Exception) {
+                    // Si falla la autenticación, el admin probablemente no existe, intentamos crearlo
+                    Log.d("DebugUtils", "No se pudo iniciar sesión como admin. Intentando crear uno: ${authError.message}")
+
+                    try {
+                        // Intentamos crear el administrador
+                        createDefaultAdmin()
+                    } catch (createError: Exception) {
+                        // Si falla la creación, verificamos si es por permisos o porque ya existe
+                        Log.e("DebugUtils", "Error al crear admin: ${createError.message}")
+
+                        // Como alternativa, verificamos en Firestore directamente si tenemos permisos
+                        try {
+                            val adminDoc = usuarioRepository.getUsuarioPorDni(DEFAULT_ADMIN_DNI)
+                            if (adminDoc is com.tfg.umeegunero.data.repository.Result.Success) {
+                                Log.d("DebugUtils", "Admin ya existe en Firestore.")
+                            } else {
+                                Log.d("DebugUtils", "No se pudo verificar si el admin existe en Firestore.")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("DebugUtils", "Error al verificar admin en Firestore: ${e.message}")
+                        }
+                    }
                 }
             } catch (e: Exception) {
-                Log.e("DebugUtils", "Error al verificar administradores", e)
+                Log.e("DebugUtils", "Error general al verificar administradores", e)
             }
         }
     }
 
-    /**admin
+    /**
      * Crea un administrador por defecto en Authentication y Firestore
      */
     private suspend fun createDefaultAdmin() {
@@ -53,19 +82,14 @@ class DebugUtils @Inject constructor(
             // 1. Crear usuario en Firebase Authentication
             val firebaseAuth = FirebaseAuth.getInstance()
 
-            // Verificar si el usuario ya existe en Auth
-            try {
-                val authResult = firebaseAuth.createUserWithEmailAndPassword(
-                    DEFAULT_ADMIN_EMAIL,
-                    DEFAULT_ADMIN_PASSWORD
-                ).await()
+            Log.d("DebugUtils", "Creando usuario en Authentication...")
+            val authResult = firebaseAuth.createUserWithEmailAndPassword(
+                DEFAULT_ADMIN_EMAIL,
+                DEFAULT_ADMIN_PASSWORD
+            ).await()
 
-                val uid = authResult.user?.uid ?: throw Exception("No se pudo obtener el UID del usuario creado")
-                Log.d("DebugUtils", "Usuario creado en Authentication con UID: $uid")
-            } catch (e: Exception) {
-                Log.e("DebugUtils", "Error o usuario ya existe en Authentication", e)
-                // Si falla, podría ser porque el usuario ya existe
-            }
+            val uid = authResult.user?.uid ?: throw Exception("No se pudo obtener el UID del usuario creado")
+            Log.d("DebugUtils", "Usuario creado en Authentication con UID: $uid")
 
             // 2. Crear perfil de administrador
             val perfil = Perfil(
@@ -86,12 +110,14 @@ class DebugUtils @Inject constructor(
             )
 
             // 4. Guardar en Firestore
+            Log.d("DebugUtils", "Guardando administrador en Firestore...")
             val savedResult = usuarioRepository.guardarUsuario(admin)
 
             if (savedResult is com.tfg.umeegunero.data.repository.Result.Success) {
                 Log.d("DebugUtils", "Administrador creado correctamente en Firestore")
             } else if (savedResult is com.tfg.umeegunero.data.repository.Result.Error) {
-                Log.e("DebugUtils", "Error al guardar administrador en Firestore", savedResult.exception)
+                Log.e("DebugUtils", "Error al guardar administrador en Firestore: ${savedResult.exception.message}")
+                throw savedResult.exception
             }
 
             // 5. Cerrar sesión por seguridad
@@ -99,6 +125,7 @@ class DebugUtils @Inject constructor(
 
         } catch (e: Exception) {
             Log.e("DebugUtils", "Error al crear administrador", e)
+            throw e // Relanzamos la excepción para manejarla en el nivel superior
         }
     }
 }

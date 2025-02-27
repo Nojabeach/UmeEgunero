@@ -30,7 +30,7 @@ enum class TemaPref {
 
 // Modelos de datos principales
 data class Usuario(
-    @DocumentId val dni: String = "",
+    val dni: String = "",
     val email: String = "",
     val nombre: String = "",
     val apellidos: String = "",
@@ -41,7 +41,10 @@ data class Usuario(
     val perfiles: List<Perfil> = emptyList(),
     val direccion: Direccion? = null,
     val preferencias: Preferencias = Preferencias()
-)
+) {
+    @field:DocumentId
+    var documentId: String = dni
+}
 
 data class Perfil(
     val tipo: TipoUsuario = TipoUsuario.FAMILIAR,

@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tfg.umeegunero.data.model.UserType
 import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
+import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
@@ -160,6 +161,17 @@ fun AppNavigation(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
                 onCentroAdded = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de dashboard de administrador
+        composable(route = AppScreens.AdminDashboard.route) {
+            AdminDashboardScreen(
+                onLogout = {
+                    navController.navigate(AppScreens.Welcome.route) {
+                        popUpTo(AppScreens.AdminDashboard.route) { inclusive = true }
+                    }
+                }
             )
         }
         // Añade aquí las demás pantallas a medida que las vayas implementando

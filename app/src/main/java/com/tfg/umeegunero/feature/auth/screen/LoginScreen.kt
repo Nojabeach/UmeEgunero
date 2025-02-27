@@ -77,7 +77,7 @@ fun LoginScreen(
     userType: UserType,
     viewModel: LoginViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (UserType) -> Unit,
     onForgotPassword: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -106,7 +106,8 @@ fun LoginScreen(
     // Detectar éxito en el login
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
-            onLoginSuccess()
+            // Pasar el tipo de usuario a la función de navegación
+            onLoginSuccess(userType)
         }
     }
 
@@ -383,9 +384,17 @@ private fun Color.luminance(): Float {
 fun LoginScreenLightPreview() {
     UmeEguneroTheme(darkTheme = false) {
         LoginScreen(
-            userType = UserType.FAMILIAR,
+            userType = UserType.ADMIN,
             onNavigateBack = {},
-            onLoginSuccess = {}
+            onLoginSuccess = { userType ->
+                // Simular navegación para el preview
+                when (userType) {
+                    UserType.ADMIN -> println("Navegando a Admin Dashboard")
+                    UserType.CENTRO -> println("Navegando a Centro Dashboard")
+                    UserType.PROFESOR -> println("Navegando a Profesor Dashboard")
+                    UserType.FAMILIAR -> println("Navegando a Familiar Dashboard")
+                }
+            }
         )
     }
 }
@@ -395,9 +404,17 @@ fun LoginScreenLightPreview() {
 fun LoginScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
         LoginScreen(
-            userType = UserType.PROFESOR,
+            userType = UserType.ADMIN,
             onNavigateBack = {},
-            onLoginSuccess = {}
+            onLoginSuccess = { userType ->
+                // Simular navegación para el preview
+                when (userType) {
+                    UserType.ADMIN -> println("Navegando a Admin Dashboard")
+                    UserType.CENTRO -> println("Navegando a Centro Dashboard")
+                    UserType.PROFESOR -> println("Navegando a Profesor Dashboard")
+                    UserType.FAMILIAR -> println("Navegando a Familiar Dashboard")
+                }
+            }
         )
     }
 }
