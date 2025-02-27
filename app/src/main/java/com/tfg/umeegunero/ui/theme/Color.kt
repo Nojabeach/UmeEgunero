@@ -2,10 +2,43 @@ package com.tfg.umeegunero.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Paleta de colores principal inspirada en CDK Admin
+val Primary = Color(0xFF5E35B1)      // Púrpura intenso (primario)
+val PrimaryLight = Color(0xFF9162E4)  // Púrpura claro
+val PrimaryDark = Color(0xFF280680)   // Púrpura oscuro
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Colores secundarios
+val Secondary = Color(0xFF26A69A)     // Verde azulado
+val SecondaryLight = Color(0xFF64D8CB) // Verde azulado claro
+val SecondaryDark = Color(0xFF00766C)  // Verde azulado oscuro
+
+// Colores de acento para diferentes tipos de usuarios
+val AdminColor = Color(0xFF6200EA)    // Púrpura intenso para administradores
+val CentroColor = Color(0xFF2962FF)   // Azul intenso para centros
+val ProfesorColor = Color(0xFF00B8D4) // Cian intenso para profesores
+val FamiliarColor = Color(0xFF00C853) // Verde intenso para familiares
+
+// Colores para UI
+val Background = Color(0xFFF5F5F5)    // Fondo claro (para modo claro)
+val BackgroundDark = Color(0xFF121212) // Fondo oscuro (para modo oscuro)
+val Surface = Color(0xFFFFFFFF)        // Superficie clara
+val SurfaceDark = Color(0xFF1E1E1E)    // Superficie oscura
+
+val OnPrimary = Color(0xFFFFFFFF)      // Color para texto sobre primario
+val OnSecondary = Color(0xFFFFFFFF)    // Color para texto sobre secundario
+val OnBackground = Color(0xFF212121)   // Color para texto sobre fondo
+val OnSurface = Color(0xFF212121)      // Color para texto sobre superficie
+
+// Colores para estados
+val Success = Color(0xFF4CAF50)        // Verde para éxito
+val Warning = Color(0xFFFFC107)        // Amarillo para advertencia
+val Error = Color(0xFFF44336)          // Rojo para error
+val Info = Color(0xFF2196F3)           // Azul para información
+
+// Colores para gradientes
+val GradientStart = Color(0xFF673AB7)  // Inicio de gradiente
+val GradientEnd = Color(0xFF3F51B5)    // Fin de gradiente
+
+// Colores para modo oscuro
+val PurpleDark = Color(0xFF4527A0)
+val BlueDark = Color(0xFF283593)

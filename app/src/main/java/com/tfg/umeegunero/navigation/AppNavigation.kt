@@ -16,6 +16,10 @@ import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
+import com.tfg.umeegunero.ui.theme.AdminColor
+import com.tfg.umeegunero.ui.theme.CentroColor
+import com.tfg.umeegunero.ui.theme.FamiliarColor
+import com.tfg.umeegunero.ui.theme.ProfesorColor
 
 /**
  * Sealed class para las rutas de navegación de la app
@@ -102,11 +106,30 @@ fun AppNavigation(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
                 onLoginSuccess = {
+                    // Crear una variable para almacenar el color de la barra superior
+                    var topBarColor = AdminColor // Valor predeterminado
+
                     val route = when(userType) {
-                        UserType.ADMIN -> AppScreens.AdminDashboard.route
-                        UserType.CENTRO -> AppScreens.CentroDashboard.route
-                        UserType.PROFESOR -> AppScreens.ProfesorDashboard.route
-                        UserType.FAMILIAR -> AppScreens.FamiliarDashboard.route
+                        UserType.ADMIN -> {
+                            // Usar el color de administrador definido en el tema
+                            topBarColor = AdminColor
+                            AppScreens.AdminDashboard.route
+                        }
+                        UserType.CENTRO -> {
+                            // Usar el color de centro definido en el tema
+                            topBarColor = CentroColor
+                            AppScreens.CentroDashboard.route
+                        }
+                        UserType.PROFESOR -> {
+                            // Usar el color de profesor definido en el tema
+                            topBarColor = ProfesorColor
+                            AppScreens.ProfesorDashboard.route
+                        }
+                        UserType.FAMILIAR -> {
+                            // Usar el color de familiar definido en el tema
+                            topBarColor = FamiliarColor
+                            AppScreens.FamiliarDashboard.route
+                        }
                     }
                     navController.navigate(route) {
                         popUpTo(AppScreens.Welcome.route) { inclusive = true }

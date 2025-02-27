@@ -50,7 +50,21 @@ import androidx.compose.ui.unit.sp
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.data.model.UserType
+import com.tfg.umeegunero.ui.theme.AdminColor
+import com.tfg.umeegunero.ui.theme.Background
+import com.tfg.umeegunero.ui.theme.BackgroundDark
+import com.tfg.umeegunero.ui.theme.BlueDark
+import com.tfg.umeegunero.ui.theme.GradientEnd
+import com.tfg.umeegunero.ui.theme.GradientStart
+import com.tfg.umeegunero.ui.theme.OnBackground
+import com.tfg.umeegunero.ui.theme.OnPrimary
+import com.tfg.umeegunero.ui.theme.PrimaryLight
+import com.tfg.umeegunero.ui.theme.PurpleDark
+import com.tfg.umeegunero.ui.theme.Secondary
+import com.tfg.umeegunero.ui.theme.Surface
+import com.tfg.umeegunero.ui.theme.SurfaceDark
 import kotlinx.coroutines.delay
+import com.tfg.umeegunero.ui.theme.Error
 
 @Composable
 fun isLightTheme(): Boolean {
@@ -74,17 +88,18 @@ fun WelcomeScreen(
 ) {
     val isLight = isLightTheme()
 
+// Gradiente actualizado con los nuevos colores
     val gradientColors = if (!isLight) {
         listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+            PurpleDark.copy(alpha = 0.8f),
+            BackgroundDark,
+            BlueDark.copy(alpha = 0.6f)
         )
     } else {
         listOf(
-            Color(0xFFE3F2FD), // Azul claro
-            Color(0xFFFFFFFF), // Blanco
-            Color(0xFFE1F5FE)  // Azul muy claro
+            GradientStart.copy(alpha = 0.2f),
+            Background,
+            GradientEnd.copy(alpha = 0.1f)
         )
     }
 
@@ -108,7 +123,7 @@ fun WelcomeScreen(
             Icon(
                 imageVector = Icons.Default.Lock,
                 contentDescription = "Admin Login",
-                tint = if (isLight) Color(0xFF007AFF) else MaterialTheme.colorScheme.primary
+                tint = if (isLight) AdminColor else PrimaryLight
             )
         }
 
@@ -121,7 +136,7 @@ fun WelcomeScreen(
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close App",
-                tint = if (isLight) Color(0xFFFF3B30) else MaterialTheme.colorScheme.error
+                tint = if (isLight) Error else Error
             )
         }
 
@@ -181,9 +196,9 @@ fun WelcomeScreen(
                         .padding(bottom = 8.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isLight)
-                            Color.White.copy(alpha = 0.95f)
+                            Surface.copy(alpha = 0.95f)
                         else
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                            SurfaceDark.copy(alpha = 0.8f)
                     ),
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = if (isLight) 2.dp else 4.dp
@@ -207,19 +222,20 @@ fun WelcomeScreen(
                         .fillMaxWidth(0.9f)
                         .padding(vertical = 8.dp),
                     color = if (isLight)
-                        Color(0xFFD1D1D6)
+                        OnBackground.copy(alpha = 0.1f)
                     else
-                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                        OnPrimary.copy(alpha = 0.1f)
                 )
+
 
                 Card(
                     modifier = Modifier
                         .fillMaxWidth(0.9f),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isLight)
-                            Color.White.copy(alpha = 0.95f)
+                            Surface.copy(alpha = 0.95f)
                         else
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                            SurfaceDark.copy(alpha = 0.8f)
                     ),
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = if (isLight) 2.dp else 4.dp
@@ -233,10 +249,7 @@ fun WelcomeScreen(
                         Text(
                             text = "Si eres familiar y no tienes cuenta",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isLight)
-                                Color(0xFF8E8E93)
-                            else
-                                MaterialTheme.colorScheme.onBackground,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                             modifier = Modifier.padding(bottom = 12.dp),
                             textAlign = TextAlign.Center
                         )
@@ -245,10 +258,7 @@ fun WelcomeScreen(
                             onClick = onNavigateToRegister,
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isLight)
-                                    Color(0xFFFF9500)
-                                else
-                                    MaterialTheme.colorScheme.secondary
+                                containerColor = Secondary // Nuevo color secundario
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
