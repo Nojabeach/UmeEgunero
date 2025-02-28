@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
@@ -24,7 +27,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Divider
-import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -49,7 +51,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -60,7 +61,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
-    onLogout: () -> Unit
+    onLogout: () -> Unit = {},
+    onNavigateToAddCentro: () -> Unit = {},
+    onNavigateToEditCentro: (String) -> Unit = {},
+    onNavigateToAddUser: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -155,7 +159,12 @@ fun AdminDashboardScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            "Panel de Administración",
+                            when (selectedItem) {
+                                0 -> "Centros Educativos"
+                                1 -> "Gestión de Usuarios"
+                                2 -> "Configuración"
+                                else -> "Panel de Administración"
+                            },
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -175,17 +184,30 @@ fun AdminDashboardScreen(
                 )
             },
             floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    text = { Text("Añadir Centro") },
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
-                    onClick = { /* Acción para añadir centro */ }
-                )
+                // Solo mostrar FAB en las pantallas apropiadas
+                when (selectedItem) {
+                    0 -> { // Centros educativos
+                        ExtendedFloatingActionButton(
+                            text = { Text("Añadir Centro") },
+                            icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
+                            onClick = onNavigateToAddCentro
+                        )
+                    }
+                    1 -> { // Usuarios
+                        ExtendedFloatingActionButton(
+                            text = { Text("Añadir Usuario") },
+                            icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
+                            onClick = onNavigateToAddUser
+                        )
+                    }
+                }
             },
             floatingActionButtonPosition = FabPosition.End
         ) { paddingValues ->
             AdminDashboardContent(
                 selectedItem = selectedItem,
-                paddingValues = paddingValues
+                paddingValues = paddingValues,
+                onEditCentro = onNavigateToEditCentro
             )
         }
     }
@@ -194,7 +216,8 @@ fun AdminDashboardScreen(
 @Composable
 fun AdminDashboardContent(
     selectedItem: Int,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onEditCentro: (String) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -202,26 +225,19 @@ fun AdminDashboardContent(
             .padding(paddingValues)
     ) {
         when (selectedItem) {
-            0 -> CentrosEducativosContent()
+            0 -> CentrosEducativosContent(onEditCentro = onEditCentro)
             1 -> UsuariosContent()
             2 -> ConfiguracionContent()
-            else -> CentrosEducativosContent()
+            else -> CentrosEducativosContent(onEditCentro = onEditCentro)
         }
     }
 }
 
 @Composable
-fun CentrosEducativosContent() {
-    val centros = remember {
-        listOf(
-            "Colegio San José" to "Madrid",
-            "Escuela Infantil Luna" to "Barcelona",
-            "Centro Educativo Montessori" to "Valencia",
-            "Colegio Internacional" to "Sevilla",
-            "Escuela Primaria Sol" to "Bilbao"
-        )
-    }
-
+fun CentrosEducativosContent(
+    onEditCentro: (String) -> Unit
+) {
+    // Eliminar los centros estáticos y dejar espacio vacío para datos reales
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -229,26 +245,70 @@ fun CentrosEducativosContent() {
     ) {
         item {
             Text(
-                text = "Centros Educativos",
+                text = "Listado de Centros",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
         }
 
-        items(centros) { (nombre, ubicacion) ->
-            CentroEducativoItem(nombre = nombre, ubicacion = ubicacion)
+        // Esto será reemplazado por datos reales en la implementación final
+        items(emptyList<Pair<String, String>>()) { (nombre, ubicacion) ->
+            CentroEducativoItem(
+                nombre = nombre,
+                ubicacion = ubicacion,
+                onEdit = { onEditCentro(nombre) },
+                onDelete = { /* Implementar borrado de centro */ }
+            )
             Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // Mensaje cuando no hay centros
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "No hay centros educativos disponibles",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Agrega un nuevo centro usando el botón '+' de abajo",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun CentroEducativoItem(nombre: String, ubicacion: String) {
+fun CentroEducativoItem(
+    nombre: String,
+    ubicacion: String,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(8.dp)
     ) {
         Row(
             modifier = Modifier
@@ -279,6 +339,23 @@ fun CentroEducativoItem(nombre: String, ubicacion: String) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            // Botones de acción
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Editar",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
@@ -286,13 +363,35 @@ fun CentroEducativoItem(nombre: String, ubicacion: String) {
 @Composable
 fun UsuariosContent() {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "Gestión de Usuarios",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Gestión de Usuarios",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Aquí podrás gestionar los usuarios del sistema",
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Usa el botón '+' para añadir un nuevo usuario",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -313,7 +412,7 @@ fun ConfiguracionContent() {
 @Composable
 fun AdminDashboardPreview() {
     UmeEguneroTheme {
-        AdminDashboardScreen(onLogout = {})
+        AdminDashboardScreen()
     }
 }
 
@@ -321,6 +420,6 @@ fun AdminDashboardPreview() {
 @Composable
 fun AdminDashboardDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        AdminDashboardScreen(onLogout = {})
+        AdminDashboardScreen()
     }
 }

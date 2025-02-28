@@ -4,7 +4,7 @@ package com.tfg.umeegunero.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
+
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,15 +12,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tfg.umeegunero.data.model.UserType
-import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
+
 import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
+import com.tfg.umeegunero.feature.admin.screen.HiltAddCentroScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
+import com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen
+import com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
-import com.tfg.umeegunero.ui.theme.AdminColor
-import com.tfg.umeegunero.ui.theme.CentroColor
-import com.tfg.umeegunero.ui.theme.FamiliarColor
-import com.tfg.umeegunero.ui.theme.ProfesorColor
+import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+
+import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
+
 
 /**
  * Sealed class para las rutas de navegación de la app
@@ -38,8 +43,16 @@ sealed class AppScreens(val route: String) {
     object CentroDashboard : AppScreens("centro_dashboard")
     object ProfesorDashboard : AppScreens("profesor_dashboard")
     object FamiliarDashboard : AppScreens("familiar_dashboard")
+
     // Pantallas de administración
     object AddCentro : AppScreens("add_centro")
+    object EditCentro : AppScreens("edit_centro/{centroId}") {
+        fun createRoute(centroId: String) = "edit_centro/$centroId"
+    }
+    object AddUser : AppScreens("add_user/{isAdminApp}") {
+        fun createRoute(isAdminApp: Boolean) = "add_user/$isAdminApp"
+    }
+
     // Otras pantallas
     object StudentDetail : AppScreens("student_detail/{studentId}") {
         fun createRoute(studentId: String) = "student_detail/$studentId"
@@ -107,30 +120,11 @@ fun AppNavigation(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
                 onLoginSuccess = {
-                    // Crear una variable para almacenar el color de la barra superior
-                    var topBarColor = AdminColor // Valor predeterminado
-
                     val route = when(userType) {
-                        UserType.ADMIN -> {
-                            // Usar el color de administrador definido en el tema
-                            topBarColor = AdminColor
-                            AppScreens.AdminDashboard.route
-                        }
-                        UserType.CENTRO -> {
-                            // Usar el color de centro definido en el tema
-                            topBarColor = CentroColor
-                            AppScreens.CentroDashboard.route
-                        }
-                        UserType.PROFESOR -> {
-                            // Usar el color de profesor definido en el tema
-                            topBarColor = ProfesorColor
-                            AppScreens.ProfesorDashboard.route
-                        }
-                        UserType.FAMILIAR -> {
-                            // Usar el color de familiar definido en el tema
-                            topBarColor = FamiliarColor
-                            AppScreens.FamiliarDashboard.route
-                        }
+                        UserType.ADMIN -> AppScreens.AdminDashboard.route
+                        UserType.CENTRO -> AppScreens.CentroDashboard.route
+                        UserType.PROFESOR -> AppScreens.ProfesorDashboard.route
+                        UserType.FAMILIAR -> AppScreens.FamiliarDashboard.route
                     }
                     navController.navigate(route) {
                         popUpTo(AppScreens.Welcome.route) { inclusive = true }
@@ -155,12 +149,32 @@ fun AppNavigation(
                 }
             )
         }
-        // Pantalla de añadir centro (admin)
+
+    // Pantalla de añadir centro (admin)
         composable(route = AppScreens.AddCentro.route) {
-            AddCentroScreen(
+            HiltAddCentroScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
                 onCentroAdded = { navController.popBackStack() }
+            )
+        }
+
+    // Pantalla de editar centro (admin)
+        composable(
+            route = AppScreens.EditCentro.route,
+            arguments = listOf(
+                navArgument("centroId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+
+            HiltAddCentroScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                onCentroAdded = { navController.popBackStack() },
+                centroId = centroId
             )
         }
 
@@ -171,9 +185,76 @@ fun AppNavigation(
                     navController.navigate(AppScreens.Welcome.route) {
                         popUpTo(AppScreens.AdminDashboard.route) { inclusive = true }
                     }
+                },
+                onNavigateToAddCentro = {
+                    navController.navigate(AppScreens.AddCentro.route)
+                },
+                onNavigateToEditCentro = { centroId ->
+                    navController.navigate(AppScreens.EditCentro.createRoute(centroId))
+                },
+                onNavigateToAddUser = {
+                    navController.navigate(AppScreens.AddUser.createRoute(true))
                 }
             )
         }
+
+        // Pantalla de dashboard de centro
+        composable(route = AppScreens.CentroDashboard.route) {
+            CentroDashboardScreen(
+                onLogout = {
+                    navController.navigate(AppScreens.Welcome.route) {
+                        popUpTo(AppScreens.CentroDashboard.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Pantalla de dashboard de profesor
+        composable(route = AppScreens.ProfesorDashboard.route) {
+            ProfesorDashboardScreen(
+                onLogout = {
+                    navController.navigate(AppScreens.Welcome.route) {
+                        popUpTo(AppScreens.ProfesorDashboard.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Pantalla de añadir usuario
+        composable(
+            route = AppScreens.AddUser.route,
+            arguments = listOf(
+                navArgument("isAdminApp") {
+                    type = NavType.BoolType
+                    defaultValue = true
+                }
+            )
+        ) { backStackEntry ->
+            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: true
+            val viewModel: AddUserViewModel = hiltViewModel()
+            val uiState = viewModel.uiState.collectAsState().value
+
+            AddUserScreen(
+                uiState = uiState,
+                onUpdateDni = viewModel::updateDni,
+                onUpdateEmail = viewModel::updateEmail,
+                onUpdatePassword = viewModel::updatePassword,
+                onUpdateConfirmPassword = viewModel::updateConfirmPassword,
+                onUpdateNombre = viewModel::updateNombre,
+                onUpdateApellidos = viewModel::updateApellidos,
+                onUpdateTelefono = viewModel::updateTelefono,
+                onUpdateTipoUsuario = viewModel::updateTipoUsuario,
+                onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
+                onSaveUser = viewModel::saveUser,
+                onClearError = viewModel::clearError,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+
+
+        // TODO: Añadir pantalla de dashboard familiar cuando esté implementada
+
         // Añade aquí las demás pantallas a medida que las vayas implementando
     }
 }

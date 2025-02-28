@@ -19,6 +19,7 @@ import javax.inject.Inject
 
 data class AddCentroUiState(
     // Información del centro
+    val id: String = "", // Añadimos el ID para edición
     val nombre: String = "",
     val nombreError: String? = null,
 
@@ -43,7 +44,8 @@ data class AddCentroUiState(
     // Estado de la UI
     val isLoading: Boolean = false,
     val error: String? = null,
-    val success: Boolean = false
+    val success: Boolean = false,
+    val isEditMode: Boolean = false
 ) {
     val isFormValid: Boolean get() =
         nombre.isNotBlank() && nombreError == null &&
@@ -63,6 +65,53 @@ class AddCentroViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AddCentroUiState())
     val uiState: StateFlow<AddCentroUiState> = _uiState.asStateFlow()
+
+    // Función para cargar datos de un centro existente
+    fun loadCentro(centroId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, isEditMode = true) }
+
+            try {
+                when (val result = centroRepository.getCentroById(centroId)) {
+                    is Result.Success -> {
+                        val centro = result.data
+                        _uiState.update {
+                            it.copy(
+                                id = centro.id,
+                                nombre = centro.nombre,
+                                calle = centro.direccion.calle,
+                                numero = centro.direccion.numero,
+                                codigoPostal = centro.direccion.codigoPostal,
+                                ciudad = centro.direccion.ciudad,
+                                provincia = centro.direccion.provincia,
+                                telefono = centro.contacto.telefono,
+                                email = centro.contacto.email,
+                                isLoading = false
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Error al cargar el centro: ${result.exception.message}"
+                            )
+                        }
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Error inesperado: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
 
     fun updateNombre(nombre: String) {
         val error = if (nombre.isBlank()) "El nombre es obligatorio" else null
@@ -128,7 +177,11 @@ class AddCentroViewModel @Inject constructor(
 
             try {
                 val centro = createCentroFromState()
-                val result = centroRepository.addCentro(centro)
+                val result = if (_uiState.value.isEditMode) {
+                    centroRepository.updateCentro(centro)
+                } else {
+                    centroRepository.addCentro(centro)
+                }
 
                 when (result) {
                     is Result.Success -> {
@@ -140,10 +193,11 @@ class AddCentroViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
+                        val action = if (_uiState.value.isEditMode) "actualizar" else "guardar"
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = "Error al guardar el centro: ${result.exception.message}"
+                                error = "Error al $action el centro: ${result.exception.message}"
                             )
                         }
                     }
@@ -239,7 +293,7 @@ class AddCentroViewModel @Inject constructor(
         )
 
         return Centro(
-            id = UUID.randomUUID().toString(), // Generar ID único
+            id = if (state.isEditMode) state.id else UUID.randomUUID().toString(),
             nombre = state.nombre,
             direccion = direccion,
             contacto = contacto,
