@@ -25,7 +25,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
-
+import com.tfg.umeegunero.feature.common.users.screen.AddUserUiState
+import com.tfg.umeegunero.data.model.Centro
 
 /**
  * Sealed class para las rutas de navegación de la app
@@ -232,10 +233,47 @@ fun AppNavigation(
         ) { backStackEntry ->
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: true
             val viewModel: AddUserViewModel = hiltViewModel()
-            val uiState = viewModel.uiState.collectAsState().value
+            val viewModelUiState = viewModel.uiState.collectAsState().value
+            
+            // Creamos una lista de centros disponibles (esto debería venir del ViewModel en una implementación real)
+            val centrosDisponibles = remember { emptyList<Centro>() }
+            
+            // Buscamos el centro seleccionado por su ID (si existe)
+            val centroSeleccionado = remember(viewModelUiState.centroId, centrosDisponibles) {
+                if (viewModelUiState.centroId.isNotEmpty()) {
+                    centrosDisponibles.find { it.id == viewModelUiState.centroId }
+                } else {
+                    null
+                }
+            }
+            
+            // Adaptamos el estado del ViewModel al formato que espera AddUserScreen
+            val adaptedUiState = AddUserUiState(
+                dni = viewModelUiState.dni,
+                dniError = viewModelUiState.dniError,
+                email = viewModelUiState.email,
+                emailError = viewModelUiState.emailError,
+                password = viewModelUiState.password,
+                passwordError = viewModelUiState.passwordError,
+                confirmPassword = viewModelUiState.confirmPassword,
+                confirmPasswordError = viewModelUiState.confirmPasswordError,
+                nombre = viewModelUiState.nombre,
+                nombreError = viewModelUiState.nombreError,
+                apellidos = viewModelUiState.apellidos,
+                apellidosError = viewModelUiState.apellidosError,
+                telefono = viewModelUiState.telefono,
+                telefonoError = viewModelUiState.telefonoError,
+                tipoUsuario = viewModelUiState.tipoUsuario,
+                centroSeleccionado = centroSeleccionado,
+                centrosDisponibles = centrosDisponibles,
+                isLoading = viewModelUiState.isLoading,
+                error = viewModelUiState.error,
+                success = viewModelUiState.success,
+                isAdminApp = isAdminApp
+            )
 
             AddUserScreen(
-                uiState = uiState,
+                uiState = adaptedUiState,
                 onUpdateDni = viewModel::updateDni,
                 onUpdateEmail = viewModel::updateEmail,
                 onUpdatePassword = viewModel::updatePassword,
@@ -244,10 +282,12 @@ fun AppNavigation(
                 onUpdateApellidos = viewModel::updateApellidos,
                 onUpdateTelefono = viewModel::updateTelefono,
                 onUpdateTipoUsuario = viewModel::updateTipoUsuario,
-                onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
+                onUpdateCentroSeleccionado = { centro -> 
+                    centro?.let { viewModel.updateCentroSeleccionado(it.id) }
+                },
                 onSaveUser = viewModel::saveUser,
                 onClearError = viewModel::clearError,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() } 
             )
         }
 
