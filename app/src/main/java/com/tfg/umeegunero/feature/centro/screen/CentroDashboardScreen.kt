@@ -74,7 +74,12 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CentroDashboardScreen(
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigateToAddCurso: () -> Unit = {},
+    onNavigateToEditCurso: (String) -> Unit = {},
+    onNavigateToAddClase: () -> Unit = {},
+    onNavigateToEditClase: (String) -> Unit = {},
+    onNavigateToAddUser: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -238,7 +243,12 @@ fun CentroDashboardScreen(
         ) { paddingValues ->
             CentroDashboardContent(
                 selectedItem = selectedItem,
-                paddingValues = paddingValues
+                paddingValues = paddingValues,
+                onNavigateToAddCurso = onNavigateToAddCurso,
+                onNavigateToEditCurso = onNavigateToEditCurso,
+                onNavigateToAddClase = onNavigateToAddClase,
+                onNavigateToEditClase = onNavigateToEditClase,
+                onNavigateToAddUser = onNavigateToAddUser
             )
         }
     }
@@ -247,7 +257,12 @@ fun CentroDashboardScreen(
 @Composable
 fun CentroDashboardContent(
     selectedItem: Int,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onNavigateToAddCurso: () -> Unit,
+    onNavigateToEditCurso: (String) -> Unit,
+    onNavigateToAddClase: () -> Unit,
+    onNavigateToEditClase: (String) -> Unit,
+    onNavigateToAddUser: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -255,18 +270,24 @@ fun CentroDashboardContent(
             .padding(paddingValues)
     ) {
         when (selectedItem) {
-            0 -> CentroPanelContent()
+            0 -> CentroPanelContent(onNavigateToAddCurso, onNavigateToEditCurso, onNavigateToAddClase, onNavigateToEditClase, onNavigateToAddUser)
             1 -> ProfesoresContent()
             2 -> AlumnosContent()
             3 -> SolicitudesContent()
             4 -> ConfiguracionContent()
-            else -> CentroPanelContent()
+            else -> CentroPanelContent(onNavigateToAddCurso, onNavigateToEditCurso, onNavigateToAddClase, onNavigateToEditClase, onNavigateToAddUser)
         }
     }
 }
 
 @Composable
-fun CentroPanelContent() {
+fun CentroPanelContent(
+    onNavigateToAddCurso: () -> Unit,
+    onNavigateToEditCurso: (String) -> Unit,
+    onNavigateToAddClase: () -> Unit,
+    onNavigateToEditClase: (String) -> Unit,
+    onNavigateToAddUser: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -307,6 +328,96 @@ fun CentroPanelContent() {
         )
 
         SolicitudesRecentesList()
+
+        // Sección de Gestión Académica
+        Text(
+            text = "Gestión Académica",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(16.dp)
+        )
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(
+                listOf(
+                    Triple("Añadir Curso", Icons.Default.School, onNavigateToAddCurso),
+                    Triple("Añadir Clase", Icons.Default.Group, onNavigateToAddClase)
+                )
+            ) { (title, icon, onClick) ->
+                ElevatedCard(
+                    onClick = onClick,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth()
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = title,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Sección de Gestión de Usuarios
+        Text(
+            text = "Gestión de Usuarios",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(16.dp)
+        )
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(
+                listOf(
+                    Triple("Añadir Profesor", Icons.Default.Person, onNavigateToAddUser),
+                    Triple("Solicitudes", Icons.Default.QuestionAnswer, {})
+                )
+            ) { (title, icon, onClick) ->
+                ElevatedCard(
+                    onClick = onClick,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth()
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = title,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -477,7 +588,7 @@ fun ConfiguracionContent() {
 @Composable
 fun CentroDashboardPreview() {
     UmeEguneroTheme {
-        CentroDashboardScreen(onLogout = {})
+        CentroDashboardScreen(onLogout = {}, onNavigateToAddCurso = {}, onNavigateToEditCurso = {}, onNavigateToAddClase = {}, onNavigateToEditClase = {}, onNavigateToAddUser = {})
     }
 }
 
@@ -485,6 +596,6 @@ fun CentroDashboardPreview() {
 @Composable
 fun CentroDashboardDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        CentroDashboardScreen(onLogout = {})
+        CentroDashboardScreen(onLogout = {}, onNavigateToAddCurso = {}, onNavigateToEditCurso = {}, onNavigateToAddClase = {}, onNavigateToEditClase = {}, onNavigateToAddUser = {})
     }
 }

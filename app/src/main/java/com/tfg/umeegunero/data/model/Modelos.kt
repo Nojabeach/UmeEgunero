@@ -178,6 +178,33 @@ data class Mensaje(
     val adjuntos: List<String> = emptyList()
 )
 
+// Modelos para la gestión académica
+data class Curso(
+    @DocumentId val id: String = "",
+    val centroId: String = "",
+    val nombre: String = "", // Por ejemplo: "Infantil 3 años", "Primaria 1º"
+    val descripcion: String = "",
+    val edadMinima: Int = 0,
+    val edadMaxima: Int = 0,
+    val aniosNacimiento: List<Int> = emptyList(), // Lista de años de nacimiento de los alumnos que pertenecen a este curso
+    val activo: Boolean = true,
+    val anioAcademico: String = "" // Por ejemplo: "2023-2024"
+)
+
+data class Clase(
+    @DocumentId val id: String = "",
+    val cursoId: String = "",
+    val centroId: String = "",
+    val nombre: String = "", // Por ejemplo: "A", "B", "Mañana", "Tarde"
+    val profesorTitularId: String = "",
+    val profesoresAuxiliaresIds: List<String> = emptyList(),
+    val alumnosIds: List<String> = emptyList(),
+    val capacidadMaxima: Int = 25,
+    val activo: Boolean = true,
+    val horario: String = "", // Descripción del horario o referencia a un objeto Horario
+    val aula: String = "" // Ubicación física dentro del centro
+)
+
 // Modelo para registro de nuevo usuario (usado en UI)
 data class RegistroUsuarioForm(
     val dni: String = "",

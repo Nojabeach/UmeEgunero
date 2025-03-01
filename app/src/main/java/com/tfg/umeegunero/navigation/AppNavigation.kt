@@ -27,6 +27,8 @@ import androidx.compose.runtime.getValue
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
 import com.tfg.umeegunero.feature.common.users.screen.AddUserUiState
 import com.tfg.umeegunero.data.model.Centro
+import com.tfg.umeegunero.feature.centro.screen.academico.HiltAddCursoScreen
+import com.tfg.umeegunero.feature.centro.screen.academico.HiltAddClaseScreen
 
 /**
  * Sealed class para las rutas de navegación de la app
@@ -52,6 +54,20 @@ sealed class AppScreens(val route: String) {
     }
     object AddUser : AppScreens("add_user/{isAdminApp}") {
         fun createRoute(isAdminApp: Boolean) = "add_user/$isAdminApp"
+    }
+
+    // Pantallas de gestión académica
+    object AddCurso : AppScreens("add_curso/{centroId}") {
+        fun createRoute(centroId: String) = "add_curso/$centroId"
+    }
+    object EditCurso : AppScreens("edit_curso/{centroId}/{cursoId}") {
+        fun createRoute(centroId: String, cursoId: String) = "edit_curso/$centroId/$cursoId"
+    }
+    object AddClase : AppScreens("add_clase/{centroId}") {
+        fun createRoute(centroId: String) = "add_clase/$centroId"
+    }
+    object EditClase : AppScreens("edit_clase/{centroId}/{claseId}") {
+        fun createRoute(centroId: String, claseId: String) = "edit_clase/$centroId/$claseId"
     }
 
     // Otras pantallas
@@ -206,6 +222,31 @@ fun AppNavigation(
                     navController.navigate(AppScreens.Welcome.route) {
                         popUpTo(AppScreens.CentroDashboard.route) { inclusive = true }
                     }
+                },
+                onNavigateToAddCurso = {
+                    // Aquí deberíamos obtener el ID del centro del usuario actual
+                    // Por ahora, usamos un ID de ejemplo
+                    val centroId = "centro_actual_id"
+                    navController.navigate(AppScreens.AddCurso.createRoute(centroId))
+                },
+                onNavigateToEditCurso = { cursoId ->
+                    // Aquí deberíamos obtener el ID del centro del usuario actual
+                    val centroId = "centro_actual_id"
+                    navController.navigate(AppScreens.EditCurso.createRoute(centroId, cursoId))
+                },
+                onNavigateToAddClase = {
+                    // Aquí deberíamos obtener el ID del centro del usuario actual
+                    val centroId = "centro_actual_id"
+                    navController.navigate(AppScreens.AddClase.createRoute(centroId))
+                },
+                onNavigateToEditClase = { claseId ->
+                    // Aquí deberíamos obtener el ID del centro del usuario actual
+                    val centroId = "centro_actual_id"
+                    navController.navigate(AppScreens.EditClase.createRoute(centroId, claseId))
+                },
+                onNavigateToAddUser = {
+                    // Pasamos false para indicar que no es el admin de la app
+                    navController.navigate(AppScreens.AddUser.createRoute(false))
                 }
             )
         }
@@ -291,7 +332,88 @@ fun AppNavigation(
             )
         }
 
-
+        // Pantallas de gestión académica
+        // Añadir curso
+        composable(
+            route = AppScreens.AddCurso.route,
+            arguments = listOf(
+                navArgument("centroId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            
+            HiltAddCursoScreen(
+                centroId = centroId,
+                onNavigateBack = { navController.popBackStack() },
+                onCursoAdded = { navController.popBackStack() }
+            )
+        }
+        
+        // Editar curso
+        composable(
+            route = AppScreens.EditCurso.route,
+            arguments = listOf(
+                navArgument("centroId") {
+                    type = NavType.StringType
+                },
+                navArgument("cursoId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+            
+            HiltAddCursoScreen(
+                centroId = centroId,
+                cursoId = cursoId,
+                onNavigateBack = { navController.popBackStack() },
+                onCursoAdded = { navController.popBackStack() }
+            )
+        }
+        
+        // Añadir clase
+        composable(
+            route = AppScreens.AddClase.route,
+            arguments = listOf(
+                navArgument("centroId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            
+            HiltAddClaseScreen(
+                centroId = centroId,
+                onNavigateBack = { navController.popBackStack() },
+                onClaseAdded = { navController.popBackStack() }
+            )
+        }
+        
+        // Editar clase
+        composable(
+            route = AppScreens.EditClase.route,
+            arguments = listOf(
+                navArgument("centroId") {
+                    type = NavType.StringType
+                },
+                navArgument("claseId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
+            
+            HiltAddClaseScreen(
+                centroId = centroId,
+                claseId = claseId,
+                onNavigateBack = { navController.popBackStack() },
+                onClaseAdded = { navController.popBackStack() }
+            )
+        }
 
         // TODO: Añadir pantalla de dashboard familiar cuando esté implementada
 
