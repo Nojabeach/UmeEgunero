@@ -19,13 +19,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
@@ -72,6 +66,9 @@ import com.tfg.umeegunero.feature.centro.viewmodel.AddClaseUiState
 import com.tfg.umeegunero.feature.centro.viewmodel.AddClaseViewModel
 import com.tfg.umeegunero.ui.theme.CentroColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -507,66 +504,3 @@ fun HiltAddClaseScreen(
     )
 }
 
-@Preview(name = "Light Mode")
-@Preview(name = "Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun AddClaseScreenPreview() {
-    UmeEguneroTheme {
-        Surface {
-            val viewModel = remember {
-                object : AddClaseViewModel(
-                    object : com.tfg.umeegunero.data.repository.ClaseRepository {
-                        override suspend fun getClaseById(id: String): com.tfg.umeegunero.data.repository.Result<com.tfg.umeegunero.data.model.Clase> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun getClasesByCentro(centroId: String): com.tfg.umeegunero.data.repository.Result<List<com.tfg.umeegunero.data.model.Clase>> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun getClasesByCurso(cursoId: String): com.tfg.umeegunero.data.repository.Result<List<com.tfg.umeegunero.data.model.Clase>> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun createClase(clase: com.tfg.umeegunero.data.model.Clase): com.tfg.umeegunero.data.repository.Result<String> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun updateClase(clase: com.tfg.umeegunero.data.model.Clase): com.tfg.umeegunero.data.repository.Result<String> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun deleteClase(id: String): com.tfg.umeegunero.data.repository.Result<Unit> {
-                            TODO("Not yet implemented")
-                        }
-                    },
-                    object : com.tfg.umeegunero.data.repository.CursoRepository {
-                        override suspend fun getCursoById(id: String): com.tfg.umeegunero.data.repository.Result<com.tfg.umeegunero.data.model.Curso> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun getCursosByCentro(centroId: String): com.tfg.umeegunero.data.repository.Result<List<com.tfg.umeegunero.data.model.Curso>> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun createCurso(curso: com.tfg.umeegunero.data.model.Curso): com.tfg.umeegunero.data.repository.Result<String> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun updateCurso(curso: com.tfg.umeegunero.data.model.Curso): com.tfg.umeegunero.data.repository.Result<String> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun deleteCurso(id: String): com.tfg.umeegunero.data.repository.Result<Unit> {
-                            TODO("Not yet implemented")
-                        }
-                    },
-                    object : com.tfg.umeegunero.data.repository.UsuarioRepository {
-                        override suspend fun getProfesoresByCentro(centroId: String): com.tfg.umeegunero.data.repository.Result<List<com.tfg.umeegunero.data.model.Usuario>> {
-                            TODO("Not yet implemented")
-                        }
-                        override suspend fun guardarUsuario(usuario: com.tfg.umeegunero.data.model.Usuario): com.tfg.umeegunero.data.repository.Result<String> {
-                            TODO("Not yet implemented")
-                        }
-                    }
-                ) {}
-            }
-            AddClaseScreen(
-                viewModel = viewModel,
-                onNavigateBack = {},
-                onClaseAdded = {}
-            )
-        }
-    }
-} 
