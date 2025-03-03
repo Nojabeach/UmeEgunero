@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.feature.admin.screen
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,11 +22,13 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,11 +42,15 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,22 +62,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.tfg.umeegunero.data.model.Centro
+import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardUiState
+import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
+    viewModel: AdminDashboardViewModel = hiltViewModel(),
     onLogout: () -> Unit = {},
     onNavigateToAddCentro: () -> Unit = {},
     onNavigateToEditCentro: (String) -> Unit = {},
     onNavigateToAddUser: () -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedItem by remember { mutableStateOf(0) }
 
+    // Efecto para mostrar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -155,6 +176,7 @@ fun AdminDashboardScreen(
         }
     ) {
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -207,7 +229,10 @@ fun AdminDashboardScreen(
             AdminDashboardContent(
                 selectedItem = selectedItem,
                 paddingValues = paddingValues,
-                onEditCentro = onNavigateToEditCentro
+                uiState = uiState,
+                onEditCentro = onNavigateToEditCentro,
+                onDeleteCentro = viewModel::deleteCentro,
+                onRefresh = viewModel::loadCentros
             )
         }
     }
@@ -217,7 +242,10 @@ fun AdminDashboardScreen(
 fun AdminDashboardContent(
     selectedItem: Int,
     paddingValues: PaddingValues,
-    onEditCentro: (String) -> Unit
+    uiState: AdminDashboardUiState,
+    onEditCentro: (String) -> Unit,
+    onDeleteCentro: (String) -> Unit,
+    onRefresh: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -225,72 +253,117 @@ fun AdminDashboardContent(
             .padding(paddingValues)
     ) {
         when (selectedItem) {
-            0 -> CentrosEducativosContent(onEditCentro = onEditCentro)
+            0 -> CentrosEducativosContent(
+                centros = uiState.centros,
+                isLoading = uiState.isLoading,
+                onEditCentro = onEditCentro,
+                onDeleteCentro = onDeleteCentro,
+                onRefresh = onRefresh
+            )
             1 -> UsuariosContent()
             2 -> ConfiguracionContent()
-            else -> CentrosEducativosContent(onEditCentro = onEditCentro)
+            else -> CentrosEducativosContent(
+                centros = uiState.centros,
+                isLoading = uiState.isLoading,
+                onEditCentro = onEditCentro,
+                onDeleteCentro = onDeleteCentro,
+                onRefresh = onRefresh
+            )
         }
     }
 }
-
 @Composable
 fun CentrosEducativosContent(
-    onEditCentro: (String) -> Unit
+    centros: List<Centro>,
+    isLoading: Boolean,
+    onEditCentro: (String) -> Unit,
+    onDeleteCentro: (String) -> Unit,
+    onRefresh: () -> Unit
 ) {
-    // Eliminar los centros estáticos y dejar espacio vacío para datos reales
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
         item {
-            Text(
-                text = "Listado de Centros",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        }
-
-        // Esto será reemplazado por datos reales en la implementación final
-        items(emptyList<Pair<String, String>>()) { (nombre, ubicacion) ->
-            CentroEducativoItem(
-                nombre = nombre,
-                ubicacion = ubicacion,
-                onEdit = { onEditCentro(nombre) },
-                onDelete = { /* Implementar borrado de centro */ }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        // Mensaje cuando no hay centros
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                shape = RoundedCornerShape(12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
+                Text(
+                    text = "Listado de Centros",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Botón de recargar
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recargar",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Mostrar indicador de carga
+        if (isLoading) {
+            item {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No hay centros educativos disponibles",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Agrega un nuevo centro usando el botón '+' de abajo",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                    CircularProgressIndicator()
+                }
+            }
+        }
+        // Mostrar lista de centros
+        else if (centros.isNotEmpty()) {
+            items(centros) { centro ->
+                CentroEducativoItem(
+                    centro = centro,
+                    onEdit = { onEditCentro(centro.id) },
+                    onDelete = { onDeleteCentro(centro.id) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+        // Mostrar mensaje cuando no hay centros
+        else {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "No hay centros educativos disponibles",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Agrega un nuevo centro usando el botón '+' de abajo",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
         }
@@ -299,8 +372,7 @@ fun CentrosEducativosContent(
 
 @Composable
 fun CentroEducativoItem(
-    nombre: String,
-    ubicacion: String,
+    centro: Centro,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -326,7 +398,7 @@ fun CentroEducativoItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = nombre,
+                    text = centro.nombre,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -334,7 +406,7 @@ fun CentroEducativoItem(
                 )
 
                 Text(
-                    text = ubicacion,
+                    text = "${centro.direccion.ciudad}, ${centro.direccion.provincia}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -359,7 +431,6 @@ fun CentroEducativoItem(
         }
     }
 }
-
 @Composable
 fun UsuariosContent() {
     Box(

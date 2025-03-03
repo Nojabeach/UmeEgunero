@@ -461,30 +461,19 @@ fun HiltAddCursoScreen(
 fun AddCursoScreenPreview() {
     UmeEguneroTheme {
         Surface {
-            val viewModel = remember {
-                object : AddCursoViewModel(object : com.tfg.umeegunero.data.repository.CursoRepository {
-                    override suspend fun getCursoById(id: String): com.tfg.umeegunero.data.repository.Result<com.tfg.umeegunero.data.model.Curso> {
-                        TODO("Not yet implemented")
+            UmeEguneroTheme {
+                Surface {
+                    // Para el preview, simplemente usa una versión reducida de la pantalla
+                    // sin necesidad de un ViewModel real
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Vista previa de Añadir Curso")
+                        // Aquí puedes añadir elementos UI básicos para el preview
                     }
-                    override suspend fun getCursosByCentro(centroId: String): com.tfg.umeegunero.data.repository.Result<List<com.tfg.umeegunero.data.model.Curso>> {
-                        TODO("Not yet implemented")
-                    }
-                    override suspend fun createCurso(curso: com.tfg.umeegunero.data.model.Curso): com.tfg.umeegunero.data.repository.Result<String> {
-                        TODO("Not yet implemented")
-                    }
-                    override suspend fun updateCurso(curso: com.tfg.umeegunero.data.model.Curso): com.tfg.umeegunero.data.repository.Result<String> {
-                        TODO("Not yet implemented")
-                    }
-                    override suspend fun deleteCurso(id: String): com.tfg.umeegunero.data.repository.Result<Unit> {
-                        TODO("Not yet implemented")
-                    }
-                }) {}
+                }
             }
-            AddCursoScreen(
-                viewModel = viewModel,
-                onNavigateBack = {},
-                onCursoAdded = {}
-            )
         }
     }
 } 

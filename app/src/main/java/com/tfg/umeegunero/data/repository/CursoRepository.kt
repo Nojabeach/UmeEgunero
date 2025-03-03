@@ -106,4 +106,33 @@ class CursoRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+    // En CursoRepository.kt
+    suspend fun createCurso(curso: Curso): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val cursoId = if (curso.id.isBlank()) cursosCollection.document().id else curso.id
+            val cursoWithId = if (curso.id.isBlank()) curso.copy(id = cursoId) else curso
+
+            cursosCollection.document(cursoId).set(cursoWithId).await()
+            return@withContext Result.Success(cursoId)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    suspend fun updateCurso(curso: Curso): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Verificar que el curso existe
+            val cursoDoc = cursosCollection.document(curso.id).get().await()
+
+            if (!cursoDoc.exists()) {
+                return@withContext Result.Error(Exception("El curso no existe"))
+            }
+
+            // Actualizar el curso
+            cursosCollection.document(curso.id).set(curso).await()
+            return@withContext Result.Success(curso.id)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
 }

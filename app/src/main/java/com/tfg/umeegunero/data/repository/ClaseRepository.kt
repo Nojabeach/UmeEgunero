@@ -124,4 +124,33 @@ class ClaseRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+    // En ClaseRepository.kt
+    suspend fun createClase(clase: Clase): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val claseId = if (clase.id.isBlank()) clasesCollection.document().id else clase.id
+            val claseWithId = if (clase.id.isBlank()) clase.copy(id = claseId) else clase
+
+            clasesCollection.document(claseId).set(claseWithId).await()
+            return@withContext Result.Success(claseId)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    suspend fun updateClase(clase: Clase): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Verificar que la clase existe
+            val claseDoc = clasesCollection.document(clase.id).get().await()
+
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+
+            // Actualizar la clase
+            clasesCollection.document(clase.id).set(clase).await()
+            return@withContext Result.Success(clase.id)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
 }

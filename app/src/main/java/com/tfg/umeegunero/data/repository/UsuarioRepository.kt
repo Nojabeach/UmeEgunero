@@ -439,4 +439,22 @@ class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    // En UsuarioRepository.kt
+    suspend fun getProfesoresByCentro(centroId: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            // Obtener profesores por centro
+            // Por ejemplo, buscar usuarios que tengan el perfil de profesor y el centroId correspondiente
+            val query = usuariosCollection
+                .whereArrayContains("perfiles.centroId", centroId)
+                .whereEqualTo("perfiles.tipo", TipoUsuario.PROFESOR)
+                .get()
+                .await()
+
+            val profesores = query.documents.mapNotNull { it.toObject(Usuario::class.java) }
+            return@withContext Result.Success(profesores)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
 }
