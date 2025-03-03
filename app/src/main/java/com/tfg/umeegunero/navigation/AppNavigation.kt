@@ -1,4 +1,3 @@
-// Modificamos AppNavigation.kt para pasar la función de cierre
 package com.tfg.umeegunero.navigation
 
 import androidx.compose.runtime.Composable
@@ -166,7 +165,7 @@ fun AppNavigation(
             )
         }
 
-    // Pantalla de añadir centro (admin)
+        // Pantalla de añadir centro (admin)
         composable(route = AppScreens.AddCentro.route) {
             HiltAddCentroScreen(
                 viewModel = hiltViewModel(),
@@ -175,7 +174,7 @@ fun AppNavigation(
             )
         }
 
-    // Pantalla de editar centro (admin)
+        // Pantalla de editar centro (admin)
         composable(
             route = AppScreens.EditCentro.route,
             arguments = listOf(
@@ -261,6 +260,17 @@ fun AppNavigation(
             )
         }
 
+        // Pantalla de dashboard de familiar - Integración con FamiliarNavGraph
+        composable(route = AppScreens.FamiliarDashboard.route) {
+            FamiliarNavGraph(
+                onLogout = {
+                    navController.navigate(AppScreens.Welcome.route) {
+                        popUpTo(AppScreens.FamiliarDashboard.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Pantalla de añadir usuario
         composable(
             route = AppScreens.AddUser.route,
@@ -274,10 +284,10 @@ fun AppNavigation(
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: true
             val viewModel: AddUserViewModel = hiltViewModel()
             val viewModelUiState = viewModel.uiState.collectAsState().value
-            
+
             // Creamos una lista de centros disponibles (esto debería venir del ViewModel en una implementación real)
             val centrosDisponibles = remember { emptyList<Centro>() }
-            
+
             // Buscamos el centro seleccionado por su ID (si existe)
             val centroSeleccionado = remember(viewModelUiState.centroId, centrosDisponibles) {
                 if (viewModelUiState.centroId.isNotEmpty()) {
@@ -286,7 +296,7 @@ fun AppNavigation(
                     null
                 }
             }
-            
+
             // Adaptamos el estado del ViewModel al formato que espera AddUserScreen
             val adaptedUiState = AddUserUiState(
                 dni = viewModelUiState.dni,
@@ -322,12 +332,12 @@ fun AppNavigation(
                 onUpdateApellidos = viewModel::updateApellidos,
                 onUpdateTelefono = viewModel::updateTelefono,
                 onUpdateTipoUsuario = viewModel::updateTipoUsuario,
-                onUpdateCentroSeleccionado = { centro -> 
+                onUpdateCentroSeleccionado = { centro ->
                     centro?.let { viewModel.updateCentroSeleccionado(it.id) }
                 },
                 onSaveUser = viewModel::saveUser,
                 onClearError = viewModel::clearError,
-                onNavigateBack = { navController.popBackStack() } 
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -342,14 +352,14 @@ fun AppNavigation(
             )
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
-            
+
             HiltAddCursoScreen(
                 centroId = centroId,
                 onNavigateBack = { navController.popBackStack() },
                 onCursoAdded = { navController.popBackStack() }
             )
         }
-        
+
         // Editar curso
         composable(
             route = AppScreens.EditCurso.route,
@@ -364,7 +374,7 @@ fun AppNavigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
             val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
-            
+
             HiltAddCursoScreen(
                 centroId = centroId,
                 cursoId = cursoId,
@@ -372,7 +382,7 @@ fun AppNavigation(
                 onCursoAdded = { navController.popBackStack() }
             )
         }
-        
+
         // Añadir clase
         composable(
             route = AppScreens.AddClase.route,
@@ -383,14 +393,14 @@ fun AppNavigation(
             )
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
-            
+
             HiltAddClaseScreen(
                 centroId = centroId,
                 onNavigateBack = { navController.popBackStack() },
                 onClaseAdded = { navController.popBackStack() }
             )
         }
-        
+
         // Editar clase
         composable(
             route = AppScreens.EditClase.route,
@@ -405,7 +415,7 @@ fun AppNavigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
             val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
-            
+
             HiltAddClaseScreen(
                 centroId = centroId,
                 claseId = claseId,
@@ -413,9 +423,5 @@ fun AppNavigation(
                 onClaseAdded = { navController.popBackStack() }
             )
         }
-
-        // TODO: Añadir pantalla de dashboard familiar cuando esté implementada
-
-        // Añade aquí las demás pantallas a medida que las vayas implementando
     }
 }

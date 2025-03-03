@@ -457,4 +457,188 @@ class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+    /**
+     * Obtiene los registros de actividad de un alumno
+     */
+    suspend fun getRegistrosActividadByAlumno(alumnoId: String): Result<List<RegistroActividad>> = withContext(Dispatchers.IO) {
+        try {
+            val query = registrosCollection
+                .whereEqualTo("alumnoId", alumnoId)
+                .orderBy("fecha", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get()
+                .await()
+
+            val registros = query.toObjects(RegistroActividad::class.java)
+            return@withContext Result.Success(registros)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Marca un registro como visto por el familiar
+     */
+    suspend fun marcarRegistroComoVistoPorFamiliar(registroId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            registrosCollection.document(registroId)
+                .update(
+                    mapOf(
+                        "vistoPorFamiliar" to true,
+                        "fechaVisto" to Timestamp.now()
+                    )
+                )
+                .await()
+
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene un alumno por su DNI
+     */
+    suspend fun getAlumnoPorDni(dni: String): Result<Alumno> = withContext(Dispatchers.IO) {
+        try {
+            val alumnoDoc = alumnosCollection.document(dni).get().await()
+
+            if (alumnoDoc.exists()) {
+                val alumno = alumnoDoc.toObject(Alumno::class.java)
+                return@withContext Result.Success(alumno!!)
+            } else {
+                throw Exception("Alumno no encontrado")
+            }
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Envía un mensaje
+     */
+    suspend fun enviarMensaje(mensaje: Mensaje): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Si el mensaje tiene un ID, lo usamos, de lo contrario generamos uno nuevo
+            val mensajeId = if (mensaje.id.isNotBlank()) {
+                mensaje.id
+            } else {
+                mensajesCollection.document().id
+            }
+
+            // Asignar el ID al mensaje
+            val mensajeConId = if (mensaje.id.isBlank()) mensaje.copy(id = mensajeId) else mensaje
+
+            // Guardar el mensaje
+            mensajesCollection.document(mensajeId).set(mensajeConId).await()
+
+            return@withContext Result.Success(mensajeId)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene mensajes entre dos usuarios
+     */
+    suspend fun getMensajesBetweenUsers(usuario1Id: String, usuario2Id: String): Result<List<Mensaje>> = withContext(Dispatchers.IO) {
+        try {
+            // Obtener mensajes enviados por usuario1 a usuario2
+            val query1 = mensajesCollection
+                .whereEqualTo("emisorId", usuario1Id)
+                .whereEqualTo("receptorId", usuario2Id)
+                .get()
+                .await()
+
+            val mensajes1 = query1.toObjects(Mensaje::class.java)
+
+            // Obtener mensajes enviados por usuario2 a usuario1
+            val query2 = mensajesCollection
+                .whereEqualTo("emisorId", usuario2Id)
+                .whereEqualTo("receptorId", usuario1Id)
+                .get()
+                .await()
+
+            val mensajes2 = query2.toObjects(Mensaje::class.java)
+
+            // Combinar y ordenar los mensajes
+            val todosLosMensajes = (mensajes1 + mensajes2).sortedBy { it.timestamp }
+
+            return@withContext Result.Success(todosLosMensajes)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene mensajes relacionados con un alumno específico entre dos usuarios
+     */
+    suspend fun getMensajesByAlumno(usuario1Id: String, usuario2Id: String, alumnoId: String): Result<List<Mensaje>> = withContext(Dispatchers.IO) {
+        try {
+            // Obtener mensajes enviados por usuario1 a usuario2 sobre el alumno
+            val query1 = mensajesCollection
+                .whereEqualTo("emisorId", usuario1Id)
+                .whereEqualTo("receptorId", usuario2Id)
+                .whereEqualTo("alumnoId", alumnoId)
+                .get()
+                .await()
+
+            val mensajes1 = query1.toObjects(Mensaje::class.java)
+
+            // Obtener mensajes enviados por usuario2 a usuario1 sobre el alumno
+            val query2 = mensajesCollection
+                .whereEqualTo("emisorId", usuario2Id)
+                .whereEqualTo("receptorId", usuario1Id)
+                .whereEqualTo("alumnoId", alumnoId)
+                .get()
+                .await()
+
+            val mensajes2 = query2.toObjects(Mensaje::class.java)
+
+            // Combinar y ordenar los mensajes
+            val todosLosMensajes = (mensajes1 + mensajes2).sortedBy { it.timestamp }
+
+            return@withContext Result.Success(todosLosMensajes)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Marca un mensaje como leído
+     */
+    suspend fun marcarMensajeComoLeido(mensajeId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            mensajesCollection.document(mensajeId)
+                .update("leido", true)
+                .await()
+
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Observa mensajes en tiempo real entre dos usuarios
+     * Esta función devuelve un Flow que emite la lista actualizada de mensajes cuando hay cambios
+     */
+    fun observeMensajes(usuario1Id: String, usuario2Id: String, alumnoId: String? = null) = flow<List<Mensaje>> {
+        // Este es un ejemplo de implementación usando un enfoque simplificado
+        // En una implementación real, usaríamos Firestore listeners para actualizaciones en tiempo real
+
+        while (true) {
+            val mensajesResult = if (alumnoId != null) {
+                getMensajesByAlumno(usuario1Id, usuario2Id, alumnoId)
+            } else {
+                getMensajesBetweenUsers(usuario1Id, usuario2Id)
+            }
+
+            if (mensajesResult is Result.Success) {
+                emit(mensajesResult.data)
+            }
+
+            // Esperar antes de la siguiente actualización
+            kotlinx.coroutines.delay(5000) // Actualizar cada 5 segundos
+        }
+    }
 }

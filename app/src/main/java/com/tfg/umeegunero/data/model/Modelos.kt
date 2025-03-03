@@ -106,9 +106,12 @@ data class Alumno(
     val centroId: String = "",
     val aulaId: String = "",
     val familiarIds: List<String> = emptyList(),
+    val profesorIds: List<String> = emptyList(), // Añadido campo profesorIds
     val activo: Boolean = true,
     val necesidadesEspeciales: String = "",
     val alergias: List<String> = emptyList(),
+    val medicacion: String = "", // Añadido campo medicacion
+    val observacionesMedicas: String = "", // Añadido campo observacionesMedicas
     val observaciones: String = ""
 )
 
@@ -157,7 +160,8 @@ data class Siesta(
 
 data class NecesidadesFisiologicas(
     val caca: Boolean = false,
-    val pipi: Boolean = false
+    val pipi: Boolean = false,
+    val observaciones: String = "" // Añadido campo observaciones
 )
 
 data class Observacion(
