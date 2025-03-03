@@ -79,9 +79,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.firebase.Timestamp
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.familiar.viewmodel.FamiliarDashboardViewModel
 import com.tfg.umeegunero.ui.theme.FamiliarColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -98,7 +101,7 @@ fun FamiliarDashboardScreen(
     onLogout: () -> Unit,
     onNavigateToDetalleRegistro: (String) -> Unit = {},
     onNavigateToDetalleHijo: (String) -> Unit = {},
-    onNavigateToChat: (String) -> Unit = {}
+    onNavigateToChat: (String, String?) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -350,7 +353,7 @@ fun FamiliarDashboardContent(
     isLoading: Boolean,
     onNavigateToDetalleRegistro: (String) -> Unit,
     onNavigateToDetalleHijo: (String) -> Unit,
-    onNavigateToChat: (String) -> Unit,
+    onNavigateToChat: (String, String?) -> Unit,
     onMarcarRegistroComoVisto: (String) -> Unit
 ) {
     Box(
@@ -971,7 +974,7 @@ fun RegistroActividadCalendarItem(
 fun MensajesContent(
     mensajes: List<Mensaje>,
     profesores: Map<String, Usuario>,
-    onNavigateToChat: (String) -> Unit
+    onNavigateToChat: (String, String?) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -1009,7 +1012,7 @@ fun MensajesContent(
                             nombre = nombreEmisor,
                             ultimoMensaje = mensajesEmisor.maxByOrNull { it.timestamp }?.texto ?: "",
                             noLeido = mensajesEmisor.any { !it.leido },
-                            onClick = { onNavigateToChat(emisorId) }
+                            onClick = { onNavigateToChat(emisorId, null) }
                         )
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
                     }

@@ -20,7 +20,8 @@ object FamiliarDestinations {
     const val DASHBOARD_ROUTE = "familiar_dashboard"
     const val DETALLE_REGISTRO_ROUTE = "detalle_registro/{registroId}"
     const val DETALLE_HIJO_ROUTE = "detalle_hijo/{alumnoDni}"
-    const val CHAT_ROUTE = "chat/{profesorId}?alumnoId={alumnoId}"
+    const val CHAT_ROUTE = "chat/{profesorId}"
+    const val CHAT_WITH_ALUMNO_ROUTE = "chat/{profesorId}/{alumnoId}"
 
     fun detalleRegistroRoute(registroId: String): String {
         return "detalle_registro/$registroId"
@@ -32,7 +33,7 @@ object FamiliarDestinations {
 
     fun chatRoute(profesorId: String, alumnoId: String? = null): String {
         return if (alumnoId != null) {
-            "chat/$profesorId?alumnoId=$alumnoId"
+            "chat/$profesorId/$alumnoId"
         } else {
             "chat/$profesorId"
         }
@@ -76,9 +77,7 @@ fun FamiliarNavGraph(
             val registroId = entry.arguments?.getString("registroId") ?: ""
             DetalleRegistroScreen(
                 onNavigateBack = actions.upPress,
-                onNavigateToChat = { profesorId ->
-                    actions.navigateToChat(profesorId)
-                }
+                onNavigateToChat = actions.navigateToChat
             )
         }
 
@@ -91,22 +90,34 @@ fun FamiliarNavGraph(
         ) { entry ->
             val alumnoDni = entry.arguments?.getString("alumnoDni") ?: ""
             DetalleHijoScreen(
+                onNavigateBack = actions.upPress,
+                onNavigateToChat = actions.navigateToChat
+            )
+        }
+
+        // Chat con profesor (sin alumno específico)
+        composable(
+            route = FamiliarDestinations.CHAT_ROUTE,
+            arguments = listOf(
+                navArgument("profesorId") { type = NavType.StringType }
+            )
+        ) { entry ->
+            val profesorId = entry.arguments?.getString("profesorId") ?: ""
+            ChatScreen(
                 onNavigateBack = actions.upPress
             )
         }
 
-        // Chat con profesor
+        // Chat con profesor (con alumno específico)
         composable(
-            route = FamiliarDestinations.CHAT_ROUTE,
+            route = FamiliarDestinations.CHAT_WITH_ALUMNO_ROUTE,
             arguments = listOf(
                 navArgument("profesorId") { type = NavType.StringType },
-                navArgument("alumnoId") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                }
+                navArgument("alumnoId") { type = NavType.StringType }
             )
         ) { entry ->
+            val profesorId = entry.arguments?.getString("profesorId") ?: ""
+            val alumnoId = entry.arguments?.getString("alumnoId") ?: ""
             ChatScreen(
                 onNavigateBack = actions.upPress
             )

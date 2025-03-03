@@ -2,6 +2,7 @@ package com.tfg.umeegunero.feature.familiar.screen
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.firebase.Timestamp
 import com.tfg.umeegunero.feature.familiar.viewmodel.DetalleHijoViewModel
 import com.tfg.umeegunero.ui.theme.FamiliarColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -70,7 +72,7 @@ import java.util.Locale
 fun DetalleHijoScreen(
     viewModel: DetalleHijoViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onNavigateToChat: (String) -> Unit = {},
+    onNavigateToChat: (String, String?) -> Unit = { _, _ -> },
     onNavigateToRegistros: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -305,7 +307,7 @@ fun DetalleHijoScreen(
                                         )
 
                                         IconButton(
-                                            onClick = { onNavigateToChat(profesor.dni) }
+                                            onClick = { onNavigateToChat(profesor.dni, uiState.alumno?.dni) }
                                         ) {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Filled.Message,
@@ -523,12 +525,12 @@ fun InfoRow(
     }
 }
 
-fun formatDate(timestamp: com.google.firebase.Timestamp): String {
+fun formatDate(timestamp: Timestamp): String {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     return dateFormat.format(timestamp.toDate())
 }
 
-fun calcularEdad(fechaNacimiento: com.google.firebase.Timestamp): Int {
+fun calcularEdad(fechaNacimiento: Timestamp): Int {
     val fechaNac = fechaNacimiento.toDate()
     val today = java.util.Calendar.getInstance()
     val calendar = java.util.Calendar.getInstance()

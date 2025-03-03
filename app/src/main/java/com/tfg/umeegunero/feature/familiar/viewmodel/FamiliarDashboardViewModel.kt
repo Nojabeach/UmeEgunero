@@ -6,6 +6,7 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository

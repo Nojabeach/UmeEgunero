@@ -71,7 +71,7 @@ import java.util.Locale
 fun DetalleRegistroScreen(
     viewModel: DetalleRegistroViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onNavigateToChat: (String) -> Unit = {}
+    onNavigateToChat: (String, String?) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -110,7 +110,7 @@ fun DetalleRegistroScreen(
                     // Botón para chatear con el profesor
                     uiState.registro?.profesorId?.let { profesorId ->
                         IconButton(
-                            onClick = { onNavigateToChat(profesorId) }
+                            onClick = { onNavigateToChat(profesorId, uiState.registro?.alumnoId) }
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Message,
