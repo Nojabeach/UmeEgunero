@@ -1093,10 +1093,6 @@ fun ConfiguracionContent() {
 }
 
 // Funciones utilitarias
-fun formatDate(timestamp: Timestamp): String {
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    return dateFormat.format(timestamp.toDate())
-}
 
 fun formatMes(mesKey: String): String {
     val (year, month) = mesKey.split("-")
