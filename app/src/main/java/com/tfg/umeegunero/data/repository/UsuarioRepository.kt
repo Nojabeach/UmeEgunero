@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Date
 
 /**
  * Resultados posibles al realizar operaciones con repositorios
@@ -22,14 +23,23 @@ sealed class Result<out T> {
     object Loading : Result<Nothing>()
 }
 
+/**
+ * Repositorio para gestionar usuarios y operaciones relacionadas
+ */
 @Singleton
 class UsuarioRepository @Inject constructor(
-    private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    val auth: FirebaseAuth,
+    val firestore: FirebaseFirestore
 ) {
-    private val usuariosCollection = firestore.collection("usuarios")
-    private val solicitudesCollection = firestore.collection("solicitudesRegistro")
-    private val centrosCollection = firestore.collection("centros")
+    val usuariosCollection = firestore.collection("usuarios")
+    val solicitudesCollection = firestore.collection("solicitudesRegistro")
+    val centrosCollection = firestore.collection("centros")
+    val clasesCollection = firestore.collection("clases")
+    val alumnosCollection = firestore.collection("alumnos")
+    val registrosCollection = firestore.collection("registrosActividad")
+    val mensajesCollection = firestore.collection("mensajes")
+
+    // SECCIÓN: AUTENTICACIÓN Y GESTIÓN DE USUARIOS
 
     /**
      * Registra un nuevo usuario en Firebase Auth y Firestore
@@ -151,6 +161,22 @@ class UsuarioRepository @Inject constructor(
     }
 
     /**
+     * Obtiene el ID del usuario actualmente logueado
+     */
+    suspend fun getUsuarioActualId(): String = withContext(Dispatchers.IO) {
+        val user = auth.currentUser ?: return@withContext ""
+
+        // Buscar el usuario en Firestore por email
+        val userQuery = usuariosCollection.whereEqualTo("email", user.email).get().await()
+
+        if (!userQuery.isEmpty) {
+            return@withContext userQuery.documents.first().id
+        } else {
+            return@withContext ""
+        }
+    }
+
+    /**
      * Obtiene un usuario por su DNI
      */
     suspend fun getUsuarioPorDni(dni: String): Result<Usuario> = withContext(Dispatchers.IO) {
@@ -163,31 +189,6 @@ class UsuarioRepository @Inject constructor(
             } else {
                 throw Exception("Usuario no encontrado")
             }
-        } catch (e: Exception) {
-            return@withContext Result.Error(e)
-        }
-    }
-
-    /**
-     * Obtiene todos los centros educativos
-     */
-    suspend fun getCentrosEducativos(): Result<List<Centro>> = withContext(Dispatchers.IO) {
-        try {
-            val centrosQuery = centrosCollection.whereEqualTo("activo", true).get().await()
-            val centros = centrosQuery.toObjects(Centro::class.java)
-            return@withContext Result.Success(centros)
-        } catch (e: Exception) {
-            return@withContext Result.Error(e)
-        }
-    }
-
-    /**
-     * Recuperación de contraseña
-     */
-    suspend fun recuperarContraseña(email: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            auth.sendPasswordResetEmail(email).await()
-            return@withContext Result.Success(Unit)
         } catch (e: Exception) {
             return@withContext Result.Error(e)
         }
@@ -226,4 +227,216 @@ class UsuarioRepository @Inject constructor(
         }
     }
 
+    /**
+     * Recuperación de contraseña
+     */
+    suspend fun recuperarContraseña(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            auth.sendPasswordResetEmail(email).await()
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    // SECCIÓN: CENTROS EDUCATIVOS
+
+    /**
+     * Obtiene todos los centros educativos
+     */
+    suspend fun getCentrosEducativos(): Result<List<Centro>> = withContext(Dispatchers.IO) {
+        try {
+            val centrosQuery = centrosCollection.whereEqualTo("activo", true).get().await()
+            val centros = centrosQuery.toObjects(Centro::class.java)
+            return@withContext Result.Success(centros)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    // SECCIÓN: FUNCIONALIDADES PARA PROFESORES
+
+    /**
+     * Obtiene las clases asignadas a un profesor
+     */
+    suspend fun getClasesByProfesor(profesorId: String): Result<List<Clase>> = withContext(Dispatchers.IO) {
+        try {
+            // Clases donde el profesor es titular
+            val query = clasesCollection
+                .whereEqualTo("profesorTitularId", profesorId)
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+
+            val clases = query.toObjects(Clase::class.java)
+
+            // También verificamos si el profesor es auxiliar en otras clases
+            val queryAuxiliar = clasesCollection
+                .whereArrayContains("profesoresAuxiliaresIds", profesorId)
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+
+            val clasesAuxiliar = queryAuxiliar.toObjects(Clase::class.java)
+
+            // Combinamos todas las clases encontradas (eliminando duplicados)
+            val todasLasClases = (clases + clasesAuxiliar).distinctBy { it.id }
+
+            return@withContext Result.Success(todasLasClases)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene los alumnos de una clase específica
+     */
+    suspend fun getAlumnosByClase(claseId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            // Primero obtenemos la clase para tener la lista de IDs de alumnos
+            val claseDoc = clasesCollection.document(claseId).get().await()
+
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+
+            val clase = claseDoc.toObject(Clase::class.java)
+            val alumnoIds = clase?.alumnosIds ?: emptyList()
+
+            if (alumnoIds.isEmpty()) {
+                return@withContext Result.Success(emptyList())
+            }
+
+            // Obtenemos los datos de cada alumno
+            val alumnos = mutableListOf<Alumno>()
+
+            for (alumnoId in alumnoIds) {
+                val alumnoDoc = alumnosCollection.document(alumnoId).get().await()
+                if (alumnoDoc.exists()) {
+                    val alumno = alumnoDoc.toObject(Alumno::class.java)
+                    alumno?.let { alumnos.add(it) }
+                }
+            }
+
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene los alumnos sin registro de actividad para el día actual
+     */
+    suspend fun getAlumnosSinRegistroHoy(alumnosIds: List<String>, hoy: Timestamp): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            if (alumnosIds.isEmpty()) {
+                return@withContext Result.Success(emptyList())
+            }
+
+            // Obtener todos los registros del día de hoy para los alumnos especificados
+            val fechaInicio = Timestamp(Date(hoy.seconds * 1000).apply {
+                hours = 0
+                minutes = 0
+                seconds = 0
+            })
+            val fechaFin = Timestamp(Date(hoy.seconds * 1000).apply {
+                hours = 23
+                minutes = 59
+                seconds = 59
+            })
+
+            val query = registrosCollection
+                .whereIn("alumnoId", alumnosIds)
+                .whereGreaterThanOrEqualTo("fecha", fechaInicio)
+                .whereLessThanOrEqualTo("fecha", fechaFin)
+                .get()
+                .await()
+
+            val alumnosConRegistro = query.documents
+                .mapNotNull { it.getString("alumnoId") }
+                .toSet()
+
+            // Obtener los alumnos sin registro
+            val alumnosSinRegistro = alumnosIds.filter { !alumnosConRegistro.contains(it) }
+
+            if (alumnosSinRegistro.isEmpty()) {
+                return@withContext Result.Success(emptyList())
+            }
+
+            // Obtener los datos completos de los alumnos sin registro
+            val alumnos = mutableListOf<Alumno>()
+
+            for (alumnoId in alumnosSinRegistro) {
+                val alumnoDoc = alumnosCollection.document(alumnoId).get().await()
+                if (alumnoDoc.exists()) {
+                    val alumno = alumnoDoc.toObject(Alumno::class.java)
+                    alumno?.let { alumnos.add(it) }
+                }
+            }
+
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene los mensajes no leídos enviados al profesor
+     */
+    suspend fun getMensajesNoLeidos(profesorId: String): Result<List<Mensaje>> = withContext(Dispatchers.IO) {
+        try {
+            val query = mensajesCollection
+                .whereEqualTo("receptorId", profesorId)
+                .whereEqualTo("leido", false)
+                .get()
+                .await()
+
+            val mensajes = query.toObjects(Mensaje::class.java)
+            return@withContext Result.Success(mensajes)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Crea un nuevo registro de actividad
+     */
+    suspend fun crearRegistroActividad(registro: RegistroActividad): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Si el registro ya tiene un ID, usamos ese, sino generamos uno nuevo
+            val registroId = if (registro.id.isNotBlank()) {
+                registro.id
+            } else {
+                registrosCollection.document().id
+            }
+
+            // Asignar el ID al registro
+            val registroConId = if (registro.id.isBlank()) registro.copy(id = registroId) else registro
+
+            // Guardar el registro
+            registrosCollection.document(registroId).set(registroConId).await()
+
+            return@withContext Result.Success(registroId)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene un registro de actividad por su ID
+     */
+    suspend fun getRegistroById(registroId: String): Result<RegistroActividad> = withContext(Dispatchers.IO) {
+        try {
+            val registroDoc = registrosCollection.document(registroId).get().await()
+
+            if (registroDoc.exists()) {
+                val registro = registroDoc.toObject(RegistroActividad::class.java)
+                return@withContext Result.Success(registro!!)
+            } else {
+                throw Exception("Registro no encontrado")
+            }
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
 }

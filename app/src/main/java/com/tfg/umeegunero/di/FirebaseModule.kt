@@ -2,6 +2,8 @@ package com.tfg.umeegunero.di
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.DebugUtils
 import dagger.Module
@@ -39,5 +41,21 @@ object FirebaseModule {
     @Singleton
     fun provideDebugUtils(usuarioRepository: UsuarioRepository): DebugUtils {
         return DebugUtils(usuarioRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideClaseRepository(
+        firestore: FirebaseFirestore
+    ): ClaseRepository {
+        return ClaseRepository(firestore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCursoRepository(
+        firestore: FirebaseFirestore
+    ): CursoRepository {
+        return CursoRepository(firestore)
     }
 }

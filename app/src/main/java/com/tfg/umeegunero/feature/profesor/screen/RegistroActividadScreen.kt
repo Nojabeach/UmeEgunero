@@ -3,11 +3,6 @@ package com.tfg.umeegunero.feature.profesor.screen
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.res.Configuration
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -681,7 +676,6 @@ fun NecesidadesFisiologicasCard(
                 }
 
                 // Caca
-                // Caca
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -705,287 +699,358 @@ fun NecesidadesFisiologicasCard(
             }
         }
     }
+}
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun ObservacionesCard(
-        observaciones: List<Observacion>,
-        nuevoMensaje: String,
-        nuevoTipo: TipoObservacion,
-        onUpdateMensaje: (String) -> Unit,
-        onUpdateTipo: (TipoObservacion) -> Unit,
-        onAddObservacion: () -> Unit,
-        onRemoveObservacion: (Int) -> Unit
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ObservacionesCard(
+    observaciones: List<Observacion>,
+    nuevoMensaje: String,
+    nuevoTipo: TipoObservacion,
+    onUpdateMensaje: (String) -> Unit,
+    onUpdateTipo: (TipoObservacion) -> Unit,
+    onAddObservacion: () -> Unit,
+    onRemoveObservacion: (Int) -> Unit
+) {
+    var showTipoDropdown by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
-        var showTipoDropdown by remember { mutableStateOf(false) }
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            // Encabezado
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Encabezado
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = ProfesorColor
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Observaciones",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Divider()
+
+            // Agregar nueva observación
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Dropdown para seleccionar tipo
+                Box(
+                    modifier = Modifier.weight(0.3f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = ProfesorColor
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Observaciones",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Divider()
-
-                // Agregar nueva observación
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Dropdown para seleccionar tipo
-                    Box(
-                        modifier = Modifier.weight(0.3f)
-                    ) {
-                        OutlinedTextField(
-                            value = nuevoTipo.name,
-                            onValueChange = { /* No permitir edición directa */ },
-                            label = { Text("Tipo") },
-                            readOnly = true,
-                            trailingIcon = {
-                                IconButton(onClick = { showTipoDropdown = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = "Seleccionar tipo",
-                                        modifier = Modifier.padding(2.dp)
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        DropdownMenu(
-                            expanded = showTipoDropdown,
-                            onDismissRequest = { showTipoDropdown = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                            TipoObservacion.values().forEach { tipo ->
-                                DropdownMenuItem(
-                                    text = { Text(tipo.name) },
-                                    onClick = {
-                                        onUpdateTipo(tipo)
-                                        showTipoDropdown = false
-                                    }
+                    OutlinedTextField(
+                        value = nuevoTipo.name,
+                        onValueChange = { /* No permitir edición directa */ },
+                        label = { Text("Tipo") },
+                        readOnly = true,
+                        trailingIcon = {
+                            IconButton(onClick = { showTipoDropdown = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Seleccionar tipo",
+                                    modifier = Modifier.padding(2.dp)
                                 )
                             }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    DropdownMenu(
+                        expanded = showTipoDropdown,
+                        onDismissRequest = { showTipoDropdown = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        TipoObservacion.values().forEach { tipo ->
+                            DropdownMenuItem(
+                                text = { Text(tipo.name) },
+                                onClick = {
+                                    onUpdateTipo(tipo)
+                                    showTipoDropdown = false
+                                }
+                            )
                         }
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Campo para mensaje
-                    OutlinedTextField(
-                        value = nuevoMensaje,
-                        onValueChange = onUpdateMensaje,
-                        label = { Text("Mensaje") },
-                        modifier = Modifier.weight(0.7f)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Botón para agregar
-                    IconButton(
-                        onClick = onAddObservacion,
-                        enabled = nuevoMensaje.isNotBlank()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Agregar observación",
-                            tint = if (nuevoMensaje.isNotBlank()) ProfesorColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        )
-                    }
                 }
 
-                // Lista de observaciones
-                if (observaciones.isEmpty()) {
-                    Text(
-                        text = "No hay observaciones registradas",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp)
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Campo para mensaje
+                OutlinedTextField(
+                    value = nuevoMensaje,
+                    onValueChange = onUpdateMensaje,
+                    label = { Text("Mensaje") },
+                    modifier = Modifier.weight(0.7f)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Botón para agregar
+                IconButton(
+                    onClick = onAddObservacion,
+                    enabled = nuevoMensaje.isNotBlank()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Agregar observación",
+                        tint = if (nuevoMensaje.isNotBlank()) ProfesorColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
-                } else {
-                    observaciones.forEachIndexed { index, observacion ->
-                        ObservacionItem(
-                            observacion = observacion,
-                            onRemove = { onRemoveObservacion(index) }
-                        )
-                    }
+                }
+            }
+
+            // Lista de observaciones
+            if (observaciones.isEmpty()) {
+                Text(
+                    text = "No hay observaciones registradas",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                )
+            } else {
+                observaciones.forEachIndexed { index, observacion ->
+                    ObservacionItem(
+                        observacion = observacion,
+                        onRemove = { onRemoveObservacion(index) }
+                    )
                 }
             }
         }
     }
+}
 
-    @Composable
-    fun ObservacionItem(
-        observacion: Observacion,
-        onRemove: () -> Unit
+@Composable
+fun ObservacionItem(
+    observacion: Observacion,
+    onRemove: () -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Tipo y hora
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Tipo y hora
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = observacion.tipo.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = formatTimestamp(observacion.hora),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    }
-
-                    // Botón eliminar
-                    IconButton(
-                        onClick = onRemove,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar observación",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Text(
+                        text = observacion.tipo.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = formatTimestamp(observacion.hora),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Mensaje
-                Text(
-                    text = observacion.mensaje,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                // Botón eliminar
+                IconButton(
+                    onClick = onRemove,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar observación",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Mensaje
+            Text(
+                text = observacion.mensaje,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
+}
 
-    // Función para formatear timestamp
-    fun formatTimestamp(timestamp: Timestamp): String {
-        val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        return dateFormat.format(timestamp.toDate())
-    }
+// Función para formatear timestamp
+fun formatTimestamp(timestamp: Timestamp): String {
+    val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    return dateFormat.format(timestamp.toDate())
+}
 
-    @Composable
-    fun HiltRegistroActividadScreen(
-        viewModel: RegistroActividadViewModel = hiltViewModel(),
-        onNavigateBack: () -> Unit,
-        onRegistroGuardado: () -> Unit
-    ) {
-        RegistroActividadScreen(
-            viewModel = viewModel,
-            onNavigateBack = onNavigateBack,
-            onRegistroGuardado = onRegistroGuardado
-        )
-    }
+@Composable
+fun HiltRegistroActividadScreen(
+    viewModel: RegistroActividadViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit,
+    onRegistroGuardado: () -> Unit
+) {
+    RegistroActividadScreen(
+        viewModel = viewModel,
+        onNavigateBack = onNavigateBack,
+        onRegistroGuardado = onRegistroGuardado
+    )
+}
 
-    @Preview(showBackground = true)
-    @Composable
-    fun RegistroActividadScreenPreview() {
-        UmeEguneroTheme {
-            Surface {
-                val alumno = Alumno(
-                    dni = "12345678A",
-                    nombre = "Laura",
-                    apellidos = "González Pérez"
+@Preview(showBackground = true)
+@Composable
+fun RegistroActividadScreenPreview() {
+    UmeEguneroTheme {
+        Surface {
+            val alumno = Alumno(
+                dni = "12345678A",
+                nombre = "Laura",
+                apellidos = "González Pérez"
+            )
+
+            val observaciones = listOf(
+                Observacion(
+                    tipo = TipoObservacion.ROPA,
+                    mensaje = "Necesita cambio de ropa",
+                    hora = Timestamp(Date())
+                ),
+                Observacion(
+                    tipo = TipoObservacion.OTRO,
+                    mensaje = "Ha jugado muy bien con sus compañeros",
+                    hora = Timestamp(Date())
                 )
+            )
 
-                val observaciones = listOf(
-                    Observacion(
-                        tipo = TipoObservacion.ROPA,
-                        mensaje = "Necesita cambio de ropa",
-                        hora = Timestamp(Date())
-                    ),
-                    Observacion(
-                        tipo = TipoObservacion.OTRO,
-                        mensaje = "Ha jugado muy bien con sus compañeros",
-                        hora = Timestamp(Date())
+            // Contenido directo para preview, sin viewModel real
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Registro de Actividad - Preview") },
+                        navigationIcon = {
+                            IconButton(onClick = {}) {
+                                Icon(Icons.Default.ArrowBack, "Volver")
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = {}) {
+                                Icon(Icons.Default.Save, "Guardar")
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = ProfesorColor,
+                            titleContentColor = Color.White,
+                            navigationIconContentColor = Color.White,
+                            actionIconContentColor = Color.White
+                        )
                     )
-                )
-
-                // Versión simplificada del viewModel para previsualización
-                val previewViewModel = object : RegistroActividadViewModel(
-                    object : com.tfg.umeegunero.data.repository.UsuarioRepository {
-                        override suspend fun getUsuarioActualId(): String = "profesor_id"
-                        // Resto de implementaciones necesarias
-                    },
-                    androidx.lifecycle.SavedStateHandle()
+                },
+                floatingActionButton = {
+                    FloatingActionButton(
+                        onClick = {},
+                        containerColor = ProfesorColor,
+                        contentColor = Color.White
+                    ) {
+                        Icon(Icons.Default.Save, "Guardar")
+                    }
+                }
+            ) { paddingValues ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
                 ) {
-                    override val uiState: StateFlow<com.tfg.umeegunero.feature.profesor.viewmodel.RegistroActividadUiState> = MutableStateFlow(
-                        com.tfg.umeegunero.feature.profesor.viewmodel.RegistroActividadUiState(
-                            alumno = alumno,
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        AlumnoInfoCard(alumno = alumno)
+
+                        // Otros componentes con datos de ejemplo
+                        ComidasCard(
                             comidas = Comidas(
                                 primerPlato = Plato("Sopa de verduras", NivelConsumo.BIEN),
                                 segundoPlato = Plato("Pollo con patatas", NivelConsumo.POCO),
                                 postre = Plato("Yogur", NivelConsumo.BIEN)
                             ),
+                            onUpdatePrimerPlato = { _, _ -> },
+                            onUpdateSegundoPlato = { _, _ -> },
+                            onUpdatePostre = { _, _ -> }
+                        )
+
+                        // Después de la ComidasCard
+
+                        SiestaCard(
                             siesta = Siesta(
                                 inicio = Timestamp(Date()),
                                 fin = Timestamp(Date(System.currentTimeMillis() + 5400000)), // 1.5h después
                                 duracion = 90
                             ),
-                            necesidadesFisiologicas = NecesidadesFisiologicas(true, false),
-                            observaciones = observaciones
+                            onUpdateInicio = { _, _ -> },
+                            onUpdateFin = { _, _ -> },
+                            context = LocalContext.current
                         )
-                    )
-                }
 
-                RegistroActividadScreen(
-                    viewModel = previewViewModel,
-                    onNavigateBack = {},
-                    onRegistroGuardado = {}
-                )
+                        NecesidadesFisiologicasCard(
+                            necesidadesFisiologicas = NecesidadesFisiologicas(pipi = true, caca = false),
+                            onUpdate = { _, _ -> }
+                        )
+
+                        ObservacionesCard(
+                            observaciones = listOf(
+                                Observacion(
+                                    tipo = TipoObservacion.ROPA,
+                                    mensaje = "Necesita cambio de ropa",
+                                    hora = Timestamp(Date())
+                                ),
+                                Observacion(
+                                    tipo = TipoObservacion.OTRO,
+                                    mensaje = "Ha jugado muy bien con sus compañeros",
+                                    hora = Timestamp(Date())
+                                )
+                            ),
+                            nuevoMensaje = "",
+                            nuevoTipo = TipoObservacion.OTRO,
+                            onUpdateMensaje = {},
+                            onUpdateTipo = {},
+                            onAddObservacion = {},
+                            onRemoveObservacion = {}
+                        )
+
+                        // Espacio al final para el FAB
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
+                }
             }
         }
     }
+}
 
-    @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-    @Composable
-    fun RegistroActividadScreenDarkPreview() {
-        UmeEguneroTheme(darkTheme = true) {
-            RegistroActividadScreenPreview()
-        }
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun RegistroActividadScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        RegistroActividadScreenPreview()
     }
+}

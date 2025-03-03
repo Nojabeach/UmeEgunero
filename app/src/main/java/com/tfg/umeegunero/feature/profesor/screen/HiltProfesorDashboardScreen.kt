@@ -29,7 +29,7 @@ fun HiltProfesorDashboardScreen(
         viewModel.cargarDatosProfesor()
     }
 
-
+    // Transformar los mensajes del modelo a Triple para la UI
     val mensajesFormateados = remember(uiState.mensajesNoLeidos) {
         uiState.mensajesNoLeidos.map { mensaje ->
             Triple(
@@ -40,6 +40,7 @@ fun HiltProfesorDashboardScreen(
         }
     }
 
+    // Renderizar la pantalla con los datos del uiState
     ProfesorDashboardScreen(
         onLogout = onLogout,
         onNavigateToRegistroActividad = onNavigateToRegistroActividad,
