@@ -681,6 +681,7 @@ fun NecesidadesFisiologicasCard(
                 }
 
                 // Caca
+                // Caca
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -692,16 +693,14 @@ fun NecesidadesFisiologicasCard(
                     Checkbox(
                         checked = necesidadesFisiologicas.caca,
                         onCheckedChange = { checked ->
-                            onUpdate(necesidadesFisiologicas.onCheckedChange = { checked ->
-                                onUpdate(necesidadesFisiologicas.pipi, checked)
-                            }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Caca",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            onUpdate(necesidadesFisiologicas.pipi, checked)
                         }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Caca",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
             }
         }

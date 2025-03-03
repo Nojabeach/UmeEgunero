@@ -29,14 +29,13 @@ fun HiltProfesorDashboardScreen(
         viewModel.cargarDatosProfesor()
     }
 
-    // En la pantalla ProfesorDashboardScreen, mensajesNoLeidos espera una lista de Triple<String, String, Boolean>
-    // Convertimos los mensajes no leídos a este formato
+
     val mensajesFormateados = remember(uiState.mensajesNoLeidos) {
         uiState.mensajesNoLeidos.map { mensaje ->
             Triple(
-                mensaje.emisorId, // Primer elemento: ID del emisor
-                mensaje.texto,    // Segundo elemento: texto del mensaje
-                !mensaje.leido    // Tercer elemento: si no está leído
+                mensaje.emisorId,          // Primer elemento: ID del emisor
+                mensaje.texto,             // Segundo elemento: texto del mensaje
+                !mensaje.leido             // Tercer elemento: si no está leído
             )
         }
     }

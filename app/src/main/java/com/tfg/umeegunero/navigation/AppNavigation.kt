@@ -22,7 +22,6 @@ import com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
 import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
 import com.tfg.umeegunero.feature.common.users.screen.AddUserUiState
