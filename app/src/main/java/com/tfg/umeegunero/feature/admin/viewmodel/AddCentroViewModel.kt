@@ -18,8 +18,8 @@ import java.util.UUID
 import javax.inject.Inject
 
 data class AddCentroUiState(
+    val id: String = "",
     // Información del centro
-    val id: String = "", // Añadimos el ID para edición
     val nombre: String = "",
     val nombreError: String? = null,
 
@@ -41,11 +41,16 @@ data class AddCentroUiState(
     val email: String = "",
     val emailError: String? = null,
 
+    // Contraseñas para crear cuenta de acceso (solo para nuevos centros)
+    val password: String = "",
+    val passwordError: String? = null,
+    val confirmPassword: String = "",
+    val confirmPasswordError: String? = null,
+
     // Estado de la UI
     val isLoading: Boolean = false,
     val error: String? = null,
-    val success: Boolean = false,
-    val isEditMode: Boolean = false
+    val success: Boolean = false
 ) {
     val isFormValid: Boolean get() =
         nombre.isNotBlank() && nombreError == null &&
@@ -55,7 +60,9 @@ data class AddCentroUiState(
                 ciudad.isNotBlank() && ciudadError == null &&
                 provincia.isNotBlank() && provinciaError == null &&
                 telefono.isNotBlank() && telefonoError == null &&
-                email.isNotBlank() && emailError == null
+                email.isNotBlank() && emailError == null &&
+                (id.isNotBlank() || (password.isNotBlank() && passwordError == null &&
+                        confirmPassword.isNotBlank() && confirmPasswordError == null))
 }
 
 @HiltViewModel
@@ -65,53 +72,6 @@ class AddCentroViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AddCentroUiState())
     val uiState: StateFlow<AddCentroUiState> = _uiState.asStateFlow()
-
-    // Función para cargar datos de un centro existente
-    fun loadCentro(centroId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, isEditMode = true) }
-
-            try {
-                when (val result = centroRepository.getCentroById(centroId)) {
-                    is Result.Success -> {
-                        val centro = result.data
-                        _uiState.update {
-                            it.copy(
-                                id = centro.id,
-                                nombre = centro.nombre,
-                                calle = centro.direccion.calle,
-                                numero = centro.direccion.numero,
-                                codigoPostal = centro.direccion.codigoPostal,
-                                ciudad = centro.direccion.ciudad,
-                                provincia = centro.direccion.provincia,
-                                telefono = centro.contacto.telefono,
-                                email = centro.contacto.email,
-                                isLoading = false
-                            )
-                        }
-                    }
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = "Error al cargar el centro: ${result.exception.message}"
-                            )
-                        }
-                    }
-                    else -> {
-                        _uiState.update { it.copy(isLoading = false) }
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Error inesperado: ${e.message}"
-                    )
-                }
-            }
-        }
-    }
 
     fun updateNombre(nombre: String) {
         val error = if (nombre.isBlank()) "El nombre es obligatorio" else null
@@ -165,8 +125,95 @@ class AddCentroViewModel @Inject constructor(
         _uiState.update { it.copy(email = email, emailError = error) }
     }
 
+    fun updatePassword(password: String) {
+        val error = when {
+            password.isBlank() -> "La contraseña es obligatoria"
+            password.length < 8 -> "La contraseña debe tener al menos 8 caracteres"
+            !isPasswordComplex(password) -> "La contraseña debe incluir letras y números"
+            else -> null
+        }
+
+        // También validamos confirmPassword si ya existe
+        val confirmPasswordError = if (_uiState.value.confirmPassword.isNotBlank() &&
+            _uiState.value.confirmPassword != password) {
+            "Las contraseñas no coinciden"
+        } else {
+            null
+        }
+
+        _uiState.update {
+            it.copy(
+                password = password,
+                passwordError = error,
+                confirmPasswordError = confirmPasswordError
+            )
+        }
+    }
+
+    fun updateConfirmPassword(confirmPassword: String) {
+        val error = when {
+            confirmPassword.isBlank() -> "Debe confirmar la contraseña"
+            confirmPassword != _uiState.value.password -> "Las contraseñas no coinciden"
+            else -> null
+        }
+        _uiState.update { it.copy(confirmPassword = confirmPassword, confirmPasswordError = error) }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Carga los datos de un centro existente para edición
+     */
+    fun loadCentro(centroId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            try {
+                val result = centroRepository.getCentroById(centroId)
+
+                when (result) {
+                    is Result.Success -> {
+                        val centro = result.data
+
+                        // Actualizar todos los campos del state con los datos del centro
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                id = centro.id,
+                                nombre = centro.nombre,
+                                calle = centro.direccion.calle,
+                                numero = centro.direccion.numero,
+                                codigoPostal = centro.direccion.codigoPostal,
+                                ciudad = centro.direccion.ciudad,
+                                provincia = centro.direccion.provincia,
+                                telefono = centro.contacto.telefono,
+                                email = centro.contacto.email,
+                                isLoading = false
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Error al cargar el centro: ${result.exception.message}"
+                            )
+                        }
+                    }
+                    is Result.Loading -> {
+                        // No deberíamos llegar aquí si usamos withContext en el repositorio
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Error inesperado: ${e.message}"
+                    )
+                }
+            }
+        }
     }
 
     fun saveCentro() {
@@ -177,10 +224,14 @@ class AddCentroViewModel @Inject constructor(
 
             try {
                 val centro = createCentroFromState()
-                val result = if (_uiState.value.isEditMode) {
-                    centroRepository.updateCentro(centro)
-                } else {
+
+                // Determinamos si es una actualización o un nuevo centro
+                val result = if (_uiState.value.id.isBlank()) {
                     centroRepository.addCentro(centro)
+                } else {
+                    centroRepository.updateCentro(centro).let {
+                        if (it is Result.Success) Result.Success(centro.id) else it
+                    }
                 }
 
                 when (result) {
@@ -193,17 +244,15 @@ class AddCentroViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        val action = if (_uiState.value.isEditMode) "actualizar" else "guardar"
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = "Error al $action el centro: ${result.exception.message}"
+                                error = "Error al guardar el centro: ${result.exception.message}"
                             )
                         }
                     }
-                    else -> {
-                        // No debería llegar aquí
-                        _uiState.update { it.copy(isLoading = false) }
+                    is Result.Loading -> {
+                        // No deberíamos llegar aquí
                     }
                 }
             } catch (e: Exception) {
@@ -273,6 +322,28 @@ class AddCentroViewModel @Inject constructor(
             isValid = false
         }
 
+        // Validar contraseñas solo para centros nuevos
+        if (currentState.id.isBlank()) {
+            if (currentState.password.isBlank()) {
+                _uiState.update { it.copy(passwordError = "La contraseña es obligatoria") }
+                isValid = false
+            } else if (currentState.password.length < 8) {
+                _uiState.update { it.copy(passwordError = "La contraseña debe tener al menos 8 caracteres") }
+                isValid = false
+            } else if (!isPasswordComplex(currentState.password)) {
+                _uiState.update { it.copy(passwordError = "La contraseña debe incluir letras y números") }
+                isValid = false
+            }
+
+            if (currentState.confirmPassword.isBlank()) {
+                _uiState.update { it.copy(confirmPasswordError = "Debe confirmar la contraseña") }
+                isValid = false
+            } else if (currentState.password != currentState.confirmPassword) {
+                _uiState.update { it.copy(confirmPasswordError = "Las contraseñas no coinciden") }
+                isValid = false
+            }
+        }
+
         return isValid
     }
 
@@ -293,7 +364,7 @@ class AddCentroViewModel @Inject constructor(
         )
 
         return Centro(
-            id = if (state.isEditMode) state.id else UUID.randomUUID().toString(),
+            id = state.id.ifBlank { UUID.randomUUID().toString() },
             nombre = state.nombre,
             direccion = direccion,
             contacto = contacto,
@@ -314,5 +385,10 @@ class AddCentroViewModel @Inject constructor(
 
     private fun isValidEmail(email: String): Boolean {
         return Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+
+    private fun isPasswordComplex(password: String): Boolean {
+        return password.matches(".*[0-9].*".toRegex()) &&
+                password.matches(".*[a-zA-Z].*".toRegex())
     }
 }
