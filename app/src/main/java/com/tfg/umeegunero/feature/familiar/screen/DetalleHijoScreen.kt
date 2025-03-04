@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -65,12 +66,13 @@ import com.tfg.umeegunero.ui.theme.FamiliarColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleHijoScreen(
-    viewModel: DetalleHijoViewModel = hiltViewModel(),
+    viewModel: DetalleHijoViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToChat: (String, String?) -> Unit = { _, _ -> },
     onNavigateToRegistros: (String) -> Unit = {}
@@ -79,6 +81,9 @@ fun DetalleHijoScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+
+    // Extraer el alumno para poder usarlo de forma segura
+    val alumno = uiState.alumno
 
     // Mostrar error si existe
     LaunchedEffect(uiState.error) {
@@ -132,7 +137,7 @@ fun DetalleHijoScreen(
                 ) {
                     CircularProgressIndicator(color = FamiliarColor)
                 }
-            } else if (uiState.alumno == null) {
+            } else if (alumno == null) {
                 // Mostrar mensaje de error si no hay alumno
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -168,6 +173,7 @@ fun DetalleHijoScreen(
                     }
                 }
             } else {
+                // Ahora alumno no es nulo, podemos usarlo directamente
                 // Mostrar detalles del alumno
                 Column(
                     modifier = Modifier
@@ -201,7 +207,7 @@ fun DetalleHijoScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = uiState.alumno.nombre.first().toString(),
+                                    text = alumno.nombre.first().toString(),
                                     style = MaterialTheme.typography.headlineLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary
@@ -212,7 +218,7 @@ fun DetalleHijoScreen(
 
                             // Nombre completo
                             Text(
-                                text = "${uiState.alumno.nombre} ${uiState.alumno.apellidos}",
+                                text = "${alumno.nombre} ${alumno.apellidos}",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
@@ -221,7 +227,7 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             // Fecha de nacimiento
-                            uiState.alumno.fechaNacimiento?.let { fecha ->
+                            alumno.fechaNacimiento?.let { fecha ->
                                 Text(
                                     text = "Fecha de nacimiento: ${formatDate(fecha)}",
                                     style = MaterialTheme.typography.bodyLarge
@@ -261,7 +267,7 @@ fun DetalleHijoScreen(
                             InfoRow(
                                 icon = Icons.Default.School,
                                 title = "Centro:",
-                                value = uiState.centroNombre ?: uiState.alumno.centroId
+                                value = uiState.centroNombre ?: alumno.centroId
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -270,7 +276,7 @@ fun DetalleHijoScreen(
                             InfoRow(
                                 icon = Icons.Default.Home,
                                 title = "Aula:",
-                                value = uiState.alumno.aulaId
+                                value = alumno.aulaId
                             )
 
                             if (uiState.profesores.isNotEmpty()) {
@@ -307,7 +313,7 @@ fun DetalleHijoScreen(
                                         )
 
                                         IconButton(
-                                            onClick = { onNavigateToChat(profesor.dni, uiState.alumno?.dni) }
+                                            onClick = { onNavigateToChat(profesor.dni, alumno.dni) }
                                         ) {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Filled.Message,
@@ -356,8 +362,8 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = if (uiState.alumno.alergias?.isNotEmpty() == true)
-                                    uiState.alumno.alergias.joinToString(", ")
+                                text = if (alumno.alergias?.isNotEmpty() == true)
+                                    alumno.alergias.joinToString(", ")
                                 else
                                     "No se han registrado alergias",
                                 style = MaterialTheme.typography.bodyLarge
@@ -375,7 +381,7 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = uiState.alumno.medicacion?.takeIf { it.isNotBlank() }
+                                text = alumno.medicacion?.takeIf { it.isNotBlank() }
                                     ?: "No se ha registrado medicación",
                                 style = MaterialTheme.typography.bodyLarge
                             )
@@ -392,7 +398,7 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = uiState.alumno.observacionesMedicas?.takeIf { it.isNotBlank() }
+                                text = alumno.observacionesMedicas?.takeIf { it.isNotBlank() }
                                     ?: "No se han registrado observaciones médicas",
                                 style = MaterialTheme.typography.bodyLarge
                             )
@@ -460,7 +466,7 @@ fun DetalleHijoScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Button(
-                            onClick = { onNavigateToRegistros(uiState.alumno.dni) }
+                            onClick = { onNavigateToRegistros(alumno.dni) }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CalendarToday,
@@ -532,13 +538,13 @@ fun formatDate(timestamp: Timestamp): String {
 
 fun calcularEdad(fechaNacimiento: Timestamp): Int {
     val fechaNac = fechaNacimiento.toDate()
-    val today = java.util.Calendar.getInstance()
-    val calendar = java.util.Calendar.getInstance()
+    val today = Calendar.getInstance()
+    val calendar = Calendar.getInstance()
     calendar.time = fechaNac
 
-    var edad = today.get(java.util.Calendar.YEAR) - calendar.get(java.util.Calendar.YEAR)
+    var edad = today.get(Calendar.YEAR) - calendar.get(Calendar.YEAR)
 
-    if (today.get(java.util.Calendar.DAY_OF_YEAR) < calendar.get(java.util.Calendar.DAY_OF_YEAR)) {
+    if (today.get(Calendar.DAY_OF_YEAR) < calendar.get(Calendar.DAY_OF_YEAR)) {
         edad--
     }
 
@@ -549,7 +555,12 @@ fun calcularEdad(fechaNacimiento: Timestamp): Int {
 @Composable
 fun DetalleHijoScreenPreview() {
     UmeEguneroTheme {
-        DetalleHijoScreen(onNavigateBack = {})
+        DetalleHijoScreen(
+            onNavigateBack = {},
+            viewModel = TODO(),
+            onNavigateToChat = TODO(),
+            onNavigateToRegistros = TODO()
+        )
     }
 }
 
@@ -557,6 +568,11 @@ fun DetalleHijoScreenPreview() {
 @Composable
 fun DetalleHijoScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        DetalleHijoScreen(onNavigateBack = {})
+        DetalleHijoScreen(
+            onNavigateBack = {},
+            viewModel = TODO(),
+            onNavigateToChat = TODO(),
+            onNavigateToRegistros = TODO()
+        )
     }
 }

@@ -145,8 +145,8 @@ class LoginViewModel @Inject constructor(
 
                             // Verificar que el usuario tiene el tipo adecuado de perfil
                             val tipoUsuarioFirebase = when (userType) {
-                                UserType.ADMIN -> com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_APP
-                                UserType.CENTRO -> com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_CENTRO
+                                UserType.ADMIN_APP -> com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_APP
+                                UserType.ADMIN_CENTRO -> com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_CENTRO
                                 UserType.PROFESOR -> com.tfg.umeegunero.data.model.TipoUsuario.PROFESOR
                                 UserType.FAMILIAR -> com.tfg.umeegunero.data.model.TipoUsuario.FAMILIAR
                             }

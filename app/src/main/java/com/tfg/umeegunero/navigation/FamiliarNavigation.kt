@@ -2,6 +2,7 @@ package com.tfg.umeegunero.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -60,6 +61,7 @@ fun FamiliarNavGraph(
             route = FamiliarDestinations.DASHBOARD_ROUTE
         ) {
             FamiliarDashboardScreen(
+                viewModel = hiltViewModel(),
                 onLogout = onLogout,
                 onNavigateToDetalleRegistro = actions.navigateToDetalleRegistro,
                 onNavigateToDetalleHijo = actions.navigateToDetalleHijo,
@@ -76,6 +78,7 @@ fun FamiliarNavGraph(
         ) { entry ->
             val registroId = entry.arguments?.getString("registroId") ?: ""
             DetalleRegistroScreen(
+                viewModel = hiltViewModel(),
                 onNavigateBack = actions.upPress,
                 onNavigateToChat = actions.navigateToChat
             )
@@ -90,8 +93,10 @@ fun FamiliarNavGraph(
         ) { entry ->
             val alumnoDni = entry.arguments?.getString("alumnoDni") ?: ""
             DetalleHijoScreen(
+                viewModel = hiltViewModel(),
                 onNavigateBack = actions.upPress,
-                onNavigateToChat = actions.navigateToChat
+                onNavigateToChat = actions.navigateToChat,
+                onNavigateToRegistros = actions.navigateToDetalleRegistro
             )
         }
 
@@ -104,6 +109,7 @@ fun FamiliarNavGraph(
         ) { entry ->
             val profesorId = entry.arguments?.getString("profesorId") ?: ""
             ChatScreen(
+                viewModel = hiltViewModel(),
                 onNavigateBack = actions.upPress
             )
         }
@@ -119,6 +125,7 @@ fun FamiliarNavGraph(
             val profesorId = entry.arguments?.getString("profesorId") ?: ""
             val alumnoId = entry.arguments?.getString("alumnoId") ?: ""
             ChatScreen(
+                viewModel = hiltViewModel(),
                 onNavigateBack = actions.upPress
             )
         }

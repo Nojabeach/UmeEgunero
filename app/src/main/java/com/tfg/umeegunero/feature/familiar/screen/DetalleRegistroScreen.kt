@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
@@ -69,7 +68,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleRegistroScreen(
-    viewModel: DetalleRegistroViewModel = hiltViewModel(),
+    viewModel: DetalleRegistroViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToChat: (String, String?) -> Unit = { _, _ -> }
 ) {
@@ -77,6 +76,9 @@ fun DetalleRegistroScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+
+    // Extraer el registro para poder usarlo de forma segura
+    val registro = uiState.registro
 
     // Mostrar error si existe
     LaunchedEffect(uiState.error) {
@@ -108,9 +110,9 @@ fun DetalleRegistroScreen(
                 },
                 actions = {
                     // Botón para chatear con el profesor
-                    uiState.registro?.profesorId?.let { profesorId ->
+                    registro?.profesorId?.let { profesorId ->
                         IconButton(
-                            onClick = { onNavigateToChat(profesorId, uiState.registro?.alumnoId) }
+                            onClick = { onNavigateToChat(profesorId, registro.alumnoId) }
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Message,
@@ -144,7 +146,7 @@ fun DetalleRegistroScreen(
                 ) {
                     CircularProgressIndicator(color = FamiliarColor)
                 }
-            } else if (uiState.registro == null) {
+            } else if (registro == null) {
                 // Mostrar mensaje de error si no hay registro
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -212,7 +214,7 @@ fun DetalleRegistroScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
 
                                 Text(
-                                    text = formatDateExtended(uiState.registro.fecha),
+                                    text = formatDateExtended(registro.fecha),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -264,7 +266,7 @@ fun DetalleRegistroScreen(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Primer plato
-                            uiState.registro.comidas.primerPlato.takeIf { it.descripcion.isNotBlank() }?.let { plato ->
+                            registro.comidas.primerPlato.takeIf { it.descripcion.isNotBlank() }?.let { plato ->
                                 Text(
                                     text = "Primer plato",
                                     style = MaterialTheme.typography.titleMedium,
@@ -288,10 +290,10 @@ fun DetalleRegistroScreen(
                                     )
 
                                     Text(
-                                        text = nivelConsumoText(plato.nivelConsumo),
+                                        text = nivelConsumoText(plato.consumo),
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = nivelConsumoColor(plato.nivelConsumo)
+                                        color = nivelConsumoColor(plato.consumo)
                                     )
                                 }
 
@@ -299,7 +301,7 @@ fun DetalleRegistroScreen(
                             }
 
                             // Segundo plato
-                            uiState.registro.comidas.segundoPlato.takeIf { it.descripcion.isNotBlank() }?.let { plato ->
+                            registro.comidas.segundoPlato.takeIf { it.descripcion.isNotBlank() }?.let { plato ->
                                 Text(
                                     text = "Segundo plato",
                                     style = MaterialTheme.typography.titleMedium,
@@ -323,10 +325,10 @@ fun DetalleRegistroScreen(
                                     )
 
                                     Text(
-                                        text = nivelConsumoText(plato.nivelConsumo),
+                                        text = nivelConsumoText(plato.consumo),
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = nivelConsumoColor(plato.nivelConsumo)
+                                        color = nivelConsumoColor(plato.consumo)
                                     )
                                 }
 
@@ -334,7 +336,7 @@ fun DetalleRegistroScreen(
                             }
 
                             // Postre
-                            uiState.registro.comidas.postre.takeIf { it.descripcion.isNotBlank() }?.let { plato ->
+                            registro.comidas.postre.takeIf { it.descripcion.isNotBlank() }?.let { plato ->
                                 Text(
                                     text = "Postre",
                                     style = MaterialTheme.typography.titleMedium,
@@ -358,19 +360,18 @@ fun DetalleRegistroScreen(
                                     )
 
                                     Text(
-                                        text = nivelConsumoText(plato.nivelConsumo),
+                                        text = nivelConsumoText(plato.consumo),
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = nivelConsumoColor(plato.nivelConsumo)
+                                        color = nivelConsumoColor(plato.consumo)
                                     )
                                 }
                             }
-
                         }
                     }
 
                     // Sección de Siesta
-                    uiState.registro.siesta?.let { siesta ->
+                    registro.siesta?.let { siesta ->
                         ElevatedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -458,10 +459,11 @@ fun DetalleRegistroScreen(
                             }
                         }
                     }
+
                     // Sección de Necesidades Fisiológicas
-                    if (uiState.registro.necesidadesFisiologicas.pipi ||
-                        uiState.registro.necesidadesFisiologicas.caca ||
-                        uiState.registro.necesidadesFisiologicas.observaciones.isNotBlank()) {
+                    if (registro.necesidadesFisiologicas.pipi ||
+                        registro.necesidadesFisiologicas.caca ||
+                        registro.necesidadesFisiologicas.observaciones.isNotBlank()) {
 
                         ElevatedCard(
                             modifier = Modifier
@@ -483,7 +485,7 @@ fun DetalleRegistroScreen(
 
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                if (uiState.registro.necesidadesFisiologicas.pipi) {
+                                if (registro.necesidadesFisiologicas.pipi) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -505,7 +507,7 @@ fun DetalleRegistroScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
 
-                                if (uiState.registro.necesidadesFisiologicas.caca) {
+                                if (registro.necesidadesFisiologicas.caca) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -527,7 +529,7 @@ fun DetalleRegistroScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
 
-                                if (uiState.registro.necesidadesFisiologicas.observaciones.isNotBlank()) {
+                                if (registro.necesidadesFisiologicas.observaciones.isNotBlank()) {
                                     Text(
                                         text = "Observaciones:",
                                         style = MaterialTheme.typography.bodyMedium,
@@ -535,7 +537,7 @@ fun DetalleRegistroScreen(
                                     )
 
                                     Text(
-                                        text = uiState.registro.necesidadesFisiologicas.observaciones,
+                                        text = registro.necesidadesFisiologicas.observaciones,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
@@ -544,7 +546,7 @@ fun DetalleRegistroScreen(
                     }
 
                     // Sección de Observaciones Generales
-                    if (uiState.registro.observaciones.isNotEmpty()) {
+                    if (registro.observaciones.isNotEmpty()) {
                         ElevatedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -566,7 +568,7 @@ fun DetalleRegistroScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 Text(
-                                    text = uiState.registro.observaciones,
+                                    text = registro.observaciones.toString(),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             }
@@ -600,7 +602,6 @@ fun formatDuracion(minutos: Int): String {
     }
 }
 
-
 fun nivelConsumoText(nivel: NivelConsumo): String {
     return when (nivel) {
         NivelConsumo.NADA -> "Nada"
@@ -614,7 +615,6 @@ fun nivelConsumoColor(nivel: NivelConsumo): Color {
         NivelConsumo.NADA -> Color.Red
         NivelConsumo.POCO -> Color(0xFFFF9800) // Orange
         NivelConsumo.BIEN -> Color(0xFF4CAF50) // Green
-
     }
 }
 
@@ -622,7 +622,11 @@ fun nivelConsumoColor(nivel: NivelConsumo): Color {
 @Composable
 fun DetalleRegistroScreenPreview() {
     UmeEguneroTheme {
-        DetalleRegistroScreen(onNavigateBack = {})
+        // Proporcionar un viewModel de simulación para la vista previa
+        DetalleRegistroScreen(
+            viewModel = hiltViewModel(),
+            onNavigateBack = {}
+        )
     }
 }
 
@@ -630,6 +634,10 @@ fun DetalleRegistroScreenPreview() {
 @Composable
 fun DetalleRegistroScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        DetalleRegistroScreen(onNavigateBack = {})
+        // Proporcionar un viewModel de simulación para la vista previa
+        DetalleRegistroScreen(
+            viewModel = hiltViewModel(),
+            onNavigateBack = {}
+        )
     }
 }

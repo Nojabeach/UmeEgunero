@@ -126,7 +126,7 @@ class ChatViewModel @Inject constructor(
                     is Result.Error -> {
                         Timber.e(profesorResult.exception, "Error al cargar profesor")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { /* Ignorar estado Loading */ }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error inesperado al cargar información del profesor")
@@ -171,7 +171,7 @@ class ChatViewModel @Inject constructor(
                         }
                         Timber.e(mensajesResult.exception, "Error al cargar mensajes")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { /* Ignorar estado Loading */ }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -283,7 +283,7 @@ class ChatViewModel @Inject constructor(
                         }
                         Timber.e(result.exception, "Error al enviar mensaje")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { /* Ignorar estado Loading */ }
                 }
             } catch (e: Exception) {
                 _uiState.update {

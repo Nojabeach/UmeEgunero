@@ -115,7 +115,7 @@ fun WelcomeScreen(
             )
     ) {
         IconButton(
-            onClick = { onNavigateToLogin(UserType.ADMIN) },
+            onClick = { onNavigateToLogin(UserType.ADMIN_APP) },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 48.dp, start = 16.dp)
@@ -210,7 +210,7 @@ fun WelcomeScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         LoginButtons(
-                            onCentroLogin = { onNavigateToLogin(UserType.CENTRO) },
+                            onCentroLogin = { onNavigateToLogin(UserType.ADMIN_CENTRO) },
                             onProfesorLogin = { onNavigateToLogin(UserType.PROFESOR) },
                             onFamiliarLogin = { onNavigateToLogin(UserType.FAMILIAR) }
                         )

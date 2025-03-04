@@ -90,7 +90,7 @@ class DetalleRegistroViewModel @Inject constructor(
                         }
                         Timber.e(registroResult.exception, "Error al cargar registro")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { /* Ignorar estado Loading */ }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -126,7 +126,7 @@ class DetalleRegistroViewModel @Inject constructor(
                     is Result.Error -> {
                         Timber.e(profesorResult.exception, "Error al cargar profesor")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { /* Ignorar estado Loading */ }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error inesperado al cargar profesor")

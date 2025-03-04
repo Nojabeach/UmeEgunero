@@ -87,7 +87,7 @@ class DetalleHijoViewModel @Inject constructor(
                         }
                         Timber.e(alumnoResult.exception, "Error al cargar alumno")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { /* Ignorar estado Loading */ }
                 }
             } catch (e: Exception) {
                 _uiState.update {

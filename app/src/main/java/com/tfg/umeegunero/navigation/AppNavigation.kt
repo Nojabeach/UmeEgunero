@@ -97,8 +97,8 @@ fun AppNavigation(
             WelcomeScreen(
                 onNavigateToLogin = { userType ->
                     val userTypeStr = when(userType) {
-                        UserType.ADMIN -> "ADMIN"
-                        UserType.CENTRO -> "CENTRO"
+                        UserType.ADMIN_APP -> "ADMIN"
+                        UserType.ADMIN_CENTRO-> "CENTRO"
                         UserType.PROFESOR -> "PROFESOR"
                         UserType.FAMILIAR -> "FAMILIAR"
                     }
@@ -123,8 +123,8 @@ fun AppNavigation(
             val userTypeStr = backStackEntry.arguments?.getString("userType") ?: "FAMILIAR"
             val userType = remember(userTypeStr) {
                 when(userTypeStr) {
-                    "ADMIN" -> UserType.ADMIN
-                    "CENTRO" -> UserType.CENTRO
+                    "ADMIN" -> UserType.ADMIN_APP
+                    "CENTRO" -> UserType.ADMIN_CENTRO
                     "PROFESOR" -> UserType.PROFESOR
                     else -> UserType.FAMILIAR
                 }
@@ -136,8 +136,8 @@ fun AppNavigation(
                 onNavigateBack = { navController.popBackStack() },
                 onLoginSuccess = {
                     val route = when(userType) {
-                        UserType.ADMIN -> AppScreens.AdminDashboard.route
-                        UserType.CENTRO -> AppScreens.CentroDashboard.route
+                        UserType.ADMIN_APP -> AppScreens.AdminDashboard.route
+                        UserType.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
                         UserType.PROFESOR -> AppScreens.ProfesorDashboard.route
                         UserType.FAMILIAR -> AppScreens.FamiliarDashboard.route
                     }

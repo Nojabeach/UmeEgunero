@@ -89,16 +89,16 @@ fun LoginScreen(
 
     // Color según tipo de usuario
     val userTypeColor = when (userType) {
-        UserType.ADMIN -> MaterialTheme.colorScheme.tertiary
-        UserType.CENTRO -> Color(0xFF007AFF) // Azul iOS
+        UserType.ADMIN_APP -> MaterialTheme.colorScheme.tertiary
+        UserType.ADMIN_CENTRO-> Color(0xFF007AFF) // Azul iOS
         UserType.PROFESOR -> Color(0xFF34C759) // Verde iOS
         UserType.FAMILIAR -> Color(0xFF5856D6) // Púrpura iOS
     }
 
     // Título según tipo de usuario
     val userTypeTitle = when (userType) {
-        UserType.ADMIN -> "Administrador"
-        UserType.CENTRO -> "Centro Educativo"
+        UserType.ADMIN_APP -> "Administrador"
+        UserType.ADMIN_CENTRO -> "Centro Educativo"
         UserType.PROFESOR -> "Profesor"
         UserType.FAMILIAR -> "Familiar"
     }
@@ -352,8 +352,8 @@ fun LoginScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val instructionText = when (userType) {
-                            UserType.ADMIN -> "Accede con tus credenciales de administrador de la aplicación."
-                            UserType.CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
+                            UserType.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación."
+                            UserType.ADMIN_CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
                             UserType.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo."
                             UserType.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro."
                         }
@@ -384,13 +384,13 @@ private fun Color.luminance(): Float {
 fun LoginScreenLightPreview() {
     UmeEguneroTheme(darkTheme = false) {
         LoginScreen(
-            userType = UserType.ADMIN,
+            userType = UserType.ADMIN_APP,
             onNavigateBack = {},
             onLoginSuccess = { userType ->
                 // Simular navegación para el preview
                 when (userType) {
-                    UserType.ADMIN -> println("Navegando a Admin Dashboard")
-                    UserType.CENTRO -> println("Navegando a Centro Dashboard")
+                    UserType.ADMIN_APP -> println("Navegando a Admin Dashboard")
+                    UserType.ADMIN_CENTRO -> println("Navegando a Centro Dashboard")
                     UserType.PROFESOR -> println("Navegando a Profesor Dashboard")
                     UserType.FAMILIAR -> println("Navegando a Familiar Dashboard")
                 }
@@ -404,13 +404,13 @@ fun LoginScreenLightPreview() {
 fun LoginScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
         LoginScreen(
-            userType = UserType.ADMIN,
+            userType = UserType.ADMIN_APP,
             onNavigateBack = {},
             onLoginSuccess = { userType ->
                 // Simular navegación para el preview
                 when (userType) {
-                    UserType.ADMIN -> println("Navegando a Admin Dashboard")
-                    UserType.CENTRO -> println("Navegando a Centro Dashboard")
+                    UserType.ADMIN_APP -> println("Navegando a Admin Dashboard")
+                    UserType.ADMIN_CENTRO -> println("Navegando a Centro Dashboard")
                     UserType.PROFESOR -> println("Navegando a Profesor Dashboard")
                     UserType.FAMILIAR -> println("Navegando a Familiar Dashboard")
                 }
