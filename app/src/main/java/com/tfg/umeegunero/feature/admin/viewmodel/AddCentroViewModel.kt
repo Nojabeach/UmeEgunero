@@ -101,9 +101,14 @@ class AddCentroViewModel @Inject constructor(
      */
     private fun cargarProvincias() {
         viewModelScope.launch {
-            val listaProvincias = ciudadRepository.obtenerProvincias()
-            _provincias.value = listaProvincias
-            Timber.d("Provincias cargadas: ${listaProvincias.size}")
+            try {
+                val listaProvincias = ciudadRepository.obtenerProvincias()
+                _provincias.value = listaProvincias
+                Timber.d("Provincias cargadas: ${listaProvincias.size}")
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar provincias")
+                _provincias.value = emptyList()
+            }
         }
     }
 

@@ -14,6 +14,8 @@ import timber.log.Timber
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Repositorio para gestionar datos de ciudades y códigos postales.
@@ -57,8 +59,8 @@ class CiudadRepository @Inject constructor(
                 }
             }
             
-            // Realizar la búsqueda en segundo plano
-            Thread {
+            // Realizar la búsqueda en una coroutine
+            CoroutineScope(Dispatchers.IO).launch {
                 try {
                     // Obtener el código de provincia (primeros dos dígitos del CP)
                     val codigoProvincia = codigoPostal.substring(0, 2)
@@ -66,25 +68,33 @@ class CiudadRepository @Inject constructor(
                     // Intentar obtener los códigos postales de la API
                     val ciudades = buscarCiudadesEnGeoApi(codigoPostal, codigoProvincia)
                     
-                    if (ciudades.isNotEmpty()) {
-                        // Guardar en caché
-                        busquedasCodigosPostalesCache[codigoPostal] = ciudades
-                        callback(ciudades, null)
-                    } else {
-                        // Si no hay resultados, intentar buscar por provincia
-                        val ciudadesPorProvincia = buscarCiudadesPorProvincia(codigoProvincia)
-                        
-                        if (ciudadesPorProvincia.isNotEmpty()) {
-                            callback(ciudadesPorProvincia, "No se encontró el código postal exacto. Mostrando resultados de la provincia.")
+                    withContext(Dispatchers.Main) {
+                        if (ciudades.isNotEmpty()) {
+                            // Guardar en caché
+                            busquedasCodigosPostalesCache[codigoPostal] = ciudades
+                            callback(ciudades, null)
                         } else {
-                            callback(null, "No se encontraron resultados. Introduce manualmente la ciudad y provincia.")
+                            // Si no hay resultados, intentar buscar por provincia
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val ciudadesPorProvincia = buscarCiudadesPorProvincia(codigoProvincia)
+                                
+                                withContext(Dispatchers.Main) {
+                                    if (ciudadesPorProvincia.isNotEmpty()) {
+                                        callback(ciudadesPorProvincia, "No se encontró el código postal exacto. Mostrando resultados de la provincia.")
+                                    } else {
+                                        callback(null, "No se encontraron resultados. Introduce manualmente la ciudad y provincia.")
+                                    }
+                                }
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error al buscar ciudades por código postal en GeoAPI")
-                    callback(null, "Error al buscar ciudades. Introduce manualmente la ciudad y provincia.")
+                    withContext(Dispatchers.Main) {
+                        callback(null, "Error al buscar ciudades. Introduce manualmente la ciudad y provincia.")
+                    }
                 }
-            }.start()
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error al iniciar búsqueda de ciudades por código postal")
             callback(null, "Error al buscar ciudades. Introduce manualmente la ciudad y provincia.")
@@ -94,103 +104,120 @@ class CiudadRepository @Inject constructor(
     /**
      * Busca ciudades en la API de GeoAPI España por código postal
      */
-    private fun buscarCiudadesEnGeoApi(codigoPostal: String, codigoProvincia: String): List<Ciudad> {
-        try {
-            // Intentar obtener los códigos postales de la API
-            val response = GeoApiRetrofitClient.geoApiService.getCodigosPostales(
-                codigoProvincia = codigoProvincia
-            ).execute()
-            
-            if (response.isSuccessful) {
-                val codigosPostalesData = response.body()?.data ?: emptyList()
+    private suspend fun buscarCiudadesEnGeoApi(codigoPostal: String, codigoProvincia: String): List<Ciudad> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Intentar obtener los códigos postales de la API
+                val response = GeoApiRetrofitClient.geoApiService.getCodigosPostales(
+                    codigoProvincia = codigoProvincia
+                )
                 
-                // Filtrar por el código postal exacto
-                val codigosPostalesFiltrados = codigosPostalesData.filter { 
-                    it.codigoPostal == codigoPostal 
+                if (response.isSuccessful) {
+                    val codigosPostalesData = response.body()?.data ?: emptyList()
+                    
+                    // Filtrar por el código postal exacto
+                    val codigosPostalesFiltrados = codigosPostalesData.filter { 
+                        it.codigoPostal == codigoPostal 
+                    }
+                    
+                    // Convertir a Ciudad
+                    return@withContext codigosPostalesFiltrados.map { 
+                        Ciudad(
+                            nombre = it.municipio,
+                            codigoPostal = it.codigoPostal,
+                            provincia = it.provincia,
+                            codigoProvincia = it.codigoProvincia
+                        )
+                    }.distinctBy { it.nombre }
                 }
-                
-                // Convertir a Ciudad
-                return codigosPostalesFiltrados.map { 
-                    Ciudad(
-                        nombre = it.municipio,
-                        provincia = it.provincia
-                    )
-                }.distinctBy { it.nombre }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener códigos postales de GeoAPI")
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener códigos postales de GeoAPI")
+            
+            return@withContext emptyList()
         }
-        
-        return emptyList()
     }
     
     /**
      * Busca ciudades por provincia
      */
-    private fun buscarCiudadesPorProvincia(codigoProvincia: String): List<Ciudad> {
-        try {
-            // Comprobar si ya tenemos los códigos postales de esta provincia en caché
-            if (codigosPostalesPorProvinciaCache.containsKey(codigoProvincia)) {
-                return codigosPostalesPorProvinciaCache[codigoProvincia]?.map { 
-                    Ciudad(
-                        nombre = it.municipio,
-                        provincia = it.provincia
-                    )
-                }?.distinctBy { it.nombre }?.take(5) ?: emptyList()
+    private suspend fun buscarCiudadesPorProvincia(codigoProvincia: String): List<Ciudad> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Comprobar si ya tenemos los códigos postales de esta provincia en caché
+                if (codigosPostalesPorProvinciaCache.containsKey(codigoProvincia)) {
+                    return@withContext codigosPostalesPorProvinciaCache[codigoProvincia]?.map { 
+                        Ciudad(
+                            nombre = it.municipio,
+                            codigoPostal = it.codigoPostal,
+                            provincia = it.provincia,
+                            codigoProvincia = it.codigoProvincia
+                        )
+                    }?.distinctBy { it.nombre }?.take(5) ?: emptyList()
+                }
+                
+                // Obtener los códigos postales de la provincia
+                val response = GeoApiRetrofitClient.geoApiService.getCodigosPostales(
+                    codigoProvincia = codigoProvincia
+                )
+                
+                if (response.isSuccessful) {
+                    val codigosPostalesData = response.body()?.data ?: emptyList()
+                    
+                    // Guardar en caché
+                    codigosPostalesPorProvinciaCache[codigoProvincia] = codigosPostalesData
+                    
+                    // Convertir a Ciudad y devolver los primeros 5 resultados
+                    return@withContext codigosPostalesData
+                        .map { 
+                            Ciudad(
+                                nombre = it.municipio,
+                                codigoPostal = it.codigoPostal,
+                                provincia = it.provincia,
+                                codigoProvincia = it.codigoProvincia
+                            ) 
+                        }
+                        .distinctBy { it.nombre }
+                        .take(5)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener ciudades por provincia de GeoAPI")
             }
             
-            // Obtener los códigos postales de la provincia
-            val response = GeoApiRetrofitClient.geoApiService.getCodigosPostales(
-                codigoProvincia = codigoProvincia
-            ).execute()
-            
-            if (response.isSuccessful) {
-                val codigosPostalesData = response.body()?.data ?: emptyList()
-                
-                // Guardar en caché
-                codigosPostalesPorProvinciaCache[codigoProvincia] = codigosPostalesData
-                
-                // Convertir a Ciudad y devolver los primeros 5 resultados
-                return codigosPostalesData
-                    .map { Ciudad(nombre = it.municipio, provincia = it.provincia) }
-                    .distinctBy { it.nombre }
-                    .take(5)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener ciudades por provincia de GeoAPI")
+            return@withContext emptyList()
         }
-        
-        return emptyList()
     }
     
     /**
      * Obtiene la lista de provincias disponibles
      */
-    fun obtenerProvincias(): List<String> {
-        // Si ya tenemos las provincias en caché, devolverlas
-        if (provinciasCache != null) {
-            return provinciasCache!!
-        }
-        
-        try {
-            // Obtener las provincias de la API
-            val response = GeoApiRetrofitClient.geoApiService.getProvincias().execute()
-            
-            if (response.isSuccessful) {
-                val provinciasData = response.body()?.data ?: emptyList()
-                val provincias = provinciasData.map { it.nombre }.sorted()
-                
-                // Guardar en caché
-                provinciasCache = provincias
-                
-                return provincias
+    suspend fun obtenerProvincias(): List<String> {
+        return withContext(Dispatchers.IO) {
+            // Si ya tenemos las provincias en caché, devolverlas
+            if (provinciasCache != null) {
+                return@withContext provinciasCache!!
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener provincias de GeoAPI")
+            
+            try {
+                // Obtener las provincias de la API
+                val response = GeoApiRetrofitClient.geoApiService.getProvincias()
+                
+                if (response.isSuccessful) {
+                    val provinciasData = response.body()?.data ?: emptyList()
+                    val provincias = provinciasData.map { it.nombre }.sorted()
+                    
+                    // Guardar en caché
+                    provinciasCache = provincias
+                    
+                    return@withContext provincias
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener provincias de GeoAPI")
+            }
+            
+            // Si hay un error, devolver una lista de provincias de ejemplo
+            return@withContext usarProvinciasEjemplo()
         }
-        
-        // Si hay un error, devolver una lista de provincias de ejemplo
-        return usarProvinciasEjemplo()
     }
     
     /**
@@ -223,7 +250,7 @@ class CiudadRepository @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 // Obtener todas las provincias para encontrar el código
-                val provinciasResponse = GeoApiRetrofitClient.geoApiService.getProvincias().execute()
+                val provinciasResponse = GeoApiRetrofitClient.geoApiService.getProvincias()
                 
                 if (provinciasResponse.isSuccessful) {
                     val provinciasData = provinciasResponse.body()?.data ?: emptyList()
@@ -233,7 +260,7 @@ class CiudadRepository @Inject constructor(
                         // Obtener los códigos postales de la provincia
                         val codigosPostalesResponse = GeoApiRetrofitClient.geoApiService.getCodigosPostales(
                             codigoProvincia = provinciaData.codigo
-                        ).execute()
+                        )
                         
                         if (codigosPostalesResponse.isSuccessful) {
                             val codigosPostalesData = codigosPostalesResponse.body()?.data ?: emptyList()
