@@ -5,8 +5,8 @@ import com.google.gson.Gson
 import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.data.model.CodigoPostalData
 import com.tfg.umeegunero.data.model.toCiudad
-import com.tfg.umeegunero.data.network.GeoApiRetrofitClient
-import com.tfg.umeegunero.data.network.CodigoPostalGeoData
+import com.tfg.umeegunero.data.network.NominatimRetrofitClient
+import com.tfg.umeegunero.data.network.NominatimPlace
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,8 +20,8 @@ import kotlinx.coroutines.launch
 /**
  * Repositorio para gestionar datos de ciudades y códigos postales.
  * 
- * Fuente de datos: GeoAPI España (https://geoapi.es/)
- * Se utiliza el modo sandbox para pruebas.
+ * Fuente de datos: Nominatim OpenStreetMap API (https://nominatim.org/)
+ * API gratuita y de código abierto.
  */
 @Singleton
 class CiudadRepository @Inject constructor(
@@ -30,9 +30,6 @@ class CiudadRepository @Inject constructor(
     // Caché de provincias
     private var provinciasCache: List<String>? = null
     
-    // Caché de códigos postales por provincia
-    private val codigosPostalesPorProvinciaCache = mutableMapOf<String, List<CodigoPostalGeoData>>()
-    
     // Caché de búsquedas de códigos postales
     private val busquedasCodigosPostalesCache = mutableMapOf<String, List<Ciudad>>()
     
@@ -40,7 +37,7 @@ class CiudadRepository @Inject constructor(
     private var usandoDatosDeMuestra = false
 
     /**
-     * Busca ciudades por código postal utilizando la API de GeoAPI España
+     * Busca ciudades por código postal utilizando la API de Nominatim
      */
     fun buscarCiudadesPorCodigoPostal(codigoPostal: String, callback: (List<Ciudad>?, String?) -> Unit) {
         // Validar que el código postal tenga 5 dígitos
@@ -62,11 +59,8 @@ class CiudadRepository @Inject constructor(
             // Realizar la búsqueda en una coroutine
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // Obtener el código de provincia (primeros dos dígitos del CP)
-                    val codigoProvincia = codigoPostal.substring(0, 2)
-                    
-                    // Intentar obtener los códigos postales de la API
-                    val ciudades = buscarCiudadesEnGeoApi(codigoPostal, codigoProvincia)
+                    // Buscar lugares por código postal en Nominatim
+                    val ciudades = buscarCiudadesEnNominatim(codigoPostal)
                     
                     withContext(Dispatchers.Main) {
                         if (ciudades.isNotEmpty()) {
@@ -74,22 +68,11 @@ class CiudadRepository @Inject constructor(
                             busquedasCodigosPostalesCache[codigoPostal] = ciudades
                             callback(ciudades, null)
                         } else {
-                            // Si no hay resultados, intentar buscar por provincia
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val ciudadesPorProvincia = buscarCiudadesPorProvincia(codigoProvincia)
-                                
-                                withContext(Dispatchers.Main) {
-                                    if (ciudadesPorProvincia.isNotEmpty()) {
-                                        callback(ciudadesPorProvincia, "No se encontró el código postal exacto. Mostrando resultados de la provincia.")
-                                    } else {
-                                        callback(null, "No se encontraron resultados. Introduce manualmente la ciudad y provincia.")
-                                    }
-                                }
-                            }
+                            callback(null, "No se encontraron resultados. Introduce manualmente la ciudad y provincia.")
                         }
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al buscar ciudades por código postal en GeoAPI")
+                    Timber.e(e, "Error al buscar ciudades por código postal en Nominatim")
                     withContext(Dispatchers.Main) {
                         callback(null, "Error al buscar ciudades. Introduce manualmente la ciudad y provincia.")
                     }
@@ -102,86 +85,58 @@ class CiudadRepository @Inject constructor(
     }
     
     /**
-     * Busca ciudades en la API de GeoAPI España por código postal
+     * Busca ciudades en la API de Nominatim por código postal
      */
-    private suspend fun buscarCiudadesEnGeoApi(codigoPostal: String, codigoProvincia: String): List<Ciudad> {
+    private suspend fun buscarCiudadesEnNominatim(codigoPostal: String): List<Ciudad> {
         return withContext(Dispatchers.IO) {
             try {
-                // Intentar obtener los códigos postales de la API
-                val response = GeoApiRetrofitClient.geoApiService.getCodigosPostales(
-                    codigoProvincia = codigoProvincia
+                // Intentar obtener los lugares por código postal
+                val response = NominatimRetrofitClient.nominatimApiService.searchByPostalCode(
+                    postalCode = codigoPostal,
+                    limit = 10
                 )
                 
                 if (response.isSuccessful) {
-                    val codigosPostalesData = response.body()?.data ?: emptyList()
+                    val places = response.body() ?: emptyList()
                     
-                    // Filtrar por el código postal exacto
-                    val codigosPostalesFiltrados = codigosPostalesData.filter { 
-                        it.codigoPostal == codigoPostal 
+                    if (places.isNotEmpty()) {
+                        Timber.d("Encontrados ${places.size} lugares para CP $codigoPostal en Nominatim")
+                        
+                        // Convertir a Ciudad
+                        return@withContext places.mapNotNull { place -> 
+                            place.address?.let { address ->
+                                val cityName = address.getCityName() ?: return@let null
+                                
+                                // Nominatim usa "state" para la comunidad autónoma y "province" para la provincia
+                                // En España, necesitamos mapear esto correctamente
+                                val provincia = when {
+                                    // Si tenemos province, usamos esa
+                                    address.province != null && address.province.isNotBlank() -> address.province
+                                    // Si no, intentamos con state (comunidad autónoma)
+                                    address.state != null && address.state.isNotBlank() -> address.state
+                                    // Si no tenemos ninguna, usamos un valor por defecto
+                                    else -> "Desconocida"
+                                }
+                                
+                                // Para el código de provincia, usamos county si está disponible
+                                val codigoProvincia = address.county ?: ""
+                                
+                                Ciudad(
+                                    nombre = cityName,
+                                    codigoPostal = address.postcode ?: codigoPostal,
+                                    provincia = provincia,
+                                    codigoProvincia = codigoProvincia
+                                )
+                            }
+                        }.distinctBy { it.nombre }
                     }
-                    
-                    // Convertir a Ciudad
-                    return@withContext codigosPostalesFiltrados.map { 
-                        Ciudad(
-                            nombre = it.municipio,
-                            codigoPostal = it.codigoPostal,
-                            provincia = it.provincia,
-                            codigoProvincia = it.codigoProvincia
-                        )
-                    }.distinctBy { it.nombre }
+                } else {
+                    // Registrar el error de la API
+                    val errorBody = response.errorBody()?.string() ?: "Error desconocido"
+                    Timber.e("Error en la respuesta de Nominatim: $errorBody")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al obtener códigos postales de GeoAPI")
-            }
-            
-            return@withContext emptyList()
-        }
-    }
-    
-    /**
-     * Busca ciudades por provincia
-     */
-    private suspend fun buscarCiudadesPorProvincia(codigoProvincia: String): List<Ciudad> {
-        return withContext(Dispatchers.IO) {
-            try {
-                // Comprobar si ya tenemos los códigos postales de esta provincia en caché
-                if (codigosPostalesPorProvinciaCache.containsKey(codigoProvincia)) {
-                    return@withContext codigosPostalesPorProvinciaCache[codigoProvincia]?.map { 
-                        Ciudad(
-                            nombre = it.municipio,
-                            codigoPostal = it.codigoPostal,
-                            provincia = it.provincia,
-                            codigoProvincia = it.codigoProvincia
-                        )
-                    }?.distinctBy { it.nombre }?.take(5) ?: emptyList()
-                }
-                
-                // Obtener los códigos postales de la provincia
-                val response = GeoApiRetrofitClient.geoApiService.getCodigosPostales(
-                    codigoProvincia = codigoProvincia
-                )
-                
-                if (response.isSuccessful) {
-                    val codigosPostalesData = response.body()?.data ?: emptyList()
-                    
-                    // Guardar en caché
-                    codigosPostalesPorProvinciaCache[codigoProvincia] = codigosPostalesData
-                    
-                    // Convertir a Ciudad y devolver los primeros 5 resultados
-                    return@withContext codigosPostalesData
-                        .map { 
-                            Ciudad(
-                                nombre = it.municipio,
-                                codigoPostal = it.codigoPostal,
-                                provincia = it.provincia,
-                                codigoProvincia = it.codigoProvincia
-                            ) 
-                        }
-                        .distinctBy { it.nombre }
-                        .take(5)
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener ciudades por provincia de GeoAPI")
+                Timber.e(e, "Error al obtener lugares de Nominatim para CP: $codigoPostal")
             }
             
             return@withContext emptyList()
@@ -198,35 +153,17 @@ class CiudadRepository @Inject constructor(
                 return@withContext provinciasCache!!
             }
             
-            try {
-                // Obtener las provincias de la API
-                val response = GeoApiRetrofitClient.geoApiService.getProvincias()
-                
-                if (response.isSuccessful) {
-                    val provinciasData = response.body()?.data ?: emptyList()
-                    val provincias = provinciasData.map { it.nombre }.sorted()
-                    
-                    // Guardar en caché
-                    provinciasCache = provincias
-                    
-                    return@withContext provincias
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener provincias de GeoAPI")
-            }
-            
-            // Si hay un error, devolver una lista de provincias de ejemplo
+            // Nominatim no proporciona un endpoint directo para obtener todas las provincias
+            // Por lo que usamos una lista predefinida
             return@withContext usarProvinciasEjemplo()
         }
     }
     
     /**
-     * Obtiene la lista de provincias de ejemplo como fallback
+     * Obtiene la lista de provincias de España
      */
     private fun usarProvinciasEjemplo(): List<String> {
-        usandoDatosDeMuestra = true
-        
-        val provinciasEjemplo = listOf(
+        val provinciasEspana = listOf(
             "Álava", "Albacete", "Alicante", "Almería", "Asturias", "Ávila", "Badajoz", 
             "Barcelona", "Burgos", "Cáceres", "Cádiz", "Cantabria", "Castellón", "Ciudad Real", 
             "Córdoba", "Cuenca", "Girona", "Granada", "Guadalajara", "Guipúzcoa", "Huelva", 
@@ -237,10 +174,10 @@ class CiudadRepository @Inject constructor(
         )
         
         // Guardar en caché
-        provinciasCache = provinciasEjemplo
+        provinciasCache = provinciasEspana
         
-        Timber.d("Usando provincias de ejemplo (fallback)")
-        return provinciasEjemplo
+        Timber.d("Usando lista predefinida de provincias de España")
+        return provinciasEspana
     }
     
     /**
@@ -249,39 +186,68 @@ class CiudadRepository @Inject constructor(
     suspend fun buscarCodigosPostalesPorProvincia(provincia: String): List<CodigoPostalData> {
         return withContext(Dispatchers.IO) {
             try {
-                // Obtener todas las provincias para encontrar el código
-                val provinciasResponse = GeoApiRetrofitClient.geoApiService.getProvincias()
+                // Buscar lugares en la provincia especificada
+                val response = NominatimRetrofitClient.nominatimApiService.search(
+                    query = "$provincia, España",
+                    limit = 20
+                )
                 
-                if (provinciasResponse.isSuccessful) {
-                    val provinciasData = provinciasResponse.body()?.data ?: emptyList()
-                    val provinciaData = provinciasData.find { it.nombre.equals(provincia, ignoreCase = true) }
+                if (response.isSuccessful) {
+                    val places = response.body() ?: emptyList()
                     
-                    if (provinciaData != null) {
-                        // Obtener los códigos postales de la provincia
-                        val codigosPostalesResponse = GeoApiRetrofitClient.geoApiService.getCodigosPostales(
-                            codigoProvincia = provinciaData.codigo
-                        )
-                        
-                        if (codigosPostalesResponse.isSuccessful) {
-                            val codigosPostalesData = codigosPostalesResponse.body()?.data ?: emptyList()
-                            
-                            // Convertir a CodigoPostalData
-                            return@withContext codigosPostalesData.map { 
-                                CodigoPostalData(
-                                    codigoPostal = it.codigoPostal,
-                                    municipio = it.municipio,
-                                    provincia = it.provincia,
-                                    codigoProvincia = it.codigoProvincia
-                                )
-                            }
+                    // Filtrar lugares que tengan código postal y pertenezcan a la provincia
+                    val codigosPostales = places
+                        .filter { place -> 
+                            val address = place.address
+                            // Verificar que el lugar pertenece a la provincia buscada
+                            ((address?.province != null && address.province == provincia) || 
+                             (address?.state != null && address.state == provincia)) && 
+                            // Y que tiene código postal
+                            address?.postcode != null && address.postcode.isNotBlank()
                         }
+                        .map { place ->
+                            val address = place.address!!
+                            CodigoPostalData(
+                                codigoPostal = address.postcode ?: "",
+                                municipio = address.getCityName() ?: place.displayName,
+                                provincia = provincia,
+                                codigoProvincia = address.county ?: ""
+                            )
+                        }
+                        .distinctBy { it.codigoPostal }
+                    
+                    if (codigosPostales.isNotEmpty()) {
+                        return@withContext codigosPostales
                     }
                 }
                 
-                emptyList<CodigoPostalData>()
+                // Si no encontramos resultados, intentamos una búsqueda más general
+                val fallbackResponse = NominatimRetrofitClient.nominatimApiService.search(
+                    query = "postcode:$provincia",
+                    limit = 10
+                )
+                
+                if (fallbackResponse.isSuccessful) {
+                    val places = fallbackResponse.body() ?: emptyList()
+                    return@withContext places
+                        .filter { it.address?.postcode != null }
+                        .map { place ->
+                            val address = place.address!!
+                            CodigoPostalData(
+                                codigoPostal = address.postcode ?: "",
+                                municipio = address.getCityName() ?: place.displayName,
+                                provincia = provincia,
+                                codigoProvincia = address.county ?: ""
+                            )
+                        }
+                        .distinctBy { it.codigoPostal }
+                }
+                
+                // Si no encontramos nada, devolvemos una lista vacía
+                emptyList()
             } catch (e: Exception) {
-                Timber.e(e, "Error al buscar códigos postales por provincia")
-                emptyList<CodigoPostalData>()
+                Timber.e(e, "Error al buscar códigos postales por provincia: $provincia")
+                emptyList()
             }
         }
     }
@@ -291,7 +257,6 @@ class CiudadRepository @Inject constructor(
      */
     fun limpiarCaches() {
         provinciasCache = null
-        codigosPostalesPorProvinciaCache.clear()
         busquedasCodigosPostalesCache.clear()
     }
 }

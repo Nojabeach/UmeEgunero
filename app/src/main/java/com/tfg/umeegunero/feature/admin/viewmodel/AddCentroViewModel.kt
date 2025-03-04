@@ -10,6 +10,7 @@ import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.Result
 import com.tfg.umeegunero.data.repository.CiudadRepository
 import com.tfg.umeegunero.data.model.Ciudad
+import com.tfg.umeegunero.data.network.NominatimRetrofitClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,7 +59,13 @@ data class AddCentroUiState(
     // Ciudades sugeridas por código postal
     val ciudadesSugeridas: List<Ciudad> = emptyList(),
     val isBuscandoCiudades: Boolean = false,
-    val errorBusquedaCiudades: String? = null
+    val errorBusquedaCiudades: String? = null,
+    
+    // Coordenadas para el mapa
+    val latitud: Double? = null,
+    val longitud: Double? = null,
+    val mostrarMapa: Boolean = false,
+    val direccionCompleta: String = ""
 ) {
     val isFormValid: Boolean
         get() =
@@ -76,6 +83,10 @@ data class AddCentroUiState(
                                     confirmPassword.isNotBlank() &&
                                     confirmPasswordError == null
                             ))
+                            
+    // Comprueba si tenemos coordenadas válidas para mostrar en el mapa
+    val tieneUbicacionValida: Boolean
+        get() = latitud != null && longitud != null
 }
 
 @HiltViewModel
@@ -120,11 +131,17 @@ class AddCentroViewModel @Inject constructor(
     fun updateCalle(calle: String) {
         val error = if (calle.isBlank()) "La calle es obligatoria" else null
         _uiState.update { it.copy(calle = calle, calleError = error) }
+        
+        // Intentar geocodificar la dirección cuando se actualiza la calle
+        actualizarCoordenadas()
     }
 
     fun updateNumero(numero: String) {
         val error = if (numero.isBlank()) "El número es obligatorio" else null
         _uiState.update { it.copy(numero = numero, numeroError = error) }
+        
+        // Intentar geocodificar la dirección cuando se actualiza el número
+        actualizarCoordenadas()
     }
 
     fun updateCodigoPostal(codigoPostal: String) {
@@ -138,6 +155,8 @@ class AddCentroViewModel @Inject constructor(
         // Si el código postal es válido, buscar ciudades
         if (codigoPostal.length == 5 && error == null) {
             buscarCiudadesPorCodigoPostal(codigoPostal)
+            // También actualizamos las coordenadas
+            actualizarCoordenadas()
         } else {
             // Limpiar las ciudades sugeridas si el código postal no es válido
             _uiState.update { it.copy(ciudadesSugeridas = emptyList(), errorBusquedaCiudades = null) }
@@ -147,30 +166,47 @@ class AddCentroViewModel @Inject constructor(
     private fun buscarCiudadesPorCodigoPostal(codigoPostal: String) {
         _uiState.update { it.copy(isBuscandoCiudades = true, errorBusquedaCiudades = null) }
         
-        ciudadRepository.buscarCiudadesPorCodigoPostal(codigoPostal) { ciudades, error ->
-            viewModelScope.launch {
-                if (ciudades != null && ciudades.isNotEmpty()) {
-                    _uiState.update { 
-                        it.copy(
-                            ciudadesSugeridas = ciudades,
-                            isBuscandoCiudades = false,
-                            errorBusquedaCiudades = error // Puede contener un mensaje informativo aunque haya resultados
-                        ) 
+        viewModelScope.launch {
+            try {
+                ciudadRepository.buscarCiudadesPorCodigoPostal(codigoPostal) { ciudades, error ->
+                    viewModelScope.launch {
+                        if (ciudades != null && ciudades.isNotEmpty()) {
+                            _uiState.update { 
+                                it.copy(
+                                    ciudadesSugeridas = ciudades,
+                                    isBuscandoCiudades = false,
+                                    errorBusquedaCiudades = error // Puede contener un mensaje informativo aunque haya resultados
+                                ) 
+                            }
+                            
+                            // Seleccionar la primera ciudad y actualizar la provincia
+                            val primeraCiudad = ciudades.first()
+                            updateCiudad(primeraCiudad.nombre)
+                            updateProvincia(primeraCiudad.provincia)
+                            
+                            Timber.d("Ciudades encontradas para CP $codigoPostal: ${ciudades.size}")
+                        } else {
+                            // No se encontraron ciudades o hubo un error
+                            _uiState.update { 
+                                it.copy(
+                                    ciudadesSugeridas = emptyList(),
+                                    isBuscandoCiudades = false,
+                                    errorBusquedaCiudades = error ?: "No se encontraron ciudades para este código postal"
+                                ) 
+                            }
+                            
+                            Timber.d("No se encontraron ciudades para CP $codigoPostal: ${error ?: "Sin detalles"}")
+                        }
                     }
-                    
-                    // Seleccionar la primera ciudad y actualizar la provincia
-                    val primeraCiudad = ciudades.first()
-                    updateCiudad(primeraCiudad.nombre)
-                    updateProvincia(primeraCiudad.provincia)
-                } else {
-                    // No se encontraron ciudades o hubo un error
-                    _uiState.update { 
-                        it.copy(
-                            ciudadesSugeridas = emptyList(),
-                            isBuscandoCiudades = false,
-                            errorBusquedaCiudades = error ?: "No se encontraron ciudades para este código postal"
-                        ) 
-                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al buscar ciudades para CP $codigoPostal")
+                _uiState.update { 
+                    it.copy(
+                        ciudadesSugeridas = emptyList(),
+                        isBuscandoCiudades = false,
+                        errorBusquedaCiudades = "Error al buscar ciudades: ${e.message ?: "Error desconocido"}"
+                    ) 
                 }
             }
         }
@@ -185,16 +221,25 @@ class AddCentroViewModel @Inject constructor(
                 provinciaError = null
             ) 
         }
+        
+        // Actualizar coordenadas cuando se selecciona una ciudad
+        actualizarCoordenadas()
     }
 
     fun updateCiudad(ciudad: String) {
         val error = if (ciudad.isBlank()) "La ciudad es obligatoria" else null
         _uiState.update { it.copy(ciudad = ciudad, ciudadError = error) }
+        
+        // Actualizar coordenadas cuando se cambia la ciudad
+        actualizarCoordenadas()
     }
 
     fun updateProvincia(provincia: String) {
         val error = if (provincia.isBlank()) "La provincia es obligatoria" else null
         _uiState.update { it.copy(provincia = provincia, provinciaError = error) }
+        
+        // Actualizar coordenadas cuando se cambia la provincia
+        actualizarCoordenadas()
     }
 
     fun updateTelefono(telefono: String) {
@@ -254,6 +299,78 @@ class AddCentroViewModel @Inject constructor(
                 confirmPasswordError = error
             )
         }
+    }
+    
+    /**
+     * Actualiza las coordenadas geográficas basadas en la dirección actual
+     */
+    private fun actualizarCoordenadas() {
+        val state = _uiState.value
+        
+        // Solo intentamos geocodificar si tenemos suficiente información
+        if (state.calle.isBlank() || state.ciudad.isBlank()) {
+            return
+        }
+        
+        // Construir la dirección completa para geocodificar
+        val direccion = buildString {
+            append(state.calle)
+            if (state.numero.isNotBlank()) {
+                append(" ")
+                append(state.numero)
+            }
+            append(", ")
+            append(state.ciudad)
+            if (state.codigoPostal.isNotBlank()) {
+                append(", ")
+                append(state.codigoPostal)
+            }
+            if (state.provincia.isNotBlank()) {
+                append(", ")
+                append(state.provincia)
+            }
+            append(", España")
+        }
+        
+        // Evitar búsquedas innecesarias si la dirección no ha cambiado
+        if (direccion == state.direccionCompleta && state.tieneUbicacionValida) {
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                // Buscar las coordenadas de la dirección
+                val response = NominatimRetrofitClient.nominatimApiService.search(
+                    query = direccion,
+                    limit = 1
+                )
+                
+                if (response.isSuccessful && response.body()?.isNotEmpty() == true) {
+                    val place = response.body()!!.first()
+                    
+                    // Actualizar el estado con las coordenadas
+                    _uiState.update { 
+                        it.copy(
+                            latitud = place.lat.toDoubleOrNull(),
+                            longitud = place.lon.toDoubleOrNull(),
+                            direccionCompleta = direccion,
+                            mostrarMapa = true
+                        ) 
+                    }
+                    
+                    Timber.d("Coordenadas actualizadas: ${place.lat}, ${place.lon} para $direccion")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al geocodificar dirección: $direccion")
+            }
+        }
+    }
+    
+    /**
+     * Alterna la visibilidad del mapa
+     */
+    fun toggleMapa() {
+        _uiState.update { it.copy(mostrarMapa = !it.mostrarMapa) }
     }
 
     // Función auxiliar para validar complejidad de contraseña
