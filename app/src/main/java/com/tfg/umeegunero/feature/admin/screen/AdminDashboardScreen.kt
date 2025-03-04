@@ -64,6 +64,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Centro
+import com.tfg.umeegunero.data.model.Contacto
+import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardUiState
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -478,19 +480,66 @@ fun ConfiguracionContent() {
         )
     }
 }
-
 @Preview(showBackground = true)
 @Composable
 fun AdminDashboardPreview() {
-    UmeEguneroTheme {
-        AdminDashboardScreen()
-    }
-}
+    // Crear un estado mock para el preview con centros de Getxo, Santurtzi y Berango
+    val mockState = AdminDashboardUiState(
+        centros = listOf(
+            Centro(
+                id = "1",
+                nombre = "IES Artaza-Romo BHI",
+                direccion = Direccion(ciudad = "Getxo", provincia = "Vizcaya / Bizkaia"),
+                contacto = Contacto(telefono = "944633000", email = "secretaria@artazaromo.eus"),
+                activo = true
+            ),
+            Centro(
+                id = "2",
+                nombre = "Colegio San José - Jesuitas",
+                direccion = Direccion(ciudad = "Santurtzi", provincia = "Vizcaya / Bizkaia"),
+                contacto = Contacto(telefono = "944831450", email = "secretaria@santurzibhi.net"),
+                activo = true
+            ),
+            Centro(
+                id = "3",
+                nombre = "Berango Eskola HLHI",
+                direccion = Direccion(ciudad = "Berango", provincia = "Vizcaya / Bizkaia"),
+                contacto = Contacto(telefono = "946680953", email = "info@berangoeskola.eus"),
+                activo = true
+            )
+        ),
+        isLoading = false,
+        error = null
+    )
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun AdminDashboardDarkPreview() {
-    UmeEguneroTheme(darkTheme = true) {
-        AdminDashboardScreen()
+    UmeEguneroTheme {
+        // Usar AdminDashboardContent directamente, sin el ViewModel
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Centros Educativos", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            },
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    text = { Text("Añadir Centro") },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
+                    onClick = {}
+                )
+            }
+        ) { paddingValues ->
+            AdminDashboardContent(
+                selectedItem = 0,
+                paddingValues = paddingValues,
+                uiState = mockState,
+                onEditCentro = {},
+                onDeleteCentro = {},
+                onRefresh = {}
+            )
+        }
     }
 }

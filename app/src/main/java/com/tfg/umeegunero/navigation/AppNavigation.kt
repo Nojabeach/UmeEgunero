@@ -13,7 +13,6 @@ import androidx.navigation.navArgument
 import com.tfg.umeegunero.data.model.UserType
 
 import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
-import com.tfg.umeegunero.feature.admin.screen.HiltAddCentroScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen
@@ -25,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
 import com.tfg.umeegunero.feature.common.users.screen.AddUserUiState
 import com.tfg.umeegunero.data.model.Centro
+import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
 import com.tfg.umeegunero.feature.centro.screen.academico.HiltAddCursoScreen
 import com.tfg.umeegunero.feature.centro.screen.academico.HiltAddClaseScreen
 
@@ -167,7 +167,7 @@ fun AppNavigation(
 
         // Pantalla de añadir centro (admin)
         composable(route = AppScreens.AddCentro.route) {
-            HiltAddCentroScreen(
+            AddCentroScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
                 onCentroAdded = { navController.popBackStack() }
@@ -185,7 +185,7 @@ fun AppNavigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
 
-            HiltAddCentroScreen(
+            AddCentroScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
                 onCentroAdded = { navController.popBackStack() },
