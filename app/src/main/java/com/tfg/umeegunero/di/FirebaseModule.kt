@@ -2,6 +2,7 @@ package com.tfg.umeegunero.di
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tfg.umeegunero.data.repository.CiudadRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
@@ -66,5 +67,11 @@ object FirebaseModule {
         firestore: FirebaseFirestore
     ): CentroRepository {
         return CentroRepository(firestore)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideCiudadRepository(): CiudadRepository {
+        return CiudadRepository()
     }
 }

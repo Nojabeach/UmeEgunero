@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.FocusInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +54,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -273,70 +276,52 @@ fun AddCentroScreenContent(
 
     // Calcular progreso del formulario
     val totalFields = if (isEditMode) 8 else 10 // Número total de campos en el formulario, incluidas las contraseñas si no es modo edición
-    val filledFieldCount = listOf(
-        uiState.nombre.isNotBlank(),
-        uiState.calle.isNotBlank(),
-        uiState.numero.isNotBlank(),
-        uiState.codigoPostal.isNotBlank(),
-        uiState.ciudad.isNotBlank(),
-        uiState.provincia.isNotBlank(),
-        uiState.telefono.isNotBlank(),
-        uiState.email.isNotBlank()
-    ).count { it }
-
-    // Añadir campos de contraseña al conteo solo si no estamos en modo edición
-    val passwordFieldCount = if (!isEditMode) {
-        listOf(
-            uiState.password.isNotBlank(),
-            uiState.confirmPassword.isNotBlank()
-        ).count { it }
-    } else 0
-
-    val filledFields = filledFieldCount + passwordFieldCount
+    val filledFields = remember(uiState) {
+        var count = 0
+        if (uiState.nombre.isNotBlank() && uiState.nombreError == null) count++
+        if (uiState.calle.isNotBlank() && uiState.calleError == null) count++
+        if (uiState.numero.isNotBlank() && uiState.numeroError == null) count++
+        if (uiState.codigoPostal.isNotBlank() && uiState.codigoPostalError == null) count++
+        if (uiState.ciudad.isNotBlank() && uiState.ciudadError == null) count++
+        if (uiState.provincia.isNotBlank() && uiState.provinciaError == null) count++
+        if (uiState.telefono.isNotBlank() && uiState.telefonoError == null) count++
+        if (uiState.email.isNotBlank() && uiState.emailError == null) count++
+        if (!isEditMode) {
+            if (uiState.password.isNotBlank() && uiState.passwordError == null) count++
+            if (uiState.confirmPassword.isNotBlank() && uiState.confirmPasswordError == null) count++
+        }
+        count
+    }
     val formProgress = filledFields.toFloat() / totalFields.toFloat()
 
-    // Buscar el municipio correspondiente al código postal
-    val municipioSugerido by remember(uiState.codigoPostal) {
-        derivedStateOf {
-            municipiosPorCP[uiState.codigoPostal]
-        }
-    }
-
-    // Cuando cambia el código postal y encontramos un municipio correspondiente, actualizamos la ciudad
-    LaunchedEffect(municipioSugerido) {
-        if (municipioSugerido != null && uiState.ciudad.isEmpty()) {
-            onUpdateCiudad(municipioSugerido!!.getNombreCompleto())
-
-            // También podemos actualizar la provincia si está vacía
-            if (uiState.provincia.isEmpty()) {
-                val provinciaCorrespondiente = provincias.find { it.codigo == municipioSugerido!!.provinciaCodigo }
-                if (provinciaCorrespondiente != null) {
-                    onUpdateProvincia(provinciaCorrespondiente.getNombreCompleto())
-                }
-            }
-        }
-    }
-
-    // Detectar éxito al añadir centro
+    // Mostrar mensaje de éxito y navegar de vuelta
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
-            val mensaje = if (isEditMode) "Centro educativo actualizado correctamente" else "Centro educativo añadido correctamente"
-            snackbarHostState.showSnackbar(mensaje)
-            // Esperar un poco antes de navegar de vuelta
-            kotlinx.coroutines.delay(1500)
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = if (isEditMode) "Centro actualizado correctamente" else "Centro añadido correctamente",
+                    duration = SnackbarDuration.Short
+                )
+            }
             onCentroAdded()
         }
     }
 
-    // Mostrar errores en Snackbar
+    // Mostrar mensaje de error
     LaunchedEffect(uiState.error) {
-        uiState.error?.let {
+        uiState.error?.let { error ->
             scope.launch {
-                snackbarHostState.showSnackbar(message = it)
-                onClearError()
+                snackbarHostState.showSnackbar(
+                    message = error,
+                    duration = SnackbarDuration.Long
+                )
             }
+            onClearError()
         }
     }
+
+    // Variable para controlar la visibilidad del menú desplegable de ciudades
+    var showCiudadesDropdown by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -453,42 +438,93 @@ fun AddCentroScreenContent(
                         modifier = Modifier.weight(1f)
                     )
 
+                    Box(modifier = Modifier.weight(1f)) {
+                        FormTextField(
+                            value = uiState.codigoPostal,
+                            onValueChange = onUpdateCodigoPostal,
+                            label = "Código Postal",
+                            errorMessage = uiState.codigoPostalError,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                if (uiState.isBuscandoCiudades) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
+
+                // Mostrar mensaje de error de búsqueda de ciudades
+                if (uiState.errorBusquedaCiudades != null) {
+                    Text(
+                        text = uiState.errorBusquedaCiudades,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
+                }
+
+                // Campo de ciudad con dropdown para seleccionar de las sugerencias
+                Box(modifier = Modifier.fillMaxWidth()) {
                     FormTextField(
-                        value = uiState.codigoPostal,
-                        onValueChange = onUpdateCodigoPostal,
-                        label = "Código Postal",
-                        errorMessage = uiState.codigoPostalError,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next
-                        ),
+                        value = uiState.ciudad,
+                        onValueChange = onUpdateCiudad,
+                        label = "Ciudad",
+                        icon = Icons.Default.LocationCity,
+                        errorMessage = uiState.ciudadError,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(
                             onNext = { focusManager.moveFocus(FocusDirection.Down) }
                         ),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            if (uiState.ciudadesSugeridas.isNotEmpty()) {
+                                IconButton(onClick = { showCiudadesDropdown = !showCiudadesDropdown }) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Mostrar ciudades"
+                                    )
+                                }
+                            }
+                        },
+                        onFocus = { showCiudadesDropdown = uiState.ciudadesSugeridas.isNotEmpty() }
                     )
-                }
 
-                // Si hay una sugerencia de municipio, mostrarla
-                if (municipioSugerido != null) {
-                    Text(
-                        text = "Municipio detectado: ${municipioSugerido!!.getNombreCompleto()}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    // Dropdown menu para mostrar las ciudades sugeridas
+                    DropdownMenu(
+                        expanded = showCiudadesDropdown && uiState.ciudadesSugeridas.isNotEmpty(),
+                        onDismissRequest = { showCiudadesDropdown = false },
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .heightIn(max = 200.dp)
+                    ) {
+                        uiState.ciudadesSugeridas.forEach { ciudad ->
+                            DropdownMenuItem(
+                                text = { Text(ciudad.nombre) },
+                                onClick = {
+                                    onUpdateCiudad(ciudad.nombre)
+                                    // Actualizar la provincia basada en el código de provincia
+                                    if (ciudad.codigoProvincia.isNotEmpty()) {
+                                        val codigoProvincia = ciudad.codigoProvincia.padStart(2, '0')
+                                        onUpdateProvincia(codigoProvincia)
+                                    }
+                                    showCiudadesDropdown = false
+                                    focusManager.moveFocus(FocusDirection.Down)
+                                }
+                            )
+                        }
+                    }
                 }
-
-                FormTextField(
-                    value = uiState.ciudad,
-                    onValueChange = onUpdateCiudad,
-                    label = "Ciudad",
-                    icon = Icons.Default.LocationCity,
-                    errorMessage = uiState.ciudadError,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    )
-                )
 
                 // Selector de provincia con nombres multilingües
                 ProvinciaSelector(
@@ -873,39 +909,43 @@ fun FormTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
+    modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     errorMessage: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
-    modifier: Modifier = Modifier
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    onFocus: (() -> Unit)? = null
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    
+    // Detectar cuando el campo recibe el foco
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (interaction is FocusInteraction.Focus) {
+                onFocus?.invoke()
+            }
+        }
+    }
+    
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
-        leadingIcon = icon?.let {
-            {
-                Icon(
-                    imageVector = it,
-                    contentDescription = null,
-                    tint = if (errorMessage != null)
-                        MaterialTheme.colorScheme.error
-                    else
-                        MaterialTheme.colorScheme.primary
-                )
-            }
-        },
+        leadingIcon = icon?.let { { Icon(it, contentDescription = null) } },
+        trailingIcon = trailingIcon,
+        isError = errorMessage != null,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        isError = errorMessage != null,
+        visualTransformation = visualTransformation,
         supportingText = {
             if (errorMessage != null) {
-                Text(text = errorMessage)
+                Text(errorMessage)
             }
         },
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        singleLine = true
+        interactionSource = interactionSource
     )
 }
 
@@ -998,6 +1038,4 @@ fun AddCentroScreenDarkPreview() {
             )
         }
     }
-
-
 }

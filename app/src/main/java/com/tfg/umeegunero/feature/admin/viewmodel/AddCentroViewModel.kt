@@ -8,6 +8,8 @@ import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.repository.CiudadRepository
+import com.tfg.umeegunero.data.model.Ciudad
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,24 +52,35 @@ data class AddCentroUiState(
     // Estado de la UI
     val isLoading: Boolean = false,
     val error: String? = null,
-    val success: Boolean = false
+    val success: Boolean = false,
+    
+    // Ciudades sugeridas por código postal
+    val ciudadesSugeridas: List<Ciudad> = emptyList(),
+    val isBuscandoCiudades: Boolean = false,
+    val errorBusquedaCiudades: String? = null
 ) {
-    val isFormValid: Boolean get() =
-        nombre.isNotBlank() && nombreError == null &&
-                calle.isNotBlank() && calleError == null &&
-                numero.isNotBlank() && numeroError == null &&
-                codigoPostal.isNotBlank() && codigoPostalError == null &&
-                ciudad.isNotBlank() && ciudadError == null &&
-                provincia.isNotBlank() && provinciaError == null &&
-                telefono.isNotBlank() && telefonoError == null &&
-                email.isNotBlank() && emailError == null &&
-                (id.isNotBlank() || (password.isNotBlank() && passwordError == null &&
-                        confirmPassword.isNotBlank() && confirmPasswordError == null))
+    val isFormValid: Boolean
+        get() =
+            nombre.isNotBlank() && nombreError == null &&
+                    calle.isNotBlank() && calleError == null &&
+                    numero.isNotBlank() && numeroError == null &&
+                    codigoPostal.isNotBlank() && codigoPostalError == null &&
+                    ciudad.isNotBlank() && ciudadError == null &&
+                    provincia.isNotBlank() && provinciaError == null &&
+                    telefono.isNotBlank() && telefonoError == null &&
+                    email.isNotBlank() && emailError == null &&
+                    (id.isBlank() || (
+                            password.isNotBlank() &&
+                                    passwordError == null &&
+                                    confirmPassword.isNotBlank() &&
+                                    confirmPasswordError == null
+                            ))
 }
 
 @HiltViewModel
 class AddCentroViewModel @Inject constructor(
-    private val centroRepository: CentroRepository
+    private val centroRepository: CentroRepository,
+    private val ciudadRepository: CiudadRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddCentroUiState())
@@ -95,6 +108,67 @@ class AddCentroViewModel @Inject constructor(
             else -> null
         }
         _uiState.update { it.copy(codigoPostal = codigoPostal, codigoPostalError = error) }
+        
+        // Si el código postal es válido, buscar ciudades
+        if (codigoPostal.length == 5 && error == null) {
+            buscarCiudadesPorCodigoPostal(codigoPostal)
+        } else {
+            // Limpiar las ciudades sugeridas si el código postal no es válido
+            _uiState.update { it.copy(ciudadesSugeridas = emptyList(), errorBusquedaCiudades = null) }
+        }
+    }
+
+    private fun buscarCiudadesPorCodigoPostal(codigoPostal: String) {
+        _uiState.update { it.copy(isBuscandoCiudades = true, errorBusquedaCiudades = null) }
+        
+        ciudadRepository.buscarCiudadesPorCodigoPostal(codigoPostal) { ciudades, error ->
+            viewModelScope.launch {
+                if (ciudades != null) {
+                    _uiState.update { 
+                        it.copy(
+                            ciudadesSugeridas = ciudades,
+                            isBuscandoCiudades = false,
+                            errorBusquedaCiudades = null
+                        ) 
+                    }
+                    
+                    // Si hay ciudades, seleccionar la primera y actualizar la provincia
+                    if (ciudades.isNotEmpty()) {
+                        val primeraCiudad = ciudades.first()
+                        updateCiudad(primeraCiudad.nombre)
+                        
+                        // Seleccionar la provincia basada en el código de provincia
+                        if (primeraCiudad.codigoProvincia.isNotEmpty()) {
+                            val codigoProvincia = primeraCiudad.codigoProvincia.padStart(2, '0')
+                            updateProvincia(codigoProvincia)
+                        }
+                    }
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            ciudadesSugeridas = emptyList(),
+                            isBuscandoCiudades = false,
+                            errorBusquedaCiudades = error
+                        ) 
+                    }
+                }
+            }
+        }
+    }
+
+    fun seleccionarCiudad(ciudad: Ciudad) {
+        _uiState.update { 
+            it.copy(
+                ciudad = ciudad.nombre,
+                ciudadError = null
+            ) 
+        }
+        
+        // Actualizar la provincia si está disponible
+        if (ciudad.codigoProvincia.isNotEmpty()) {
+            val codigoProvincia = ciudad.codigoProvincia.padStart(2, '0')
+            updateProvincia(codigoProvincia)
+        }
     }
 
     fun updateCiudad(ciudad: String) {
@@ -125,17 +199,19 @@ class AddCentroViewModel @Inject constructor(
         _uiState.update { it.copy(email = email, emailError = error) }
     }
 
+    // Añadir estos métodos para manejar las contraseñas
     fun updatePassword(password: String) {
         val error = when {
             password.isBlank() -> "La contraseña es obligatoria"
             password.length < 8 -> "La contraseña debe tener al menos 8 caracteres"
-            !isPasswordComplex(password) -> "La contraseña debe incluir letras y números"
+            !containsLetterAndNumber(password) -> "La contraseña debe incluir letras y números"
             else -> null
         }
 
-        // También validamos confirmPassword si ya existe
+        // Validar también la confirmación de contraseña
         val confirmPasswordError = if (_uiState.value.confirmPassword.isNotBlank() &&
-            _uiState.value.confirmPassword != password) {
+            _uiState.value.confirmPassword != password
+        ) {
             "Las contraseñas no coinciden"
         } else {
             null
@@ -156,7 +232,18 @@ class AddCentroViewModel @Inject constructor(
             confirmPassword != _uiState.value.password -> "Las contraseñas no coinciden"
             else -> null
         }
-        _uiState.update { it.copy(confirmPassword = confirmPassword, confirmPasswordError = error) }
+        _uiState.update {
+            it.copy(
+                confirmPassword = confirmPassword,
+                confirmPasswordError = error
+            )
+        }
+    }
+
+    // Función auxiliar para validar complejidad de contraseña
+    private fun containsLetterAndNumber(password: String): Boolean {
+        return password.matches(".*[0-9].*".toRegex()) &&
+                password.matches(".*[a-zA-Z].*".toRegex())
     }
 
     fun clearError() {
@@ -193,6 +280,7 @@ class AddCentroViewModel @Inject constructor(
                             )
                         }
                     }
+
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
@@ -201,6 +289,7 @@ class AddCentroViewModel @Inject constructor(
                             )
                         }
                     }
+
                     is Result.Loading -> {
                         // No deberíamos llegar aquí si usamos withContext en el repositorio
                     }
@@ -243,6 +332,7 @@ class AddCentroViewModel @Inject constructor(
                             )
                         }
                     }
+
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
@@ -251,6 +341,7 @@ class AddCentroViewModel @Inject constructor(
                             )
                         }
                     }
+
                     is Result.Loading -> {
                         // No deberíamos llegar aquí
                     }

@@ -20,6 +20,10 @@ desugaringVersion = "2.0.4"  # Última versión estable
 mockkVersion = "1.13.8"  # Última versión estable
 crashlyticsGradleVersion = "2.9.9"  # Última versión estable
 timber = "5.0.1"
+retrofit = "2.9.0"
+gson = "2.10.1"  # Versión de Gson para la serialización
+okhttp = "4.11.0"  # Versión de OkHttp
+
 [libraries]
 # Android Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -76,6 +80,13 @@ mockk = { group = "io.mockk", name = "mockk", version.ref = "mockkVersion" }
 
 #Timber
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+
+# Retrofit y Networking
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

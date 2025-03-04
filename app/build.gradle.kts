@@ -135,6 +135,13 @@ dependencies {
 
     //Tiber
     implementation(libs.timber)
+
+    //Retrofit y Networking
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
 }
 
 // Configuración de kapt
