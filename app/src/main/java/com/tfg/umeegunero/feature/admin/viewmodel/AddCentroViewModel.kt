@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
+import timber.log.Timber
 
 data class AddCentroUiState(
     val id: String = "",
@@ -85,6 +86,26 @@ class AddCentroViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AddCentroUiState())
     val uiState: StateFlow<AddCentroUiState> = _uiState.asStateFlow()
+    
+    // Lista de provincias disponibles
+    private val _provincias = MutableStateFlow<List<String>>(emptyList())
+    val provincias: StateFlow<List<String>> = _provincias.asStateFlow()
+    
+    init {
+        // Cargar la lista de provincias al inicializar el ViewModel
+        cargarProvincias()
+    }
+    
+    /**
+     * Carga la lista de provincias disponibles desde el repositorio
+     */
+    private fun cargarProvincias() {
+        viewModelScope.launch {
+            val listaProvincias = ciudadRepository.obtenerProvincias()
+            _provincias.value = listaProvincias
+            Timber.d("Provincias cargadas: ${listaProvincias.size}")
+        }
+    }
 
     fun updateNombre(nombre: String) {
         val error = if (nombre.isBlank()) "El nombre es obligatorio" else null
@@ -123,32 +144,26 @@ class AddCentroViewModel @Inject constructor(
         
         ciudadRepository.buscarCiudadesPorCodigoPostal(codigoPostal) { ciudades, error ->
             viewModelScope.launch {
-                if (ciudades != null) {
+                if (ciudades != null && ciudades.isNotEmpty()) {
                     _uiState.update { 
                         it.copy(
                             ciudadesSugeridas = ciudades,
                             isBuscandoCiudades = false,
-                            errorBusquedaCiudades = null
+                            errorBusquedaCiudades = error // Puede contener un mensaje informativo aunque haya resultados
                         ) 
                     }
                     
-                    // Si hay ciudades, seleccionar la primera y actualizar la provincia
-                    if (ciudades.isNotEmpty()) {
-                        val primeraCiudad = ciudades.first()
-                        updateCiudad(primeraCiudad.nombre)
-                        
-                        // Seleccionar la provincia basada en el código de provincia
-                        if (primeraCiudad.codigoProvincia.isNotEmpty()) {
-                            val codigoProvincia = primeraCiudad.codigoProvincia.padStart(2, '0')
-                            updateProvincia(codigoProvincia)
-                        }
-                    }
+                    // Seleccionar la primera ciudad y actualizar la provincia
+                    val primeraCiudad = ciudades.first()
+                    updateCiudad(primeraCiudad.nombre)
+                    updateProvincia(primeraCiudad.provincia)
                 } else {
+                    // No se encontraron ciudades o hubo un error
                     _uiState.update { 
                         it.copy(
                             ciudadesSugeridas = emptyList(),
                             isBuscandoCiudades = false,
-                            errorBusquedaCiudades = error
+                            errorBusquedaCiudades = error ?: "No se encontraron ciudades para este código postal"
                         ) 
                     }
                 }
@@ -160,14 +175,10 @@ class AddCentroViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 ciudad = ciudad.nombre,
-                ciudadError = null
+                ciudadError = null,
+                provincia = ciudad.provincia,
+                provinciaError = null
             ) 
-        }
-        
-        // Actualizar la provincia si está disponible
-        if (ciudad.codigoProvincia.isNotEmpty()) {
-            val codigoProvincia = ciudad.codigoProvincia.padStart(2, '0')
-            updateProvincia(codigoProvincia)
         }
     }
 
@@ -465,8 +476,7 @@ class AddCentroViewModel @Inject constructor(
 
     // Funciones de validación
     private fun isValidCodigoPostal(codigoPostal: String): Boolean {
-        val cpPattern = Regex("^\\d{5}$")
-        return cpPattern.matches(codigoPostal)
+        return codigoPostal.matches(Regex("^\\d{5}$"))
     }
 
     private fun isValidTelefono(telefono: String): Boolean {

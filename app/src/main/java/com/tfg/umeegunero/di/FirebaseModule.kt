@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.di
 
+import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.repository.CiudadRepository
@@ -12,6 +13,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Singleton
 
 @Module
@@ -71,7 +73,7 @@ object FirebaseModule {
     
     @Provides
     @Singleton
-    fun provideCiudadRepository(): CiudadRepository {
-        return CiudadRepository()
+    fun provideCiudadRepository(@ApplicationContext context: Context): CiudadRepository {
+        return CiudadRepository(context)
     }
 }

@@ -87,12 +87,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewModelScope
+import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 // Datos para provincias con soporte multilingüe
 data class Provincia(
@@ -137,6 +143,7 @@ fun AddCentroScreen(
     centroId: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val provinciasLista by viewModel.provincias.collectAsState()
 
     // Si tenemos un centroId, cargar los datos del centro para edición
     LaunchedEffect(centroId) {
@@ -149,6 +156,7 @@ fun AddCentroScreen(
 
     AddCentroScreenContent(
         uiState = uiState,
+        provincias = provinciasLista,
         onUpdateNombre = { viewModel.updateNombre(it) },
         onUpdateCalle = { viewModel.updateCalle(it) },
         onUpdateNumero = { viewModel.updateNumero(it) },
@@ -163,7 +171,8 @@ fun AddCentroScreen(
         onClearError = { viewModel.clearError() },
         onNavigateBack = onNavigateBack,
         onCentroAdded = onCentroAdded,
-        isEditMode = isEditMode
+        isEditMode = isEditMode,
+        onSeleccionarCiudad = { viewModel.seleccionarCiudad(it) }
     )
 }
 
@@ -171,6 +180,7 @@ fun AddCentroScreen(
 @Composable
 fun AddCentroScreenContent(
     uiState: AddCentroUiState,
+    provincias: List<String>,
     onUpdateNombre: (String) -> Unit,
     onUpdateCalle: (String) -> Unit,
     onUpdateNumero: (String) -> Unit,
@@ -185,94 +195,14 @@ fun AddCentroScreenContent(
     onClearError: () -> Unit,
     onNavigateBack: () -> Unit,
     onCentroAdded: () -> Unit,
-    isEditMode: Boolean = false
+    isEditMode: Boolean = false,
+    onSeleccionarCiudad: (Ciudad) -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
-
-    // Lista de provincias con nombres en múltiples idiomas
-    val provincias = remember {
-        listOf(
-            Provincia("01", "Álava", "Araba", "País Vasco"),
-            Provincia("02", "Albacete", null, "Castilla-La Mancha"),
-            Provincia("03", "Alicante", "Alacant", "Comunidad Valenciana"),
-            Provincia("04", "Almería", null, "Andalucía"),
-            Provincia("05", "Ávila", null, "Castilla y León"),
-            Provincia("06", "Badajoz", null, "Extremadura"),
-            Provincia("07", "Baleares", "Illes Balears", "Islas Baleares"),
-            Provincia("08", "Barcelona", null, "Cataluña"),
-            Provincia("09", "Burgos", null, "Castilla y León"),
-            Provincia("10", "Cáceres", null, "Extremadura"),
-            Provincia("11", "Cádiz", null, "Andalucía"),
-            Provincia("12", "Castellón", "Castelló", "Comunidad Valenciana"),
-            Provincia("13", "Ciudad Real", null, "Castilla-La Mancha"),
-            Provincia("14", "Córdoba", null, "Andalucía"),
-            Provincia("15", "La Coruña", "A Coruña", "Galicia"),
-            Provincia("16", "Cuenca", null, "Castilla-La Mancha"),
-            Provincia("17", "Gerona", "Girona", "Cataluña"),
-            Provincia("18", "Granada", null, "Andalucía"),
-            Provincia("19", "Guadalajara", null, "Castilla-La Mancha"),
-            Provincia("20", "Guipúzcoa", "Gipuzkoa", "País Vasco"),
-            Provincia("21", "Huelva", null, "Andalucía"),
-            Provincia("22", "Huesca", null, "Aragón"),
-            Provincia("23", "Jaén", null, "Andalucía"),
-            Provincia("24", "León", null, "Castilla y León"),
-            Provincia("25", "Lérida", "Lleida", "Cataluña"),
-            Provincia("26", "La Rioja", null, "La Rioja"),
-            Provincia("27", "Lugo", null, "Galicia"),
-            Provincia("28", "Madrid", null, "Comunidad de Madrid"),
-            Provincia("29", "Málaga", null, "Andalucía"),
-            Provincia("30", "Murcia", null, "Región de Murcia"),
-            Provincia("31", "Navarra", "Nafarroa", "Navarra"),
-            Provincia("32", "Orense", "Ourense", "Galicia"),
-            Provincia("33", "Asturias", null, "Principado de Asturias"),
-            Provincia("34", "Palencia", null, "Castilla y León"),
-            Provincia("35", "Las Palmas", null, "Canarias"),
-            Provincia("36", "Pontevedra", null, "Galicia"),
-            Provincia("37", "Salamanca", null, "Castilla y León"),
-            Provincia("38", "Santa Cruz de Tenerife", null, "Canarias"),
-            Provincia("39", "Cantabria", null, "Cantabria"),
-            Provincia("40", "Segovia", null, "Castilla y León"),
-            Provincia("41", "Sevilla", null, "Andalucía"),
-            Provincia("42", "Soria", null, "Castilla y León"),
-            Provincia("43", "Tarragona", null, "Cataluña"),
-            Provincia("44", "Teruel", null, "Aragón"),
-            Provincia("45", "Toledo", null, "Castilla-La Mancha"),
-            Provincia("46", "Valencia", "València", "Comunidad Valenciana"),
-            Provincia("47", "Valladolid", null, "Castilla y León"),
-            Provincia("48", "Vizcaya", "Bizkaia", "País Vasco"),
-            Provincia("49", "Zamora", null, "Castilla y León"),
-            Provincia("50", "Zaragoza", null, "Aragón"),
-            Provincia("51", "Ceuta", null, "Ceuta"),
-            Provincia("52", "Melilla", null, "Melilla")
-        )
-    }
-
-    // Diccionario de municipios por código postal (simplificado)
-    val municipiosPorCP = remember {
-        mapOf(
-            "48001" to Municipio("Bilbao", "Bilbo", "48", listOf("48001", "48002", "48003")),
-            "48002" to Municipio("Bilbao", "Bilbo", "48", listOf("48001", "48002", "48003")),
-            "48003" to Municipio("Bilbao", "Bilbo", "48", listOf("48001", "48002", "48003")),
-            "48004" to Municipio("Bilbao", "Bilbo", "48", listOf("48004", "48005")),
-            "48005" to Municipio("Bilbao", "Bilbo", "48", listOf("48004", "48005")),
-            "48930" to Municipio("Getxo", "Getxo", "48", listOf("48930")),
-            "48940" to Municipio("Leioa", "Leioa", "48", listOf("48940")),
-            "48960" to Municipio("Galdakao", "Galdakao", "48", listOf("48960")),
-            "20001" to Municipio("San Sebastián", "Donostia", "20", listOf("20001", "20002")),
-            "20002" to Municipio("San Sebastián", "Donostia", "20", listOf("20001", "20002")),
-            "28001" to Municipio("Madrid", null, "28", listOf("28001")),
-            "28002" to Municipio("Madrid", null, "28", listOf("28002")),
-            "28003" to Municipio("Madrid", null, "28", listOf("28003")),
-            "08001" to Municipio("Barcelona", null, "08", listOf("08001")),
-            "08002" to Municipio("Barcelona", null, "08", listOf("08002")),
-            "46001" to Municipio("Valencia", "València", "46", listOf("46001")),
-            "31001" to Municipio("Pamplona", "Iruña", "31", listOf("31001"))
-        )
-    }
 
     // Calcular progreso del formulario
     val totalFields = if (isEditMode) 8 else 10 // Número total de campos en el formulario, incluidas las contraseñas si no es modo edición
@@ -510,16 +440,10 @@ fun AddCentroScreenContent(
                     ) {
                         uiState.ciudadesSugeridas.forEach { ciudad ->
                             DropdownMenuItem(
-                                text = { Text(ciudad.nombre) },
+                                text = { Text("${ciudad.nombre} (${ciudad.provincia})") },
                                 onClick = {
-                                    onUpdateCiudad(ciudad.nombre)
-                                    // Actualizar la provincia basada en el código de provincia
-                                    if (ciudad.codigoProvincia.isNotEmpty()) {
-                                        val codigoProvincia = ciudad.codigoProvincia.padStart(2, '0')
-                                        onUpdateProvincia(codigoProvincia)
-                                    }
+                                    onSeleccionarCiudad(ciudad)
                                     showCiudadesDropdown = false
-                                    focusManager.moveFocus(FocusDirection.Down)
                                 }
                             )
                         }
@@ -696,7 +620,7 @@ fun AddCentroScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProvinciaSelector(
-    provincias: List<Provincia>,
+    provincias: List<String>,
     provinciaSeleccionada: String,
     onProvinciaSeleccionada: (String) -> Unit,
     errorMessage: String? = null
@@ -710,8 +634,7 @@ fun ProvinciaSelector(
             provincias
         } else {
             provincias.filter {
-                it.nombreCastellano.contains(searchText, ignoreCase = true) ||
-                        (it.nombreLocal?.contains(searchText, ignoreCase = true) ?: false)
+                it.contains(searchText, ignoreCase = true)
             }
         }
     }
@@ -787,12 +710,12 @@ fun ProvinciaSelector(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    text = provincia.getNombreCompleto(),
+                                    text = provincia,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             },
                             onClick = {
-                                onProvinciaSeleccionada(provincia.getNombreCompleto())
+                                onProvinciaSeleccionada(provincia)
                                 expanded = false
                             }
                         )
@@ -979,6 +902,7 @@ fun AddCentroScreenPreview() {
         Surface {
             AddCentroScreenContent(
                 uiState = previewState,
+                provincias = listOf("Vizcaya / Bizkaia"),
                 onUpdateNombre = {},
                 onUpdateCalle = {},
                 onUpdateNumero = {},
@@ -993,7 +917,8 @@ fun AddCentroScreenPreview() {
                 onClearError = {},
                 onNavigateBack = {},
                 onCentroAdded = {},
-                isEditMode = false
+                isEditMode = false,
+                onSeleccionarCiudad = {}
             )
         }
     }
@@ -1020,6 +945,7 @@ fun AddCentroScreenDarkPreview() {
         Surface {
             AddCentroScreenContent(
                 uiState = previewState,
+                provincias = listOf("Vizcaya / Bizkaia"),
                 onUpdateNombre = {},
                 onUpdateCalle = {},
                 onUpdateNumero = {},
@@ -1034,8 +960,40 @@ fun AddCentroScreenDarkPreview() {
                 onClearError = {},
                 onNavigateBack = {},
                 onCentroAdded = {},
-                isEditMode = false
+                isEditMode = false,
+                onSeleccionarCiudad = {}
             )
         }
+    }
+}
+
+private suspend fun buscarCiudadesEnGeoApi(codigoPostal: String, codigoProvincia: String): List<Ciudad> {
+    return withContext(Dispatchers.IO) {
+        try {
+            val httpClient = OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    val original = chain.request()
+                    val url = original.url.newBuilder()
+                        .addQueryParameter("sandbox", "1")
+                        .build()
+                    val request = original.newBuilder().url(url).build()
+                    chain.proceed(request)
+                }
+                .build()
+
+            val response = httpClient.newCall(
+                Request.Builder()
+                    .url("https://apiv1.geoapi.es/codigosPostales?codigoProvincia=$codigoProvincia")
+                    .build()
+            ).execute()
+            
+            if (response.isSuccessful) {
+                // Resto del código...
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener códigos postales de GeoAPI")
+        }
+        
+        emptyList()
     }
 }
