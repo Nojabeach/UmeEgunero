@@ -77,6 +77,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.feature.common.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.AdminColor
 import com.tfg.umeegunero.ui.theme.CentroColor
 import com.tfg.umeegunero.ui.theme.FamiliarColor
@@ -252,17 +253,7 @@ fun AddUserScreen(
     var showCentrosDropdown by remember { mutableStateOf(false) }
 
     // Calcular progreso del formulario
-    val totalFields = 7 // Total de campos principales
-    val filledFields = listOf(
-        uiState.dni.isNotBlank(),
-        uiState.email.isNotBlank(),
-        uiState.password.isNotBlank(),
-        uiState.confirmPassword.isNotBlank(),
-        uiState.nombre.isNotBlank(),
-        uiState.apellidos.isNotBlank(),
-        uiState.telefono.isNotBlank()
-    ).count { it }
-    val formProgress = filledFields.toFloat() / totalFields.toFloat()
+    val porcentajeCompletado = calcularPorcentajeCompletado(uiState)
 
     // Título basado en el tipo de usuario que se está creando
     val tipoUsuarioText = when (uiState.tipoUsuario) {
@@ -345,15 +336,9 @@ fun AddUserScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                LinearProgressIndicator(
-                    progress = { formProgress },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text(
-                    text = "Progreso del formulario: ${(formProgress * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
+                // Calcular el porcentaje de completado
+                FormProgressIndicator(
+                    porcentaje = porcentajeCompletado.toFloat() / 100
                 )
             }
 
@@ -911,4 +896,32 @@ fun AddUserScreenDarkPreview() {
             )
         }
     }
+}
+
+/**
+ * Calcula el porcentaje de completado del formulario
+ * @param uiState Estado actual del formulario
+ * @return Valor entre 0 y 1 que representa el porcentaje de completado
+ */
+private fun calcularPorcentajeCompletado(uiState: AddUserUiState): Float {
+    var fieldsCompleted = 0
+    var totalFields = 7 // Campos obligatorios básicos
+    
+    // Verificar campos básicos
+    if (uiState.dni.isNotBlank()) fieldsCompleted++
+    if (uiState.email.isNotBlank()) fieldsCompleted++
+    if (uiState.nombre.isNotBlank()) fieldsCompleted++
+    if (uiState.apellidos.isNotBlank()) fieldsCompleted++
+    if (uiState.telefono.isNotBlank()) fieldsCompleted++
+    if (uiState.password.isNotBlank()) fieldsCompleted++
+    if (uiState.confirmPassword.isNotBlank()) fieldsCompleted++
+    
+    // Para profesores y administradores de centro, verificar selección de centro
+    if (uiState.tipoUsuario == TipoUsuario.PROFESOR || 
+        uiState.tipoUsuario == TipoUsuario.ADMIN_CENTRO) {
+        totalFields++
+        if (uiState.centroSeleccionado != null) fieldsCompleted++
+    }
+    
+    return fieldsCompleted.toFloat() / totalFields.toFloat()
 }

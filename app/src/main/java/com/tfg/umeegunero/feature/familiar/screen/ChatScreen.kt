@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Card
@@ -112,7 +114,7 @@ fun ChatScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
                             tint = Color.White
                         )
@@ -217,7 +219,7 @@ fun ChatScreen(
                         enabled = mensaje.isNotBlank()
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Send,
+                            imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Enviar mensaje",
                             tint = Color.White
                         )
@@ -296,6 +298,54 @@ fun MessageItem(
     }
 }
 
+@Composable
+fun MensajeItem(
+    mensaje: Mensaje,
+    isFromCurrentUser: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalAlignment = if (isFromCurrentUser) Alignment.End else Alignment.Start
+    ) {
+        Card(
+            modifier = Modifier
+                .widthIn(max = 280.dp),
+            shape = RoundedCornerShape(
+                topStart = if (isFromCurrentUser) 16.dp else 4.dp,
+                topEnd = if (isFromCurrentUser) 4.dp else 16.dp,
+                bottomStart = 16.dp,
+                bottomEnd = 16.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isFromCurrentUser)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = mensaje.texto,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = formatMessageTime(mensaje.timestamp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.End)
+                )
+            }
+        }
+    }
+}
+
 fun formatMessageTime(timestamp: com.google.firebase.Timestamp): String {
     val date = timestamp.toDate()
     val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -306,7 +356,7 @@ fun formatMessageTime(timestamp: com.google.firebase.Timestamp): String {
 @Composable
 fun ChatScreenPreview() {
     UmeEguneroTheme {
-        ChatScreen(onNavigateBack = {})
+        ChatScreenPreviewContent()
     }
 }
 
@@ -314,6 +364,138 @@ fun ChatScreenPreview() {
 @Composable
 fun ChatScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        ChatScreen(onNavigateBack = {})
+        ChatScreenPreviewContent()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatScreenPreviewContent() {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scrollState = rememberLazyListState()
+    var messageText by remember { mutableStateOf("") }
+    
+    val mensajes = listOf(
+        Mensaje(
+            id = "1",
+            emisorId = "profesor1",
+            receptorId = "familiar1",
+            timestamp = com.google.firebase.Timestamp.now(),
+            texto = "Buenos días, quería informarle sobre el progreso de su hijo en clase",
+            leido = true
+        ),
+        Mensaje(
+            id = "2",
+            emisorId = "familiar1",
+            receptorId = "profesor1",
+            timestamp = com.google.firebase.Timestamp.now(),
+            texto = "Gracias por la información. ¿Ha mejorado en matemáticas?",
+            leido = true
+        ),
+        Mensaje(
+            id = "3",
+            emisorId = "profesor1",
+            receptorId = "familiar1",
+            timestamp = com.google.firebase.Timestamp.now(),
+            texto = "Sí, ha mejorado bastante. Especialmente en la resolución de problemas.",
+            leido = false
+        )
+    )
+    
+    val usuarioActualId = "familiar1"
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { 
+                    Column {
+                        Text(
+                            text = "Profesor García",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Online",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = FamiliarColor,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = messageText,
+                    onValueChange = { messageText = it },
+                    placeholder = { Text("Escribe un mensaje...") },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 3
+                )
+                
+                IconButton(
+                    onClick = { },
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Enviar mensaje",
+                        tint = FamiliarColor
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        if (mensajes.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                state = scrollState,
+                reverseLayout = false
+            ) {
+                items(mensajes) { mensaje ->
+                    MensajeItem(
+                        mensaje = mensaje,
+                        isFromCurrentUser = mensaje.emisorId == usuarioActualId
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No hay mensajes. Envía un mensaje para comenzar la conversación.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
     }
 }

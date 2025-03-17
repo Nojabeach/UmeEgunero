@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -78,8 +81,15 @@ import com.tfg.umeegunero.data.model.RegistroUsuarioForm
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.feature.auth.viewmodel.RegistroUiState
 import com.tfg.umeegunero.feature.auth.viewmodel.RegistroViewModel
+import com.tfg.umeegunero.feature.common.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.CircleShape
+
+// Importar los componentes de otros archivos
+import com.tfg.umeegunero.feature.auth.screen.TipoFamiliarOptions
+import com.tfg.umeegunero.feature.auth.screen.DireccionStep
+import com.tfg.umeegunero.feature.auth.screen.AlumnosCentroStep
 
 // Extensión para verificar si el tema es claro
 fun ColorScheme.isLight(): Boolean {
@@ -171,11 +181,8 @@ fun RegistroScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Indicador de progreso
-                LinearProgressIndicator(
-                    progress = { uiState.currentStep.toFloat() / uiState.totalSteps.toFloat() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                FormProgressIndicator(
+                    porcentaje = uiState.currentStep.toFloat() / uiState.totalSteps.toFloat()
                 )
 
                 // Título del paso actual
@@ -481,7 +488,9 @@ fun RegistroScreen(
                             Icon(Icons.Default.Lock, contentDescription = null)
                         },
                         trailingIcon = {
-                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            IconButton(onClick = {
+                                confirmPasswordVisible = !confirmPasswordVisible
+                            }) {
                                 Icon(
                                     imageVector = if (confirmPasswordVisible) Icons.Default.Close else Icons.Default.Check,
                                     contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
@@ -603,6 +612,343 @@ fun RegistroScreen(
                     )
                 }
             }
+        }
+    }
+
+    @Composable
+    fun ConfirmacionStep(
+        dni: String,
+        email: String,
+        nombre: String,
+        apellidos: String,
+        telefono: String,
+        subtipo: SubtipoFamiliar,
+        alumnos: List<String>,
+        centro: String
+    ) {
+        val scrollState = rememberScrollState()
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Tarjeta de resumen de datos personales
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Datos Personales",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    // DNI
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "DNI:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = dni,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    // Email
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Email:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = email,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    // Nombre
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Nombre:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = nombre,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    // Apellidos
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Apellidos:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = apellidos,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    // Teléfono
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Teléfono:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = telefono,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    // Tipo de familiar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Relación con el alumno:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = when (subtipo) {
+                                SubtipoFamiliar.PADRE -> "Padre"
+                                SubtipoFamiliar.MADRE -> "Madre"
+                                SubtipoFamiliar.TUTOR -> "Tutor/a legal"
+                                SubtipoFamiliar.OTRO -> "Otro familiar"
+                            },
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            // Tarjeta de resumen de datos de alumnos
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Alumnos",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    alumnos.forEach { alumno ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Text(
+                                text = alumno,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Tarjeta de resumen de centro educativo
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Centro Educativo",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = centro,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            // Texto de confirmación
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Por favor, verifica todos los datos antes de completar el registro. Una vez finalizado el proceso, recibirás un email de confirmación y el centro educativo deberá verificar tu solicitud.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RegistroScreenPreview() {
+    UmeEguneroTheme {
+        PreviewRegistroScreen()
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun RegistroScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        PreviewRegistroScreen()
+    }
+}
+
+@Composable
+fun PreviewRegistroScreen() {
+    // Variables necesarias para el preview
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Datos de ejemplo para el formulario
+    val form = RegistroUsuarioForm(
+        dni = "12345678X",
+        email = "ejemplo@email.com",
+        password = "Clave123*",
+        confirmPassword = "Clave123*",
+        nombre = "Juan",
+        apellidos = "García López",
+        telefono = "600123456",
+        subtipo = SubtipoFamiliar.PADRE
+    )
+
+    val centros = listOf(
+        Centro(
+            id = "centro1",
+            nombre = "IES Artaza",
+            direccion = Direccion(
+                calle = "Calle Mayor",
+                numero = "1",
+                codigoPostal = "48001",
+                ciudad = "Bilbao",
+                provincia = "Vizcaya"
+            ),
+            contacto = Contacto(
+                telefono = "944123456",
+                email = "ies.artaza@educacion.com"
+            ),
+            activo = true
+        ),
+        Centro(
+            id = "centro2",
+            nombre = "Colegio San José",
+            direccion = Direccion(
+                calle = "Calle Secundaria",
+                numero = "2",
+                codigoPostal = "48002",
+                ciudad = "Bilbao",
+                provincia = "Vizcaya"
+            ),
+            contacto = Contacto(
+                telefono = "944654321",
+                email = "colegio.sanjose@educacion.com"
+            ),
+            activo = true
+        )
+    )
+
+    // Estado de UI para el preview
+    val currentStep = 1
+    val totalSteps = 3
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Registro Familiar") },
+                navigationIcon = {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        // Aquí puedes agregar el contenido del scaffold para el preview
+        Box(modifier = Modifier.padding(paddingValues)) {
+            Text("Contenido de preview")
         }
     }
 }

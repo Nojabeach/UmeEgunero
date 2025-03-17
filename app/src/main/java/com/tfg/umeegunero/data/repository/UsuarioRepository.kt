@@ -39,11 +39,9 @@ class UsuarioRepository @Inject constructor(
     val registrosCollection = firestore.collection("registrosActividad")
     val mensajesCollection = firestore.collection("mensajes")
 
-    // SECCIÓN: AUTENTICACIÓN Y GESTIÓN DE USUARIOS
+    // AUTENTICACIÓN Y USUARIOS
 
-    /**
-     * Registra un nuevo usuario en Firebase Auth y Firestore
-     */
+    // Registra un nuevo usuario en Firebase Auth y Firestore
     suspend fun registrarUsuario(form: RegistroUsuarioForm): Result<Usuario> = withContext(Dispatchers.IO) {
         try {
             // 1. Verificar que el DNI no existe ya en Firestore

@@ -3,9 +3,19 @@ package com.tfg.umeegunero.feature.familiar.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tfg.umeegunero.data.model.Actividad
+import com.tfg.umeegunero.data.model.CacaControl
+import com.tfg.umeegunero.data.model.Comida
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.data.repository.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.feature.familiar.screen.RegistroModel
+import com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroUiState
+import com.tfg.umeegunero.feature.familiar.screen.ComidaModel
+import com.tfg.umeegunero.feature.familiar.screen.SiestaModel
+import com.tfg.umeegunero.feature.familiar.screen.CacaControlModel
+import com.tfg.umeegunero.feature.familiar.screen.ActividadesModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,16 +24,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
-
-/**
- * Estado UI para la pantalla de detalle de registro de actividad
- */
-data class DetalleRegistroUiState(
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val registro: RegistroActividad? = null,
-    val profesorNombre: String? = null
-)
 
 /**
  * ViewModel para la pantalla de detalle de registro de actividad de un alumno
@@ -62,24 +62,68 @@ class DetalleRegistroViewModel @Inject constructor(
 
                 when (registroResult) {
                     is Result.Success -> {
-                        val registro = registroResult.data
-
-                        // Asegurarnos que el modelo de datos se procesa correctamente
-                        // Por ejemplo, si hay alguna inconsistencia en las observaciones
-                        val procesedRegister = when {
-                            registro.observaciones is List<*> -> registro
-                            else -> registro.copy(observaciones = emptyList()) // Asegurar que observaciones es una lista
-                        }
+                        val registroOriginal = registroResult.data
+                        
+                        // Convertir a nuestro modelo RegistroModel
+                        val registro = RegistroModel(
+                            id = registroOriginal.id,
+                            alumnoId = registroOriginal.alumnoId,
+                            alumnoNombre = registroOriginal.alumnoNombre,
+                            fecha = registroOriginal.fecha,
+                            profesorId = registroOriginal.profesorId,
+                            profesorNombre = registroOriginal.profesorNombre,
+                            comida = registroOriginal.comida?.let { comida ->
+                                ComidaModel(
+                                    consumoPrimero = comida.consumoPrimero,
+                                    descripcionPrimero = comida.descripcionPrimero,
+                                    consumoSegundo = comida.consumoSegundo,
+                                    descripcionSegundo = comida.descripcionSegundo,
+                                    consumoPostre = comida.consumoPostre,
+                                    descripcionPostre = comida.descripcionPostre,
+                                    observaciones = comida.observaciones
+                                )
+                            },
+                            siesta = registroOriginal.siesta?.let { siesta ->
+                                SiestaModel(
+                                    duracion = siesta.duracion,
+                                    observaciones = siesta.observaciones,
+                                    inicio = siesta.inicio,
+                                    fin = siesta.fin
+                                )
+                            },
+                            cacaControl = registroOriginal.cacaControl?.let { necesidades ->
+                                CacaControlModel(
+                                    tipo1 = necesidades.tipo1,
+                                    tipo2 = necesidades.tipo2,
+                                    tipo3 = necesidades.tipo3,
+                                    hora = necesidades.hora,
+                                    cantidad = necesidades.cantidad,
+                                    tipo = necesidades.tipo,
+                                    descripcion = necesidades.descripcion
+                                )
+                            },
+                            actividades = registroOriginal.actividades?.let { actividad ->
+                                ActividadesModel(
+                                    titulo = actividad.titulo,
+                                    descripcion = actividad.descripcion,
+                                    participacion = actividad.participacion,
+                                    observaciones = actividad.observaciones
+                                )
+                            },
+                            observaciones = registroOriginal.observaciones?.toString()
+                        )
 
                         _uiState.update {
                             it.copy(
-                                registro = procesedRegister,
+                                registro = registro,
                                 isLoading = false
                             )
                         }
 
-                        // Cargamos el nombre del profesor
-                        cargarProfesor(registro.profesorId)
+                        // Cargamos el nombre del profesor si no viene incluido
+                        if (registro.profesorId != null && registro.profesorNombre == null) {
+                            cargarProfesor(registro.profesorId)
+                        }
                     }
                     is Result.Error -> {
                         _uiState.update {
@@ -107,8 +151,8 @@ class DetalleRegistroViewModel @Inject constructor(
     /**
      * Carga los datos del profesor que creó el registro
      */
-    private fun cargarProfesor(profesorId: String) {
-        if (profesorId.isBlank()) return
+    private fun cargarProfesor(profesorId: String?) {
+        if (profesorId == null) return
 
         viewModelScope.launch {
             try {
@@ -118,9 +162,7 @@ class DetalleRegistroViewModel @Inject constructor(
                     is Result.Success -> {
                         val profesor = profesorResult.data
                         _uiState.update {
-                            it.copy(
-                                profesorNombre = "${profesor.nombre} ${profesor.apellidos}"
-                            )
+                            it.copy(profesorNombre = "${profesor.nombre} ${profesor.apellidos}")
                         }
                     }
                     is Result.Error -> {
@@ -135,7 +177,7 @@ class DetalleRegistroViewModel @Inject constructor(
     }
 
     /**
-     * Limpia el error actual
+     * Limpia los errores
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }

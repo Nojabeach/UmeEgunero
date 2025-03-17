@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -67,8 +68,21 @@ import com.tfg.umeegunero.feature.centro.viewmodel.AddClaseViewModel
 import com.tfg.umeegunero.ui.theme.CentroColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
+// Clases de datos para el preview
+data class CursoSimpleModel(
+    val id: String,
+    val nombre: String,
+    val descripcion: String,
+    val edadMinima: Int,
+    val edadMaxima: Int
+)
 
-
+data class ProfesorSimpleModel(
+    val documentId: String,
+    val nombre: String,
+    val apellidos: String,
+    val especialidad: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,7 +140,7 @@ fun AddClaseScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
@@ -502,5 +516,355 @@ fun HiltAddClaseScreen(
         onNavigateBack = onNavigateBack,
         onClaseAdded = onClaseAdded
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddClaseScreenPreview() {
+    UmeEguneroTheme {
+        Surface {
+            // Crear un estado de UI para el preview
+            val uiState = AddClaseUiState(
+                nombre = "4ºA ESO",
+                cursoId = "1",
+                profesoresAuxiliaresIds = listOf("prof1", "prof2"),
+                cursosDisponibles = listOf(
+                    Curso("1", "4º ESO", "", "0", 0),
+                    Curso("2", "3º ESO", "", "0", 0),
+                    Curso("3", "2º ESO", "", "0", 0),
+                ),
+                profesoresDisponibles = listOf(
+                    Usuario("prof1", nombre = "Juan", apellidos = "Pérez"),
+                    Usuario("prof2", nombre = "Ana", apellidos = "Martínez"),
+                    Usuario("prof3", nombre = "Carlos", apellidos = "López")
+                ),
+                isLoading = false,
+                isLoadingProfesores = false,
+                isLoadingCursos = false,
+                error = null,
+                success = false,
+                isEditMode = false
+            )
+            
+            // Usar un mock para AddClaseScreen
+            AddClaseScreenContent(
+                uiState = uiState,
+                onNombreChange = {},
+                onCursoSelected = {},
+                onProfesorSelected = { _, _ -> },
+                onSaveClase = {},
+                onNavigateBack = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun AddClaseScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        Surface {
+            // Crear un estado de UI para el preview
+            val uiState = AddClaseUiState(
+                nombre = "4ºA ESO",
+                cursoId = "1",
+                profesoresAuxiliaresIds = listOf("prof1", "prof2"),
+                cursosDisponibles = listOf(
+                    Curso("1", "4º ESO", "", "0", 0),
+                    Curso("2", "3º ESO", "", "0", 0),
+                    Curso("3", "2º ESO", "", "0", 0),
+                ),
+                profesoresDisponibles = listOf(
+                    Usuario("prof1", nombre = "Juan", apellidos = "Pérez"),
+                    Usuario("prof2", nombre = "Ana", apellidos = "Martínez"),
+                    Usuario("prof3", nombre = "Carlos", apellidos = "López")
+                ),
+                isLoading = false,
+                isLoadingProfesores = false,
+                isLoadingCursos = false,
+                error = null,
+                success = false,
+                isEditMode = false
+            )
+            
+            // Usar un mock para AddClaseScreen
+            AddClaseScreenContent(
+                uiState = uiState,
+                onNombreChange = {},
+                onCursoSelected = {},
+                onProfesorSelected = { _, _ -> },
+                onSaveClase = {},
+                onNavigateBack = {}
+            )
+        }
+    }
+}
+
+/**
+ * Versión simplificada de la pantalla principal para el preview
+ */
+@Composable
+private fun AddClaseScreenContent(
+    uiState: AddClaseUiState,
+    onNombreChange: (String) -> Unit,
+    onCursoSelected: (String) -> Unit,
+    onProfesorSelected: (String, Boolean) -> Unit,
+    onSaveClase: () -> Unit,
+    onNavigateBack: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = if (uiState.isEditMode) "Editar Clase" else "Añadir Clase",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = CentroColor,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Formulario
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Nombre de la clase
+                    OutlinedTextField(
+                        value = uiState.nombre,
+                        onValueChange = onNombreChange,
+                        label = { Text("Nombre de la clase") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Selector de curso
+                    val cursoExpanded = remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = cursoExpanded.value,
+                        onExpandedChange = { cursoExpanded.value = !cursoExpanded.value },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.cursosDisponibles.find { it.id == uiState.cursoId }?.nombre ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Curso") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = cursoExpanded.value) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+
+                        DropdownMenu(
+                            expanded = cursoExpanded.value,
+                            onDismissRequest = { cursoExpanded.value = false },
+                            modifier = Modifier.exposedDropdownSize()
+                        ) {
+                            uiState.cursosDisponibles.forEach { curso ->
+                                DropdownMenuItem(
+                                    text = { Text(curso.nombre) },
+                                    onClick = {
+                                        onCursoSelected(curso.id)
+                                        cursoExpanded.value = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sección de profesores
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Profesores Asignados",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    // Lista de profesores disponibles
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    ) {
+                        items(uiState.profesoresDisponibles) { profesor ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = uiState.profesoresAuxiliaresIds.contains(profesor.documentId),
+                                    onCheckedChange = { isChecked ->
+                                        onProfesorSelected(profesor.documentId, isChecked)
+                                    }
+                                )
+                                Text(
+                                    text = "${profesor.nombre} ${profesor.apellidos}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Botón para guardar
+            Button(
+                onClick = onSaveClase,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                enabled = !uiState.isLoading
+            ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = if (uiState.isEditMode) "Actualizar Clase" else "Guardar Clase")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddClasePreviewContent(isDarkTheme: Boolean = false) {
+    // Definir las variables necesarias para el preview
+    val profesoresAsignados = listOf("prof1", "prof2")
+    val cursos = listOf(
+        CursoSimpleModel("1", "4º ESO", "", 0, 0),
+        CursoSimpleModel("2", "3º ESO", "", 0, 0),
+        CursoSimpleModel("3", "2º ESO", "", 0, 0)
+    )
+    val disponiblesProfesores = listOf(
+        ProfesorSimpleModel("prof1", "Juan", "Pérez", ""),
+        ProfesorSimpleModel("prof2", "Ana", "Martínez", ""),
+        ProfesorSimpleModel("prof3", "Carlos", "López", "")
+    )
+    
+    // Ahora usar estas variables para mostrar la interfaz
+    Column(modifier = Modifier.padding(16.dp)) {
+        // Sección de cursos
+        Text(
+            text = "Cursos asociados",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+        )
+        
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+        ) {
+            items(cursos) { curso ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = true,
+                        onCheckedChange = { }
+                    )
+                    
+                    Text(
+                        text = curso.nombre,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+        
+        // Sección de profesores
+        Text(
+            text = "Profesores asignados",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+        )
+        
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+        ) {
+            items(disponiblesProfesores) { profesor ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = profesoresAsignados.contains(profesor.documentId),
+                        onCheckedChange = { }
+                    )
+                    
+                    Text(
+                        text = "${profesor.nombre} ${profesor.apellidos}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+    }
 }
 

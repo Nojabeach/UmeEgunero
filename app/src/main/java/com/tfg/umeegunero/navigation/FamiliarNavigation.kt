@@ -14,9 +14,7 @@ import com.tfg.umeegunero.feature.familiar.screen.DetalleHijoScreen
 import com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroScreen
 import com.tfg.umeegunero.feature.familiar.screen.FamiliarDashboardScreen
 
-/**
- * Clase que contiene las rutas de navegación para el módulo familiar
- */
+// Rutas para la navegación del módulo familiar
 object FamiliarDestinations {
     const val DASHBOARD_ROUTE = "familiar_dashboard"
     const val DETALLE_REGISTRO_ROUTE = "detalle_registro/{registroId}"
@@ -41,9 +39,7 @@ object FamiliarDestinations {
     }
 }
 
-/**
- * Configuración de navegación para el módulo familiar
- */
+// Configuración de navegación para el módulo familiar
 @Composable
 fun FamiliarNavGraph(
     navController: NavHostController = rememberNavController(),

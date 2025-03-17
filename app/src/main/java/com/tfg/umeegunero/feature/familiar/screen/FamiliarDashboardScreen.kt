@@ -645,7 +645,7 @@ fun RegistroActividadItem(
                         }
                     }
 
-                    if (registro.observaciones.isNotEmpty()) {
+                    if (registro.observaciones?.isNotEmpty() == true) {
                         Badge(
                             modifier = Modifier.padding(end = 4.dp),
                             containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)

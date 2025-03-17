@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Comidas
+import com.tfg.umeegunero.data.model.CacaControl
+import com.tfg.umeegunero.data.model.Comida
 import com.tfg.umeegunero.data.model.NecesidadesFisiologicas
 import com.tfg.umeegunero.data.model.NivelConsumo
 import com.tfg.umeegunero.data.model.Observacion
@@ -22,7 +24,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -38,7 +43,11 @@ data class RegistroActividadUiState(
         postre = Plato("", NivelConsumo.BIEN)
     ),
     val siesta: Siesta? = null,
-    val necesidadesFisiologicas: NecesidadesFisiologicas = NecesidadesFisiologicas(false, false),
+    val necesidadesFisiologicas: CacaControl = CacaControl(
+        caca = false, 
+        pipi = false, 
+        observaciones = ""
+    ),
     val observaciones: List<Observacion> = emptyList(),
     val registroGuardado: Boolean = false,
     val registroId: String = "",
@@ -46,12 +55,7 @@ data class RegistroActividadUiState(
     val nuevoObservacionTipo: TipoObservacion = TipoObservacion.OTRO
 )
 
-/**
- * ViewModel para la pantalla de registro de actividad
- *
- * Gestiona la lógica de negocio y el estado de la UI para la pantalla de registro de actividad,
- * incluyendo la carga de datos del alumno y la creación/edición del registro.
- */
+// ViewModel para la pantalla donde los profes registran actividades de los niños
 @HiltViewModel
 class RegistroActividadViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
@@ -61,7 +65,7 @@ class RegistroActividadViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(RegistroActividadUiState())
     val uiState: StateFlow<RegistroActividadUiState> = _uiState.asStateFlow()
 
-    // Obtener el ID del alumno de los argumentos de navegación
+    // Sacamos los IDs de los args de navegación
     private val alumnoId: String = savedStateHandle.get<String>("alumnoId") ?: ""
     private val registroId: String = savedStateHandle.get<String>("registroId") ?: ""
 
@@ -72,22 +76,20 @@ class RegistroActividadViewModel @Inject constructor(
 
         if (registroId.isNotBlank()) {
             _uiState.update { it.copy(registroId = registroId) }
-            // Aquí deberíamos cargar el registro existente, pero parece que no existe
-            // el método getRegistroById en el repositorio
+            // Aquí debería cargar el registro existente, pero no tengo el método
+            // getRegistroById implementado todavía
         }
     }
 
-    /**
-     * Carga los datos del alumno
-     */
+    // Carga los datos del alumno
     fun cargarDatosAlumno(alumnoId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             try {
-                // Este método aún no existe en el repositorio proporcionado
-                // Habría que implementarlo o usar otro existente
-                // Por ahora, simulamos un alumno para que la UI funcione
+                // Esto no está implementado en el repo todavía
+                // Tengo que añadirlo cuando termine la parte de UI
+                // Por ahora meto un alumno de ejemplo para que se vea algo
                 val alumno = Alumno(
                     dni = alumnoId,
                     nombre = "Alumno",
@@ -112,65 +114,59 @@ class RegistroActividadViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Actualiza los datos de comidas
-     */
     fun updateComidas(comidas: Comidas) {
         _uiState.update { it.copy(comidas = comidas) }
     }
 
     /**
-     * Actualiza el primer plato
+     * Actualiza información del primer plato
      */
-    fun updatePrimerPlato(descripcion: String, consumo: NivelConsumo) {
-        val currentComidas = _uiState.value.comidas
-        val updatedComidas = currentComidas.copy(
-            primerPlato = currentComidas.primerPlato.copy(
-                descripcion = descripcion,
-                consumo = consumo
-            )
-        )
-        _uiState.update { it.copy(comidas = updatedComidas) }
+    fun updatePrimerPlato(descripcion: String, nivelConsumo: NivelConsumo) {
+        val plato = _uiState.value.comidas.primerPlato?.copy(
+            descripcion = descripcion,
+            nivelConsumo = nivelConsumo,
+            consumo = nivelConsumo
+        ) ?: Plato(descripcion, nivelConsumo, nivelConsumo)
+
+        _uiState.update {
+            it.copy(comidas = it.comidas.copy(primerPlato = plato))
+        }
     }
 
     /**
-     * Actualiza el segundo plato
+     * Actualiza información del segundo plato
      */
-    fun updateSegundoPlato(descripcion: String, consumo: NivelConsumo) {
-        val currentComidas = _uiState.value.comidas
-        val updatedComidas = currentComidas.copy(
-            segundoPlato = currentComidas.segundoPlato.copy(
-                descripcion = descripcion,
-                consumo = consumo
-            )
-        )
-        _uiState.update { it.copy(comidas = updatedComidas) }
+    fun updateSegundoPlato(descripcion: String, nivelConsumo: NivelConsumo) {
+        val plato = _uiState.value.comidas.segundoPlato?.copy(
+            descripcion = descripcion,
+            nivelConsumo = nivelConsumo,
+            consumo = nivelConsumo
+        ) ?: Plato(descripcion, nivelConsumo, nivelConsumo)
+
+        _uiState.update {
+            it.copy(comidas = it.comidas.copy(segundoPlato = plato))
+        }
     }
 
     /**
-     * Actualiza el postre
+     * Actualiza información del postre
      */
-    fun updatePostre(descripcion: String, consumo: NivelConsumo) {
-        val currentComidas = _uiState.value.comidas
-        val updatedComidas = currentComidas.copy(
-            postre = currentComidas.postre.copy(
-                descripcion = descripcion,
-                consumo = consumo
-            )
-        )
-        _uiState.update { it.copy(comidas = updatedComidas) }
+    fun updatePostre(descripcion: String, nivelConsumo: NivelConsumo) {
+        val plato = _uiState.value.comidas.postre?.copy(
+            descripcion = descripcion,
+            nivelConsumo = nivelConsumo,
+            consumo = nivelConsumo
+        ) ?: Plato(descripcion, nivelConsumo, nivelConsumo)
+
+        _uiState.update {
+            it.copy(comidas = it.comidas.copy(postre = plato))
+        }
     }
 
-    /**
-     * Actualiza los datos de siesta
-     */
     fun updateSiesta(siesta: Siesta?) {
         _uiState.update { it.copy(siesta = siesta) }
     }
 
-    /**
-     * Actualiza la hora de inicio de la siesta
-     */
     fun updateSiestaInicio(hora: Int, minuto: Int) {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, hora)
@@ -189,9 +185,6 @@ class RegistroActividadViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Actualiza la hora de fin de la siesta
-     */
     fun updateSiestaFin(hora: Int, minuto: Int) {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, hora)
@@ -210,9 +203,7 @@ class RegistroActividadViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Calcula la duración de la siesta en minutos
-     */
+    // Calcula cuántos minutos ha dormido el niño
     private fun calcularDuracionSiesta(inicio: Timestamp?, fin: Timestamp?): Int {
         if (inicio == null || fin == null) return 0
 
@@ -221,36 +212,27 @@ class RegistroActividadViewModel @Inject constructor(
     }
 
     /**
-     * Actualiza los datos de necesidades fisiológicas
+     * Actualiza información sobre necesidades fisiológicas
      */
-    fun updateNecesidadesFisiologicas(pipi: Boolean, caca: Boolean) {
+    fun updateNecesidadesFisiologicas(caca: Boolean, pipi: Boolean, observaciones: String = "") {
         _uiState.update {
-            it.copy(
-                necesidadesFisiologicas = NecesidadesFisiologicas(
-                    caca = caca,
-                    pipi = pipi
-                )
-            )
+            it.copy(necesidadesFisiologicas = it.necesidadesFisiologicas.copy(
+                caca = caca,
+                pipi = pipi,
+                observaciones = observaciones
+            ))
         }
     }
 
-    /**
-     * Actualiza el mensaje para una nueva observación
-     */
     fun updateNuevoObservacionMensaje(mensaje: String) {
         _uiState.update { it.copy(nuevoObservacionMensaje = mensaje) }
     }
 
-    /**
-     * Actualiza el tipo para una nueva observación
-     */
     fun updateNuevoObservacionTipo(tipo: TipoObservacion) {
         _uiState.update { it.copy(nuevoObservacionTipo = tipo) }
     }
 
-    /**
-     * Añade una observación a la lista
-     */
+    // Añade una observación a la lista
     fun addObservacion() {
         val mensaje = _uiState.value.nuevoObservacionMensaje
         if (mensaje.isBlank()) return
@@ -258,7 +240,7 @@ class RegistroActividadViewModel @Inject constructor(
         val observacion = Observacion(
             tipo = _uiState.value.nuevoObservacionTipo,
             mensaje = mensaje,
-            hora = Timestamp.now()
+            timestamp = Timestamp.now()
         )
 
         val observacionesActualizadas = _uiState.value.observaciones.toMutableList()
@@ -271,9 +253,7 @@ class RegistroActividadViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Elimina una observación de la lista
-     */
+    // Quita una observación de la lista
     fun removeObservacion(index: Int) {
         val observacionesActualizadas = _uiState.value.observaciones.toMutableList()
         if (index in observacionesActualizadas.indices) {
@@ -282,9 +262,7 @@ class RegistroActividadViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Guarda el registro de actividad
-     */
+    // Guarda el registro en Firebase
     fun guardarRegistro() {
         val alumno = _uiState.value.alumno ?: return
 
@@ -292,28 +270,13 @@ class RegistroActividadViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             try {
-                // Supongamos que el usuario actual es el profesor
-                val profesorId = "profesor_id" // En una implementación real, obtendríamos el ID del usuario actual
-
-                val registro = RegistroActividad(
-                    id = _uiState.value.registroId, // Si es "" se creará uno nuevo
-                    alumnoId = alumno.dni,
-                    fecha = Timestamp.now(),
-                    profesorId = profesorId,
-                    comidas = _uiState.value.comidas,
-                    siesta = _uiState.value.siesta,
-                    necesidadesFisiologicas = _uiState.value.necesidadesFisiologicas,
-                    observaciones = _uiState.value.observaciones
-                )
-
-                // En una implementación real, aquí llamaríamos al repositorio para guardar el registro
-                // Por ahora simulamos que se ha guardado con éxito
-
-                _uiState.update {
-                    it.copy(
-                        registroGuardado = true,
-                        isLoading = false
-                    )
+                // Obtener el ID del profesor actual
+                val profesorId = usuarioRepository.getUsuarioActualId()
+                
+                if (profesorId.isNotBlank()) {
+                    guardarRegistroEnFirestore(profesorId)
+                } else {
+                    throw Exception("No se pudo obtener el ID del profesor")
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -327,9 +290,104 @@ class RegistroActividadViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Limpia el error actual
-     */
+    private fun guardarRegistroEnFirestore(profesorId: String) {
+        viewModelScope.launch {
+            try {
+                val alumnoId = _uiState.value.alumno?.dni ?: throw Exception("No se ha seleccionado ningún alumno")
+                val alumnoNombre = "${_uiState.value.alumno?.nombre} ${_uiState.value.alumno?.apellidos}"
+                
+                // Convertir los datos del UI a objetos del modelo
+                val comida = Comida(
+                    consumoPrimero = _uiState.value.comidas.primerPlato?.descripcion,
+                    descripcionPrimero = "Nivel: ${_uiState.value.comidas.primerPlato?.nivelConsumo?.name ?: "No especificado"}",
+                    consumoSegundo = _uiState.value.comidas.segundoPlato?.descripcion,
+                    descripcionSegundo = "Nivel: ${_uiState.value.comidas.segundoPlato?.nivelConsumo?.name ?: "No especificado"}",
+                    consumoPostre = _uiState.value.comidas.postre?.descripcion,
+                    descripcionPostre = "Nivel: ${_uiState.value.comidas.postre?.nivelConsumo?.name ?: "No especificado"}"
+                )
+                
+                val cacaControl = _uiState.value.necesidadesFisiologicas.copy()
+                
+                // Convertir las observaciones a texto para ser compatible con el nuevo modelo
+                val observacionesTexto = if (_uiState.value.observaciones.isNotEmpty()) {
+                    _uiState.value.observaciones.joinToString("\n") { 
+                        "[${it.tipo}] ${it.mensaje} (${formatTime(it.timestamp)})" 
+                    }
+                } else {
+                    null
+                }
+                
+                val registro = RegistroActividad(
+                    id = _uiState.value.registroId,  // Si es "" se creará uno nuevo
+                    alumnoId = alumnoId,
+                    alumnoNombre = alumnoNombre,
+                    fecha = Timestamp.now(),
+                    profesorId = profesorId,
+                    comida = comida,
+                    siesta = _uiState.value.siesta,
+                    cacaControl = cacaControl,
+                    observaciones = observacionesTexto,
+                    comidas = _uiState.value.comidas,
+                    necesidadesFisiologicas = cacaControl
+                )
+
+                // Simular guardado exitoso mientras se implementa el método en el repositorio
+                // En una implementación real, aquí llamaríamos al repositorio:
+                // val result = usuarioRepository.guardarRegistroActividad(registro)
+                
+                // Simulación:
+                _uiState.update {
+                    it.copy(
+                        registroGuardado = true,
+                        registroId = "registro_simulado_id",
+                        isLoading = false
+                    )
+                }
+                
+                /* Código para cuando el método esté implementado:
+                val result = usuarioRepository.guardarRegistroActividad(registro)
+                when (result) {
+                    is Result.Success<*> -> {
+                        val registroId = result.data?.toString() ?: ""
+                        _uiState.update {
+                            it.copy(
+                                registroGuardado = true,
+                                registroId = registroId,
+                                isLoading = false
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                error = "Error al guardar el registro: ${result.exception.message}",
+                                isLoading = false
+                            )
+                        }
+                        Timber.e(result.exception, "Error al guardar registro")
+                    }
+                    is Result.Loading -> { }
+                }
+                */
+                
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        error = "Error inesperado: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "Error inesperado al guardar registro")
+            }
+        }
+    }
+
+    // Función auxiliar para formatear la hora
+    private fun formatTime(timestamp: Timestamp): String {
+        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        return sdf.format(timestamp.toDate())
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }

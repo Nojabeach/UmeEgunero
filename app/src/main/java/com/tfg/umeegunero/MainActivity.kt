@@ -1,4 +1,4 @@
-// Modificamos MainActivity.kt para incluir la función de cierre de app
+// Añadida función para cerrar la app desde la navegación
 package com.tfg.umeegunero
 
 import android.os.Bundle
@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     AppNavigation(
                         navController = navController,
-                        onCloseApp = { finish() } // Agregamos la función para cerrar la app
+                        onCloseApp = { finish() } // Función para cerrar la app
                     )
                 }
             }

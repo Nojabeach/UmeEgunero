@@ -19,49 +19,49 @@ class DebugUtils @Inject constructor(
     private val usuarioRepository: UsuarioRepository
 ) {
 
-    // Credenciales por defecto para el administrador
+    // Credenciales para el admin por defecto
     private val DEFAULT_ADMIN_EMAIL = "admin@eguneroko.com"
     private val DEFAULT_ADMIN_PASSWORD = "Lloreria2025"
     private val DEFAULT_ADMIN_DNI = "12345678P"
 
     /**
-     * Verifica si existe al menos un administrador, de lo contrario crea uno
+     * Comprueba si hay un admin en el sistema, si no lo crea
      */
     fun ensureAdminExists() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Primero intentamos iniciar sesión con las credenciales de administrador para verificar si ya existe
+                // Intento de login para ver si ya existe
                 try {
-                    Log.d("DebugUtils", "Intentando iniciar sesión como administrador para verificar si existe...")
+                    Log.d("DebugUtils", "Probando login de admin...")
                     val authResult = FirebaseAuth.getInstance().signInWithEmailAndPassword(
                         DEFAULT_ADMIN_EMAIL,
                         DEFAULT_ADMIN_PASSWORD
                     ).await()
 
-                    // Si llegamos aquí, la autenticación fue exitosa, el admin ya existe
-                    Log.d("DebugUtils", "Inicio de sesión como admin exitoso. Admin ya existe.")
+                    // Si llega aquí, el admin ya existe
+                    Log.d("DebugUtils", "Login OK, admin ya existe")
 
-                    // Cerramos sesión para no interferir con la experiencia del usuario
+                    // Cerramos sesión para no liar al usuario
                     FirebaseAuth.getInstance().signOut()
 
                 } catch (authError: Exception) {
-                    // Si falla la autenticación, el admin probablemente no existe, intentamos crearlo
-                    Log.d("DebugUtils", "No se pudo iniciar sesión como admin. Intentando crear uno: ${authError.message}")
+                    // Si falla el login, probablemente no existe, vamos a crearlo
+                    Log.d("DebugUtils", "No se pudo hacer login como admin: ${authError.message}")
 
                     try {
-                        // Intentamos crear el administrador
+                        // Creamos el admin
                         createDefaultAdmin()
                     } catch (createError: Exception) {
-                        // Si falla la creación, verificamos si es por permisos o porque ya existe
+                        // Si falla la creación, miramos si es por permisos o porque ya existe
                         Log.e("DebugUtils", "Error al crear admin: ${createError.message}")
 
-                        // Como alternativa, verificamos en Firestore directamente si tenemos permisos
+                        // Plan B: comprobamos en Firestore directamente
                         try {
                             val adminDoc = usuarioRepository.getUsuarioPorDni(DEFAULT_ADMIN_DNI)
                             if (adminDoc is com.tfg.umeegunero.data.repository.Result.Success) {
-                                Log.d("DebugUtils", "Admin ya existe en Firestore.")
+                                Log.d("DebugUtils", "Admin ya existe en Firestore")
                             } else {
-                                Log.d("DebugUtils", "No se pudo verificar si el admin existe en Firestore.")
+                                Log.d("DebugUtils", "No se pudo verificar admin en Firestore")
                             }
                         } catch (e: Exception) {
                             Log.e("DebugUtils", "Error al verificar admin en Firestore: ${e.message}")
@@ -75,7 +75,7 @@ class DebugUtils @Inject constructor(
     }
 
     /**
-     * Crea un administrador por defecto en Authentication y Firestore
+     * Crea el admin por defecto
      */
     private suspend fun createDefaultAdmin() {
         try {
@@ -120,12 +120,12 @@ class DebugUtils @Inject constructor(
                 throw savedResult.exception
             }
 
-            // 5. Cerrar sesión por seguridad
+            // 5. Cerramos sesión por seguridad
             firebaseAuth.signOut()
 
         } catch (e: Exception) {
-            Log.e("DebugUtils", "Error al crear administrador", e)
-            throw e // Relanzamos la excepción para manejarla en el nivel superior
+            Log.e("DebugUtils", "Error al crear administrador por defecto", e)
+            throw e
         }
     }
 }

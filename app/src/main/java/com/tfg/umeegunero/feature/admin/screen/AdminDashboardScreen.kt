@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
@@ -42,9 +43,11 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
@@ -59,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,6 +70,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Direccion
+import com.tfg.umeegunero.data.model.Perfil
+import com.tfg.umeegunero.data.model.SubtipoFamiliar
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardUiState
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -78,7 +86,8 @@ fun AdminDashboardScreen(
     onLogout: () -> Unit = {},
     onNavigateToAddCentro: () -> Unit = {},
     onNavigateToEditCentro: (String) -> Unit = {},
-    onNavigateToAddUser: () -> Unit = {}
+    onNavigateToAddUser: () -> Unit = {},
+    onNavigateToEditUsuario: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -94,6 +103,15 @@ fun AdminDashboardScreen(
             viewModel.clearError()
         }
     }
+    
+    // Efecto para cargar usuarios cuando se selecciona la pestaña correspondiente
+    LaunchedEffect(selectedItem) {
+        if (selectedItem == 1) {
+            // Cargar usuarios cuando se selecciona esta pestaña
+            viewModel.loadUsuarios()
+        }
+    }
+    
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -132,6 +150,9 @@ fun AdminDashboardScreen(
                 val menuItems = listOf(
                     "Centros Educativos" to Icons.Default.School,
                     "Usuarios" to Icons.Default.Person,
+                    "Profesores" to Icons.Filled.School,
+                    "Alumnos" to Icons.Default.Person,
+                    "Vinculaciones" to Icons.Default.Link,
                     "Configuración" to Icons.Default.Settings
                 )
 
@@ -186,7 +207,10 @@ fun AdminDashboardScreen(
                             when (selectedItem) {
                                 0 -> "Centros Educativos"
                                 1 -> "Gestión de Usuarios"
-                                2 -> "Configuración"
+                                2 -> "Gestión de Profesores"
+                                3 -> "Gestión de Alumnos" 
+                                4 -> "Vinculaciones"
+                                5 -> "Configuración"
                                 else -> "Panel de Administración"
                             },
                             fontWeight = FontWeight.Bold
@@ -217,7 +241,7 @@ fun AdminDashboardScreen(
                             onClick = onNavigateToAddCentro
                         )
                     }
-                    1 -> { // Usuarios
+                    1, 2, 3 -> { // Usuarios, Profesores, o Alumnos
                         ExtendedFloatingActionButton(
                             text = { Text("Añadir Usuario") },
                             icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
@@ -234,7 +258,14 @@ fun AdminDashboardScreen(
                 uiState = uiState,
                 onEditCentro = onNavigateToEditCentro,
                 onDeleteCentro = viewModel::deleteCentro,
-                onRefresh = viewModel::loadCentros
+                onRefresh = {
+                    when (selectedItem) {
+                        0 -> viewModel.loadCentros()
+                        1 -> viewModel.loadUsuarios()
+                    }
+                },
+                onEditUsuario = onNavigateToEditUsuario,
+                onDeleteUsuario = viewModel::deleteUsuario
             )
         }
     }
@@ -247,7 +278,9 @@ fun AdminDashboardContent(
     uiState: AdminDashboardUiState,
     onEditCentro: (String) -> Unit,
     onDeleteCentro: (String) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onEditUsuario: (String) -> Unit = {},
+    onDeleteUsuario: (String) -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -262,8 +295,17 @@ fun AdminDashboardContent(
                 onDeleteCentro = onDeleteCentro,
                 onRefresh = onRefresh
             )
-            1 -> UsuariosContent()
-            2 -> ConfiguracionContent()
+            1 -> UsuariosContent(
+                usuarios = uiState.usuarios,
+                isLoading = uiState.isLoadingUsuarios,
+                onEditUsuario = onEditUsuario,
+                onDeleteUsuario = onDeleteUsuario,
+                onRefresh = onRefresh
+            )
+            2 -> ProfesoresContent()
+            3 -> AlumnosContent()
+            4 -> VinculacionesContent()
+            5 -> ConfiguracionContent()
             else -> CentrosEducativosContent(
                 centros = uiState.centros,
                 isLoading = uiState.isLoading,
@@ -274,6 +316,7 @@ fun AdminDashboardContent(
         }
     }
 }
+
 @Composable
 fun CentrosEducativosContent(
     centros: List<Centro>,
@@ -433,38 +476,287 @@ fun CentroEducativoItem(
         }
     }
 }
+
 @Composable
-fun UsuariosContent() {
+fun UsuariosContent(
+    usuarios: List<Usuario>,
+    isLoading: Boolean,
+    onEditUsuario: (String) -> Unit,
+    onDeleteUsuario: (String) -> Unit,
+    onRefresh: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Listado de Usuarios",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Botón de recargar
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recargar",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Mostrar indicador de carga
+        if (isLoading) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+        // Mostrar lista de usuarios
+        else if (usuarios.isNotEmpty()) {
+            items(usuarios) { usuario ->
+                UsuarioItem(
+                    usuario = usuario,
+                    onEdit = { onEditUsuario(usuario.dni) },
+                    onDelete = { onDeleteUsuario(usuario.dni) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+        // Mostrar mensaje cuando no hay usuarios
+        else {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "No hay usuarios disponibles",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Agrega un nuevo usuario usando el botón '+' de abajo",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun UsuarioItem(
+    usuario: Usuario,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${usuario.nombre} ${usuario.apellidos}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // Obtener el tipo de usuario primario
+                val tipoUsuario = usuario.perfiles.firstOrNull()?.tipo ?: TipoUsuario.FAMILIAR
+                val tipoText = when (tipoUsuario) {
+                    TipoUsuario.ADMIN_APP -> "Administrador App"
+                    TipoUsuario.ADMIN_CENTRO -> "Administrador Centro"
+                    TipoUsuario.PROFESOR -> "Profesor"
+                    TipoUsuario.FAMILIAR -> "Familiar"
+                    else -> "Alumno"
+                }
+
+                Text(
+                    text = "$tipoText • ${usuario.email}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Botones de acción
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Editar",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfesoresContent() {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+        Text(
+            text = "Gestión de Profesores - En desarrollo",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun AlumnosContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Gestión de Alumnos - En desarrollo",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun VinculacionesContent() {
+    // Crear los tabs para diferentes tipos de vinculaciones
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabs = listOf("Profesor-Alumno", "Alumno-Familiar", "Profesor-Centro")
+    
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Tabs de navegación
+        ScrollableTabRow(
+            selectedTabIndex = selectedTabIndex,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ) {
-            Text(
-                text = "Gestión de Usuarios",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Aquí podrás gestionar los usuarios del sistema",
-                style = MaterialTheme.typography.bodyLarge
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Usa el botón '+' para añadir un nuevo usuario",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = { selectedTabIndex = index },
+                    text = { Text(title) }
+                )
+            }
         }
+        
+        // Contenido según la tab seleccionada
+        when (selectedTabIndex) {
+            0 -> ProfesorAlumnoVinculacionContent()
+            1 -> AlumnoFamiliarVinculacionContent()
+            2 -> ProfesorCentroVinculacionContent()
+        }
+    }
+}
+
+@Composable
+fun ProfesorAlumnoVinculacionContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Vinculación Profesor-Alumno - En desarrollo",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun AlumnoFamiliarVinculacionContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Vinculación Alumno-Familiar - En desarrollo",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun ProfesorCentroVinculacionContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Vinculación Profesor-Centro - En desarrollo",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -480,6 +772,7 @@ fun ConfiguracionContent() {
         )
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun AdminDashboardPreview() {
@@ -538,8 +831,268 @@ fun AdminDashboardPreview() {
                 uiState = mockState,
                 onEditCentro = {},
                 onDeleteCentro = {},
-                onRefresh = {}
+                onRefresh = {},
+                onEditUsuario = {},
+                onDeleteUsuario = {}
             )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AdminDashboardUsuariosPreview() {
+    // Crear un estado mock para el preview con usuarios
+    val mockState = AdminDashboardUiState(
+        usuarios = listOf(
+            Usuario(
+                dni = "12345678A",
+                email = "admin@umeegunero.com",
+                nombre = "Administrador",
+                apellidos = "App",
+                telefono = "600111222",
+                perfiles = listOf(Perfil(tipo = TipoUsuario.ADMIN_APP))
+            ),
+            Usuario(
+                dni = "98765432Z",
+                email = "director@artazaromo.eus",
+                nombre = "María",
+                apellidos = "López García",
+                telefono = "600333444",
+                perfiles = listOf(Perfil(tipo = TipoUsuario.ADMIN_CENTRO, centroId = "1"))
+            ),
+            Usuario(
+                dni = "87654321B",
+                email = "profesor@santurzibhi.net",
+                nombre = "Juan",
+                apellidos = "Martínez Ruiz",
+                telefono = "600555666",
+                perfiles = listOf(Perfil(tipo = TipoUsuario.PROFESOR, centroId = "2"))
+            ),
+            Usuario(
+                dni = "76543210C",
+                email = "familiar@gmail.com",
+                nombre = "Laura",
+                apellidos = "Sánchez Pérez",
+                telefono = "600777888",
+                perfiles = listOf(Perfil(tipo = TipoUsuario.FAMILIAR, subtipo = SubtipoFamiliar.MADRE))
+            )
+        ),
+        isLoadingUsuarios = false
+    )
+
+    UmeEguneroTheme {
+        // Usar AdminDashboardContent directamente, sin el ViewModel
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Gestión de Usuarios", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            },
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    text = { Text("Añadir Usuario") },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
+                    onClick = {}
+                )
+            }
+        ) { paddingValues ->
+            AdminDashboardContent(
+                selectedItem = 1,
+                paddingValues = paddingValues,
+                uiState = mockState,
+                onEditCentro = {},
+                onDeleteCentro = {},
+                onRefresh = {},
+                onEditUsuario = {},
+                onDeleteUsuario = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AdminDashboardVinculacionesPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Vinculaciones", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                VinculacionesContent()
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProfesorAlumnoVinculacionContentPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Vinculación Profesor-Alumno", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                ProfesorAlumnoVinculacionContent()
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AlumnoFamiliarVinculacionContentPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Vinculación Alumno-Familiar", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                AlumnoFamiliarVinculacionContent()
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProfesorCentroVinculacionContentPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Vinculación Profesor-Centro", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                ProfesorCentroVinculacionContent()
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProfesoresContentPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Gestión de Profesores", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                ProfesoresContent()
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AlumnosContentPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Gestión de Alumnos", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                AlumnosContent()
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ConfiguracionContentPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Configuración", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                ConfiguracionContent()
+            }
         }
     }
 }

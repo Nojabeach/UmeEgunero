@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.feature.auth.screen
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +40,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
 fun DatosPersonalesStep(
@@ -317,5 +320,57 @@ fun TipoFamiliarOptions(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DatosPersonalesStepPreview() {
+    UmeEguneroTheme {
+        DatosPersonalesStep(
+            dni = "12345678X",
+            email = "ejemplo@email.com",
+            password = "password123",
+            confirmPassword = "password123",
+            nombre = "Juan",
+            apellidos = "García López",
+            telefono = "600123456",
+            subtipo = SubtipoFamiliar.PADRE,
+            onDniChange = {},
+            onEmailChange = {},
+            onPasswordChange = {},
+            onConfirmPasswordChange = {},
+            onNombreChange = {},
+            onApellidosChange = {},
+            onTelefonoChange = {},
+            onSubtipoChange = {},
+            errors = emptyMap()
+        )
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun DatosPersonalesStepDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        DatosPersonalesStep(
+            dni = "12345678X",
+            email = "ejemplo@email.com",
+            password = "password123",
+            confirmPassword = "password123",
+            nombre = "Juan",
+            apellidos = "García López",
+            telefono = "600123456",
+            subtipo = SubtipoFamiliar.PADRE,
+            onDniChange = {},
+            onEmailChange = {},
+            onPasswordChange = {},
+            onConfirmPasswordChange = {},
+            onNombreChange = {},
+            onApellidosChange = {},
+            onTelefonoChange = {},
+            onSubtipoChange = {},
+            errors = mapOf("dni" to "Este DNI ya está registrado")
+        )
     }
 }

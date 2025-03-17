@@ -83,6 +83,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Comidas
+import com.tfg.umeegunero.data.model.CacaControl
 import com.tfg.umeegunero.data.model.NecesidadesFisiologicas
 import com.tfg.umeegunero.data.model.NivelConsumo
 import com.tfg.umeegunero.data.model.Observacion
@@ -346,21 +347,21 @@ fun ComidasCard(
             Divider()
 
             // Primer plato
-            PlatoItem(
+            PlatoInput(
                 titulo = "Primer plato",
                 plato = comidas.primerPlato,
                 onUpdate = onUpdatePrimerPlato
             )
 
             // Segundo plato
-            PlatoItem(
+            PlatoInput(
                 titulo = "Segundo plato",
                 plato = comidas.segundoPlato,
                 onUpdate = onUpdateSegundoPlato
             )
 
             // Postre
-            PlatoItem(
+            PlatoInput(
                 titulo = "Postre",
                 plato = comidas.postre,
                 onUpdate = onUpdatePostre
@@ -371,18 +372,18 @@ fun ComidasCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlatoItem(
+fun PlatoInput(
     titulo: String,
     plato: Plato,
     onUpdate: (String, NivelConsumo) -> Unit
 ) {
     var descripcion by remember { mutableStateOf(plato.descripcion) }
-    var consumo by remember { mutableStateOf(plato.consumo) }
+    var consumo by remember { mutableStateOf(plato.nivelConsumo) }
 
     // Actualizar si cambia el plato
     LaunchedEffect(plato) {
         descripcion = plato.descripcion
-        consumo = plato.consumo
+        consumo = plato.nivelConsumo
     }
 
     Column(
@@ -614,9 +615,20 @@ fun HoraSiestaSelector(
 
 @Composable
 fun NecesidadesFisiologicasCard(
-    necesidadesFisiologicas: NecesidadesFisiologicas,
-    onUpdate: (Boolean, Boolean) -> Unit
+    necesidadesFisiologicas: CacaControl,
+    onUpdate: (Boolean, Boolean, String) -> Unit
 ) {
+    var pipi by remember { mutableStateOf(necesidadesFisiologicas.pipi) }
+    var caca by remember { mutableStateOf(necesidadesFisiologicas.caca) }
+    var observaciones by remember { mutableStateOf(necesidadesFisiologicas.observaciones) }
+
+    // Actualizar si cambian las necesidades
+    LaunchedEffect(necesidadesFisiologicas) {
+        pipi = necesidadesFisiologicas.pipi
+        caca = necesidadesFisiologicas.caca
+        observaciones = necesidadesFisiologicas.observaciones
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -629,74 +641,83 @@ fun NecesidadesFisiologicasCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Encabezado
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = ProfesorColor
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Necesidades Fisiológicas",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Text(
+                text = "Necesidades Fisiológicas",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
 
-            Divider()
-
-            // Checks para pipi y caca
+            // Opciones con checkboxes
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Pipi
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                // Pipí
+                Surface(
                     modifier = Modifier
+                        .weight(1f)
                         .clickable {
-                            onUpdate(!necesidadesFisiologicas.pipi, necesidadesFisiologicas.caca)
+                            pipi = !pipi
+                            onUpdate(caca, pipi, observaciones)
                         }
                         .padding(8.dp)
                 ) {
-                    Checkbox(
-                        checked = necesidadesFisiologicas.pipi,
-                        onCheckedChange = { checked ->
-                            onUpdate(checked, necesidadesFisiologicas.caca)
-                        }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Pipí",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = pipi,
+                            onCheckedChange = { checked ->
+                                pipi = checked
+                                onUpdate(caca, checked, observaciones)
+                            }
+                        )
+                        Text(
+                            text = "Pipí",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
 
                 // Caca
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Surface(
                     modifier = Modifier
+                        .weight(1f)
                         .clickable {
-                            onUpdate(necesidadesFisiologicas.pipi, !necesidadesFisiologicas.caca)
+                            caca = !caca
+                            onUpdate(caca, pipi, observaciones)
                         }
                         .padding(8.dp)
                 ) {
-                    Checkbox(
-                        checked = necesidadesFisiologicas.caca,
-                        onCheckedChange = { checked ->
-                            onUpdate(necesidadesFisiologicas.pipi, checked)
-                        }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Caca",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = caca,
+                            onCheckedChange = { checked ->
+                                caca = checked
+                                onUpdate(checked, pipi, observaciones)
+                            }
+                        )
+                        Text(
+                            text = "Caca",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
             }
+            
+            // Campo de observaciones
+            OutlinedTextField(
+                value = observaciones,
+                onValueChange = { 
+                    observaciones = it
+                    onUpdate(caca, pipi, it)
+                },
+                label = { Text("Observaciones") },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
         }
     }
 }
@@ -867,7 +888,7 @@ fun ObservacionItem(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = formatTimestamp(observacion.hora),
+                        text = formatTimestamp(observacion.timestamp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -932,12 +953,12 @@ fun RegistroActividadScreenPreview() {
                 Observacion(
                     tipo = TipoObservacion.ROPA,
                     mensaje = "Necesita cambio de ropa",
-                    hora = Timestamp(Date())
+                    timestamp = Timestamp(Date())
                 ),
                 Observacion(
                     tipo = TipoObservacion.OTRO,
                     mensaje = "Ha jugado muy bien con sus compañeros",
-                    hora = Timestamp(Date())
+                    timestamp = Timestamp(Date())
                 )
             )
 
@@ -1013,8 +1034,8 @@ fun RegistroActividadScreenPreview() {
                         )
 
                         NecesidadesFisiologicasCard(
-                            necesidadesFisiologicas = NecesidadesFisiologicas(pipi = true, caca = false),
-                            onUpdate = { _, _ -> }
+                            necesidadesFisiologicas = CacaControl(pipi = true, caca = false, observaciones = ""),
+                            onUpdate = { _, _, _ -> }
                         )
 
                         ObservacionesCard(
@@ -1022,12 +1043,12 @@ fun RegistroActividadScreenPreview() {
                                 Observacion(
                                     tipo = TipoObservacion.ROPA,
                                     mensaje = "Necesita cambio de ropa",
-                                    hora = Timestamp(Date())
+                                    timestamp = Timestamp(Date())
                                 ),
                                 Observacion(
                                     tipo = TipoObservacion.OTRO,
                                     mensaje = "Ha jugado muy bien con sus compañeros",
-                                    hora = Timestamp(Date())
+                                    timestamp = Timestamp(Date())
                                 )
                             ),
                             nuevoMensaje = "",
@@ -1052,5 +1073,18 @@ fun RegistroActividadScreenPreview() {
 fun RegistroActividadScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
         RegistroActividadScreenPreview()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun NecesidadesFisiologicasCardPreview() {
+    UmeEguneroTheme {
+        Surface {
+            NecesidadesFisiologicasCard(
+                necesidadesFisiologicas = CacaControl(pipi = true, caca = false, observaciones = "Observación de ejemplo"),
+                onUpdate = { _, _, _ -> }
+            )
+        }
     }
 }

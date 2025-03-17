@@ -86,7 +86,7 @@ sealed class AppScreens(val route: String) {
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
-    onCloseApp: () -> Unit = {} // Agregamos el parámetro para cerrar la app
+    onCloseApp: () -> Unit = {} // Para cerrar la app
 ) {
     NavHost(
         navController = navController,
@@ -146,7 +146,7 @@ fun AppNavigation(
                     }
                 },
                 onForgotPassword = {
-                    // TODO: Implementar recuperación de contraseña
+                    // Pendiente: Hay que implementar la recuperación de contraseña cuando tenga tiempo
                 }
             )
         }

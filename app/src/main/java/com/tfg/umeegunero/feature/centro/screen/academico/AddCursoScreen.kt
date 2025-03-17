@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -121,7 +122,7 @@ fun AddCursoScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
@@ -456,24 +457,282 @@ fun HiltAddCursoScreen(
 }
 
 @Preview(name = "Light Mode")
-@Preview(name = "Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun AddCursoScreenPreview() {
+fun AddCursoScreenPreviewLight() {
     UmeEguneroTheme {
         Surface {
-            UmeEguneroTheme {
-                Surface {
-                    // Para el preview, simplemente usa una versión reducida de la pantalla
-                    // sin necesidad de un ViewModel real
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+            AddCursoScreenPreviewContent()
+        }
+    }
+}
+
+@Preview(name = "Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun AddCursoScreenPreviewDark() {
+    UmeEguneroTheme(darkTheme = true) {
+        Surface {
+            AddCursoScreenPreviewContent()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddCursoScreenPreviewContent() {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scrollState = rememberScrollState()
+    
+    // Estado simulado para el preview
+    val nombre = "1º de Primaria"
+    val descripcion = "Primer curso de educación primaria"
+    val edadMinima = "6"
+    val edadMaxima = "7"
+    val anioAcademico = "2023-2024"
+    val aniosNacimiento = listOf(2017, 2018)
+    val nuevoAnioNacimiento = ""
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Añadir Curso",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = CentroColor,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Icono de curso
+            Icon(
+                imageVector = Icons.Default.School,
+                contentDescription = "Curso",
+                tint = CentroColor,
+                modifier = Modifier
+                    .size(80.dp)
+                    .padding(bottom = 16.dp)
+            )
+
+            // Formulario
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Nombre del curso
+                    OutlinedTextField(
+                        value = nombre,
+                        onValueChange = { },
+                        label = { Text("Nombre del curso *") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Descripción
+                    OutlinedTextField(
+                        value = descripcion,
+                        onValueChange = { },
+                        label = { Text("Descripción *") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Rango de edad
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Vista previa de Añadir Curso")
-                        // Aquí puedes añadir elementos UI básicos para el preview
+                        // Edad mínima
+                        OutlinedTextField(
+                            value = edadMinima,
+                            onValueChange = { },
+                            label = { Text("Edad mínima *") },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Edad máxima
+                        OutlinedTextField(
+                            value = edadMaxima,
+                            onValueChange = { },
+                            label = { Text("Edad máxima *") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    // Año académico
+                    OutlinedTextField(
+                        value = anioAcademico,
+                        onValueChange = { },
+                        label = { Text("Año académico (ej: 2023-2024) *") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    // Sección de años de nacimiento
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Años de nacimiento *",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Añade los años de nacimiento de los alumnos que pertenecen a este curso",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            Button(
+                                onClick = { },
+                                modifier = Modifier.padding(start = 8.dp)
+                            ) {
+                                Text("Calcular")
+                            }
+                        }
+                        
+                        // Campo para añadir nuevo año
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = nuevoAnioNacimiento,
+                                onValueChange = { },
+                                label = { Text("Año de nacimiento") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            IconButton(onClick = { }) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Añadir año",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        
+                        // Lista de años añadidos
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(aniosNacimiento) { anio ->
+                                ElevatedFilterChip(
+                                    selected = true,
+                                    onClick = { },
+                                    label = { Text(anio.toString()) },
+                                    trailingIcon = {
+                                        IconButton(
+                                            onClick = { },
+                                            modifier = Modifier.size(18.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Eliminar año",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        
+                        // Explicación sobre los años de nacimiento
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "¿Por qué son importantes los años de nacimiento?",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "En entornos educativos rurales o con menor población, es común agrupar alumnos de diferentes edades en un mismo curso. Esta información permite al sistema identificar correctamente qué alumnos pertenecen a cada curso según su año de nacimiento.",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "Puedes calcular automáticamente los años basados en el rango de edad y el año académico, o añadirlos manualmente según las necesidades específicas de tu centro.",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Botón de guardar
+            Button(
+                onClick = { },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = "Guardar",
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Guardar Curso",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Nota sobre campos obligatorios
+            Text(
+                text = "* Campos obligatorios",
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 } 

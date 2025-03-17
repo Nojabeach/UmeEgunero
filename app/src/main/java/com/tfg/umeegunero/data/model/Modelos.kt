@@ -3,7 +3,7 @@ package com.tfg.umeegunero.data.model
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 
-// Enums para los diferentes tipos
+// Tipos de usuarios y estados
 enum class TipoUsuario {
     ADMIN_APP, ADMIN_CENTRO, PROFESOR, FAMILIAR, ALUMNO
 }
@@ -17,18 +17,18 @@ enum class EstadoSolicitud {
 }
 
 enum class NivelConsumo {
-    BIEN, POCO, NADA
+    NADA, POCO, BIEN, TODO
 }
 
 enum class TipoObservacion {
-    TOALLITAS, PAÑALES, ROPA, OTRO
+    COMPORTAMIENTO, ACADEMICO, TOALLITAS, PAÑALES, ROPA, OTRO
 }
 
 enum class TemaPref {
     LIGHT, DARK, SYSTEM
 }
 
-// Modelos de datos principales
+// Modelos principales
 data class Usuario(
     val dni: String = "",
     val email: String = "",
@@ -131,43 +131,100 @@ data class SolicitudRegistro(
 data class RegistroActividad(
     @DocumentId val id: String = "",
     val alumnoId: String = "",
+    val alumnoNombre: String = "",
     val fecha: Timestamp = Timestamp.now(),
-    val profesorId: String = "",
-    val comidas: Comidas = Comidas(),
+    val profesorId: String? = null,
+    val profesorNombre: String? = null,
+    val comida: Comida? = null,
     val siesta: Siesta? = null,
+    val cacaControl: CacaControl? = null,
+    val actividades: Actividad? = null,
+    val comidas: Comidas = Comidas(),
     val necesidadesFisiologicas: NecesidadesFisiologicas = NecesidadesFisiologicas(),
-    val observaciones: List<Observacion> = emptyList(),
+    val observaciones: String? = null,
     val vistoPorFamiliar: Boolean = false,
     val fechaVisto: Timestamp? = null
 )
 
+/**
+ * Modelo para la información de comidas
+ */
+data class Comida(
+    val consumoPrimero: String? = null,
+    val descripcionPrimero: String? = null,
+    val consumoSegundo: String? = null,
+    val descripcionSegundo: String? = null,
+    val consumoPostre: String? = null,
+    val descripcionPostre: String? = null,
+    val observaciones: String? = null
+)
+
+/**
+ * Modelo para la información de siesta
+ */
+data class Siesta(
+    val duracion: Int = 0,
+    val observaciones: String = "",
+    val inicio: Timestamp? = null,
+    val fin: Timestamp? = null
+)
+
+/**
+ * Modelo para la información de necesidades fisiológicas (ahora llamado CacaControl)
+ */
+data class CacaControl(
+    val tipo1: Boolean? = null,
+    val tipo2: Boolean? = null,
+    val tipo3: Boolean? = null,
+    val hora: String? = null,
+    val cantidad: String? = null,
+    val tipo: String? = null,
+    val descripcion: String? = null,
+    val caca: Boolean = false,
+    val pipi: Boolean = false,
+    val observaciones: String = ""
+)
+
+/**
+ * Alias para compatibilidad con código existente
+ */
+typealias NecesidadesFisiologicas = CacaControl
+
+/**
+ * Modelo para la información de actividades
+ */
+data class Actividad(
+    val titulo: String = "",
+    val descripcion: String = "",
+    val participacion: String = "",
+    val observaciones: String = ""
+)
+
+/**
+ * Modelo para representar un plato de comida y su nivel de consumo
+ */
+data class Plato(
+    val descripcion: String = "",
+    val nivelConsumo: NivelConsumo = NivelConsumo.BIEN,
+    val consumo: NivelConsumo = NivelConsumo.BIEN
+)
+
+/**
+ * Modelo para representar las comidas del día
+ */
 data class Comidas(
     val primerPlato: Plato = Plato(),
     val segundoPlato: Plato = Plato(),
     val postre: Plato = Plato()
 )
 
-data class Plato(
-    val descripcion: String = "",
-    val consumo: NivelConsumo = NivelConsumo.BIEN
-)
-
-data class Siesta(
-    val inicio: Timestamp? = null,
-    val fin: Timestamp? = null,
-    val duracion: Int = 0  // En minutos
-)
-
-data class NecesidadesFisiologicas(
-    val caca: Boolean = false,
-    val pipi: Boolean = false,
-    val observaciones: String = "" // Añadido campo observaciones
-)
-
+/**
+ * Modelo para representar una observación
+ */
 data class Observacion(
-    val tipo: TipoObservacion = TipoObservacion.OTRO,
     val mensaje: String = "",
-    val hora: Timestamp = Timestamp.now()
+    val tipo: TipoObservacion = TipoObservacion.OTRO,
+    val timestamp: Timestamp = Timestamp.now()
 )
 
 data class Mensaje(

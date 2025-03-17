@@ -20,8 +20,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -383,19 +386,8 @@ private fun Color.luminance(): Float {
 @Composable
 fun LoginScreenLightPreview() {
     UmeEguneroTheme(darkTheme = false) {
-        LoginScreen(
-            userType = UserType.ADMIN_APP,
-            onNavigateBack = {},
-            onLoginSuccess = { userType ->
-                // Simular navegación para el preview
-                when (userType) {
-                    UserType.ADMIN_APP -> println("Navegando a Admin Dashboard")
-                    UserType.ADMIN_CENTRO -> println("Navegando a Centro Dashboard")
-                    UserType.PROFESOR -> println("Navegando a Profesor Dashboard")
-                    UserType.FAMILIAR -> println("Navegando a Familiar Dashboard")
-                }
-            }
-        )
+        // Usar una versión simplificada sin dependencia del ViewModel
+        LoginScreenPreview(userType = UserType.ADMIN_APP, darkTheme = false)
     }
 }
 
@@ -403,18 +395,229 @@ fun LoginScreenLightPreview() {
 @Composable
 fun LoginScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        LoginScreen(
-            userType = UserType.ADMIN_APP,
-            onNavigateBack = {},
-            onLoginSuccess = { userType ->
-                // Simular navegación para el preview
-                when (userType) {
-                    UserType.ADMIN_APP -> println("Navegando a Admin Dashboard")
-                    UserType.ADMIN_CENTRO -> println("Navegando a Centro Dashboard")
-                    UserType.PROFESOR -> println("Navegando a Profesor Dashboard")
-                    UserType.FAMILIAR -> println("Navegando a Familiar Dashboard")
+        // Usar una versión simplificada sin dependencia del ViewModel
+        LoginScreenPreview(userType = UserType.ADMIN_APP, darkTheme = true)
+    }
+}
+
+@Composable
+fun LoginScreenPreview(userType: UserType, darkTheme: Boolean) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Color según tipo de usuario
+    val userTypeColor = when (userType) {
+        UserType.ADMIN_APP -> MaterialTheme.colorScheme.tertiary
+        UserType.ADMIN_CENTRO-> Color(0xFF007AFF) // Azul iOS
+        UserType.PROFESOR -> Color(0xFF34C759) // Verde iOS
+        UserType.FAMILIAR -> Color(0xFF5856D6) // Púrpura iOS
+    }
+
+    // Título según tipo de usuario
+    val userTypeTitle = when (userType) {
+        UserType.ADMIN_APP -> "Administrador"
+        UserType.ADMIN_CENTRO -> "Centro Educativo"
+        UserType.PROFESOR -> "Profesorado"
+        UserType.FAMILIAR -> "Familiar"
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Iniciar Sesión") },
+                navigationIcon = {
+                    IconButton(onClick = {}) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Fondo gradiente
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                userTypeColor.copy(alpha = 0.1f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Avatar/ícono
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(userTypeColor.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Usar iconos de Material en lugar de recursos drawable
+                    // ya que parece que faltan esos recursos
+                    val icon = when (userType) {
+                        UserType.ADMIN_APP -> Icons.Default.AccountCircle
+                        UserType.ADMIN_CENTRO -> Icons.Default.School
+                        UserType.PROFESOR -> Icons.Default.Person
+                        UserType.FAMILIAR -> Icons.Default.Person // Family icon no está en el Material Icons por defecto
+                    }
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = "Icono de $userTypeTitle",
+                        modifier = Modifier.size(64.dp),
+                        tint = userTypeColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Título
+                Text(
+                    text = userTypeTitle,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = userTypeColor,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Formulario
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 4.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Email
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Email,
+                                    contentDescription = null,
+                                    tint = userTypeColor
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Next
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Password
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Contraseña") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = userTypeColor
+                                )
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = { showPassword = !showPassword }) {
+                                    Icon(
+                                        imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (showPassword) "Ocultar contraseña" else "Mostrar contraseña"
+                                    )
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {}
+                            ),
+                            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Botón olvidé contraseña
+                        TextButton(
+                            onClick = {},
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("¿Olvidaste la contraseña?")
+                        }
+
+                        // Botón de inicio de sesión
+                        Button(
+                            onClick = {},
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = userTypeColor
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Iniciar Sesión")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Instrucciones según el tipo de usuario
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val instructionText = when (userType) {
+                            UserType.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación."
+                            UserType.ADMIN_CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
+                            UserType.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo."
+                            UserType.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro."
+                        }
+
+                        Text(
+                            text = instructionText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
-        )
+        }
     }
 }

@@ -99,8 +99,10 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Ciudad
+import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
+import com.tfg.umeegunero.feature.common.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -249,363 +251,410 @@ fun AddCentroScreenContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(scrollState)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Indicador de progreso
-            LinearProgressIndicator(
-                progress = { formProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-            
-            // Sección de información del centro
-            SectionCard(
-                title = "Información del Centro",
-                icon = Icons.Default.School
-            ) {
-                EnhancedFormTextField(
-                    value = uiState.nombre,
-                    onValueChange = onNombreChange,
-                    label = "Nombre del Centro",
-                    error = uiState.nombreError,
-                    icon = Icons.Default.School,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Sección de dirección
-            SectionCard(
-                title = "Dirección",
-                icon = Icons.Default.LocationCity,
-                modifier = Modifier.heightIn(min = 280.dp)
-            ) {
-                // Calle y número en la misma línea con proporción adecuada
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    EnhancedFormTextField(
-                        value = uiState.calle,
-                        onValueChange = onCalleChange,
-                        label = "Calle",
-                        error = uiState.calleError,
-                        icon = Icons.Default.Home,
-                        modifier = Modifier.weight(0.5f)
-                    )
-                    
-                    EnhancedFormTextField(
-                        value = uiState.numero,
-                        onValueChange = onNumeroChange,
-                        label = "Número",
-                        error = uiState.numeroError,
-                        icon = null,
-                        modifier = Modifier.weight(0.5f),
-                        keyboardType = KeyboardType.Number
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Código postal en línea separada para darle más importancia
-                EnhancedFormTextField(
-                    value = uiState.codigoPostal,
-                    onValueChange = onCodigoPostalChange,
-                    label = "Código Postal",
-                    error = uiState.codigoPostalError,
-                    icon = Icons.Default.Place,
-                    modifier = Modifier.fillMaxWidth(0.5f),
-                    keyboardType = KeyboardType.Number,
-                    maxLength = 5
+            // Indicador de progreso mejorado
+            FormProgressIndicator(
+                porcentaje = calcularPorcentajeCompletado(uiState)
+            )
+            
+            // Formulario para datos de centro
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp
                 )
-                
-                // Mostrar mensaje de error o carga para la búsqueda de ciudades
-                if (uiState.isBuscandoCiudades) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    )
-                } else if (uiState.errorBusquedaCiudades != null) {
-                    Text(
-                        text = uiState.errorBusquedaCiudades,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Dropdown para seleccionar ciudad si hay sugerencias
-                if (uiState.ciudadesSugeridas.isNotEmpty()) {
-                    var expanded by remember { mutableStateOf(false) }
-                    
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it },
-                        modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     ) {
-                        OutlinedTextField(
-                            value = uiState.ciudad,
-                            onValueChange = onCiudadChange,
-                            label = { Text("Ciudad") },
-                            leadingIcon = { 
-                                Icon(
-                                    imageVector = Icons.Default.LocationCity,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                            },
-                            isError = uiState.ciudadError != null,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            shape = RoundedCornerShape(12.dp),
+                        // Icono circular
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                                .size(36.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(12.dp))
+                        
+                        Text(
+                            text = "Información del Centro",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    
+                    // Sección de información del centro
+                    SectionCard(
+                        title = "Información del Centro",
+                        icon = Icons.Default.School
+                    ) {
+                        EnhancedFormTextField(
+                            value = uiState.nombre,
+                            onValueChange = onNombreChange,
+                            label = "Nombre del Centro",
+                            error = uiState.nombreError,
+                            icon = Icons.Default.School,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Sección de dirección
+                    SectionCard(
+                        title = "Dirección",
+                        icon = Icons.Default.LocationCity,
+                        modifier = Modifier.heightIn(min = 280.dp)
+                    ) {
+                        // Calle y número en la misma línea con proporción adecuada
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            EnhancedFormTextField(
+                                value = uiState.calle,
+                                onValueChange = onCalleChange,
+                                label = "Calle",
+                                error = uiState.calleError,
+                                icon = Icons.Default.Home,
+                                modifier = Modifier
+                                    .weight(0.5f)
+                                    .heightIn(min = 60.dp)
+                            )
+                            
+                            EnhancedFormTextField(
+                                value = uiState.numero,
+                                onValueChange = onNumeroChange,
+                                label = "Número",
+                                error = uiState.numeroError,
+                                icon = null,
+                                modifier = Modifier
+                                    .weight(0.5f)
+                                    .heightIn(min = 60.dp),
+                                keyboardType = KeyboardType.Number
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Código postal en línea separada para darle más importancia
+                        EnhancedFormTextField(
+                            value = uiState.codigoPostal,
+                            onValueChange = onCodigoPostalChange,
+                            label = "Código Postal",
+                            error = uiState.codigoPostalError,
+                            icon = Icons.Default.Place,
+                            modifier = Modifier.fillMaxWidth(0.5f),
+                            keyboardType = KeyboardType.Number,
+                            maxLength = 5
                         )
                         
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            uiState.ciudadesSugeridas.forEach { ciudad ->
-                                DropdownMenuItem(
-                                    text = { Text("${ciudad.nombre} (${ciudad.provincia})") },
-                                    onClick = {
-                                        onCiudadSelected(ciudad)
-                                        expanded = false
-                                    },
-                                    leadingIcon = {
+                        // Mostrar mensaje de error o carga para la búsqueda de ciudades
+                        if (uiState.isBuscandoCiudades) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                            )
+                        } else if (uiState.errorBusquedaCiudades != null) {
+                            Text(
+                                text = uiState.errorBusquedaCiudades,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Dropdown para seleccionar ciudad si hay sugerencias
+                        if (uiState.ciudadesSugeridas.isNotEmpty()) {
+                            var expanded by remember { mutableStateOf(false) }
+                            
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = { expanded = it },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    value = uiState.ciudad,
+                                    onValueChange = onCiudadChange,
+                                    label = { Text("Ciudad") },
+                                    leadingIcon = { 
                                         Icon(
                                             imageVector = Icons.Default.LocationCity,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.primary
                                         )
-                                    }
+                                    },
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                    },
+                                    isError = uiState.ciudadError != null,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor()
                                 )
+                                
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    uiState.ciudadesSugeridas.forEach { ciudad ->
+                                        DropdownMenuItem(
+                                            text = { Text("${ciudad.nombre} (${ciudad.provincia})") },
+                                            onClick = {
+                                                onCiudadSelected(ciudad)
+                                                expanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Default.LocationCity,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
                             }
-                        }
-                    }
-                } else {
-                    // Campo de texto normal para la ciudad si no hay sugerencias
-                    EnhancedFormTextField(
-                        value = uiState.ciudad,
-                        onValueChange = onCiudadChange,
-                        label = "Ciudad",
-                        error = uiState.ciudadError,
-                        icon = Icons.Default.LocationCity,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Dropdown para seleccionar provincia
-                var expandedProvincia by remember { mutableStateOf(false) }
-                
-                ExposedDropdownMenuBox(
-                    expanded = expandedProvincia,
-                    onExpandedChange = { expandedProvincia = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = uiState.provincia,
-                        onValueChange = onProvinciaChange,
-                        label = { Text("Provincia") },
-                        leadingIcon = { 
-                            Icon(
-                                imageVector = Icons.Default.Place,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                        } else {
+                            // Campo de texto normal para la ciudad si no hay sugerencias
+                            EnhancedFormTextField(
+                                value = uiState.ciudad,
+                                onValueChange = onCiudadChange,
+                                label = "Ciudad",
+                                error = uiState.ciudadError,
+                                icon = Icons.Default.LocationCity,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                        },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProvincia)
-                        },
-                        isError = uiState.provinciaError != null,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                    )
-                    
-                    ExposedDropdownMenu(
-                        expanded = expandedProvincia,
-                        onDismissRequest = { expandedProvincia = false }
-                    ) {
-                        provincias.forEach { provincia ->
-                            DropdownMenuItem(
-                                text = { Text(provincia) },
-                                onClick = {
-                                    onProvinciaChange(provincia)
-                                    expandedProvincia = false
-                                },
-                                leadingIcon = {
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Dropdown para seleccionar provincia
+                        var expandedProvincia by remember { mutableStateOf(false) }
+                        
+                        ExposedDropdownMenuBox(
+                            expanded = expandedProvincia,
+                            onExpandedChange = { expandedProvincia = it },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.provincia,
+                                onValueChange = onProvinciaChange,
+                                label = { Text("Provincia") },
+                                leadingIcon = { 
                                     Icon(
                                         imageVector = Icons.Default.Place,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary
                                     )
-                                }
+                                },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProvincia)
+                                },
+                                isError = uiState.provinciaError != null,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
                             )
+                            
+                            ExposedDropdownMenu(
+                                expanded = expandedProvincia,
+                                onDismissRequest = { expandedProvincia = false }
+                            ) {
+                                provincias.forEach { provincia ->
+                                    DropdownMenuItem(
+                                        text = { Text(provincia) },
+                                        onClick = {
+                                            onProvinciaChange(provincia)
+                                            expandedProvincia = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Place,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // Mostrar mapa con la ubicación si tenemos coordenadas
+                        if (uiState.tieneUbicacionValida) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Place,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Ubicación en mapa",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                                
+                                Switch(
+                                    checked = uiState.mostrarMapa,
+                                    onCheckedChange = { onToggleMapa() }
+                                )
+                            }
+                            
+                            AnimatedVisibility(
+                                visible = uiState.mostrarMapa,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                // Componente de mapa mejorado
+                                MapaUbicacion(
+                                    latitud = uiState.latitud!!,
+                                    longitud = uiState.longitud!!,
+                                    direccion = uiState.direccionCompleta,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                )
+                            }
                         }
                     }
-                }
-                
-                // Mostrar mapa con la ubicación si tenemos coordenadas
-                if (uiState.tieneUbicacionValida) {
+                    
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Sección de contacto
+                    SectionCard(
+                        title = "Contacto",
+                        icon = Icons.Default.Phone
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
+                        EnhancedFormTextField(
+                            value = uiState.telefono,
+                            onValueChange = onTelefonoChange,
+                            label = "Teléfono",
+                            error = uiState.telefonoError,
+                            icon = Icons.Default.Phone,
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardType = KeyboardType.Phone
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        EnhancedFormTextField(
+                            value = uiState.email,
+                            onValueChange = onEmailChange,
+                            label = "Email",
+                            error = uiState.emailError,
+                            icon = Icons.Default.Email,
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardType = KeyboardType.Email
+                        )
+                    }
+                    
+                    // Sección de contraseñas (solo para nuevos centros)
+                    if (uiState.id.isBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        SectionCard(
+                            title = "Cuenta de Acceso",
+                            icon = Icons.Default.Lock
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Place,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                            var passwordVisible by remember { mutableStateOf(false) }
+                            var confirmPasswordVisible by remember { mutableStateOf(false) }
+                            
+                            EnhancedFormTextField(
+                                value = uiState.password,
+                                onValueChange = onPasswordChange,
+                                label = "Contraseña",
+                                error = uiState.passwordError,
+                                icon = Icons.Default.Lock,
+                                trailingIcon = {
+                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        Icon(
+                                            imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardType = KeyboardType.Password,
+                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Ubicación en mapa",
-                                style = MaterialTheme.typography.titleMedium
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            EnhancedFormTextField(
+                                value = uiState.confirmPassword,
+                                onValueChange = onConfirmPasswordChange,
+                                label = "Confirmar Contraseña",
+                                error = uiState.confirmPasswordError,
+                                icon = Icons.Default.Lock,
+                                trailingIcon = {
+                                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                        Icon(
+                                            imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardType = KeyboardType.Password,
+                                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
                             )
                         }
-                        
-                        Switch(
-                            checked = uiState.mostrarMapa,
-                            onCheckedChange = { onToggleMapa() }
-                        )
                     }
-                    
-                    AnimatedVisibility(
-                        visible = uiState.mostrarMapa,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Componente de mapa mejorado
-                        MapaUbicacion(
-                            latitud = uiState.latitud!!,
-                            longitud = uiState.longitud!!,
-                            direccion = uiState.direccionCompleta,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Sección de contacto
-            SectionCard(
-                title = "Contacto",
-                icon = Icons.Default.Phone
-            ) {
-                EnhancedFormTextField(
-                    value = uiState.telefono,
-                    onValueChange = onTelefonoChange,
-                    label = "Teléfono",
-                    error = uiState.telefonoError,
-                    icon = Icons.Default.Phone,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardType = KeyboardType.Phone
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                EnhancedFormTextField(
-                    value = uiState.email,
-                    onValueChange = onEmailChange,
-                    label = "Email",
-                    error = uiState.emailError,
-                    icon = Icons.Default.Email,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardType = KeyboardType.Email
-                )
-            }
-            
-            // Sección de contraseñas (solo para nuevos centros)
-            if (uiState.id.isBlank()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                SectionCard(
-                    title = "Cuenta de Acceso",
-                    icon = Icons.Default.Lock
-                ) {
-                    var passwordVisible by remember { mutableStateOf(false) }
-                    var confirmPasswordVisible by remember { mutableStateOf(false) }
-                    
-                    EnhancedFormTextField(
-                        value = uiState.password,
-                        onValueChange = onPasswordChange,
-                        label = "Contraseña",
-                        error = uiState.passwordError,
-                        icon = Icons.Default.Lock,
-                        trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardType = KeyboardType.Password,
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    EnhancedFormTextField(
-                        value = uiState.confirmPassword,
-                        onValueChange = onConfirmPasswordChange,
-                        label = "Confirmar Contraseña",
-                        error = uiState.confirmPasswordError,
-                        icon = Icons.Default.Lock,
-                        trailingIcon = {
-                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardType = KeyboardType.Password,
-                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
-                    )
                 }
             }
             
@@ -752,7 +801,7 @@ fun EnhancedFormTextField(
             isError = error != null,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             visualTransformation = visualTransformation,
-            modifier = modifier,
+            modifier = modifier.heightIn(min = 56.dp),
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -907,6 +956,62 @@ private fun calculateFormProgress(uiState: AddCentroUiState): Float {
     }
     
     return fieldsCompleted.toFloat() / totalFields.toFloat()
+}
+
+/**
+ * Calcula el porcentaje de completado del formulario para añadir o editar un centro
+ * @param uiState Estado actual del formulario
+ * @return Valor entre 0.0 y 1.0 que representa el porcentaje de completado
+ */
+private fun calcularPorcentajeCompletado(uiState: AddCentroUiState): Float {
+    var camposCompletados = 0
+    var camposTotales = 8 // Campos principales obligatorios
+    
+    // Verificar campos principales
+    if (uiState.nombre.isNotBlank()) camposCompletados++
+    if (uiState.calle.isNotBlank()) camposCompletados++
+    if (uiState.numero.isNotBlank()) camposCompletados++
+    if (uiState.codigoPostal.isNotBlank()) camposCompletados++
+    if (uiState.ciudad.isNotBlank()) camposCompletados++
+    if (uiState.provincia.isNotBlank()) camposCompletados++
+    if (uiState.telefono.isNotBlank()) camposCompletados++
+    if (uiState.email.isNotBlank()) camposCompletados++
+    
+    // Si es un nuevo centro, verificar las contraseñas
+    if (uiState.id.isBlank()) {
+        camposTotales += 2
+        if (uiState.password.isNotBlank()) camposCompletados++
+        if (uiState.confirmPassword.isNotBlank()) camposCompletados++
+    }
+    
+    // Si hay errores en algún campo, reducir el porcentaje proporcionalmente
+    val errores = countErrors(uiState)
+    
+    // Calcular porcentaje considerando también la ausencia de errores
+    return (camposCompletados.toFloat() / camposTotales.toFloat()) * (1.0f - (errores.toFloat() / camposTotales.toFloat()))
+}
+
+/**
+ * Cuenta el número de errores en el estado del formulario
+ */
+private fun countErrors(uiState: AddCentroUiState): Int {
+    var errores = 0
+    
+    if (uiState.nombreError != null) errores++
+    if (uiState.calleError != null) errores++
+    if (uiState.numeroError != null) errores++
+    if (uiState.codigoPostalError != null) errores++
+    if (uiState.ciudadError != null) errores++
+    if (uiState.provinciaError != null) errores++
+    if (uiState.telefonoError != null) errores++
+    if (uiState.emailError != null) errores++
+    
+    if (uiState.id.isBlank()) {
+        if (uiState.passwordError != null) errores++
+        if (uiState.confirmPasswordError != null) errores++
+    }
+    
+    return errores
 }
 
 @Preview(showBackground = true)

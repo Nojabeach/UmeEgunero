@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -67,7 +68,29 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
+
+// Clases de datos para el preview
+data class AlumnoDetalleModel(
+    val dni: String,
+    val nombre: String,
+    val apellidos: String,
+    val fechaNacimiento: com.google.firebase.Timestamp,
+    val centroId: String,
+    val centroNombre: String,
+    val clase: String,
+    val profesores: List<ProfesorSimple>,
+    val direccion: String,
+    val alergias: List<String>,
+    val observaciones: String
+)
+
+data class ProfesorSimple(
+    val id: String,
+    val nombre: String,
+    val asignaturas: List<String>
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,7 +130,7 @@ fun DetalleHijoScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
                             tint = Color.White
                         )
@@ -555,12 +578,7 @@ fun calcularEdad(fechaNacimiento: Timestamp): Int {
 @Composable
 fun DetalleHijoScreenPreview() {
     UmeEguneroTheme {
-        DetalleHijoScreen(
-            onNavigateBack = {},
-            viewModel = TODO(),
-            onNavigateToChat = TODO(),
-            onNavigateToRegistros = TODO()
-        )
+        DetalleHijoScreenPreviewContent()
     }
 }
 
@@ -568,11 +586,360 @@ fun DetalleHijoScreenPreview() {
 @Composable
 fun DetalleHijoScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        DetalleHijoScreen(
-            onNavigateBack = {},
-            viewModel = TODO(),
-            onNavigateToChat = TODO(),
-            onNavigateToRegistros = TODO()
-        )
+        DetalleHijoScreenPreviewContent()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DetalleHijoScreenPreviewContent() {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scrollState = rememberScrollState()
+
+    // Mock de datos para el preview
+    val alumnoMock = AlumnoDetalleModel(
+        dni = "12345678X",
+        nombre = "Martín",
+        apellidos = "García López",
+        fechaNacimiento = com.google.firebase.Timestamp.now(),
+        centroId = "centro1",
+        centroNombre = "Colegio San José",
+        clase = "4º de Primaria",
+        profesores = listOf(
+            ProfesorSimple(
+                id = "prof1",
+                nombre = "Ana Martínez",
+                asignaturas = listOf("Matemáticas", "Ciencias")
+            ),
+            ProfesorSimple(
+                id = "prof2",
+                nombre = "Luis Fernández",
+                asignaturas = listOf("Lengua", "Historia")
+            )
+        ),
+        direccion = "Calle Principal 23, Bilbao",
+        alergias = listOf("Nueces", "Pescado"),
+        observaciones = "Es un niño muy activo y participativo en clase"
+    )
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "${alumnoMock.nombre} ${alumnoMock.apellidos}",
+                        color = Color.White
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = FamiliarColor,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+                .verticalScroll(scrollState)
+        ) {
+            // Información básica
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    // Foto del alumno
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                            .align(Alignment.CenterHorizontally),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Foto de perfil",
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Nombre y apellidos
+                    Text(
+                        text = "${alumnoMock.nombre} ${alumnoMock.apellidos}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // DNI
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "DNI: ${alumnoMock.dni}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Edad y fecha de nacimiento
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        val fechaNacimientoStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            .format(alumnoMock.fechaNacimiento.toDate())
+                        val edad = calcularEdad(alumnoMock.fechaNacimiento)
+
+                        Text(
+                            text = "$edad años · Nacimiento: $fechaNacimientoStr",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Información del centro
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Información académica",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Centro educativo
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Column {
+                            Text(
+                                text = alumnoMock.centroNombre ?: "Centro no asignado",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            
+                            Text(
+                                text = "Clase: ${alumnoMock.clase ?: "No asignada"}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Profesores
+                    Text(
+                        text = "Profesores",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    alumnoMock.profesores?.forEach { profesor ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Column {
+                                Text(
+                                    text = profesor.nombre,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                
+                                Text(
+                                    text = profesor.asignaturas?.joinToString(", ") ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            // Botón para chatear
+                            IconButton(
+                                onClick = { }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Message,
+                                    contentDescription = "Chatear",
+                                    tint = FamiliarColor
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Información adicional
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Información adicional",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Dirección
+                    if (alumnoMock.direccion != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Home,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(24.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Text(
+                                text = alumnoMock.direccion ?: "",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    // Alergias
+                    Column {
+                        Text(
+                            text = "Alergias e intolerancias:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        alumnoMock.alergias.forEach { alergia ->
+                            Text(
+                                text = "• $alergia",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    // Observaciones
+                    if (alumnoMock.observaciones.isNotBlank()) {
+                        Text(
+                            text = "Observaciones:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = alumnoMock.observaciones,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            // Botón para ver registros
+            Button(
+                onClick = { },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = "Ver registros",
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Ver Registros Diarios",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
     }
 }

@@ -191,12 +191,11 @@ class ChatViewModel @Inject constructor(
     private fun iniciarEscuchaMensajes(familiarId: String, profesorId: String, alumnoId: String?) {
         viewModelScope.launch {
             try {
-                // Aquí debería haber una implementación para escuchar mensajes en tiempo real
-                // Por ahora, simplemente vamos a programar actualizaciones periódicas
-                // Esto se reemplazaría con una verdadera implementación en tiempo real usando
-                // Firestore listeners
-
-                // Podría ser algo como:
+                // Aquí debería implementar los listeners de Firestore
+                // Pero de momento voy a hacer actualizaciones periódicas
+                // hasta que tenga tiempo de hacerlo bien
+                
+                // Algo así sería lo ideal:
                 /*
                 usuarioRepository.observeMensajes(familiarId, profesorId, alumnoId).collect { mensajes ->
                     _uiState.update {

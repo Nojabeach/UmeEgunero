@@ -16,14 +16,14 @@ class UmeeguneroApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Inicializar Timber en modo debug
+        // Inicializar Timber solo en debug
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
 
-        // Asegurarse de que existe un administrador
-        // Puedes envolverlo en BuildConfig.DEBUG si solo quieres
-        // que esto se ejecute en modo debug
+        // Me aseguro de que haya un admin en el sistema
+        // Lo dejo siempre activo, aunque podría limitarlo a DEBUG
+        // si fuera necesario
         debugUtils.ensureAdminExists()
     }
 }
