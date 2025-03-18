@@ -20,17 +20,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -78,6 +79,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.material3.HorizontalDivider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,7 +145,7 @@ fun ProfesorDashboardScreen(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -178,7 +180,7 @@ fun ProfesorDashboardScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Divider()
+                HorizontalDivider()
 
                 // Botón de cerrar sesión
                 NavigationDrawerItem(
@@ -187,7 +189,7 @@ fun ProfesorDashboardScreen(
                     onClick = onLogout,
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.ExitToApp,
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Cerrar Sesión"
                         )
                     },
@@ -249,7 +251,7 @@ fun ProfesorDashboardScreen(
                     val items = listOf(
                         "Inicio" to Icons.Default.Home,
                         "Alumnos" to Icons.Default.Person,
-                        "Actividad" to Icons.Default.List,
+                        "Actividad" to Icons.AutoMirrored.Filled.List,
                         "Mensajes" to Icons.AutoMirrored.Filled.Chat
                     )
 
@@ -298,7 +300,6 @@ fun ProfesorDashboardScreen(
                 alumnos = alumnos,
                 mensajesNoLeidos = mensajesNoLeidos,
                 isLoading = isLoading,
-                onNavigateToRegistroActividad = onNavigateToRegistroActividad,
                 onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
                 onNavigateToChat = onNavigateToChat,
                 onCrearRegistroActividad = onCrearRegistroActividad
@@ -315,7 +316,6 @@ fun ProfesorDashboardContent(
     alumnos: List<Alumno> = emptyList(),
     mensajesNoLeidos: List<Triple<String, String, Boolean>> = emptyList(),
     isLoading: Boolean = false,
-    onNavigateToRegistroActividad: (String) -> Unit = {},
     onNavigateToDetalleAlumno: (String) -> Unit = {},
     onNavigateToChat: (String) -> Unit = {},
     onCrearRegistroActividad: (String) -> Unit = {}
@@ -364,6 +364,22 @@ fun ProfesorHomeContent(
     alumnosPendientes: List<Alumno> = emptyList(),
     onCrearRegistroActividad: (String) -> Unit = {}
 ) {
+    // TODO: Mejoras pendientes para la pantalla principal del profesor
+    // - Implementar sistema de notificaciones importantes al inicio
+    // - Añadir resumen de actividades pendientes del día
+    // - Mostrar estadísticas de registros completados/pendientes
+    // - Implementar acceso rápido a los alumnos más frecuentes
+    // - Añadir widgets personalizables para información relevante
+    // - Mostrar eventos o recordatorios del calendario escolar
+    // - Implementar acceso a reuniones programadas con familiares
+    // - Añadir sección de avisos o comunicados del centro
+    // - Permitir visualización rápida de horario diario/semanal
+    // - Mostrar indicadores de rendimiento del grupo/clase
+    // - Implementar recordatorios de entrega de evaluaciones
+    // - Añadir acceso a recursos didácticos personalizados
+    // - Incluir resumen de comunicaciones pendientes con familias
+    // - Mostrar alertas de situaciones especiales (alergias, medicación)
+    
     val today = LocalDate.now()
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
     val formattedDate = remember { today.format(formatter).replaceFirstChar { it.uppercase() } }
@@ -449,7 +465,7 @@ fun ProfesorHomeContent(
                         count = 8,
                         total = 15,
                         title = "Informes",
-                        icon = Icons.Default.List
+                        icon = Icons.AutoMirrored.Filled.List
                     )
                 }
             }
@@ -475,7 +491,7 @@ fun ProfesorHomeContent(
                         nombre = "${alumno.nombre} ${alumno.apellidos}",
                         onClick = { onCrearRegistroActividad(alumno.dni) }
                     )
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
         }
@@ -563,13 +579,23 @@ fun MisAlumnosContent(
     alumnos: List<Alumno> = emptyList(),
     onNavigateToDetalleAlumno: (String) -> Unit = {}
 ) {
+    // TODO: Mejoras pendientes para la sección de alumnos
+    // - Implementar filtrado por clase, edad o grupo
+    // - Añadir búsqueda de alumnos por nombre
+    // - Mostrar indicadores visuales de estado de asistencia (ausente, presente, etc.)
+    // - Implementar vistas de asistencia diaria/semanal
+    // - Añadir funcionalidad para generar informes individuales o grupales
+    // - Permitir ordenación de la lista por diferentes criterios
+    // - Implementar gestión de incidencias por alumno
+    // - Añadir acceso directo a historial de cada alumno
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
         Text(
-            text = "Mis alumnos",
+            text = "Mis Alumnos",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -596,7 +622,7 @@ fun MisAlumnosContent(
                         nombre = "${alumno.nombre} ${alumno.apellidos}",
                         onClick = { onNavigateToDetalleAlumno(alumno.dni) }
                     )
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
         }
@@ -658,104 +684,24 @@ fun AlumnoListItem(
 
 @Composable
 fun HistorialContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    // TODO: Mejoras pendientes para la sección de historial
+    // - Implementar filtrado por fechas, tipo de actividad o alumno
+    // - Añadir exportación de datos a diferentes formatos (PDF, Excel)
+    // - Mostrar gráficos y estadísticas de actividades
+    // - Implementar búsqueda avanzada en el historial
+    // - Añadir visualización por calendario de registros
+    // - Permitir edición de registros anteriores (con marca de edición)
+    // - Implementar comparativas entre periodos
+    // - Añadir opción para crear informes personalizados
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Historial de actividades",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            text = "Historial de Actividades",
+            style = MaterialTheme.typography.headlineMedium
         )
-
-        // Fechas recientes
-        LazyColumn {
-            val fechas = listOf(
-                "Hoy",
-                "Ayer",
-                "Lunes, 12 de febrero",
-                "Viernes, 9 de febrero",
-                "Jueves, 8 de febrero",
-                "Miércoles, 7 de febrero"
-            )
-
-            items(fechas) { fecha ->
-                Text(
-                    text = fecha,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                // Actividades de este día
-                HistorialDiaItem(
-                    titulo = "Registros de comida",
-                    descripcion = "15 registros completados",
-                    icono = Icons.Default.Fastfood
-                )
-
-                HistorialDiaItem(
-                    titulo = "Registros de siesta",
-                    descripcion = "10 registros completados",
-                    icono = Icons.Default.Check
-                )
-
-                HistorialDiaItem(
-                    titulo = "Informes diarios",
-                    descripcion = "15 informes enviados a familias",
-                    icono = Icons.Default.List
-                )
-
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun HistorialDiaItem(
-    titulo: String,
-    descripcion: String,
-    icono: ImageVector
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icono,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-
-            Text(
-                text = descripcion,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        IconButton(onClick = { /* Ver detalles */ }) {
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Ver detalles",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 
@@ -764,6 +710,16 @@ fun MensajesContent(
     mensajes: List<Triple<String, String, Boolean>> = emptyList(),
     onNavigateToChat: (String) -> Unit = {}
 ) {
+    // TODO: Mejoras pendientes para la sección de mensajes
+    // - Implementar filtrado de mensajes por origen o importancia
+    // - Añadir búsqueda en el contenido de los mensajes
+    // - Mostrar indicadores de estado de lectura y respuesta
+    // - Implementar categorización automática de conversaciones
+    // - Añadir plantillas de respuestas predefinidas
+    // - Permitir adjuntar archivos o imágenes en los mensajes
+    // - Implementar chat grupal para comunicación con múltiples familias
+    // - Añadir opción para programar envío de mensajes
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -799,7 +755,7 @@ fun MensajesContent(
                         noLeido = noLeido,
                         onClick = { onNavigateToChat(emisorId) }
                     )
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
         }
@@ -865,6 +821,16 @@ fun ChatItem(
 
 @Composable
 fun ConfiguracionContent() {
+    // TODO: Mejoras pendientes para la sección de configuración
+    // - Implementar gestión de perfil completa
+    // - Añadir opciones de personalización de interfaz
+    // - Configurar notificaciones y alertas por tipo
+    // - Implementar ajustes de privacidad y permisos
+    // - Añadir opciones de accesibilidad
+    // - Permitir sincronización con calendario externo
+    // - Implementar copia de seguridad y restauración de datos
+    // - Añadir gestión de dispositivos conectados
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center

@@ -75,6 +75,16 @@ fun AddCursoScreen(
     onNavigateBack: () -> Unit,
     onCursoAdded: () -> Unit
 ) {
+    // TODO: Mejoras pendientes para la pantalla de añadir/editar curso
+    // - Implementar vista previa del curso con estructura completa
+    // - Añadir sugerencias automáticas de asignaturas según el nivel
+    // - Mostrar plantillas predefinidas para cursos estándar
+    // - Implementar integración con currículo oficial por comunidad autónoma
+    // - Añadir opción para duplicar curso existente como base
+    // - Permitir importación y exportación de estructura de curso
+    // - Mostrar estimación de carga lectiva y distribución horaria
+    // - Implementar validación avanzada con sugerencias de corrección
+
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current

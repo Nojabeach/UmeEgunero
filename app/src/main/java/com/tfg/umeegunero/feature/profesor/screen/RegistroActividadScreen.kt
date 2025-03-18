@@ -100,6 +100,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,7 +151,7 @@ fun RegistroActividadScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
@@ -344,7 +346,7 @@ fun ComidasCard(
                 )
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Primer plato
             PlatoInput(
@@ -511,7 +513,7 @@ fun SiestaCard(
                 )
             }
 
-            Divider()
+            HorizontalDivider()
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -647,6 +649,8 @@ fun NecesidadesFisiologicasCard(
                 fontWeight = FontWeight.Bold
             )
 
+            HorizontalDivider()
+
             // Opciones con checkboxes
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -764,7 +768,7 @@ fun ObservacionesCard(
                 )
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Agregar nueva observación
             Row(
@@ -942,129 +946,28 @@ fun HiltRegistroActividadScreen(
 @Composable
 fun RegistroActividadScreenPreview() {
     UmeEguneroTheme {
-        Surface {
-            val alumno = Alumno(
-                dni = "12345678A",
-                nombre = "Laura",
-                apellidos = "González Pérez"
-            )
-
-            val observaciones = listOf(
-                Observacion(
-                    tipo = TipoObservacion.ROPA,
-                    mensaje = "Necesita cambio de ropa",
-                    timestamp = Timestamp(Date())
-                ),
-                Observacion(
-                    tipo = TipoObservacion.OTRO,
-                    mensaje = "Ha jugado muy bien con sus compañeros",
-                    timestamp = Timestamp(Date())
-                )
-            )
-
-            // Contenido directo para preview, sin viewModel real
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text("Registro de Actividad - Preview") },
-                        navigationIcon = {
-                            IconButton(onClick = {}) {
-                                Icon(Icons.Default.ArrowBack, "Volver")
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = {}) {
-                                Icon(Icons.Default.Save, "Guardar")
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = ProfesorColor,
-                            titleContentColor = Color.White,
-                            navigationIconContentColor = Color.White,
-                            actionIconContentColor = Color.White
-                        )
-                    )
-                },
-                floatingActionButton = {
-                    FloatingActionButton(
-                        onClick = {},
-                        containerColor = ProfesorColor,
-                        contentColor = Color.White
-                    ) {
-                        Icon(Icons.Default.Save, "Guardar")
-                    }
-                }
-            ) { paddingValues ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        AlumnoInfoCard(alumno = alumno)
-
-                        // Otros componentes con datos de ejemplo
-                        ComidasCard(
-                            comidas = Comidas(
-                                primerPlato = Plato("Sopa de verduras", NivelConsumo.BIEN),
-                                segundoPlato = Plato("Pollo con patatas", NivelConsumo.POCO),
-                                postre = Plato("Yogur", NivelConsumo.BIEN)
-                            ),
-                            onUpdatePrimerPlato = { _, _ -> },
-                            onUpdateSegundoPlato = { _, _ -> },
-                            onUpdatePostre = { _, _ -> }
-                        )
-
-                        // Después de la ComidasCard
-
-                        SiestaCard(
-                            siesta = Siesta(
-                                inicio = Timestamp(Date()),
-                                fin = Timestamp(Date(System.currentTimeMillis() + 5400000)), // 1.5h después
-                                duracion = 90
-                            ),
-                            onUpdateInicio = { _, _ -> },
-                            onUpdateFin = { _, _ -> },
-                            context = LocalContext.current
-                        )
-
-                        NecesidadesFisiologicasCard(
-                            necesidadesFisiologicas = CacaControl(pipi = true, caca = false, observaciones = ""),
-                            onUpdate = { _, _, _ -> }
-                        )
-
-                        ObservacionesCard(
-                            observaciones = listOf(
-                                Observacion(
-                                    tipo = TipoObservacion.ROPA,
-                                    mensaje = "Necesita cambio de ropa",
-                                    timestamp = Timestamp(Date())
-                                ),
-                                Observacion(
-                                    tipo = TipoObservacion.OTRO,
-                                    mensaje = "Ha jugado muy bien con sus compañeros",
-                                    timestamp = Timestamp(Date())
-                                )
-                            ),
-                            nuevoMensaje = "",
-                            nuevoTipo = TipoObservacion.OTRO,
-                            onUpdateMensaje = {},
-                            onUpdateTipo = {},
-                            onAddObservacion = {},
-                            onRemoveObservacion = {}
-                        )
-
-                        // Espacio al final para el FAB
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
-                }
-            }
-        }
+        val alumno = Alumno(
+            dni = "12345678X",
+            nombre = "Lucas",
+            apellidos = "Martínez García",
+            fechaNacimiento = Timestamp(Date()),
+            género = Genero.MASCULINO,
+            fotoUrl = "",
+            alergias = listOf("Lactosa", "Frutos secos"),
+            medicacion = listOf("Ninguna"),
+            observacionesMedicas = "Sin observaciones",
+            claseDni = "1A",
+            familiaresDni = listOf("98765432Z")
+        )
+        
+        RegistroActividadScreen(
+            alumno = alumno,
+            onNavigateBack = {},
+            onSubmitRegistro = {},
+            isLoading = false,
+            error = null,
+            onErrorDismissed = {}
+        )
     }
 }
 

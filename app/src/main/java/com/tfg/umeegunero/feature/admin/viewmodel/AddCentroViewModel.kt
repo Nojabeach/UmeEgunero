@@ -65,7 +65,10 @@ data class AddCentroUiState(
     val latitud: Double? = null,
     val longitud: Double? = null,
     val mostrarMapa: Boolean = false,
-    val direccionCompleta: String = ""
+    val direccionCompleta: String = "",
+    
+    // Propiedades calculadas
+    val tieneUbicacionValida: Boolean = latitud != null && longitud != null
 ) {
     val isFormValid: Boolean
         get() =
@@ -84,9 +87,9 @@ data class AddCentroUiState(
                                     confirmPasswordError == null
                             ))
                             
-    // Comprueba si tenemos coordenadas válidas para mostrar en el mapa
-    val tieneUbicacionValida: Boolean
-        get() = latitud != null && longitud != null
+    // Eliminar esta propiedad duplicada
+    // val tieneUbicacionValida: Boolean
+    //    get() = latitud != null && longitud != null
 }
 
 @HiltViewModel

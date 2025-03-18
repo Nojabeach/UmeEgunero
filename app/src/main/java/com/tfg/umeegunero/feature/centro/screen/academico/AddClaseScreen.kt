@@ -93,6 +93,17 @@ fun AddClaseScreen(
     onNavigateBack: () -> Unit,
     onClaseAdded: () -> Unit
 ) {
+    // TODO: Mejoras pendientes para la pantalla de añadir/editar clase
+    // - Implementar asignación masiva de alumnos por listado
+    // - Añadir visualización de horario semanal de la clase
+    // - Mostrar estadísticas de capacidad y ocupación
+    // - Implementar sistema de notificaciones específicas para la clase
+    // - Añadir gestión de material escolar necesario para el aula
+    // - Permitir configuración de espacios físicos asociados (aulas)
+    // - Mostrar vista previa de la distribución del espacio físico
+    // - Implementar indicadores de diversidad y necesidades especiales
+    // - Añadir integración con calendario de actividades del centro
+    
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current

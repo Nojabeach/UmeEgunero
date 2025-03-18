@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExitToApp
@@ -38,6 +39,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -116,7 +118,7 @@ fun CentroDashboardScreen(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -151,7 +153,7 @@ fun CentroDashboardScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Divider()
+                HorizontalDivider()
 
                 // Botón de cerrar sesión
                 NavigationDrawerItem(
@@ -160,7 +162,7 @@ fun CentroDashboardScreen(
                     onClick = onLogout,
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.ExitToApp,
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Cerrar Sesión"
                         )
                     },
@@ -245,9 +247,7 @@ fun CentroDashboardScreen(
                 selectedItem = selectedItem,
                 paddingValues = paddingValues,
                 onNavigateToAddCurso = onNavigateToAddCurso,
-                onNavigateToEditCurso = onNavigateToEditCurso,
                 onNavigateToAddClase = onNavigateToAddClase,
-                onNavigateToEditClase = onNavigateToEditClase,
                 onNavigateToAddUser = onNavigateToAddUser
             )
         }
@@ -259,9 +259,7 @@ fun CentroDashboardContent(
     selectedItem: Int,
     paddingValues: PaddingValues,
     onNavigateToAddCurso: () -> Unit,
-    onNavigateToEditCurso: (String) -> Unit,
     onNavigateToAddClase: () -> Unit,
-    onNavigateToEditClase: (String) -> Unit,
     onNavigateToAddUser: () -> Unit
 ) {
     Box(
@@ -270,12 +268,12 @@ fun CentroDashboardContent(
             .padding(paddingValues)
     ) {
         when (selectedItem) {
-            0 -> CentroPanelContent(onNavigateToAddCurso, onNavigateToEditCurso, onNavigateToAddClase, onNavigateToEditClase, onNavigateToAddUser)
+            0 -> CentroPanelContent(onNavigateToAddCurso, onNavigateToAddClase, onNavigateToAddUser)
             1 -> ProfesoresContent()
             2 -> AlumnosContent()
             3 -> SolicitudesContent()
             4 -> ConfiguracionContent()
-            else -> CentroPanelContent(onNavigateToAddCurso, onNavigateToEditCurso, onNavigateToAddClase, onNavigateToEditClase, onNavigateToAddUser)
+            else -> CentroPanelContent(onNavigateToAddCurso, onNavigateToAddClase, onNavigateToAddUser)
         }
     }
 }
@@ -283,11 +281,19 @@ fun CentroDashboardContent(
 @Composable
 fun CentroPanelContent(
     onNavigateToAddCurso: () -> Unit,
-    onNavigateToEditCurso: (String) -> Unit,
     onNavigateToAddClase: () -> Unit,
-    onNavigateToEditClase: (String) -> Unit,
     onNavigateToAddUser: () -> Unit
 ) {
+    // TODO: Mejoras pendientes para el panel principal del centro
+    // - Implementar dashboard con estadísticas en tiempo real
+    // - Añadir gráficos de tendencias de asistencia y rendimiento
+    // - Mostrar alertas y notificaciones importantes del día
+    // - Implementar calendario de eventos y fechas importantes
+    // - Añadir sección de comunicados generales
+    // - Mostrar métricas de uso de la plataforma
+    // - Implementar acceso rápido a funciones frecuentes
+    // - Añadir vista personalizable según preferencias del administrador
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -472,7 +478,7 @@ fun SolicitudesRecentesList() {
     ) {
         items(solicitudes) { (nombre, tipo, fecha) ->
             SolicitudItem(nombre = nombre, tipo = tipo, fecha = fecha)
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         }
     }
 }
@@ -529,6 +535,16 @@ fun SolicitudItem(nombre: String, tipo: String, fecha: String) {
 
 @Composable
 fun ProfesoresContent() {
+    // TODO: Mejoras pendientes para la sección de profesores
+    // - Implementar listado completo con filtros (departamento, antigüedad)
+    // - Añadir visualización de carga lectiva y horarios
+    // - Mostrar estadísticas de evaluación y rendimiento
+    // - Implementar gestión de tutorías y guardias
+    // - Añadir sistema de seguimiento de formación continua
+    // - Mostrar histórico de comunicaciones con familias
+    // - Implementar gestión de permisos y ausencias
+    // - Añadir evaluación de desempeño y objetivos
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -542,6 +558,16 @@ fun ProfesoresContent() {
 
 @Composable
 fun AlumnosContent() {
+    // TODO: Mejoras pendientes para la sección de alumnos
+    // - Implementar listado completo con filtros avanzados
+    // - Añadir visualización de expedientes académicos y personales
+    // - Mostrar seguimiento de asistencia y puntualidad
+    // - Implementar sistema de necesidades educativas especiales
+    // - Añadir gestión de comportamiento e incidencias
+    // - Mostrar conexión con servicios sociales cuando aplique
+    // - Implementar historial médico relevante para el centro
+    // - Añadir sistema de becas y ayudas aplicadas
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -555,6 +581,16 @@ fun AlumnosContent() {
 
 @Composable
 fun SolicitudesContent() {
+    // TODO: Mejoras pendientes para la sección de solicitudes
+    // - Implementar categorización de solicitudes por tipo
+    // - Añadir filtros por estado y fecha de recepción
+    // - Mostrar historial completo de comunicaciones por solicitud
+    // - Implementar notificaciones automáticas de estado
+    // - Añadir sistema de priorización y gestión de carga
+    // - Mostrar estadísticas de tiempos de respuesta
+    // - Implementar plantillas de respuesta predefinidas
+    // - Añadir flujos de aprobación para solicitudes complejas
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -573,6 +609,16 @@ fun SolicitudesContent() {
 
 @Composable
 fun ConfiguracionContent() {
+    // TODO: Mejoras pendientes para la sección de configuración
+    // - Implementar gestión completa del perfil del centro
+    // - Añadir configuración de curso académico y calendario
+    // - Mostrar opciones de integración con sistemas externos
+    // - Implementar gestión de roles y permisos avanzada
+    // - Añadir configuración de notificaciones y comunicaciones
+    // - Mostrar opciones de seguridad y privacidad
+    // - Implementar gestión de copias de seguridad y recuperación
+    // - Añadir personalización visual y de identidad corporativa
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center

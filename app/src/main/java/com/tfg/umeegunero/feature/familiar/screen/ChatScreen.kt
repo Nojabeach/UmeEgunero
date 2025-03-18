@@ -72,6 +72,17 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
+    // TODO: Mejoras pendientes para la pantalla de chat
+    // - Implementar envío de archivos multimedia (fotos, videos, audios)
+    // - Añadir indicadores de estado (enviando, recibido, leído)
+    // - Mostrar estado de conexión del receptor (en línea, último acceso)
+    // - Implementar respuestas rápidas predefinidas o sugeridas
+    // - Añadir funcionalidad de búsqueda en la conversación
+    // - Permitir editar y eliminar mensajes propios
+    // - Implementar notificaciones en tiempo real de nuevos mensajes
+    // - Añadir opción para programar mensajes para envío posterior
+    // - Habilitar encriptación de mensajes para mayor seguridad
+    
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()

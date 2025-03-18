@@ -28,6 +28,82 @@ enum class TemaPref {
     LIGHT, DARK, SYSTEM
 }
 
+// Modelo para representación simplificada de centro educativo (usado en UI)
+data class CentroEducativo(
+    val id: String = "",
+    val nombre: String = "",
+    val direccion: String = "",
+    val localidad: String = "",
+    val provincia: String = "",
+    val codigoPostal: String = "",
+    val telefono: String = "",
+    val email: String = "",
+    val descripcion: String = "",
+    val activo: Boolean = true
+)
+
+// Modelo para representar ciudades
+data class Ciudad(
+    val nombre: String,
+    val codigoPostal: String,
+    val provincia: String = "",
+    val codigoProvincia: String = ""
+)
+
+/**
+ * Modelo para representar los datos de códigos postales obtenidos del dataset local
+ */
+data class CodigoPostalData(
+    val codigoPostal: String,
+    val municipio: String,
+    val provincia: String,
+    val codigoProvincia: String
+)
+
+/**
+ * Función de extensión para convertir CodigoPostalData a Ciudad
+ */
+fun CodigoPostalData.toCiudad(): Ciudad {
+    return Ciudad(
+        nombre = this.municipio,
+        codigoPostal = this.codigoPostal,
+        provincia = this.provincia,
+        codigoProvincia = this.codigoProvincia
+    )
+}
+
+// Estado UI para añadir centro
+data class AddCentroUiState(
+    val nombre: String = "",
+    val tipoVia: String = "",
+    val nombreVia: String = "",
+    val numero: String = "",
+    val localidad: String = "",
+    val provincia: String = "",
+    val codigoPostal: String = "",
+    val telefono: String = "",
+    val email: String = "",
+    val latitud: String = "",
+    val longitud: String = "",
+    val isLoading: Boolean = false,
+    val errorMessages: List<String> = emptyList(),
+    val isError: Boolean = false,
+    val isSuccess: Boolean = false,
+    val descripcion: String = "",
+    val nombreDirector: String = "",
+    val apellidosDirector: String = "",
+    val dniDirector: String = "",
+    val telefonoDirector: String = "",
+    val emailDirector: String = "",
+    val fechaNacimientoDirector: String = "",
+    val errorMessageDirector: String? = null,
+    val showDirectorDialog: Boolean = false,
+) {
+    val tieneUbicacionValida: Boolean
+        get() = latitud.isNotBlank() && longitud.isNotBlank() && 
+                latitud.toDoubleOrNull() != null && longitud.toDoubleOrNull() != null
+}
+
 // Modelos principales
 data class Usuario(
     val dni: String = "",

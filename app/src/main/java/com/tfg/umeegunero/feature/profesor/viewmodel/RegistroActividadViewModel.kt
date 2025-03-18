@@ -76,7 +76,7 @@ class RegistroActividadViewModel @Inject constructor(
 
         if (registroId.isNotBlank()) {
             _uiState.update { it.copy(registroId = registroId) }
-            // Aquí debería cargar el registro existente, pero no tengo el método
+            // TODO: Aquí debería cargar el registro existente, pero no tengo el método
             // getRegistroById implementado todavía
         }
     }
@@ -331,7 +331,7 @@ class RegistroActividadViewModel @Inject constructor(
                     necesidadesFisiologicas = cacaControl
                 )
 
-                // Simular guardado exitoso mientras se implementa el método en el repositorio
+                // TODO: Simular guardado exitoso mientras se implementa el método en el repositorio
                 // En una implementación real, aquí llamaríamos al repositorio:
                 // val result = usuarioRepository.guardarRegistroActividad(registro)
                 
@@ -344,7 +344,7 @@ class RegistroActividadViewModel @Inject constructor(
                     )
                 }
                 
-                /* Código para cuando el método esté implementado:
+                /* TODO:Código para cuando el método esté implementado:
                 val result = usuarioRepository.guardarRegistroActividad(registro)
                 when (result) {
                     is Result.Success<*> -> {

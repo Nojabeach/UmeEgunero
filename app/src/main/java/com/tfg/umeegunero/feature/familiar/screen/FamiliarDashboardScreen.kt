@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
@@ -44,6 +45,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -157,7 +159,7 @@ fun FamiliarDashboardScreen(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -192,7 +194,7 @@ fun FamiliarDashboardScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Divider()
+                HorizontalDivider()
 
                 // Botón de cerrar sesión
                 NavigationDrawerItem(
@@ -201,7 +203,7 @@ fun FamiliarDashboardScreen(
                     onClick = onLogout,
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.ExitToApp,
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Cerrar Sesión"
                         )
                     },
@@ -413,6 +415,16 @@ fun FamiliarHomeContent(
     onNavigateToDetalleRegistro: (String) -> Unit,
     onMarcarRegistroComoVisto: (String) -> Unit
 ) {
+    // TODO: Mejoras pendientes para la pantalla principal del familiar
+    // - Implementar resumen visual de actividades diarias
+    // - Añadir gráficos de progreso y evolución del alumno
+    // - Mostrar eventos importantes del calendario escolar
+    // - Implementar notificaciones y alertas personalizables
+    // - Añadir sistema de recordatorios y eventos familiares
+    // - Mostrar calendario de horarios y actividades escolares
+    // - Implementar sección de noticias y eventos del centro
+    // - Añadir acceso rápido a comunicación con profesores
+    
     val today = LocalDate.now()
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
     val formattedDate = remember { today.format(formatter).replaceFirstChar { it.uppercase() } }
@@ -556,7 +568,7 @@ fun FamiliarHomeContent(
                     )
 
                     if (index < registrosOrdenados.size - 1) {
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     }
                 }
             }
@@ -682,6 +694,16 @@ fun MisHijosContent(
     hijos: List<Alumno>,
     onNavigateToDetalleHijo: (String) -> Unit
 ) {
+    // TODO: Mejoras pendientes para la sección de hijos
+    // - Implementar visualización de múltiples hijos con perfil completo
+    // - Añadir seguimiento de progreso académico y personal
+    // - Mostrar historial médico y alergias relevantes
+    // - Implementar gestión de autorizaciones y permisos
+    // - Añadir recordatorios de actividades extraescolares
+    // - Permitir adjuntar documentación importante (médica, académica)
+    // - Implementar sistema de objetivos y logros personalizados
+    // - Añadir sección de comentarios y notas personales
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -716,7 +738,7 @@ fun MisHijosContent(
                         aula = hijo.aulaId,
                         onClick = { onNavigateToDetalleHijo(hijo.dni) }
                     )
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
         }
@@ -797,6 +819,16 @@ fun ActividadesContent(
     registrosActividad: List<RegistroActividad>,
     onNavigateToDetalleRegistro: (String) -> Unit
 ) {
+    // TODO: Mejoras pendientes para la sección de actividades
+    // - Implementar filtrado por tipo de actividad y fecha
+    // - Añadir visualización en calendario mensual/semanal
+    // - Mostrar estadísticas y tendencias de actividades
+    // - Implementar seguimiento de rutinas diarias
+    // - Añadir comparativas con períodos anteriores
+    // - Permitir exportar informes en diferentes formatos
+    // - Implementar notificaciones de nuevas actividades
+    // - Añadir opción para solicitar información adicional
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -874,7 +906,7 @@ fun ActividadesContent(
                         registro = registro,
                         onRegistroClick = { onNavigateToDetalleRegistro(registro.id) }
                     )
-                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 }
             }
         }
@@ -976,6 +1008,16 @@ fun MensajesContent(
     profesores: Map<String, Usuario>,
     onNavigateToChat: (String, String?) -> Unit
 ) {
+    // TODO: Mejoras pendientes para la sección de mensajes
+    // - Implementar filtrado por profesor o tema
+    // - Añadir búsqueda en el contenido de mensajes
+    // - Mostrar estado de lectura y respuesta de mensajes
+    // - Implementar opción para mensajes importantes/destacados
+    // - Añadir notificaciones personalizables por conversación
+    // - Permitir adjuntar archivos, fotos y videos
+    // - Implementar chats grupales para comisiones de padres
+    // - Añadir videollamadas programadas con profesores
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1014,7 +1056,7 @@ fun MensajesContent(
                             noLeido = mensajesEmisor.any { !it.leido },
                             onClick = { onNavigateToChat(emisorId, null) }
                         )
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     }
                 }
             }
@@ -1081,12 +1123,22 @@ fun ChatItem(
 
 @Composable
 fun ConfiguracionContent() {
+    // TODO: Mejoras pendientes para la sección de configuración
+    // - Implementar gestión de perfil familiar completo
+    // - Añadir opciones de privacidad y compartición de datos
+    // - Configurar notificaciones por tipo e importancia
+    // - Implementar opciones de accesibilidad
+    // - Añadir gestión de dispositivos autorizados
+    // - Permitir sincronización con calendario familiar
+    // - Implementar preferencias de comunicación con el centro
+    // - Añadir ajustes de idioma y formato regional
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Configuración",
+            text = "Configuración Familiar",
             style = MaterialTheme.typography.headlineMedium
         )
     }

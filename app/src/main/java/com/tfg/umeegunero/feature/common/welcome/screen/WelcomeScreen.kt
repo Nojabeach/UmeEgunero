@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.Lock
@@ -21,8 +20,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -65,10 +67,14 @@ import com.tfg.umeegunero.ui.theme.Surface
 import com.tfg.umeegunero.ui.theme.SurfaceDark
 import kotlinx.coroutines.delay
 import com.tfg.umeegunero.ui.theme.Error
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.Chat
 
-@Composable
-fun isLightTheme(): Boolean {
-    val backgroundColor = MaterialTheme.colorScheme.background
+// Extensión para verificar si el tema es claro
+fun ColorScheme.isLight(): Boolean {
+    // En Material 3, podemos usar esta aproximación para detectar si estamos en tema claro
+    val backgroundColor = this.background
+    // Calculamos un valor aproximado de luminosidad (0.0 - 1.0)
     val luminance = (0.299 * backgroundColor.red + 0.587 * backgroundColor.green + 0.114 * backgroundColor.blue)
     return luminance > 0.5
 }
@@ -86,21 +92,22 @@ fun WelcomeScreen(
     onNavigateToRegister: () -> Unit,
     onCloseApp: () -> Unit
 ) {
-    val isLight = isLightTheme()
-
-// Gradiente actualizado con los nuevos colores
-    val gradientColors = if (!isLight) {
-        listOf(
-            PurpleDark.copy(alpha = 0.8f),
-            BackgroundDark,
-            BlueDark.copy(alpha = 0.6f)
-        )
+    // TODO: Mejoras pendientes para la pantalla de Bienvenida
+    // - Implementar un vídeo de fondo o animaciones más atractivas
+    // - Añadir soporte para selección de idioma al inicio
+    // - Mejorar el onboarding con más pasos e información detallada
+    // - Implementar detección de tipo de usuario por QR o NFC
+    // - Añadir información de centros cercanos usando geolocalización
+    // - Mostrar estadísticas o testimonios de uso de la app
+    // - Implementar botón para contactar con soporte
+    // - Añadir opción para ver demo de la aplicación
+    // - Mejorar transiciones y animaciones entre elementos
+    
+    val isLight = MaterialTheme.colorScheme.isLight()
+    val gradientColors = if (isLight) {
+        listOf(GradientStart, Color.White, GradientEnd)
     } else {
-        listOf(
-            GradientStart.copy(alpha = 0.2f),
-            Background,
-            GradientEnd.copy(alpha = 0.1f)
-        )
+        listOf(BackgroundDark, SurfaceDark)
     }
 
     Box(
@@ -217,16 +224,16 @@ fun WelcomeScreen(
                     }
                 }
 
-                Divider(
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                HorizontalDivider(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .padding(vertical = 8.dp),
-                    color = if (isLight)
-                        OnBackground.copy(alpha = 0.1f)
-                    else
-                        OnPrimary.copy(alpha = 0.1f)
+                        .padding(horizontal = 20.dp)
+                        .height(1.dp),
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.12f)
                 )
-
+                
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Card(
                     modifier = Modifier
@@ -292,7 +299,7 @@ fun OnboardingCarousel() {
             description = "Información diaria sobre la actividad de tu hijo/a en el centro educativo."
         ),
         CarouselItem(
-            icon = Icons.Default.Chat,
+            icon = Icons.AutoMirrored.Filled.Chat,
             title = "Chat Privado",
             description = "Comunicación directa y segura con profesores para resolver cualquier duda."
         ),
@@ -504,7 +511,7 @@ fun LoginButtons(
             shape = RoundedCornerShape(12.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Chat,
+                imageVector = Icons.AutoMirrored.Filled.Chat,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp)
             )
@@ -540,4 +547,9 @@ fun WelcomeScreenDarkPreview() {
             onCloseApp = {}
         )
     }
+}
+
+@Composable
+fun isLightTheme(): Boolean {
+    return MaterialTheme.colorScheme.isLight()
 }

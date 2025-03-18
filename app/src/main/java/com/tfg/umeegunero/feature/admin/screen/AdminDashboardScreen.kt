@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
@@ -78,6 +77,8 @@ import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardUiState
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,7 +143,7 @@ fun AdminDashboardScreen(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -178,7 +179,7 @@ fun AdminDashboardScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Divider()
+                HorizontalDivider()
 
                 // Botón de cerrar sesión
                 NavigationDrawerItem(
@@ -187,7 +188,7 @@ fun AdminDashboardScreen(
                     onClick = onLogout,
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.ExitToApp,
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Cerrar Sesión"
                         )
                     },
@@ -325,6 +326,13 @@ fun CentrosEducativosContent(
     onDeleteCentro: (String) -> Unit,
     onRefresh: () -> Unit
 ) {
+    // TODO: Mejorar la gestión de centros educativos
+    // - Añadir filtros de búsqueda por nombre, localidad o código postal
+    // - Implementar paginación para manejar grandes cantidades de centros
+    // - Añadir opción para ver detalles completos del centro
+    // - Implementar confirmación antes de eliminar un centro
+    // - Mostrar estadísticas resumidas (número de alumnos, profesores, etc.)
+    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -485,6 +493,13 @@ fun UsuariosContent(
     onDeleteUsuario: (String) -> Unit,
     onRefresh: () -> Unit
 ) {
+    // TODO: Mejorar la gestión de usuarios
+    // - Implementar filtrado por tipo de usuario (admin, profesor, familiar)
+    // - Añadir búsqueda por nombre o email
+    // - Permitir gestión masiva de usuarios
+    // - Implementar reseteo de contraseñas
+    // - Añadir función para desactivar temporalmente usuarios
+    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -655,6 +670,17 @@ fun ProfesoresContent() {
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
+        // TODO: Mejoras pendientes para la pantalla de gestión de profesores
+        // - Implementar listado completo con búsqueda avanzada
+        // - Añadir vista de perfiles completos con experiencia y formación
+        // - Mostrar estadísticas de evaluación docente por asignatura
+        // - Implementar seguimiento de formación continua y certificaciones
+        // - Añadir visualización de carga lectiva y horas complementarias
+        // - Permitir gestión de ausencias y sustituciones
+        // - Mostrar historial de comunicaciones con familias y centro
+        // - Implementar sistema de evaluación de rendimiento
+        // - Añadir funcionalidad para asignación optimizada a grupos
+        // - Permitir vista de currículum vitae completo y actualización
         Text(
             text = "Gestión de Profesores - En desarrollo",
             style = MaterialTheme.typography.headlineMedium,
@@ -671,6 +697,17 @@ fun AlumnosContent() {
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
+        // TODO: Mejoras pendientes para la pantalla de gestión de alumnos
+        // - Implementar visualización de expedientes académicos completos
+        // - Añadir sistema de seguimiento de evolución y progreso
+        // - Mostrar historial médico y necesidades especiales
+        // - Implementar gestión integrada de adaptaciones curriculares
+        // - Añadir visualización de estructura familiar completa
+        // - Permitir gestión de traslados entre centros educativos
+        // - Mostrar historial de comportamiento e incidencias
+        // - Implementar evaluación psicopedagógica y seguimiento
+        // - Añadir funcionalidad para matrícula masiva y automática
+        // - Permitir importación y exportación de datos académicos
         Text(
             text = "Gestión de Alumnos - En desarrollo",
             style = MaterialTheme.typography.headlineMedium,
@@ -681,80 +718,25 @@ fun AlumnosContent() {
 
 @Composable
 fun VinculacionesContent() {
-    // Crear los tabs para diferentes tipos de vinculaciones
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Profesor-Alumno", "Alumno-Familiar", "Profesor-Centro")
-    
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Tabs de navegación
-        ScrollableTabRow(
-            selectedTabIndex = selectedTabIndex,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
-                    text = { Text(title) }
-                )
-            }
-        }
-        
-        // Contenido según la tab seleccionada
-        when (selectedTabIndex) {
-            0 -> ProfesorAlumnoVinculacionContent()
-            1 -> AlumnoFamiliarVinculacionContent()
-            2 -> ProfesorCentroVinculacionContent()
-        }
-    }
-}
-
-@Composable
-fun ProfesorAlumnoVinculacionContent() {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
+        // TODO: Mejoras pendientes para la pantalla de vinculaciones
+        // - Implementar visualización gráfica de relaciones familiares
+        // - Añadir sistema de verificación de parentesco oficial
+        // - Mostrar histórico de cambios en las vinculaciones
+        // - Implementar gestión de permisos granulares por vinculación
+        // - Añadir notificaciones automáticas de cambios importantes
+        // - Permitir distintos niveles de acceso para diferentes familiares
+        // - Mostrar información de contacto en caso de emergencia
+        // - Implementar registro de accesos a información sensible
+        // - Añadir función de transferencia de vinculación entre cuentas
         Text(
-            text = "Vinculación Profesor-Alumno - En desarrollo",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-fun AlumnoFamiliarVinculacionContent() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Vinculación Alumno-Familiar - En desarrollo",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-fun ProfesorCentroVinculacionContent() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Vinculación Profesor-Centro - En desarrollo",
-            style = MaterialTheme.typography.titleLarge,
+            text = "Gestión de Vinculaciones - En desarrollo",
+            style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
     }
@@ -763,12 +745,104 @@ fun ProfesorCentroVinculacionContent() {
 @Composable
 fun ConfiguracionContent() {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
+        // TODO: Mejoras pendientes para la pantalla de configuración
+        // - Implementar gestión completa de parámetros del sistema
+        // - Añadir paneles de administración de servicios cloud
+        // - Mostrar estadísticas de uso y rendimiento de la plataforma
+        // - Implementar sistema de auditoría y registros de seguridad
+        // - Añadir configuración de copias de seguridad automatizadas
+        // - Permitir personalización de la experiencia por defecto
+        // - Mostrar herramientas de diagnóstico y solución de problemas
+        // - Implementar módulo de actualización y mantenimiento del sistema
+        // - Añadir gestión centralizada de notificaciones push
+        // - Permitir configuración de límites y cuotas de recursos
         Text(
-            text = "Configuración",
-            style = MaterialTheme.typography.headlineMedium
+            text = "Configuración - En desarrollo",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun ProfesorAlumnoVinculacionContent() {
+    // Implementación básica para resolver el error de referencia
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Vinculación Profesor-Alumno",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Pantalla en desarrollo",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun AlumnoFamiliarVinculacionContent() {
+    // Implementación básica para resolver el error de referencia
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Vinculación Alumno-Familiar",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Pantalla en desarrollo",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun ProfesorCentroVinculacionContent() {
+    // Implementación básica para resolver el error de referencia
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Vinculación Profesor-Centro",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Pantalla en desarrollo",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
         )
     }
 }
