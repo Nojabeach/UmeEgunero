@@ -950,24 +950,19 @@ fun RegistroActividadScreenPreview() {
             dni = "12345678X",
             nombre = "Lucas",
             apellidos = "Martínez García",
-            fechaNacimiento = Timestamp(Date()),
-            género = Genero.MASCULINO,
-            fotoUrl = "",
-            alergias = listOf("Lactosa", "Frutos secos"),
-            medicacion = listOf("Ninguna"),
-            observacionesMedicas = "Sin observaciones",
-            claseDni = "1A",
-            familiaresDni = listOf("98765432Z")
+            fechaNacimiento = Timestamp(Date())
         )
         
-        RegistroActividadScreen(
-            alumno = alumno,
-            onNavigateBack = {},
-            onSubmitRegistro = {},
-            isLoading = false,
-            error = null,
-            onErrorDismissed = {}
-        )
+        // En lugar de crear un ViewModel real, simulamos la pantalla con datos mockeados
+        Surface {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                AlumnoInfoCard(alumno = alumno)
+            }
+        }
     }
 }
 
@@ -975,7 +970,18 @@ fun RegistroActividadScreenPreview() {
 @Composable
 fun RegistroActividadScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        RegistroActividadScreenPreview()
+        Surface {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                NecesidadesFisiologicasCard(
+                    necesidadesFisiologicas = CacaControl(pipi = true, caca = false, observaciones = "Observación de ejemplo"),
+                    onUpdate = { _, _, _ -> }
+                )
+            }
+        }
     }
 }
 

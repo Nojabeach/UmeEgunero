@@ -267,18 +267,22 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             // Fecha de nacimiento
-                            alumno.fechaNacimiento?.let { fecha ->
-                                Text(
-                                    text = "Fecha de nacimiento: ${formatDate(fecha)}",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-
-                                // Edad aproximada
-                                Text(
-                                    text = "Edad: ${calcularEdad(fecha)} años",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
+                            val fechaFormateada = if (alumno.fechaNacimiento != null) {
+                                val formato = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                formato.format(alumno.fechaNacimiento.toDate())
+                            } else {
+                                "Fecha no disponible"
                             }
+                            Text(
+                                text = "Fecha de nacimiento: $fechaFormateada",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+
+                            // Edad aproximada
+                            Text(
+                                text = "Edad: ${calcularEdad(alumno.fechaNacimiento)} años",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
                     }
 
@@ -393,38 +397,23 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Alergias
-                            Text(
-                                text = "Alergias:",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Text(
-                                text = if (alumno.alergias?.isNotEmpty() == true)
-                                    alumno.alergias.joinToString(", ")
-                                else
-                                    "No se han registrado alergias",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            if (!alumno.alergias.isEmpty()) {
+                                Text(
+                                    text = "Alergias: ${alumno.alergias}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Medicación
-                            Text(
-                                text = "Medicación:",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Text(
-                                text = alumno.medicacion?.takeIf { it.isNotBlank() }
-                                    ?: "No se ha registrado medicación",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            if (alumno.medicacion.isNotBlank()) {
+                                Text(
+                                    text = "Medicación: ${alumno.medicacion}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -880,25 +869,10 @@ fun DetalleHijoScreenPreviewContent() {
 
                     // Dirección
                     if (alumnoMock.direccion != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Home,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(24.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = alumnoMock.direccion ?: "",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Dirección: ${alumnoMock.direccion}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
 
                     // Alergias

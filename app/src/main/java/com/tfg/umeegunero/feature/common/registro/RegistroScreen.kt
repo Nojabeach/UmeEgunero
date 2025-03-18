@@ -1,7 +1,6 @@
 package com.tfg.umeegunero.feature.common.registro
 
 import android.content.res.Configuration
-import android.location.Geocoder
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -19,19 +18,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -40,76 +35,34 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DisplayMode
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.CentroEducativo
-import com.tfg.umeegunero.ui.theme.GradientEnd
-import com.tfg.umeegunero.ui.theme.GradientStart
-import com.tfg.umeegunero.ui.theme.Success
+import com.tfg.umeegunero.feature.common.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 // Definición del estado y eventos para el registro (temporales hasta implementar viewmodel)
 data class RegistroUiState(
@@ -117,7 +70,41 @@ data class RegistroUiState(
     val error: String? = null,
     val success: Boolean = false,
     val currentStep: Int = 1,
-    val totalSteps: Int = 3
+    val totalSteps: Int = 3,
+    
+    // Datos personales (paso 1)
+    val nombre: String = "",
+    val apellidos: String = "",
+    val email: String = "",
+    val telefono: String = "",
+    val password: String = "",
+    val confirmPassword: String = "",
+    
+    // Dirección (paso 2)
+    val calle: String = "",
+    val numero: String = "",
+    val codigoPostal: String = "",
+    val ciudad: String = "",
+    val provincia: String = "",
+    
+    // Centro y alumnos (paso 3)
+    val centroEducativo: CentroEducativo? = null,
+    val centroNombre: String = "",
+    val alumnos: List<String> = emptyList(),
+    
+    // Errores de validación
+    val nombreError: String? = null,
+    val apellidosError: String? = null,
+    val emailError: String? = null,
+    val telefonoError: String? = null,
+    val passwordError: String? = null,
+    val confirmPasswordError: String? = null,
+    val calleError: String? = null,
+    val numeroError: String? = null,
+    val codigoPostalError: String? = null,
+    val ciudadError: String? = null,
+    val provinciaError: String? = null,
+    val centroError: String? = null
 )
 
 sealed class RegistroEvent {
@@ -134,6 +121,88 @@ fun ColorScheme.isLight(): Boolean {
     // Calculamos un valor aproximado de luminosidad (0.0 - 1.0)
     val luminance = (0.299 * backgroundColor.red + 0.587 * backgroundColor.green + 0.114 * backgroundColor.blue)
     return luminance > 0.5
+}
+
+/**
+ * Calcula el porcentaje de completado del formulario de registro
+ * @param uiState El estado actual del formulario
+ * @return Un valor entre 0.0 y 1.0 que representa el progreso
+ */
+private fun calcularPorcentajeCompletado(uiState: RegistroUiState): Float {
+    var camposCompletados = 0
+    var camposTotales = 0
+    
+    // Para paso 1: Datos personales
+    if (uiState.currentStep >= 1) {
+        camposTotales += 6 // Nombre, apellidos, email, teléfono, contraseña, confirmar contraseña
+        if (uiState.nombre.isNotBlank()) camposCompletados++
+        if (uiState.apellidos.isNotBlank()) camposCompletados++
+        if (uiState.email.isNotBlank()) camposCompletados++
+        if (uiState.telefono.isNotBlank()) camposCompletados++
+        if (uiState.password.isNotBlank()) camposCompletados++
+        if (uiState.confirmPassword.isNotBlank()) camposCompletados++
+    }
+    
+    // Para paso 2: Dirección
+    if (uiState.currentStep >= 2) {
+        camposTotales += 5 // Calle, número, código postal, ciudad, provincia
+        if (uiState.calle.isNotBlank()) camposCompletados++
+        if (uiState.numero.isNotBlank()) camposCompletados++
+        if (uiState.codigoPostal.isNotBlank()) camposCompletados++
+        if (uiState.ciudad.isNotBlank()) camposCompletados++
+        if (uiState.provincia.isNotBlank()) camposCompletados++
+    }
+    
+    // Para paso 3: Centro y alumnos
+    if (uiState.currentStep >= 3) {
+        camposTotales += 2 // Centro educativo y al menos un alumno
+        if (uiState.centroEducativo != null || uiState.centroNombre.isNotBlank()) camposCompletados++
+        if (uiState.alumnos.isNotEmpty()) camposCompletados++
+    }
+    
+    // Si no hay campos a completar, retornar 0
+    if (camposTotales == 0) return 0f
+    
+    // Calcular porcentaje considerando solo los pasos visibles hasta ahora
+    val porcentajeBase = camposCompletados.toFloat() / camposTotales.toFloat()
+    
+    // Ajustar según errores (si hay errores de validación, reducir el porcentaje)
+    val errores = contarErrores(uiState)
+    if (errores > 0) {
+        return porcentajeBase * (1.0f - (errores.toFloat() / camposTotales.toFloat()))
+    }
+    
+    return porcentajeBase
+}
+
+/**
+ * Cuenta el número de errores de validación presentes en el estado
+ */
+private fun contarErrores(uiState: RegistroUiState): Int {
+    var errores = 0
+    
+    if (uiState.currentStep >= 1) {
+        if (uiState.nombreError != null) errores++
+        if (uiState.apellidosError != null) errores++
+        if (uiState.emailError != null) errores++
+        if (uiState.telefonoError != null) errores++
+        if (uiState.passwordError != null) errores++
+        if (uiState.confirmPasswordError != null) errores++
+    }
+    
+    if (uiState.currentStep >= 2) {
+        if (uiState.calleError != null) errores++
+        if (uiState.numeroError != null) errores++
+        if (uiState.codigoPostalError != null) errores++
+        if (uiState.ciudadError != null) errores++
+        if (uiState.provinciaError != null) errores++
+    }
+    
+    if (uiState.currentStep >= 3) {
+        if (uiState.centroError != null) errores++
+    }
+    
+    return errores
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -157,6 +226,7 @@ fun RegistroScreen(
     
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     // Detector de éxito en el registro
     LaunchedEffect(uiState.success) {
@@ -224,45 +294,50 @@ fun RegistroScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .verticalScroll(scrollState),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Indicador de progreso
-                LinearProgressIndicator(
-                    progress = { uiState.currentStep.toFloat() / uiState.totalSteps.toFloat() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .padding(horizontal = 16.dp)
+                // Indicador de progreso mejorado con porcentaje
+                FormProgressIndicator(
+                    porcentaje = calcularPorcentajeCompletado(uiState)
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Título del paso actual
-                Text(
-                    text = when (uiState.currentStep) {
-                        1 -> "Datos Personales"
-                        2 -> "Dirección"
-                        3 -> "Alumnos y Centro"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-
-                // Contenido del paso actual - implementación simplificada para preview
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                
+                // Paso actual
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    // Aquí iría el contenido específico de cada paso
-                    Text(
-                        text = "Formulario de registro - Paso ${uiState.currentStep}",
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Título del paso actual
+                        Text(
+                            text = when (uiState.currentStep) {
+                                1 -> "Datos Personales"
+                                2 -> "Dirección"
+                                3 -> "Alumnos y Centro"
+                                else -> ""
+                            },
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        HorizontalDivider()
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Aquí iría el contenido específico de cada paso
+                        Text(
+                            text = "Formulario de registro - Paso ${uiState.currentStep}",
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Botones de navegación
                 Row(
@@ -310,7 +385,6 @@ fun RegistroScreen(
                             if (uiState.isLoading) {
                                 CircularProgressIndicator(
                                     modifier = Modifier
-                                        .size(24.dp)
                                         .padding(end = 8.dp),
                                     color = MaterialTheme.colorScheme.onPrimary,
                                     strokeWidth = 2.dp
@@ -336,7 +410,12 @@ fun RegistroScreen(
 fun RegistroScreenPreview() {
     UmeEguneroTheme {
         RegistroScreen(
-            uiState = RegistroUiState(),
+            uiState = RegistroUiState(
+                nombre = "María",
+                apellidos = "García López",
+                email = "maria@example.com",
+                telefono = "678123456"
+            ),
             onNavigateBack = {},
             onRegistroSuccess = {},
             onEvent = {}
