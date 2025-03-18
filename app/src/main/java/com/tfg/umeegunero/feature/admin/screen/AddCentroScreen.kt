@@ -234,91 +234,143 @@ fun AddCentroScreenContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "Añadir Centro") },
+                title = { 
+                    Text(
+                        text = "Añadir Centro Educativo",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onCancelarClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = "Volver",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f),
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.98f)
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 20.dp)
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Indicador de progreso mejorado
-            FormProgressIndicator(
-                porcentaje = calcularPorcentajeCompletado(uiState)
-            )
+            // Indicador de progreso mejorado con estilo educativo
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    FormProgressIndicator(
+                        porcentaje = calcularPorcentajeCompletado(uiState),
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = "Completa el formulario para dar de alta el centro",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
 
             // Formulario para datos de centro
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
                 elevation = CardDefaults.cardElevation(
-                    defaultElevation = 2.dp
+                    defaultElevation = 4.dp
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(24.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        modifier = Modifier.padding(bottom = 24.dp)
                     ) {
-                        // Icono circular
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
+                        // Icono circular con animación sutil
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            shadowElevation = 4.dp
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.School,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
 
-                        Text(
-                            text = "Información del Centro",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Column {
+                            Text(
+                                text = "Información del Centro",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Text(
+                                text = "Datos básicos del centro educativo",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
-                    // Campo directo para el nombre del centro sin SectionCard anidada
+                    // Campo directo para el nombre del centro con diseño mejorado
                     EnhancedFormTextField(
                         value = uiState.nombre,
                         onValueChange = onNombreChange,
-                        label = "Nombre del Centro",
+                        label = "Nombre del Centro Educativo",
                         error = uiState.nombreError,
                         icon = Icons.Default.School,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        placeholder = "Ej: IES Gabriel Aresti"
                     )
-
-                    Spacer(modifier = Modifier.height(16.dp))
                     
                     // Sección de dirección
                     DireccionSection(
@@ -333,47 +385,51 @@ fun AddCentroScreenContent(
                         provincias = provincias
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // Sección de contacto
+                    // Sección de contacto con diseño mejorado
                     SectionCard(
-                        title = "Contacto",
-                        icon = Icons.Default.Phone
+                        title = "Datos de Contacto",
+                        subtitle = "Información para comunicaciones oficiales",
+                        icon = Icons.Default.Phone,
+                        accentColor = MaterialTheme.colorScheme.tertiary
                     ) {
                         EnhancedFormTextField(
                             value = uiState.telefono,
                             onValueChange = onTelefonoChange,
-                            label = "Teléfono",
+                            label = "Teléfono de contacto",
                             error = uiState.telefonoError,
                             icon = Icons.Default.Phone,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 56.dp, max = 72.dp),
-                            keyboardType = KeyboardType.Phone
+                                .padding(bottom = 16.dp),
+                            keyboardType = KeyboardType.Phone,
+                            placeholder = "Ej: 944123456"
                         )
-
-                        Spacer(modifier = Modifier.height(16.dp))
 
                         EnhancedFormTextField(
                             value = uiState.email,
                             onValueChange = onEmailChange,
-                            label = "Email",
+                            label = "Email del centro",
                             error = uiState.emailError,
                             icon = Icons.Default.Email,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 56.dp, max = 72.dp),
-                            keyboardType = KeyboardType.Email
+                                .padding(bottom = 16.dp),
+                            keyboardType = KeyboardType.Email,
+                            placeholder = "Ej: secretaria@centro.edu.es"
                         )
                     }
 
                     // Sección de contraseñas (solo para nuevos centros)
                     if (uiState.id.isBlank()) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
                         SectionCard(
                             title = "Cuenta de Acceso",
-                            icon = Icons.Default.Lock
+                            subtitle = "Credenciales para el portal del centro",
+                            icon = Icons.Default.Lock,
+                            accentColor = MaterialTheme.colorScheme.secondary
                         ) {
                             var passwordVisible by remember { mutableStateOf(false) }
                             var confirmPasswordVisible by remember { mutableStateOf(false) }
@@ -394,12 +450,10 @@ fun AddCentroScreenContent(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(min = 56.dp, max = 72.dp),
+                                    .padding(bottom = 16.dp),
                                 keyboardType = KeyboardType.Password,
                                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
                             )
-
-                            Spacer(modifier = Modifier.height(16.dp))
 
                             EnhancedFormTextField(
                                 value = uiState.confirmPassword,
@@ -415,45 +469,63 @@ fun AddCentroScreenContent(
                                         )
                                     }
                                 },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 56.dp, max = 72.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 keyboardType = KeyboardType.Password,
                                 visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
+                            )
+                            
+                            // Texto informativo sobre las contraseñas
+                            Text(
+                                text = "La contraseña debe contener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                modifier = Modifier.padding(start = 8.dp)
                             )
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Botones de acción
+            // Botones de acción mejorados
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedButton(
                     onClick = onCancelarClick,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                    contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = null
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Cancelar")
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Cancelar",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
                 }
 
                 Button(
                     onClick = onGuardarClick,
                     modifier = Modifier.weight(1f),
                     enabled = uiState.isFormValid && !uiState.isLoading,
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
@@ -466,8 +538,13 @@ fun AddCentroScreenContent(
                             imageVector = Icons.Default.Save,
                             contentDescription = null
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Guardar")
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Guardar Centro",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
                     }
                 }
             }
@@ -480,36 +557,37 @@ fun SectionCard(
     title: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    accentColor: Color = MaterialTheme.colorScheme.primary,
     content: @Composable () -> Unit
 ) {
     Card(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(16.dp),
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+            defaultElevation = 0.dp
         ),
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            color = accentColor.copy(alpha = 0.2f)
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 20.dp)
             ) {
-                // Icono circular con efecto de elevación sutil
+                // Icono circular con efecto de elevación y color temático
                 Surface(
-                    modifier = Modifier.size(38.dp),
+                    modifier = Modifier.size(42.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = accentColor,
                     shadowElevation = 2.dp
                 ) {
                     Box(
@@ -519,20 +597,30 @@ fun SectionCard(
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(22.dp)
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Medium
-                )
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             content()
@@ -563,7 +651,14 @@ fun EnhancedFormTextField(
                     onValueChange(it)
                 }
             },
-            label = { Text(label) },
+            label = { 
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    )
+                ) 
+            },
             leadingIcon = if (icon != null) {
                 {
                     Icon(
@@ -577,12 +672,12 @@ fun EnhancedFormTextField(
             isError = error != null,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             visualTransformation = visualTransformation,
-            modifier = modifier.heightIn(min = 20.dp),
+            modifier = modifier,
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                 focusedLabelColor = MaterialTheme.colorScheme.primary,
                 unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 errorBorderColor = MaterialTheme.colorScheme.error,
@@ -591,7 +686,13 @@ fun EnhancedFormTextField(
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface
             ),
             textStyle = MaterialTheme.typography.bodyLarge,
-            placeholder = placeholder?.let { { Text(text = it, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) } }
+            placeholder = placeholder?.let { { 
+                Text(
+                    text = it, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.bodyLarge
+                ) 
+            } }
         )
 
         AnimatedVisibility(
@@ -599,12 +700,23 @@ fun EnhancedFormTextField(
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically()
         ) {
-            Text(
-                text = error ?: "",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-            )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = error ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
@@ -621,20 +733,40 @@ fun DireccionSection(
     onToggleMapa: () -> Unit,
     provincias: List<String>
 ) {
-    SectionCard(title = "Dirección", icon = Icons.Default.LocationCity) {
-        // Vía y número
-        DireccionRow(
-            calle = uiState.calle,
-            onCalleChange = onCalleChange,
-            numero = uiState.numero,
-            onNumeroChange = onNumeroChange,
-            calleError = uiState.calleError,
-            numeroError = uiState.numeroError
+    SectionCard(
+        title = "Ubicación del Centro", 
+        subtitle = "Dirección física del centro educativo",
+        icon = Icons.Default.LocationCity,
+        accentColor = MaterialTheme.colorScheme.primary
+    ) {
+        // Campo para la vía (en su propia fila)
+        EnhancedFormTextField(
+            value = uiState.calle,
+            onValueChange = onCalleChange,
+            label = "Vía / Calle",
+            error = uiState.calleError,
+            icon = Icons.Default.Home,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            placeholder = "Ej: Calle Mayor"
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // Campo para el número (en su propia fila)
+        EnhancedFormTextField(
+            value = uiState.numero,
+            onValueChange = onNumeroChange,
+            label = "Número",
+            error = uiState.numeroError,
+            icon = Icons.Default.Place,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            keyboardType = KeyboardType.Number,
+            placeholder = "Ej: 25"
+        )
 
-        // Código postal
+        // Código postal (en su propia fila)
         EnhancedFormTextField(
             value = uiState.codigoPostal,
             onValueChange = onCodigoPostalChange,
@@ -642,34 +774,45 @@ fun DireccionSection(
             error = uiState.codigoPostalError,
             icon = Icons.Default.Place,
             modifier = Modifier
-                .fillMaxWidth(0.5f)
-                .heightIn(min = 56.dp, max = 72.dp),
+                .fillMaxWidth()
+                .padding(bottom = if (uiState.isBuscandoCiudades || uiState.errorBusquedaCiudades != null) 8.dp else 16.dp),
             keyboardType = KeyboardType.Number,
             maxLength = 5,
             placeholder = "Ej: 48001"
         )
 
-        // Indicador de búsqueda o error
+        // Indicador de búsqueda o error para el código postal
         if (uiState.isBuscandoCiudades) {
-            Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
                 modifier = Modifier
-                    .fillMaxWidth(0.5f)
-                    .padding(vertical = 4.dp, horizontal = 8.dp)
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp, start = 8.dp, end = 8.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         } else if (uiState.errorBusquedaCiudades != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = uiState.errorBusquedaCiudades,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 8.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 8.dp, bottom = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = uiState.errorBusquedaCiudades,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Ciudad - Dropdown o campo de texto según corresponda
+        // Ciudad (en su propia fila)
         if (uiState.ciudadesSugeridas.isNotEmpty()) {
             CiudadDropdown(
                 ciudad = uiState.ciudad,
@@ -682,19 +825,17 @@ fun DireccionSection(
             EnhancedFormTextField(
                 value = uiState.ciudad,
                 onValueChange = onCiudadChange,
-                label = "Ciudad",
+                label = "Ciudad/Municipio",
                 error = uiState.ciudadError,
                 icon = Icons.Default.LocationCity,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 12.dp, max = 20.dp),
+                    .padding(bottom = 16.dp),
                 placeholder = "Ej: Bilbao"
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Provincia - Siempre dropdown
+        // Provincia - Dropdown mejorado
         ProvinciaDropdown(
             provincia = uiState.provincia,
             onProvinciaChange = onProvinciaChange,
@@ -702,7 +843,7 @@ fun DireccionSection(
             provinciaError = uiState.provinciaError
         )
 
-        // Mostrar mapa con la ubicación si tenemos coordenadas
+        // Mostrar mapa con la ubicación si tenemos coordenadas - Diseño más atractivo
         if (uiState.tieneUbicacionValida) {
             MapaUbicacionSection(
                 mostrarMapa = uiState.mostrarMapa,
@@ -712,48 +853,6 @@ fun DireccionSection(
                 direccionCompleta = uiState.direccionCompleta
             )
         }
-    }
-}
-
-@Composable
-fun DireccionRow(
-    calle: String,
-    onCalleChange: (String) -> Unit,
-    numero: String,
-    onNumeroChange: (String) -> Unit,
-    calleError: String?,
-    numeroError: String?
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        EnhancedFormTextField(
-            value = calle,
-            onValueChange = onCalleChange,
-            label = "Vía",
-            error = calleError,
-            icon = Icons.Default.Home,
-            modifier = Modifier
-                .weight(0.7f)
-                .heightIn(min = 40.dp),
-            placeholder = "Ej: Calle Mayor"
-        )
-
-        EnhancedFormTextField(
-            value = numero,
-            onValueChange = onNumeroChange,
-            label = "Número",
-            error = numeroError,
-            icon = null,
-            modifier = Modifier
-                .weight(0.3f)
-                .heightIn(min = 20.dp),
-            keyboardType = KeyboardType.Number,
-            placeholder = "Ej: 25"
-        )
     }
 }
 
@@ -770,12 +869,14 @@ fun CiudadDropdown(
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
     ) {
         OutlinedTextField(
             value = ciudad,
             onValueChange = onCiudadChange,
-            label = { Text("Ciudad") },
+            label = { Text("Ciudad/Municipio") },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.LocationCity,
@@ -789,21 +890,21 @@ fun CiudadDropdown(
             isError = ciudadError != null,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
                 focusedLabelColor = MaterialTheme.colorScheme.primary,
                 unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp, max = 72.dp)
                 .menuAnchor(),
             placeholder = { Text("Seleccione una ciudad", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) }
         )
 
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 200.dp)
         ) {
             ciudadesSugeridas.forEach { ciudad ->
                 DropdownMenuItem(
@@ -837,7 +938,9 @@ fun ProvinciaDropdown(
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
     ) {
         OutlinedTextField(
             value = provincia,
@@ -856,21 +959,21 @@ fun ProvinciaDropdown(
             isError = provinciaError != null,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
                 focusedLabelColor = MaterialTheme.colorScheme.primary,
                 unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp, max = 72.dp)
                 .menuAnchor(),
             placeholder = { Text("Seleccione una provincia", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) }
         )
 
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 200.dp)
         ) {
             provincias.forEach { provincia ->
                 DropdownMenuItem(
@@ -900,10 +1003,10 @@ fun MapaUbicacionSection(
     longitud: Double,
     direccionCompleta: String
 ) {
-    Spacer(modifier = Modifier.height(16.dp))
-
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -942,6 +1045,7 @@ fun MapaUbicacionSection(
                 .fillMaxWidth()
                 .height(200.dp)
                 .clip(RoundedCornerShape(16.dp))
+                .padding(bottom = 16.dp)
         )
     }
 }
