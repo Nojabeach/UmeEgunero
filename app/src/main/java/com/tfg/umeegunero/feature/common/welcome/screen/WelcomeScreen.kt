@@ -102,6 +102,9 @@ fun WelcomeScreen(
     // - Implementar botón para contactar con soporte
     // - Añadir opción para ver demo de la aplicación
     // - Mejorar transiciones y animaciones entre elementos
+    // - Añadir soporte para autenticación biométrica
+    // - Implementar soporte para temas personalizados
+    // - REVISAR EL TODO_ROOM.MD con ToDo de Room
     
     val isLight = MaterialTheme.colorScheme.isLight()
     val gradientColors = if (isLight) {

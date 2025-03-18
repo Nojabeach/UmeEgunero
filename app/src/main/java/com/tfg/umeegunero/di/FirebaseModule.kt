@@ -66,9 +66,10 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideCentroRepository(
-        firestore: FirebaseFirestore
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth
     ): CentroRepository {
-        return CentroRepository(firestore)
+        return CentroRepository(firestore, auth)
     }
     
     @Provides

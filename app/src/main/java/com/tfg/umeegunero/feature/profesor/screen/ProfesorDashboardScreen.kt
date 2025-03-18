@@ -59,6 +59,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -75,11 +77,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.TemaPref
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.SnackbarHostState
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
+import com.tfg.umeegunero.feature.common.viewmodel.ConfiguracionViewModel
+import com.tfg.umeegunero.feature.common.components.TemaSelector
+import com.tfg.umeegunero.feature.common.components.TemaActual
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -820,25 +829,156 @@ fun ChatItem(
 }
 
 @Composable
-fun ConfiguracionContent() {
-    // TODO: Mejoras pendientes para la sección de configuración
-    // - Implementar gestión de perfil completa
-    // - Añadir opciones de personalización de interfaz
-    // - Configurar notificaciones y alertas por tipo
-    // - Implementar ajustes de privacidad y permisos
-    // - Añadir opciones de accesibilidad
-    // - Permitir sincronización con calendario externo
-    // - Implementar copia de seguridad y restauración de datos
-    // - Añadir gestión de dispositivos conectados
+fun ConfiguracionContent(
+    viewModel: ConfiguracionViewModel = hiltViewModel()
+) {
+    val uiState = viewModel.uiState.collectAsState().value
+    val snackbarHostState = remember { SnackbarHostState() }
     
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    // Efecto para mostrar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Configuración",
-            style = MaterialTheme.typography.headlineMedium
+            text = "Configuración del Profesor",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
         )
+        
+        TemaSelector(
+            temaSeleccionado = uiState.temaSeleccionado,
+            onTemaSeleccionado = { viewModel.setTema(it) }
+        )
+        
+        TemaActual(
+            temaSeleccionado = uiState.temaSeleccionado
+        )
+        
+        // Más configuraciones pendientes
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Próximas funcionalidades",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "• Gestión de perfil completa\n" +
+                           "• Opciones de personalización de interfaz\n" +
+                           "• Configuración de notificaciones y alertas\n" +
+                           "• Ajustes de privacidad y permisos\n" +
+                           "• Opciones de accesibilidad\n" +
+                           "• Sincronización con calendario externo",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ConfiguracionProfesorPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Configuración del Profesor", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Para la vista previa usamos un mockup sin ViewModel real
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Configuración del Profesor",
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                    
+                    // Mock de componentes para la vista previa
+                    TemaSelector(
+                        temaSeleccionado = TemaPref.SYSTEM,
+                        onTemaSeleccionado = { }
+                    )
+                    
+                    TemaActual(
+                        temaSeleccionado = TemaPref.SYSTEM
+                    )
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Próximas funcionalidades",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "• Gestión de perfil completa\n" +
+                                       "• Opciones de personalización de interfaz\n" +
+                                       "• Configuración de notificaciones y alertas\n" +
+                                       "• Ajustes de privacidad y permisos\n" +
+                                       "• Opciones de accesibilidad\n" +
+                                       "• Sincronización con calendario externo",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

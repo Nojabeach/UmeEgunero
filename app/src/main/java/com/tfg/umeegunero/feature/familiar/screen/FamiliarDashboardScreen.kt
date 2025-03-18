@@ -85,7 +85,9 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Mensaje
+import com.tfg.umeegunero.data.model.NivelConsumo
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.TemaPref
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.familiar.viewmodel.FamiliarDashboardViewModel
 import com.tfg.umeegunero.ui.theme.FamiliarColor
@@ -95,6 +97,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
+import com.tfg.umeegunero.feature.common.viewmodel.ConfiguracionViewModel
+import com.tfg.umeegunero.feature.common.components.TemaSelector
+import com.tfg.umeegunero.feature.common.components.TemaActual
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1122,25 +1127,156 @@ fun ChatItem(
 }
 
 @Composable
-fun ConfiguracionContent() {
-    // TODO: Mejoras pendientes para la sección de configuración
-    // - Implementar gestión de perfil familiar completo
-    // - Añadir opciones de privacidad y compartición de datos
-    // - Configurar notificaciones por tipo e importancia
-    // - Implementar opciones de accesibilidad
-    // - Añadir gestión de dispositivos autorizados
-    // - Permitir sincronización con calendario familiar
-    // - Implementar preferencias de comunicación con el centro
-    // - Añadir ajustes de idioma y formato regional
+fun ConfiguracionContent(
+    viewModel: ConfiguracionViewModel = hiltViewModel()
+) {
+    val uiState = viewModel.uiState.collectAsState().value
+    val snackbarHostState = remember { SnackbarHostState() }
     
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    // Efecto para mostrar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Configuración Familiar",
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
         )
+        
+        TemaSelector(
+            temaSeleccionado = uiState.temaSeleccionado,
+            onTemaSeleccionado = { viewModel.setTema(it) }
+        )
+        
+        TemaActual(
+            temaSeleccionado = uiState.temaSeleccionado
+        )
+        
+        // Más configuraciones pendientes
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Próximas funcionalidades",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "• Gestión de perfil familiar completo\n" +
+                           "• Opciones de privacidad y compartición de datos\n" +
+                           "• Configuración de notificaciones\n" +
+                           "• Opciones de accesibilidad\n" +
+                           "• Gestión de dispositivos autorizados\n" +
+                           "• Sincronización con calendario familiar",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ConfiguracionFamiliarPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Configuración Familiar", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Para la vista previa usamos un mockup sin ViewModel real
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Configuración Familiar",
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                    
+                    // Mock de componentes para la vista previa
+                    TemaSelector(
+                        temaSeleccionado = TemaPref.SYSTEM,
+                        onTemaSeleccionado = { }
+                    )
+                    
+                    TemaActual(
+                        temaSeleccionado = TemaPref.SYSTEM
+                    )
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Próximas funcionalidades",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "• Gestión de perfil familiar completo\n" +
+                                       "• Opciones de privacidad y compartición de datos\n" +
+                                       "• Configuración de notificaciones\n" +
+                                       "• Opciones de accesibilidad\n" +
+                                       "• Gestión de dispositivos autorizados\n" +
+                                       "• Sincronización con calendario familiar",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

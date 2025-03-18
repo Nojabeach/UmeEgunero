@@ -55,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +73,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
+import androidx.compose.material3.SnackbarHostState
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.painterResource
+import com.tfg.umeegunero.R
+import com.tfg.umeegunero.data.model.Curso
+import com.tfg.umeegunero.data.model.TemaPref
+import com.tfg.umeegunero.feature.centro.viewmodel.CentroDashboardViewModel
+import com.tfg.umeegunero.feature.common.viewmodel.ConfiguracionViewModel
+import com.tfg.umeegunero.feature.common.components.TemaSelector
+import com.tfg.umeegunero.feature.common.components.TemaActual
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -608,25 +620,75 @@ fun SolicitudesContent() {
 }
 
 @Composable
-fun ConfiguracionContent() {
-    // TODO: Mejoras pendientes para la sección de configuración
-    // - Implementar gestión completa del perfil del centro
-    // - Añadir configuración de curso académico y calendario
-    // - Mostrar opciones de integración con sistemas externos
-    // - Implementar gestión de roles y permisos avanzada
-    // - Añadir configuración de notificaciones y comunicaciones
-    // - Mostrar opciones de seguridad y privacidad
-    // - Implementar gestión de copias de seguridad y recuperación
-    // - Añadir personalización visual y de identidad corporativa
+fun ConfiguracionContent(
+    viewModel: ConfiguracionViewModel = hiltViewModel()
+) {
+    val uiState = viewModel.uiState.collectAsState().value
+    val snackbarHostState = remember { SnackbarHostState() }
     
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    // Efecto para mostrar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Configuración del Centro",
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
         )
+        
+        TemaSelector(
+            temaSeleccionado = uiState.temaSeleccionado,
+            onTemaSeleccionado = { viewModel.setTema(it) }
+        )
+        
+        TemaActual(
+            temaSeleccionado = uiState.temaSeleccionado
+        )
+        
+        // Más configuraciones pendientes
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Próximas funcionalidades",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "• Gestión completa del perfil del centro\n" +
+                           "• Configuración de curso académico y calendario\n" +
+                           "• Opciones de integración con sistemas externos\n" +
+                           "• Gestión de roles y permisos avanzada\n" +
+                           "• Configuración de notificaciones y comunicaciones\n" +
+                           "• Opciones de seguridad y privacidad",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        }
     }
 }
 
@@ -643,5 +705,86 @@ fun CentroDashboardPreview() {
 fun CentroDashboardDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
         CentroDashboardScreen(onLogout = {}, onNavigateToAddCurso = {}, onNavigateToEditCurso = {}, onNavigateToAddClase = {}, onNavigateToEditClase = {}, onNavigateToAddUser = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ConfiguracionCentroPreview() {
+    UmeEguneroTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Configuración del Centro", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Para la vista previa usamos un mockup sin ViewModel real
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Configuración del Centro",
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                    
+                    // Mock de componentes para la vista previa
+                    TemaSelector(
+                        temaSeleccionado = TemaPref.SYSTEM,
+                        onTemaSeleccionado = { }
+                    )
+                    
+                    TemaActual(
+                        temaSeleccionado = TemaPref.SYSTEM
+                    )
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Próximas funcionalidades",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "• Gestión completa del perfil del centro\n" +
+                                       "• Configuración de curso académico y calendario\n" +
+                                       "• Opciones de integración con sistemas externos\n" +
+                                       "• Gestión de roles y permisos avanzada\n" +
+                                       "• Configuración de notificaciones y comunicaciones\n" +
+                                       "• Opciones de seguridad y privacidad",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

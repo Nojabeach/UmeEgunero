@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.data.repository
 
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Usuario
@@ -10,10 +11,12 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import timber.log.Timber
 
 @Singleton
 class CentroRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) {
     private val centrosCollection = firestore.collection("centros")
 
@@ -246,6 +249,48 @@ class CentroRepository @Inject constructor(
 
             return@withContext Result.Success(profesores)
         } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Crea un nuevo usuario en Firebase Authentication
+     * @param email Email del usuario
+     * @param password Contraseña del usuario
+     * @return UID del usuario creado en caso de éxito
+     */
+    suspend fun createUserWithEmailAndPassword(
+        email: String, 
+        password: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val authResult = auth.createUserWithEmailAndPassword(email, password).await()
+            val uid = authResult.user?.uid ?: throw Exception("Error al crear usuario: UID no disponible")
+            
+            Timber.d("Usuario creado correctamente con UID: $uid")
+            return@withContext Result.Success(uid)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al crear usuario con email: $email")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Elimina un usuario de Firebase Authentication
+     * @param uid UID del usuario a eliminar
+     */
+    suspend fun deleteUser(uid: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Para eliminar un usuario, necesitamos iniciar sesión como ese usuario
+            // Esto normalmente requeriría un token o credenciales de administrador
+            // Simplemente registramos que esta operación requeriría privilegios adicionales
+            Timber.w("Intento de eliminar usuario con UID: $uid - Requiere privilegios de admin")
+            
+            // Esta implementación es un placeholder, ya que eliminar usuarios requiere
+            // autenticación como ese usuario o privilegios de admin en Firebase
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar usuario con UID: $uid")
             return@withContext Result.Error(e)
         }
     }

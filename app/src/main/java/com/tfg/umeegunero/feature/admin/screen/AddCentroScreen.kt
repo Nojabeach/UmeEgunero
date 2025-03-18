@@ -121,6 +121,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.MenuAnchorType
 
 // Datos para provincias con soporte multilingüe
 data class Provincia(
@@ -165,6 +166,19 @@ fun AddCentroScreen(
     val uiState by viewModel.uiState.collectAsState()
     val provinciasLista by viewModel.provincias.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    
+    // Efecto para manejar la navegación de vuelta tras guardar exitosamente
+    LaunchedEffect(uiState.success) {
+        if (uiState.success) {
+            snackbarHostState.showSnackbar("Centro guardado correctamente")
+            // Volver atrás después de un breve retraso
+            scope.launch {
+                kotlinx.coroutines.delay(500)
+                onNavigateBack()
+            }
+        }
+    }
 
     AddCentroScreenContent(
         uiState = uiState,
@@ -182,7 +196,7 @@ fun AddCentroScreen(
         onConfirmPasswordChange = viewModel::updateConfirmPassword,
         onCiudadSelected = viewModel::seleccionarCiudad,
         onToggleMapa = viewModel::toggleMapa,
-        onGuardarClick = { /* Implementar guardado */ },
+        onGuardarClick = viewModel::saveCentro,
         onCancelarClick = onNavigateBack,
         onErrorDismiss = viewModel::clearError
     )
@@ -211,14 +225,6 @@ fun AddCentroScreenContent(
     onErrorDismiss: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
-
-    // Animación para el progreso del formulario
-    val formProgress by animateFloatAsState(
-        targetValue = calculateFormProgress(uiState),
-        animationSpec = tween(durationMillis = 500),
-        label = "formProgressAnimation"
-    )
 
     // Efecto para mostrar errores en el Snackbar
     LaunchedEffect(uiState.error) {

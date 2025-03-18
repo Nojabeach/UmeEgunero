@@ -20,11 +20,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -41,6 +43,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SnackbarHost
@@ -71,14 +74,24 @@ import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.model.Perfil
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
+import com.tfg.umeegunero.data.model.TemaPref
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.repository.PreferenciasRepository
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardUiState
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
+import com.tfg.umeegunero.feature.common.viewmodel.ConfiguracionUiState
+import com.tfg.umeegunero.feature.common.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import com.tfg.umeegunero.ui.theme.getNombreTema
+import com.tfg.umeegunero.feature.common.components.TemaSelector
+import com.tfg.umeegunero.feature.common.components.TemaActual
 import kotlinx.coroutines.launch
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -743,29 +756,75 @@ fun VinculacionesContent() {
 }
 
 @Composable
-fun ConfiguracionContent() {
-    Box(
+fun ConfiguracionContent(
+    viewModel: ConfiguracionViewModel = hiltViewModel()
+) {
+    val uiState = viewModel.uiState.collectAsState().value
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Efecto para mostrar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+    
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        contentAlignment = Alignment.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // TODO: Mejoras pendientes para la pantalla de configuración
-        // - Implementar gestión completa de parámetros del sistema
-        // - Añadir paneles de administración de servicios cloud
-        // - Mostrar estadísticas de uso y rendimiento de la plataforma
-        // - Implementar sistema de auditoría y registros de seguridad
-        // - Añadir configuración de copias de seguridad automatizadas
-        // - Permitir personalización de la experiencia por defecto
-        // - Mostrar herramientas de diagnóstico y solución de problemas
-        // - Implementar módulo de actualización y mantenimiento del sistema
-        // - Añadir gestión centralizada de notificaciones push
-        // - Permitir configuración de límites y cuotas de recursos
         Text(
-            text = "Configuración - En desarrollo",
+            text = "Configuración",
             style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
         )
+        
+        TemaSelector(
+            temaSeleccionado = uiState.temaSeleccionado,
+            onTemaSeleccionado = { viewModel.setTema(it) }
+        )
+        
+        TemaActual(
+            temaSeleccionado = uiState.temaSeleccionado
+        )
+        
+        // Más configuraciones pendientes (tarjeta con las futuras funcionalidades)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Próximamente",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "• Gestión completa de parámetros del sistema\n" +
+                           "• Paneles de administración de servicios cloud\n" +
+                           "• Estadísticas de uso y rendimiento\n" +
+                           "• Sistema de auditoría y registros de seguridad\n" +
+                           "• Configuración de copias de seguridad\n" +
+                           "• Personalización de la experiencia por defecto",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        }
     }
 }
 
@@ -1165,7 +1224,62 @@ fun ConfiguracionContentPreview() {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                ConfiguracionContent()
+                // Para la vista previa usamos un mockup sin ViewModel real
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Configuración",
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                    
+                    // Mock de componentes para la vista previa
+                    TemaSelector(
+                        temaSeleccionado = TemaPref.SYSTEM,
+                        onTemaSeleccionado = { }
+                    )
+                    
+                    TemaActual(
+                        temaSeleccionado = TemaPref.SYSTEM
+                    )
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Próximamente",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "• Gestión completa de parámetros del sistema\n" +
+                                       "• Paneles de administración de servicios cloud\n" +
+                                       "• Estadísticas de uso y rendimiento\n" +
+                                       "• Sistema de auditoría y registros de seguridad\n" +
+                                       "• Configuración de copias de seguridad\n" +
+                                       "• Personalización de la experiencia por defecto",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
             }
         }
     }

@@ -225,8 +225,12 @@ class AddCentroViewModel @Inject constructor(
             ) 
         }
         
-        // Actualizar coordenadas cuando se selecciona una ciudad
-        actualizarCoordenadas()
+        // Forzar la actualización de coordenadas inmediatamente
+        viewModelScope.launch {
+            // Pequeño retraso para permitir que el estado se actualice
+            kotlinx.coroutines.delay(100)
+            actualizarCoordenadas()
+        }
     }
 
     fun updateCiudad(ciudad: String) {
@@ -310,8 +314,8 @@ class AddCentroViewModel @Inject constructor(
     private fun actualizarCoordenadas() {
         val state = _uiState.value
         
-        // Solo intentamos geocodificar si tenemos suficiente información
-        if (state.calle.isBlank() || state.ciudad.isBlank()) {
+        // Solo intentamos geocodificar si tenemos información completa de la dirección
+        if (state.calle.isBlank() || state.numero.isBlank() || state.ciudad.isBlank() || state.codigoPostal.isBlank() || state.provincia.isBlank()) {
             return
         }
         
@@ -323,11 +327,11 @@ class AddCentroViewModel @Inject constructor(
                 append(state.numero)
             }
             append(", ")
-            append(state.ciudad)
             if (state.codigoPostal.isNotBlank()) {
-                append(", ")
                 append(state.codigoPostal)
+                append(" ")
             }
+            append(state.ciudad)
             if (state.provincia.isNotBlank()) {
                 append(", ")
                 append(state.provincia)
@@ -339,6 +343,9 @@ class AddCentroViewModel @Inject constructor(
         if (direccion == state.direccionCompleta && state.tieneUbicacionValida) {
             return
         }
+        
+        // Marcamos el estado como si estuviera cargando la ubicación
+        _uiState.update { it.copy(isLoading = true) }
         
         viewModelScope.launch {
             try {
@@ -357,13 +364,18 @@ class AddCentroViewModel @Inject constructor(
                             latitud = place.lat.toDoubleOrNull(),
                             longitud = place.lon.toDoubleOrNull(),
                             direccionCompleta = direccion,
-                            mostrarMapa = true
+                            mostrarMapa = true,
+                            isLoading = false
                         ) 
                     }
                     
                     Timber.d("Coordenadas actualizadas: ${place.lat}, ${place.lon} para $direccion")
+                } else {
+                    _uiState.update { it.copy(isLoading = false) }
+                    Timber.d("No se encontraron coordenadas para la dirección: $direccion")
                 }
             } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false) }
                 Timber.e(e, "Error al geocodificar dirección: $direccion")
             }
         }
@@ -449,46 +461,75 @@ class AddCentroViewModel @Inject constructor(
 
             try {
                 val centro = createCentroFromState()
+                var resultId: String? = null
 
                 // Determinamos si es una actualización o un nuevo centro
-                val result = if (_uiState.value.id.isBlank()) {
-                    centroRepository.addCentro(centro)
+                if (_uiState.value.id.isBlank()) {
+                    // Si es un nuevo centro, primero creamos la cuenta en Firebase Auth
+                    val authResult = centroRepository.createUserWithEmailAndPassword(
+                        _uiState.value.email,
+                        _uiState.value.password
+                    )
+
+                    when (authResult) {
+                        is Result.Success -> {
+                            // Hemos creado la cuenta de usuario correctamente, ahora añadimos el centro
+                            val dbResult = centroRepository.addCentro(centro)
+                            
+                            when (dbResult) {
+                                is Result.Success -> {
+                                    resultId = dbResult.data
+                                }
+                                is Result.Error -> {
+                                    // Si falla la creación del centro, intentamos eliminar la cuenta de usuario
+                                    centroRepository.deleteUser(authResult.data)
+                                    throw dbResult.exception
+                                }
+                                is Result.Loading -> { /* No debería ocurrir */ }
+                            }
+                        }
+                        is Result.Error -> {
+                            throw authResult.exception
+                        }
+                        is Result.Loading -> { /* No debería ocurrir */ }
+                    }
                 } else {
-                    centroRepository.updateCentro(centro).let {
-                        if (it is Result.Success) Result.Success(centro.id) else it
+                    // Si es una actualización, simplemente actualizamos el centro
+                    val updateResult = centroRepository.updateCentro(centro)
+                    
+                    when (updateResult) {
+                        is Result.Success -> {
+                            resultId = centro.id
+                        }
+                        is Result.Error -> {
+                            throw updateResult.exception
+                        }
+                        is Result.Loading -> { /* No debería ocurrir */ }
                     }
                 }
 
-                when (result) {
-                    is Result.Success -> {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                success = true
-                            )
-                        }
+                // Si todo ha ido bien, actualizamos el estado
+                if (resultId != null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            success = true
+                        )
                     }
-
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = "Error al guardar el centro: ${result.exception.message}"
-                            )
-                        }
-                    }
-
-                    is Result.Loading -> {
-                        // No deberíamos llegar aquí
-                    }
+                    
+                    Timber.d("Centro guardado correctamente con ID: $resultId")
+                } else {
+                    throw Exception("No se ha obtenido un ID para el centro")
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = "Error inesperado: ${e.message}"
+                        error = "Error al guardar el centro: ${e.message}"
                     )
                 }
+                
+                Timber.e(e, "Error al guardar centro")
             }
         }
     }
