@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,20 +28,25 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -85,6 +91,10 @@ import com.tfg.umeegunero.feature.common.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.style.TextDecoration
 
 // Importar los componentes de otros archivos
 import com.tfg.umeegunero.feature.auth.screen.TipoFamiliarOptions
@@ -110,6 +120,15 @@ fun RegistroScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // TODO: Mejoras pendientes de implementar
+    // - Registro con credenciales de redes sociales: implementar la lógica de autenticación
+    // - Mejoras de feedback visual: animaciones y transiciones más fluidas
+    // - Formularios específicos según tipo de usuario: mostrar campos específicos según el subtipo familiar seleccionado
+    // - Verificación de email mediante OTP: el código actual envía verificación pero no tiene flujo de validación
+    // - Mejoras de accesibilidad: validar que todos los componentes sean accesibles
+    // - Implementar un sistema avanzado de manejo de errores
+    // - Completar la implementación del escaneo de código QR
 
     // Detector de éxito en el registro
     LaunchedEffect(uiState.success) {
@@ -146,6 +165,267 @@ fun RegistroScreen(
             Color(0xFFF8F9FF), // Casi blanco con tinte azul
             Color(0xFFF0FAFF)  // Azul muy claro con tinte cyan
         )
+    }
+
+    // Validación en tiempo real
+    fun validateFields() {
+        viewModel.updateForm()
+    }
+
+    // Enviar código de verificación al email
+    fun sendVerificationEmail() {
+        viewModel.sendVerificationEmail()
+    }
+
+    // Botones de registro con redes sociales (mejorado)
+    @Composable
+    fun SocialMediaButtons() {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "O regístrate con:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                OutlinedButton(
+                    onClick = { /* Lógica para registro con Google */ },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    // Aquí iría el icono de Google
+                    Text(
+                        text = "Google",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                OutlinedButton(
+                    onClick = { /* Lógica para registro con Facebook */ },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF1877F2) // Color azul de Facebook
+                    )
+                ) {
+                    // Aquí iría el icono de Facebook
+                    Text(
+                        text = "Facebook",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                OutlinedButton(
+                    onClick = { /* Lógica para registro con Apple */ },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
+                    // Aquí iría el icono de Apple
+                    Text(
+                        text = "Apple",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+    
+    // Visualización mejorada de requisitos de seguridad de contraseña
+    @Composable
+    fun PasswordRequirements(password: String) {
+        val hasMinLength = password.length >= 8
+        val hasUppercase = password.any { it.isUpperCase() }
+        val hasLowercase = password.any { it.isLowerCase() }
+        val hasDigit = password.any { it.isDigit() }
+        val hasSpecialChar = password.any { !it.isLetterOrDigit() }
+        
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "Requisitos de seguridad:",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasMinLength) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasMinLength) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = " Mínimo 8 caracteres",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (hasMinLength) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasUppercase) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasUppercase) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = " Al menos una mayúscula",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (hasUppercase) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasLowercase) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasLowercase) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = " Al menos una minúscula",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (hasLowercase) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasDigit) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasDigit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = " Al menos un número",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (hasDigit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasSpecialChar) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = if (hasSpecialChar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = " Al menos un carácter especial",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (hasSpecialChar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+    
+    // Escaneo de código QR (botón mejorado)
+    @Composable
+    fun QRCodeScanButton() {
+        Button(
+            onClick = { viewModel.scanQRCode() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.AccountCircle, // Cambiar por un icono de QR cuando esté disponible
+                contentDescription = "Escanear QR",
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Text("Escanear código QR de invitación")
+        }
+    }
+    
+    // Términos y condiciones (mejorado)
+    @Composable
+    fun TermsAndConditions() {
+        var termsAccepted by remember { mutableStateOf(false) }
+        var privacyDialogOpen by remember { mutableStateOf(false) }
+        
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                androidx.compose.material3.Checkbox(
+                    checked = termsAccepted,
+                    onCheckedChange = { newValue -> termsAccepted = newValue }
+                )
+                
+                Text(
+                    text = "Acepto los ",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                Text(
+                    text = "términos y condiciones",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline
+                    ),
+                    modifier = Modifier.clickable { privacyDialogOpen = true }
+                )
+            }
+            
+            if (privacyDialogOpen) {
+                AlertDialog(
+                    onDismissRequest = { privacyDialogOpen = false },
+                    title = { Text("Términos y Condiciones") },
+                    text = {
+                        Text(
+                            "Al registrarte en nuestra aplicación, aceptas los términos y condiciones " +
+                            "de uso. Esto incluye el almacenamiento de tus datos personales para " +
+                            "brindarte el servicio y la comunicación con el centro educativo."
+                        )
+                    },
+                    confirmButton = {
+                        Button(onClick = { 
+                            privacyDialogOpen = false
+                            termsAccepted = true
+                        }) {
+                            Text("Aceptar")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { privacyDialogOpen = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
+        }
     }
 
     Scaffold(
@@ -361,6 +641,15 @@ fun RegistroScreen(
                             }
                         }
                     }
+
+                    // Requisitos de seguridad de contraseña
+                    PasswordRequirements(uiState.form.password)
+
+                    // Botones de redes sociales
+                    SocialMediaButtons()
+
+                    // Checkbox para términos y condiciones
+                    TermsAndConditions()
                 }
             }
         }
@@ -389,6 +678,10 @@ fun RegistroScreen(
         val scrollState = rememberScrollState()
         var passwordVisible by remember { mutableStateOf(false) }
         var confirmPasswordVisible by remember { mutableStateOf(false) }
+        // Validación en tiempo real
+        LaunchedEffect(dni, email, password, confirmPassword, nombre, apellidos, telefono) {
+            validateFields()
+        }
 
         Column(
             modifier = Modifier
@@ -429,25 +722,42 @@ fun RegistroScreen(
                     )
 
                     // Email
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = onEmailChange,
-                        label = { Text("Email") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Email, contentDescription = null)
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next
-                        ),
-                        isError = errors.containsKey("email"),
-                        supportingText = {
-                            if (errors.containsKey("email")) {
-                                Text(errors["email"] ?: "")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = onEmailChange,
+                            label = { Text("Email") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Email, contentDescription = null)
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Next
+                            ),
+                            isError = errors.containsKey("email"),
+                            supportingText = {
+                                if (errors.containsKey("email")) {
+                                    Text(errors["email"] ?: "")
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        if (email.isNotEmpty() && !errors.containsKey("email")) {
+                            IconButton(
+                                onClick = { sendVerificationEmail() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Verificar email",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                        }
+                    }
 
                     // Contraseña
                     OutlinedTextField(
@@ -478,6 +788,11 @@ fun RegistroScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    
+                    // Mostrar requisitos de la contraseña si se está escribiendo
+                    if (password.isNotEmpty()) {
+                        PasswordRequirements(password)
+                    }
 
                     // Confirmar Contraseña
                     OutlinedTextField(
@@ -506,6 +821,11 @@ fun RegistroScreen(
                         supportingText = {
                             if (errors.containsKey("confirmPassword")) {
                                 Text(errors["confirmPassword"] ?: "")
+                            } else if (confirmPassword.isNotEmpty() && confirmPassword == password) {
+                                Text(
+                                    text = "Las contraseñas coinciden",
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -616,192 +936,100 @@ fun RegistroScreen(
     }
 
     @Composable
-    fun ConfirmacionStep(
-        dni: String,
-        email: String,
-        nombre: String,
-        apellidos: String,
-        telefono: String,
-        subtipo: SubtipoFamiliar,
+    fun AlumnosCentroStep(
         alumnos: List<String>,
-        centro: String
+        centroId: String,
+        centros: List<Centro>,
+        isLoadingCentros: Boolean,
+        onAddAlumno: (String) -> Unit,
+        onRemoveAlumno: (String) -> Unit,
+        onCentroSelect: (String) -> Unit,
+        errors: Map<String, String>
     ) {
         val scrollState = rememberScrollState()
-
+        var nuevoDni by remember { mutableStateOf("") }
+        
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Tarjeta de resumen de datos personales
+            // Escanear código QR para invitación
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
                 )
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Datos Personales",
+                        text = "¿Tienes un código de invitación?",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
-
-                    // DNI
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "DNI:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = dni,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    // Email
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Email:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = email,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    // Nombre
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Nombre:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = nombre,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    // Apellidos
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Apellidos:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = apellidos,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    // Teléfono
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Teléfono:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = telefono,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    // Tipo de familiar
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Relación con el alumno:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = when (subtipo) {
-                                SubtipoFamiliar.PADRE -> "Padre"
-                                SubtipoFamiliar.MADRE -> "Madre"
-                                SubtipoFamiliar.TUTOR -> "Tutor/a legal"
-                                SubtipoFamiliar.OTRO -> "Otro familiar"
-                            },
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
+                    
+                    QRCodeScanButton()
                 }
             }
-
-            // Tarjeta de resumen de datos de alumnos
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Alumnos",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
+            
+            // Selección de centro
+            if (!isLoadingCentros) {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                     )
-
-                    alumnos.forEach { alumno ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Selecciona un centro",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        // Dropdown de centros
+                        ExposedDropdownMenuBox(
+                            expanded = false,
+                            onExpandedChange = { /* No change needed for preview */ }
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                            OutlinedTextField(
+                                value = centros.find { it.id == centroId }?.nombre ?: "Selecciona un centro",
+                                onValueChange = { },
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
                             )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = alumno,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            
+                            ExposedDropdownMenu(
+                                expanded = false,
+                                onDismissRequest = { }
+                            ) {
+                                centros.forEach { centro ->
+                                    DropdownMenuItem(
+                                        text = { Text(centro.nombre) },
+                                        onClick = { onCentroSelect(centro.id) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
-
-            // Tarjeta de resumen de centro educativo
-            Card(
+            
+            // Lista de alumnos
+            ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
+                colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                 )
             ) {
@@ -810,49 +1038,56 @@ fun RegistroScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Centro Educativo",
+                        text = "Alumnos asociados",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
-
+                    
+                    // Lista de alumnos actuales
+                    alumnos.forEach { alumno ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(alumno)
+                            IconButton(onClick = { onRemoveAlumno(alumno) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Eliminar alumno")
+                            }
+                        }
+                    }
+                    
+                    // Agregar nuevo alumno
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.School,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                        OutlinedTextField(
+                            value = nuevoDni,
+                            onValueChange = { nuevoDni = it },
+                            label = { Text("DNI del alumno") },
+                            modifier = Modifier.weight(1f),
+                            isError = errors["alumno"] != null
                         )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
+                        IconButton(onClick = {
+                            if (nuevoDni.isNotEmpty()) {
+                                onAddAlumno(nuevoDni)
+                                nuevoDni = ""
+                            }
+                        }) {
+                            Icon(Icons.Default.Add, contentDescription = "Añadir alumno")
+                        }
+                    }
+                    
+                    // Mostrar error si existe
+                    if (errors["alumno"] != null) {
                         Text(
-                            text = centro,
-                            style = MaterialTheme.typography.bodyMedium
+                            text = errors["alumno"] ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
-                }
-            }
-
-            // Texto de confirmación
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Por favor, verifica todos los datos antes de completar el registro. Una vez finalizado el proceso, recibirás un email de confirmación y el centro educativo deberá verificar tu solicitud.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
                 }
             }
         }
@@ -877,60 +1112,6 @@ fun RegistroScreenDarkPreview() {
 
 @Composable
 fun PreviewRegistroScreen() {
-    // Variables necesarias para el preview
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    // Datos de ejemplo para el formulario
-    val form = RegistroUsuarioForm(
-        dni = "12345678X",
-        email = "ejemplo@email.com",
-        password = "Clave123*",
-        confirmPassword = "Clave123*",
-        nombre = "Juan",
-        apellidos = "García López",
-        telefono = "600123456",
-        subtipo = SubtipoFamiliar.PADRE
-    )
-
-    val centros = listOf(
-        Centro(
-            id = "centro1",
-            nombre = "IES Artaza",
-            direccion = Direccion(
-                calle = "Calle Mayor",
-                numero = "1",
-                codigoPostal = "48001",
-                ciudad = "Bilbao",
-                provincia = "Vizcaya"
-            ),
-            contacto = Contacto(
-                telefono = "944123456",
-                email = "ies.artaza@educacion.com"
-            ),
-            activo = true
-        ),
-        Centro(
-            id = "centro2",
-            nombre = "Colegio San José",
-            direccion = Direccion(
-                calle = "Calle Secundaria",
-                numero = "2",
-                codigoPostal = "48002",
-                ciudad = "Bilbao",
-                provincia = "Vizcaya"
-            ),
-            contacto = Contacto(
-                telefono = "944654321",
-                email = "colegio.sanjose@educacion.com"
-            ),
-            activo = true
-        )
-    )
-
-    // Estado de UI para el preview
-    val currentStep = 1
-    val totalSteps = 3
-
     Scaffold(
         topBar = {
             TopAppBar(

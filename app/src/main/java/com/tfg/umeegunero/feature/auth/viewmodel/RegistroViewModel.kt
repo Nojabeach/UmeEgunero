@@ -74,49 +74,65 @@ class RegistroViewModel @Inject constructor(
      * Actualiza el formulario de registro
      */
     fun updateFormField(field: String, value: String) {
-        val currentForm = _uiState.value.form
-        val formErrors = _uiState.value.formErrors.toMutableMap()
-
-        // Limpiar error si existe
-        formErrors.remove(field)
-
-        val updatedForm = when (field) {
-            "dni" -> currentForm.copy(dni = value)
-            "email" -> currentForm.copy(email = value)
-            "password" -> currentForm.copy(password = value)
-            "confirmPassword" -> currentForm.copy(confirmPassword = value)
-            "nombre" -> currentForm.copy(nombre = value)
-            "apellidos" -> currentForm.copy(apellidos = value)
-            "telefono" -> currentForm.copy(telefono = value)
+        when (field) {
+            "dni" -> _uiState.update { it.copy(form = it.form.copy(dni = value)) }
+            "email" -> _uiState.update { it.copy(form = it.form.copy(email = value)) }
+            "password" -> _uiState.update { it.copy(form = it.form.copy(password = value)) }
+            "confirmPassword" -> _uiState.update { it.copy(form = it.form.copy(confirmPassword = value)) }
+            "nombre" -> _uiState.update { it.copy(form = it.form.copy(nombre = value)) }
+            "apellidos" -> _uiState.update { it.copy(form = it.form.copy(apellidos = value)) }
+            "telefono" -> _uiState.update { it.copy(form = it.form.copy(telefono = value)) }
             "calle" -> {
-                val newDireccion = currentForm.direccion.copy(calle = value)
-                currentForm.copy(direccion = newDireccion)
+                val nuevaDireccion = _uiState.value.form.direccion.copy(calle = value)
+                _uiState.update { it.copy(form = it.form.copy(direccion = nuevaDireccion)) }
             }
             "numero" -> {
-                val newDireccion = currentForm.direccion.copy(numero = value)
-                currentForm.copy(direccion = newDireccion)
+                val nuevaDireccion = _uiState.value.form.direccion.copy(numero = value)
+                _uiState.update { it.copy(form = it.form.copy(direccion = nuevaDireccion)) }
             }
             "piso" -> {
-                val newDireccion = currentForm.direccion.copy(piso = value)
-                currentForm.copy(direccion = newDireccion)
+                val nuevaDireccion = _uiState.value.form.direccion.copy(piso = value)
+                _uiState.update { it.copy(form = it.form.copy(direccion = nuevaDireccion)) }
             }
             "codigoPostal" -> {
-                val newDireccion = currentForm.direccion.copy(codigoPostal = value)
-                currentForm.copy(direccion = newDireccion)
+                val nuevaDireccion = _uiState.value.form.direccion.copy(codigoPostal = value)
+                _uiState.update { it.copy(form = it.form.copy(direccion = nuevaDireccion)) }
             }
             "ciudad" -> {
-                val newDireccion = currentForm.direccion.copy(ciudad = value)
-                currentForm.copy(direccion = newDireccion)
+                val nuevaDireccion = _uiState.value.form.direccion.copy(ciudad = value)
+                _uiState.update { it.copy(form = it.form.copy(direccion = nuevaDireccion)) }
             }
             "provincia" -> {
-                val newDireccion = currentForm.direccion.copy(provincia = value)
-                currentForm.copy(direccion = newDireccion)
+                val nuevaDireccion = _uiState.value.form.direccion.copy(provincia = value)
+                _uiState.update { it.copy(form = it.form.copy(direccion = nuevaDireccion)) }
             }
-            "centroId" -> currentForm.copy(centroId = value)
-            else -> currentForm
+            "centroId" -> _uiState.update { it.copy(form = it.form.copy(centroId = value)) }
         }
+        validateFormFields() // Llamar a la validación en tiempo real
+    }
+    
+    /**
+     * Método que actualiza el formulario y valida los campos
+     * (método para usar desde la UI ya que validateFormFields es privado)
+     */
+    fun updateForm() {
+        validateFormFields()
+    }
+    
+    /**
+     * Validar campos del formulario
+     */
+    private fun validateFormFields() {
+        val errors = mutableMapOf<String, String>()
+        val form = _uiState.value.form
 
-        _uiState.update { it.copy(form = updatedForm, formErrors = formErrors) }
+        // Validaciones de ejemplo
+        if (form.email.isNotEmpty() && !isEmailValid(form.email)) {
+            errors["email"] = "Email inválido."
+        }
+        // Agregar más validaciones según sea necesario
+
+        _uiState.update { it.copy(formErrors = errors) }
     }
 
     /**
@@ -403,5 +419,59 @@ class RegistroViewModel @Inject constructor(
                 else -> { /* Ignorar estado Loading */ }
             }
         }
+    }
+
+    /**
+     * Enviar código de verificación al email
+     */
+    fun sendVerificationEmail() {
+        viewModelScope.launch {
+            val email = _uiState.value.form.email
+            if (isEmailValid(email)) {
+                // Lógica para enviar el código de verificación
+                // En una implementación real, esto llamaría a un servicio de autenticación
+                // Por ahora, solo actualizamos el estado para mostrar que se envió
+                _uiState.update { 
+                    it.copy(
+                        // Aquí podríamos actualizar algún estado para mostrar feedback al usuario
+                    ) 
+                }
+            } else {
+                _uiState.update { 
+                    it.copy(
+                        formErrors = it.formErrors + ("email" to "Email inválido, no se puede enviar verificación.")
+                    ) 
+                }
+            }
+        }
+    }
+
+    /**
+     * Detección automática de ubicación
+     */
+    fun detectUserLocation() {
+        viewModelScope.launch {
+            // En una implementación real, esto usaría servicios de ubicación
+            // Por ahora, simularemos que obtuvimos la ubicación
+            _uiState.update { 
+                it.copy(
+                    // Actualizar la dirección con datos de ubicación simulada
+                    form = it.form.copy(
+                        direccion = it.form.direccion.copy(
+                            ciudad = "Bilbao",
+                            provincia = "Vizcaya"
+                        )
+                    )
+                ) 
+            }
+        }
+    }
+
+    /**
+     * Escaneo de código QR
+     */
+    fun scanQRCode() {
+        // Esta función en una implementación real iniciaría el escáner de QR
+        // y procesaría el resultado
     }
 }
