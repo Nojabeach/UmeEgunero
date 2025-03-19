@@ -190,9 +190,10 @@ fun ConfiguracionScreen(
 @Preview(showSystemUi = true)
 @Composable
 fun ConfiguracionScreenPreview() {
+    val viewModel = TestConfiguracionViewModel(FakePreferenciasRepository())
     UmeEguneroTheme {
         ConfiguracionScreen(
-            viewModel = TestConfiguracionViewModel(FakePreferenciasRepository()),
+            viewModel = viewModel,
             perfil = PerfilConfiguracion.ADMIN
         )
     }
@@ -204,9 +205,10 @@ fun ConfiguracionScreenPreview() {
 @Preview(showSystemUi = true)
 @Composable
 fun ConfiguracionProfesorScreenPreview() {
+    val viewModel = TestConfiguracionViewModel(FakePreferenciasRepository())
     UmeEguneroTheme {
         ConfiguracionScreen(
-            viewModel = TestConfiguracionViewModel(FakePreferenciasRepository()),
+            viewModel = viewModel,
             perfil = PerfilConfiguracion.PROFESOR
         )
     }
@@ -218,9 +220,10 @@ fun ConfiguracionProfesorScreenPreview() {
 @Preview(showSystemUi = true)
 @Composable
 fun ConfiguracionFamiliarScreenPreview() {
+    val viewModel = TestConfiguracionViewModel(FakePreferenciasRepository())
     UmeEguneroTheme {
         ConfiguracionScreen(
-            viewModel = TestConfiguracionViewModel(FakePreferenciasRepository()),
+            viewModel = viewModel,
             perfil = PerfilConfiguracion.FAMILIAR
         )
     }

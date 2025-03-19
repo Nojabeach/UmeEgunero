@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Menu
@@ -27,6 +30,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -51,6 +55,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -63,11 +68,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Contacto
@@ -94,144 +101,55 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.navigation.NavController
+import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.navigation.NavigationStructure
+import androidx.navigation.compose.rememberNavController
+import com.tfg.umeegunero.feature.common.screen.DummyScreen
+import com.tfg.umeegunero.navigation.NavigationStructure.NavItem
+import androidx.navigation.PopUpToBuilder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
-    viewModel: AdminDashboardViewModel = hiltViewModel(),
-    onLogout: () -> Unit = {},
-    onNavigateToAddCentro: () -> Unit = {},
-    onNavigateToEditCentro: (String) -> Unit = {},
-    onNavigateToAddUser: () -> Unit = {},
-    onNavigateToEditUsuario: (String) -> Unit = {}
+    navController: NavController,
+    viewModel: AdminDashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val currentUser = uiState.currentUser
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    var selectedItem by remember { mutableStateOf(0) }
-
-    // Efecto para mostrar errores
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
+    
+    if (uiState.navigateToWelcome) {
+        LaunchedEffect(true) {
+            navController.navigate(AppScreens.Welcome.route) {
+                popUpTo(AppScreens.AdminDashboard.route) { 
+                    inclusive = true 
+                }
+            }
         }
     }
     
-    // Efecto para cargar usuarios cuando se selecciona la pestaña correspondiente
-    LaunchedEffect(selectedItem) {
-        if (selectedItem == 1) {
-            // Cargar usuarios cuando se selecciona esta pestaña
-            viewModel.loadUsuarios()
-        }
-    }
+    val navItems = NavigationStructure.getNavItemsByTipo(TipoUsuario.ADMIN_APP)
     
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Admin Icon",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Text(
-                            text = "Administrador",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "admin@umeegunero.com",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            DrawerContent(
+                navItems = navItems,
+                currentUser = currentUser,
+                onNavigate = { route, isImplemented ->
+                    handleNavigation(route, navController, viewModel, isImplemented)
+                },
+                onCloseDrawer = {
+                    scope.launch { drawerState.close() }
                 }
-
-                HorizontalDivider()
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Elementos del menú
-                val menuItems = listOf(
-                    "Centros Educativos" to Icons.Default.School,
-                    "Usuarios" to Icons.Default.Person,
-                    "Profesores" to Icons.Filled.School,
-                    "Alumnos" to Icons.Default.Person,
-                    "Vinculaciones" to Icons.Default.Link,
-                    "Configuración" to Icons.Default.Settings
-                )
-
-                menuItems.forEachIndexed { index, (title, icon) ->
-                    NavigationDrawerItem(
-                        label = { Text(text = title) },
-                        selected = selectedItem == index,
-                        onClick = {
-                            selectedItem = index
-                            scope.launch {
-                                drawerState.close()
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = title
-                            )
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                HorizontalDivider()
-
-                // Botón de cerrar sesión
-                NavigationDrawerItem(
-                    label = { Text(text = "Cerrar Sesión") },
-                    selected = false,
-                    onClick = onLogout,
-                    icon = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Cerrar Sesión"
-                        )
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+            )
         }
     ) {
         Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            when (selectedItem) {
-                                0 -> "Centros Educativos"
-                                1 -> "Gestión de Usuarios"
-                                2 -> "Gestión de Profesores"
-                                3 -> "Gestión de Alumnos" 
-                                4 -> "Vinculaciones"
-                                5 -> "Configuración"
-                                else -> "Panel de Administración"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
+                    title = { Text("Panel de Administración") },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(
@@ -239,97 +157,59 @@ fun AdminDashboardScreen(
                                 contentDescription = "Menú"
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    }
                 )
-            },
-            floatingActionButton = {
-                // Solo mostrar FAB en las pantallas apropiadas
-                when (selectedItem) {
-                    0 -> { // Centros educativos
-                        ExtendedFloatingActionButton(
-                            text = { Text("Añadir Centro") },
-                            icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
-                            onClick = onNavigateToAddCentro
-                        )
-                    }
-                    1, 2, 3 -> { // Usuarios, Profesores, o Alumnos
-                        ExtendedFloatingActionButton(
-                            text = { Text("Añadir Usuario") },
-                            icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
-                            onClick = onNavigateToAddUser
-                        )
-                    }
-                }
-            },
-            floatingActionButtonPosition = FabPosition.End
+            }
         ) { paddingValues ->
-            AdminDashboardContent(
-                selectedItem = selectedItem,
-                paddingValues = paddingValues,
-                uiState = uiState,
-                onEditCentro = onNavigateToEditCentro,
-                onDeleteCentro = viewModel::deleteCentro,
-                onRefresh = {
-                    when (selectedItem) {
-                        0 -> viewModel.loadCentros()
-                        1 -> viewModel.loadUsuarios()
-                    }
-                },
-                onEditUsuario = onNavigateToEditUsuario,
-                onDeleteUsuario = viewModel::deleteUsuario
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                DashboardContent(
+                    navController = navController,
+                    viewModel = viewModel,
+                    currentUser = currentUser
+                )
+            }
         }
     }
 }
 
 @Composable
-fun AdminDashboardContent(
-    selectedItem: Int,
-    paddingValues: PaddingValues,
-    uiState: AdminDashboardUiState,
-    onEditCentro: (String) -> Unit,
-    onDeleteCentro: (String) -> Unit,
-    onRefresh: () -> Unit,
-    onEditUsuario: (String) -> Unit = {},
-    onDeleteUsuario: (String) -> Unit = {}
-) {
+private fun AdminDashboardContent(viewModel: AdminDashboardViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Bienvenido al Panel de Administración",
+            style = MaterialTheme.typography.headlineMedium
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Text(
+            text = "Selecciona una opción del menú lateral para comenzar",
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+@Composable
+fun DummyScreen(title: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
     ) {
-        when (selectedItem) {
-            0 -> CentrosEducativosContent(
-                centros = uiState.centros,
-                isLoading = uiState.isLoading,
-                onEditCentro = onEditCentro,
-                onDeleteCentro = onDeleteCentro,
-                onRefresh = onRefresh
-            )
-            1 -> UsuariosContent(
-                usuarios = uiState.usuarios,
-                isLoading = uiState.isLoadingUsuarios,
-                onEditUsuario = onEditUsuario,
-                onDeleteUsuario = onDeleteUsuario,
-                onRefresh = onRefresh
-            )
-            2 -> ProfesoresContent()
-            3 -> AlumnosContent()
-            4 -> VinculacionesContent()
-            5 -> ConfiguracionContent()
-            else -> CentrosEducativosContent(
-                centros = uiState.centros,
-                isLoading = uiState.isLoading,
-                onEditCentro = onEditCentro,
-                onDeleteCentro = onDeleteCentro,
-                onRefresh = onRefresh
-            )
-        }
+        Text(
+            text = "$title - En desarrollo",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -341,13 +221,6 @@ fun CentrosEducativosContent(
     onDeleteCentro: (String) -> Unit,
     onRefresh: () -> Unit
 ) {
-    // TODO: Mejorar la gestión de centros educativos
-    // - Añadir filtros de búsqueda por nombre, localidad o código postal
-    // - Implementar paginación para manejar grandes cantidades de centros
-    // - Añadir opción para ver detalles completos del centro
-    // - Implementar confirmación antes de eliminar un centro
-    // - Mostrar estadísticas resumidas (número de alumnos, profesores, etc.)
-    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -365,7 +238,6 @@ fun CentrosEducativosContent(
                     fontWeight = FontWeight.Bold
                 )
 
-                // Botón de recargar
                 IconButton(onClick = onRefresh) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
@@ -378,7 +250,6 @@ fun CentrosEducativosContent(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Mostrar indicador de carga
         if (isLoading) {
             item {
                 Box(
@@ -390,9 +261,7 @@ fun CentrosEducativosContent(
                     CircularProgressIndicator()
                 }
             }
-        }
-        // Mostrar lista de centros
-        else if (centros.isNotEmpty()) {
+        } else if (centros.isNotEmpty()) {
             items(centros) { centro ->
                 CentroEducativoItem(
                     centro = centro,
@@ -401,9 +270,7 @@ fun CentrosEducativosContent(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
-        }
-        // Mostrar mensaje cuando no hay centros
-        else {
+        } else {
             item {
                 Card(
                     modifier = Modifier
@@ -480,7 +347,6 @@ fun CentroEducativoItem(
                 )
             }
 
-            // Botones de acción
             IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Default.Edit,
@@ -677,540 +543,395 @@ fun UsuarioItem(
     }
 }
 
-@Composable
-fun ProfesoresContent() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // TODO: Mejoras pendientes para la pantalla de gestión de profesores
-        // - Implementar listado completo con búsqueda avanzada
-        // - Añadir vista de perfiles completos con experiencia y formación
-        // - Mostrar estadísticas de evaluación docente por asignatura
-        // - Implementar seguimiento de formación continua y certificaciones
-        // - Añadir visualización de carga lectiva y horas complementarias
-        // - Permitir gestión de ausencias y sustituciones
-        // - Mostrar historial de comunicaciones con familias y centro
-        // - Implementar sistema de evaluación de rendimiento
-        // - Añadir funcionalidad para asignación optimizada a grupos
-        // - Permitir vista de currículum vitae completo y actualización
-        Text(
-            text = "Gestión de Profesores - En desarrollo",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-fun AlumnosContent() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // TODO: Mejoras pendientes para la pantalla de gestión de alumnos
-        // - Implementar visualización de expedientes académicos completos
-        // - Añadir sistema de seguimiento de evolución y progreso
-        // - Mostrar historial médico y necesidades especiales
-        // - Implementar gestión integrada de adaptaciones curriculares
-        // - Añadir visualización de estructura familiar completa
-        // - Permitir gestión de traslados entre centros educativos
-        // - Mostrar historial de comportamiento e incidencias
-        // - Implementar evaluación psicopedagógica y seguimiento
-        // - Añadir funcionalidad para matrícula masiva y automática
-        // - Permitir importación y exportación de datos académicos
-        Text(
-            text = "Gestión de Alumnos - En desarrollo",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-fun VinculacionesContent() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // TODO: Mejoras pendientes para la pantalla de vinculaciones
-        // - Implementar visualización gráfica de relaciones familiares
-        // - Añadir sistema de verificación de parentesco oficial
-        // - Mostrar histórico de cambios en las vinculaciones
-        // - Implementar gestión de permisos granulares por vinculación
-        // - Añadir notificaciones automáticas de cambios importantes
-        // - Permitir distintos niveles de acceso para diferentes familiares
-        // - Mostrar información de contacto en caso de emergencia
-        // - Implementar registro de accesos a información sensible
-        // - Añadir función de transferencia de vinculación entre cuentas
-        Text(
-            text = "Gestión de Vinculaciones - En desarrollo",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-fun ConfiguracionContent() {
-    ConfiguracionScreen(perfil = PerfilConfiguracion.ADMIN)
-}
-
-@Composable
-fun ProfesorAlumnoVinculacionContent() {
-    // Implementación básica para resolver el error de referencia
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Vinculación Profesor-Alumno",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Pantalla en desarrollo",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-fun AlumnoFamiliarVinculacionContent() {
-    // Implementación básica para resolver el error de referencia
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Vinculación Alumno-Familiar",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Pantalla en desarrollo",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-fun ProfesorCentroVinculacionContent() {
-    // Implementación básica para resolver el error de referencia
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Vinculación Profesor-Centro",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Pantalla en desarrollo",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun AdminDashboardPreview() {
-    // Crear un estado mock para el preview con centros de Getxo, Santurtzi y Berango
-    val mockState = AdminDashboardUiState(
-        centros = listOf(
-            Centro(
-                id = "1",
-                nombre = "IES Artaza-Romo BHI",
-                direccion = Direccion(ciudad = "Getxo", provincia = "Vizcaya / Bizkaia"),
-                contacto = Contacto(telefono = "944633000", email = "secretaria@artazaromo.eus"),
-                activo = true
-            ),
-            Centro(
-                id = "2",
-                nombre = "Colegio San José - Jesuitas",
-                direccion = Direccion(ciudad = "Santurtzi", provincia = "Vizcaya / Bizkaia"),
-                contacto = Contacto(telefono = "944831450", email = "secretaria@santurzibhi.net"),
-                activo = true
-            ),
-            Centro(
-                id = "3",
-                nombre = "Berango Eskola HLHI",
-                direccion = Direccion(ciudad = "Berango", provincia = "Vizcaya / Bizkaia"),
-                contacto = Contacto(telefono = "946680953", email = "info@berangoeskola.eus"),
-                activo = true
-            )
-        ),
-        isLoading = false,
-        error = null
-    )
-
     UmeEguneroTheme {
-        // Usar AdminDashboardContent directamente, sin el ViewModel
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Centros Educativos", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            },
-            floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    text = { Text("Añadir Centro") },
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
-                    onClick = {}
-                )
-            }
-        ) { paddingValues ->
-            AdminDashboardContent(
-                selectedItem = 0,
-                paddingValues = paddingValues,
-                uiState = mockState,
-                onEditCentro = {},
-                onDeleteCentro = {},
-                onRefresh = {},
-                onEditUsuario = {},
-                onDeleteUsuario = {}
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            AdminDashboardScreen(
+                navController = rememberNavController()
             )
         }
     }
 }
 
-@Preview(showBackground = true)
+/**
+ * Función para manejar la navegación desde el menú lateral
+ */
+private fun handleNavigation(
+    route: String,
+    navController: NavController,
+    viewModel: AdminDashboardViewModel,
+    isImplemented: Boolean = true
+): Boolean {
+    // Primero verificamos si la opción está implementada
+    if (!isImplemented) {
+        // Extraemos el último segmento de la ruta para usarlo como título
+        val title = route.split("/").last().replace("_", " ").replaceFirstChar { it.uppercase() }
+        navController.navigate("dummy/$title") {
+            launchSingleTop = true
+        }
+        return true
+    }
+
+    // Para rutas implementadas
+    return when {
+        route == "logout" -> {
+            viewModel.logout()
+            true
+        }
+        route.startsWith("admin_dashboard") -> {
+            // Rutas internas al dashboard - se manejan localmente
+            false
+        }
+        else -> {
+            // Navegación externa
+            navController.navigate(route) {
+                // Configuración de navegación
+                launchSingleTop = true
+            }
+            true
+        }
+    }
+}
+
+/**
+ * Contenido principal del dashboard
+ */
 @Composable
-fun AdminDashboardUsuariosPreview() {
-    // Crear un estado mock para el preview con usuarios
-    val mockState = AdminDashboardUiState(
-        usuarios = listOf(
-            Usuario(
-                dni = "12345678A",
-                email = "admin@umeegunero.com",
-                nombre = "Administrador",
-                apellidos = "App",
-                telefono = "600111222",
-                perfiles = listOf(Perfil(tipo = TipoUsuario.ADMIN_APP))
-            ),
-            Usuario(
-                dni = "98765432Z",
-                email = "director@artazaromo.eus",
-                nombre = "María",
-                apellidos = "López García",
-                telefono = "600333444",
-                perfiles = listOf(Perfil(tipo = TipoUsuario.ADMIN_CENTRO, centroId = "1"))
-            ),
-            Usuario(
-                dni = "87654321B",
-                email = "profesor@santurzibhi.net",
-                nombre = "Juan",
-                apellidos = "Martínez Ruiz",
-                telefono = "600555666",
-                perfiles = listOf(Perfil(tipo = TipoUsuario.PROFESOR, centroId = "2"))
-            ),
-            Usuario(
-                dni = "76543210C",
-                email = "familiar@gmail.com",
-                nombre = "Laura",
-                apellidos = "Sánchez Pérez",
-                telefono = "600777888",
-                perfiles = listOf(Perfil(tipo = TipoUsuario.FAMILIAR, subtipo = SubtipoFamiliar.MADRE))
+private fun DashboardContent(
+    navController: NavController,
+    viewModel: AdminDashboardViewModel,
+    currentUser: Usuario?
+) {
+    val centros by viewModel.centros.collectAsState(initial = emptyList())
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Listado de centros",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        if (centros.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No hay centros disponibles")
+            }
+        } else {
+            LazyColumn {
+                items(centros) { centro ->
+                    CentroListItem(
+                        centro = centro,
+                        onEditClick = {
+                            navController.navigate(AppScreens.EditCentro.createRoute(centro.id))
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CentroListItem(
+    centro: Centro,
+    onEditClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = centro.nombre,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
-        ),
-        isLoadingUsuarios = false
-    )
-
-    UmeEguneroTheme {
-        // Usar AdminDashboardContent directamente, sin el ViewModel
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Gestión de Usuarios", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            },
-            floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    text = { Text("Añadir Usuario") },
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
-                    onClick = {}
-                )
-            }
-        ) { paddingValues ->
-            AdminDashboardContent(
-                selectedItem = 1,
-                paddingValues = paddingValues,
-                uiState = mockState,
-                onEditCentro = {},
-                onDeleteCentro = {},
-                onRefresh = {},
-                onEditUsuario = {},
-                onDeleteUsuario = {}
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Dirección: ${centro.direccion.ciudad}, ${centro.direccion.provincia}",
+                style = MaterialTheme.typography.bodyMedium
             )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AdminDashboardVinculacionesPreview() {
-    UmeEguneroTheme {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Vinculaciones", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
-                VinculacionesContent()
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ProfesorAlumnoVinculacionContentPreview() {
-    UmeEguneroTheme {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Vinculación Profesor-Alumno", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                ProfesorAlumnoVinculacionContent()
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AlumnoFamiliarVinculacionContentPreview() {
-    UmeEguneroTheme {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Vinculación Alumno-Familiar", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                AlumnoFamiliarVinculacionContent()
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ProfesorCentroVinculacionContentPreview() {
-    UmeEguneroTheme {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Vinculación Profesor-Centro", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                ProfesorCentroVinculacionContent()
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ProfesoresContentPreview() {
-    UmeEguneroTheme {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Gestión de Profesores", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                ProfesoresContent()
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AlumnosContentPreview() {
-    UmeEguneroTheme {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Gestión de Alumnos", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                AlumnosContent()
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ConfiguracionContentPreview() {
-    UmeEguneroTheme {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Configuración", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                // Para la vista previa usamos un mockup sin ViewModel real
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Surface(
+                    onClick = onEditClick,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(4.dp)
                 ) {
                     Text(
-                        text = "Configuración",
-                        style = MaterialTheme.typography.headlineMedium,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 24.dp)
+                        text = "Editar",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                     )
-                    
-                    // Mock de componentes para la vista previa
-                    TemaSelector(
-                        temaSeleccionado = TemaPref.SYSTEM,
-                        onTemaSeleccionado = { }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Contenido del drawer de navegación
+ */
+@Composable
+private fun DrawerContent(
+    navItems: List<NavItem>,
+    currentUser: Usuario?,
+    onNavigate: (String, Boolean) -> Boolean,
+    onCloseDrawer: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(vertical = 24.dp)
+    ) {
+        // Cabecera con información del usuario
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = "Administrador App",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = currentUser?.email ?: "Usuario",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        Divider(
+            modifier = Modifier.padding(vertical = 12.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+        
+        // Lista de items de navegación
+        LazyColumn {
+            items(navItems) { item ->
+                DrawerNavItem(
+                    navItem = item,
+                    onItemClick = { route, isImplemented ->
+                        val handled = onNavigate(route, isImplemented)
+                        if (handled) {
+                            onCloseDrawer()
+                        }
+                    }
+                )
+                
+                if (item.dividerAfter) {
+                    Divider(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 20.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
-                    
-                    TemaActual(
-                        temaSeleccionado = TemaPref.SYSTEM
-                    )
-                    
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Item de navegación en el drawer
+ */
+@Composable
+private fun DrawerNavItem(
+    navItem: NavItem,
+    onItemClick: (String, Boolean) -> Unit
+) {
+    val isExpanded = remember { mutableStateOf(false) }
+    
+    Column {
+        Surface(
+            onClick = {
+                if (navItem.subItems.isEmpty()) {
+                    onItemClick(navItem.route, navItem.isImplemented)
+                } else {
+                    isExpanded.value = !isExpanded.value
+                }
+            },
+            color = Color.Transparent
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = navItem.icon,
+                    contentDescription = navItem.title,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Text(
+                    text = navItem.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                if (navItem.badge != null) {
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     ) {
-                        Column(
+                        Text(text = navItem.badge.toString())
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                
+                if (navItem.subItems.isNotEmpty()) {
+                    Icon(
+                        imageVector = if (isExpanded.value) 
+                            Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (isExpanded.value) 
+                            "Colapsar" else "Expandir"
+                    )
+                }
+            }
+        }
+        
+        // Mostrar subitems si está expandido
+        if (isExpanded.value && navItem.subItems.isNotEmpty()) {
+            navItem.subItems.forEach { subItem ->
+                Surface(
+                    onClick = { onItemClick(subItem.route, subItem.isImplemented) },
+                    color = Color.Transparent
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 56.dp, end = 24.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = subItem.icon,
+                            contentDescription = subItem.title,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Text(
+                            text = subItem.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        if (subItem.badge != null) {
+                            Badge(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ) {
+                                Text(text = subItem.badge.toString())
+                            }
+                        }
+                    }
+                }
+                
+                // Mostrar sub-subitems recursivamente si existen
+                if (subItem.subItems.isNotEmpty()) {
+                    val subExpanded = remember { mutableStateOf(false) }
+                    
+                    Surface(
+                        onClick = { subExpanded.value = !subExpanded.value },
+                        color = Color.Transparent
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(start = 72.dp, end = 24.dp, top = 4.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Próximamente",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                            Icon(
+                                imageVector = if (subExpanded.value) 
+                                    Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = if (subExpanded.value) 
+                                    "Colapsar" else "Expandir",
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                modifier = Modifier.size(16.dp)
                             )
                             
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             
                             Text(
-                                text = "• Gestión completa de parámetros del sistema\n" +
-                                       "• Paneles de administración de servicios cloud\n" +
-                                       "• Estadísticas de uso y rendimiento\n" +
-                                       "• Sistema de auditoría y registros de seguridad\n" +
-                                       "• Configuración de copias de seguridad\n" +
-                                       "• Personalización de la experiencia por defecto",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                text = "Más opciones",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                    }
+                    
+                    if (subExpanded.value) {
+                        subItem.subItems.forEach { subSubItem ->
+                            Surface(
+                                onClick = { onItemClick(subSubItem.route, subSubItem.isImplemented) },
+                                color = Color.Transparent
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 88.dp, end = 24.dp, top = 6.dp, bottom = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = subSubItem.icon,
+                                        contentDescription = subSubItem.title,
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    
+                                    Text(
+                                        text = subSubItem.title,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    
+                                    if (subSubItem.badge != null) {
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                        ) {
+                                            Text(text = subSubItem.badge.toString())
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

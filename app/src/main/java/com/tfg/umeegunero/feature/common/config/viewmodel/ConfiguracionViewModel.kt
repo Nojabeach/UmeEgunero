@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 data class ConfiguracionUiState(
@@ -18,6 +19,15 @@ data class ConfiguracionUiState(
     val isLoading: Boolean = false,
     val error: String? = null
 )
+
+/**
+ * Interfaz común para los ViewModel de configuración
+ */
+interface ConfiguracionViewModelBase {
+    val uiState: StateFlow<ConfiguracionUiState>
+    fun setTema(tema: TemaPref)
+    fun clearError()
+}
 
 /**
  * Una interfaz para facilitar los tests del ConfiguracionViewModel
@@ -38,61 +48,90 @@ class PreferenciasRepositoryAdapter(
 }
 
 /**
- * Base abstracta del ConfiguracionViewModel
+ * ViewModel para la configuración de la aplicación
  */
-abstract class ConfiguracionViewModelBase : ViewModel() {
-    protected abstract val preferenciasRepository: IPreferenciasRepository
+@HiltViewModel
+class ConfiguracionViewModel @Inject constructor(
+    repository: PreferenciasRepository
+) : ViewModel(), ConfiguracionViewModelBase {
+    protected val preferenciasRepository: IPreferenciasRepository = PreferenciasRepositoryAdapter(repository)
 
     private val _uiState = MutableStateFlow(ConfiguracionUiState())
-    val uiState: StateFlow<ConfiguracionUiState> = _uiState.asStateFlow()
+    override val uiState: StateFlow<ConfiguracionUiState> = _uiState.asStateFlow()
 
     init {
+        Timber.d("Inicializando ConfiguracionViewModel")
         cargarPreferencias()
     }
 
     private fun cargarPreferencias() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            preferenciasRepository.temaPreferencia.collect { tema ->
-                _uiState.update { 
-                    it.copy(
-                        temaSeleccionado = tema,
-                        isLoading = false
-                    )
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                Timber.d("Cargando preferencias de tema")
+                preferenciasRepository.temaPreferencia.collect { tema ->
+                    Timber.d("Tema cargado: $tema")
+                    _uiState.update { 
+                        it.copy(
+                            temaSeleccionado = tema,
+                            isLoading = false
+                        )
+                    }
                 }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar preferencias de tema")
+                _uiState.update { it.copy(error = "Error al cargar preferencias: ${e.message}", isLoading = false) }
             }
         }
     }
 
-    fun setTema(tema: TemaPref) {
+    override fun setTema(tema: TemaPref) {
         viewModelScope.launch {
             try {
+                Timber.d("Guardando tema: $tema")
                 preferenciasRepository.setTemaPreferencia(tema)
                 _uiState.update { it.copy(temaSeleccionado = tema) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error al guardar la preferencia de tema") }
+                Timber.e(e, "Error al guardar la preferencia de tema")
+                _uiState.update { it.copy(error = "Error al guardar la preferencia de tema: ${e.message}") }
             }
         }
     }
 
-    fun clearError() {
+    override fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
-}
-
-/**
- * ViewModel para producción (inyectado por Hilt)
- */
-@HiltViewModel
-class ConfiguracionViewModel @Inject constructor(
-    repository: PreferenciasRepository
-) : ConfiguracionViewModelBase() {
-    override val preferenciasRepository: IPreferenciasRepository = PreferenciasRepositoryAdapter(repository)
 }
 
 /**
  * ViewModel para pruebas y previsualizaciones
  */
 class TestConfiguracionViewModel(
-    override val preferenciasRepository: IPreferenciasRepository
-) : ConfiguracionViewModelBase() 
+    private val testPreferenciasRepository: IPreferenciasRepository
+) : ViewModel(), ConfiguracionViewModelBase {
+    private val _uiState = MutableStateFlow(ConfiguracionUiState())
+    override val uiState: StateFlow<ConfiguracionUiState> = _uiState.asStateFlow()
+    
+    init {
+        viewModelScope.launch {
+            testPreferenciasRepository.temaPreferencia.collect { tema ->
+                _uiState.update { it.copy(temaSeleccionado = tema) }
+            }
+        }
+    }
+    
+    override fun setTema(tema: TemaPref) {
+        viewModelScope.launch {
+            try {
+                testPreferenciasRepository.setTemaPreferencia(tema)
+                _uiState.update { it.copy(temaSeleccionado = tema) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error al guardar la preferencia de tema") }
+            }
+        }
+    }
+    
+    override fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+} 

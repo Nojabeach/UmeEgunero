@@ -198,6 +198,24 @@ class UsuarioRepository @Inject constructor(
     }
 
     /**
+     * Obtiene un usuario por su ID (DNI)
+     */
+    suspend fun getUsuarioById(id: String): Result<Usuario> = withContext(Dispatchers.IO) {
+        try {
+            val userDoc = usuariosCollection.document(id).get().await()
+
+            if (userDoc.exists()) {
+                val usuario = userDoc.toObject(Usuario::class.java)
+                return@withContext Result.Success(usuario!!)
+            } else {
+                throw Exception("Usuario no encontrado")
+            }
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
      * Obtiene todos los usuarios de un tipo específico
      */
     suspend fun getUsersByType(tipo: TipoUsuario): Result<List<Usuario>> = withContext(Dispatchers.IO) {

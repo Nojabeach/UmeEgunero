@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import timber.log.Timber
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class AddCentroViewModel @Inject constructor(
@@ -308,8 +310,17 @@ class AddCentroViewModel @Inject constructor(
                                 ciudad = centro.direccion.ciudad,
                                 provincia = centro.direccion.provincia,
                                 telefono = centro.contacto.telefono,
+                                // Obtener latitud y longitud si existen
+                                latitud = centro.latitud.takeIf { it != 0.0 },
+                                longitud = centro.longitud.takeIf { it != 0.0 },
+                                direccionCompleta = "${centro.direccion.calle}, ${centro.direccion.numero}, ${centro.direccion.codigoPostal} ${centro.direccion.ciudad}, ${centro.direccion.provincia}",
                                 isLoading = false
                             )
+                        }
+                        
+                        // Si el centro tiene administradores, cargarlos
+                        if (centro.adminIds.isNotEmpty()) {
+                            loadCentroAdmins(centro.adminIds)
                         }
                     }
 
@@ -333,6 +344,42 @@ class AddCentroViewModel @Inject constructor(
                         error = "Error inesperado: ${e.message}"
                     )
                 }
+            }
+        }
+    }
+    
+    /**
+     * Carga los datos de los administradores del centro
+     */
+    private fun loadCentroAdmins(adminIds: List<String>) {
+        viewModelScope.launch {
+            try {
+                val adminsList = mutableListOf<AdminCentroUsuario>()
+                
+                for (adminId in adminIds) {
+                    val adminResult = usuarioRepository.getUsuarioById(adminId)
+                    
+                    if (adminResult is Result.Success<Usuario>) {
+                        val admin = adminResult.data
+                        adminsList.add(
+                            AdminCentroUsuario(
+                                dni = admin.dni,
+                                nombre = admin.nombre,
+                                apellidos = admin.apellidos,
+                                email = admin.email,
+                                telefono = admin.telefono ?: "",
+                                password = "" // No podemos recuperar la contraseña, dejamos vacío
+                            )
+                        )
+                    }
+                }
+                
+                if (adminsList.isNotEmpty()) {
+                    _uiState.update { it.copy(adminCentro = adminsList) }
+                }
+            } catch (e: Exception) {
+                // Solo registramos el error, no interrumpimos el flujo
+                Timber.e(e, "Error al cargar administradores del centro")
             }
         }
     }

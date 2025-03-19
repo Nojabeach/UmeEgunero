@@ -3,6 +3,8 @@ package com.tfg.umeegunero.di
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.AuthRepositoryImpl
 import com.tfg.umeegunero.data.repository.CiudadRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
@@ -39,6 +41,15 @@ object FirebaseModule {
         firestore: FirebaseFirestore
     ): UsuarioRepository {
         return UsuarioRepository(firebaseAuth, firestore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthRepository(
+        firebaseAuth: FirebaseAuth,
+        usuarioRepository: UsuarioRepository
+    ): AuthRepository {
+        return AuthRepositoryImpl(firebaseAuth, usuarioRepository)
     }
 
     @Provides

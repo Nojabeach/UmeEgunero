@@ -175,6 +175,17 @@ fun AddCentroScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     
+    // Obtener el centroId de los argumentos de navegación
+    val centroId = navController.currentBackStackEntry?.arguments?.getString("centroId")
+    
+    // Efecto para cargar los datos del centro en modo edición
+    LaunchedEffect(centroId) {
+        if (!centroId.isNullOrBlank()) {
+            // Estamos en modo edición, cargamos los datos del centro
+            viewModel.loadCentro(centroId)
+        }
+    }
+    
     // Efecto para manejar la navegación de vuelta tras guardar exitosamente
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
@@ -286,7 +297,7 @@ fun AddCentroScreenContent(
             TopAppBar(
                 title = { 
                     Text(
-                        text = "Añadir Centro Educativo",
+                        text = if (uiState.id.isBlank()) "Añadir Centro Educativo" else "Editar Centro Educativo",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -642,6 +653,106 @@ fun AddCentroScreenContent(
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
+                            }
+                        }
+                    } else if (uiState.adminCentro.isNotEmpty()) {
+                        // En modo edición, mostrar solo una lista de los administradores sin opción de editar
+                        SectionCard(
+                            title = "Administradores del Centro",
+                            subtitle = "Lista de administradores existentes",
+                            icon = Icons.Default.School,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        ) {
+                            Text(
+                                text = "Los administradores de un centro solo pueden ser modificados desde la sección de gestión de usuarios.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                            
+                            // Mostrar lista de administradores en modo de solo lectura
+                            uiState.adminCentro.forEachIndexed { index, admin ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (index == 0) 
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                        else 
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp)
+                                    ) {
+                                        Text(
+                                            text = if (index == 0) "Administrador Principal" else "Administrador ${index + 1}",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "${admin.nombre} ${admin.apellidos}",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            
+                                            Text(
+                                                text = admin.dni,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Email,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = admin.email,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        
+                                        if (admin.telefono.isNotBlank()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Phone,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = admin.telefono,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
                         }
                     }

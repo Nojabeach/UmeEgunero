@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -77,6 +79,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.res.painterResource
+import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.TemaPref
@@ -86,139 +89,61 @@ import com.tfg.umeegunero.feature.common.config.components.TemaActual
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
+import androidx.navigation.NavController
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.navigation.NavigationStructure
+import com.tfg.umeegunero.feature.common.screen.DummyScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CentroDashboardScreen(
-    onLogout: () -> Unit,
-    onNavigateToAddCurso: () -> Unit = {},
-    onNavigateToEditCurso: (String) -> Unit = {},
-    onNavigateToAddClase: () -> Unit = {},
-    onNavigateToEditClase: (String) -> Unit = {},
-    onNavigateToAddUser: () -> Unit = {}
+    navController: NavController,
+    viewModel: CentroDashboardViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val currentUser = uiState.currentUser
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-
-    var selectedItem by remember { mutableIntStateOf(0) }
-
+    
+    if (uiState.navigateToWelcome) {
+        LaunchedEffect(true) {
+            navController.navigate(AppScreens.Welcome.route) {
+                popUpTo(AppScreens.CentroDashboard.route) { 
+                    inclusive = true 
+                }
+            }
+        }
+    }
+    
+    val navItems = NavigationStructure.getNavItemsByTipo(TipoUsuario.ADMIN_CENTRO)
+    
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.School,
-                            contentDescription = "Centro Icon",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Text(
-                            text = "Centro Educativo",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Colegio San José",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            DrawerContent(
+                navItems = navItems,
+                currentUser = currentUser,
+                onNavigate = { route, isImplemented ->
+                    handleNavigation(route, navController, viewModel, isImplemented)
+                },
+                onCloseDrawer = {
+                    scope.launch { drawerState.close() }
                 }
-
-                HorizontalDivider()
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Elementos del menú
-                val menuItems = listOf(
-                    "Panel" to Icons.Default.Home,
-                    "Profesores" to Icons.Default.Person,
-                    "Alumnos" to Icons.Default.Group,
-                    "Solicitudes" to Icons.Default.QuestionAnswer,
-                    "Configuración" to Icons.Default.Settings
-                )
-
-                menuItems.forEachIndexed { index, (title, icon) ->
-                    NavigationDrawerItem(
-                        label = { Text(text = title) },
-                        selected = selectedItem == index,
-                        onClick = {
-                            selectedItem = index
-                            scope.launch {
-                                drawerState.close()
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = title
-                            )
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                HorizontalDivider()
-
-                // Botón de cerrar sesión
-                NavigationDrawerItem(
-                    label = { Text(text = "Cerrar Sesión") },
-                    selected = false,
-                    onClick = onLogout,
-                    icon = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Cerrar Sesión"
-                        )
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+            )
         }
     ) {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            when (selectedItem) {
-                                0 -> "Panel de Centro"
-                                1 -> "Profesores"
-                                2 -> "Alumnos"
-                                3 -> "Solicitudes"
-                                4 -> "Configuración"
-                                else -> "Panel de Centro"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
+                    title = { Text("Panel de Centro") },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(
                                 imageVector = Icons.Default.Menu,
                                 contentDescription = "Menú"
                             )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { /* Mostrar notificaciones */ }) {
-                            BadgedBox(badge = { Badge { Text("3") } }) {
-                                Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = "Notificaciones"
-                                )
-                            }
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -228,85 +153,73 @@ fun CentroDashboardScreen(
                         actionIconContentColor = Color.White
                     )
                 )
-            },
-            bottomBar = {
-                NavigationBar {
-                    val items = listOf(
-                        "Panel" to Icons.Default.Home,
-                        "Profesores" to Icons.Default.Person,
-                        "Alumnos" to Icons.Default.Group,
-                        "Solicitudes" to Icons.Default.QuestionAnswer
-                    )
-
-                    items.forEachIndexed { index, (title, icon) ->
-                        NavigationBarItem(
-                            icon = {
-                                if (index == 3) {
-                                    BadgedBox(badge = { Badge { Text("3") } }) {
-                                        Icon(icon, contentDescription = title)
-                                    }
-                                } else {
-                                    Icon(icon, contentDescription = title)
-                                }
-                            },
-                            label = { Text(title) },
-                            selected = selectedItem == index,
-                            onClick = { selectedItem = index }
-                        )
-                    }
-                }
             }
         ) { paddingValues ->
-            CentroDashboardContent(
-                selectedItem = selectedItem,
-                paddingValues = paddingValues,
-                onNavigateToAddCurso = onNavigateToAddCurso,
-                onNavigateToAddClase = onNavigateToAddClase,
-                onNavigateToAddUser = onNavigateToAddUser
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                DashboardContent(
+                    navController = navController,
+                    viewModel = viewModel,
+                    currentUser = currentUser
+                )
+            }
         }
     }
 }
 
-@Composable
-fun CentroDashboardContent(
-    selectedItem: Int,
-    paddingValues: PaddingValues,
-    onNavigateToAddCurso: () -> Unit,
-    onNavigateToAddClase: () -> Unit,
-    onNavigateToAddUser: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-    ) {
-        when (selectedItem) {
-            0 -> CentroPanelContent(onNavigateToAddCurso, onNavigateToAddClase, onNavigateToAddUser)
-            1 -> ProfesoresContent()
-            2 -> AlumnosContent()
-            3 -> SolicitudesContent()
-            4 -> ConfiguracionContent()
-            else -> CentroPanelContent(onNavigateToAddCurso, onNavigateToAddClase, onNavigateToAddUser)
+/**
+ * Función para manejar la navegación desde el menú lateral
+ */
+private fun handleNavigation(
+    route: String,
+    navController: NavController,
+    viewModel: CentroDashboardViewModel,
+    isImplemented: Boolean = true
+): Boolean {
+    // Primero verificamos si la opción está implementada
+    if (!isImplemented) {
+        // Extraemos el último segmento de la ruta para usarlo como título
+        val title = route.split("/").last().replace("_", " ").replaceFirstChar { it.uppercase() }
+        navController.navigate("dummy/$title") {
+            launchSingleTop = true
+        }
+        return true
+    }
+
+    // Para rutas implementadas
+    return when {
+        route == "logout" -> {
+            viewModel.logout()
+            true
+        }
+        route.startsWith("centro_dashboard") -> {
+            // Rutas internas al dashboard - se manejan localmente
+            false
+        }
+        else -> {
+            // Navegación externa
+            navController.navigate(route) {
+                // Configuración de navegación
+                launchSingleTop = true
+            }
+            true
         }
     }
 }
 
+/**
+ * Contenido principal del dashboard
+ */
 @Composable
-fun CentroPanelContent(
-    onNavigateToAddCurso: () -> Unit,
-    onNavigateToAddClase: () -> Unit,
-    onNavigateToAddUser: () -> Unit
+private fun DashboardContent(
+    navController: NavController,
+    viewModel: CentroDashboardViewModel,
+    currentUser: Usuario?
 ) {
-    // TODO: Mejoras pendientes para el panel principal del centro
-    // - Implementar dashboard con estadísticas en tiempo real
-    // - Añadir gráficos de tendencias de asistencia y rendimiento
-    // - Mostrar alertas y notificaciones importantes del día
-    // - Implementar calendario de eventos y fechas importantes
-    // - Añadir sección de comunicados generales
-    // - Mostrar métricas de uso de la plataforma
-    // - Implementar acceso rápido a funciones frecuentes
-    // - Añadir vista personalizable según preferencias del administrador
+    val cursos by viewModel.cursos.collectAsState(initial = emptyList())
     
     Column(
         modifier = Modifier
@@ -314,323 +227,271 @@ fun CentroPanelContent(
             .padding(16.dp)
     ) {
         Text(
-            text = "Resumen del centro",
-            style = MaterialTheme.typography.headlineSmall,
+            text = "Cursos del Centro",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            val dashboardItems = listOf(
-                Triple("Profesores", "24", Icons.Default.Person),
-                Triple("Alumnos", "342", Icons.Default.Group),
-                Triple("Aulas", "18", Icons.Default.School),
-                Triple("Solicitudes", "3", Icons.Default.QuestionAnswer)
-            )
-
-            items(dashboardItems) { (title, count, icon) ->
-                DashboardCard(title = title, count = count, icon = icon)
+        
+        if (cursos.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No hay cursos disponibles")
             }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Solicitudes recientes",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        SolicitudesRecentesList()
-
-        // Sección de Gestión Académica
-        Text(
-            text = "Gestión Académica",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(16.dp)
-        )
-        
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(
-                listOf(
-                    Triple("Añadir Curso", Icons.Default.School, onNavigateToAddCurso),
-                    Triple("Añadir Clase", Icons.Default.Group, onNavigateToAddClase)
-                )
-            ) { (title, icon, onClick) ->
-                ElevatedCard(
-                    onClick = onClick,
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth()
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = title,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
-        
-        // Sección de Gestión de Usuarios
-        Text(
-            text = "Gestión de Usuarios",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(16.dp)
-        )
-        
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(
-                listOf(
-                    Triple("Añadir Profesor", Icons.Default.Person, onNavigateToAddUser),
-                    Triple("Solicitudes", Icons.Default.QuestionAnswer, {})
-                )
-            ) { (title, icon, onClick) ->
-                ElevatedCard(
-                    onClick = onClick,
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth()
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = title,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+        } else {
+            LazyColumn {
+                items(cursos) { curso ->
+                    CursoListItem(
+                        curso = curso,
+                        onEditClick = {
+                            val centroId = "centro1" // Valor temporal
+                            navController.navigate(AppScreens.EditCurso.createRoute(centroId, curso.id))
+                        }
+                    )
                 }
             }
         }
     }
 }
 
+/**
+ * Contenido del drawer de navegación
+ */
 @Composable
-fun DashboardCard(title: String, count: String, icon: ImageVector) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp)
+private fun DrawerContent(
+    navItems: List<NavigationStructure.NavItem>,
+    currentUser: Usuario?,
+    onNavigate: (String, Boolean) -> Boolean,
+    onCloseDrawer: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 24.dp)
     ) {
+        // Cabecera con información del usuario
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 24.dp, vertical = 12.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
             Text(
-                text = count,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                text = "Administrador de Centro",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
-
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
             Text(
-                text = title,
+                text = currentUser?.email ?: "Usuario",
                 style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-fun SolicitudesRecentesList() {
-    val solicitudes = remember {
-        listOf(
-            Triple("Ana García", "Familiar", "12/02/2024"),
-            Triple("Roberto Sánchez", "Profesor", "10/02/2024"),
-            Triple("Laura Martínez", "Familiar", "08/02/2024")
+        
+        Divider(
+            modifier = Modifier.padding(vertical = 12.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
         )
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        items(solicitudes) { (nombre, tipo, fecha) ->
-            SolicitudItem(nombre = nombre, tipo = tipo, fecha = fecha)
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        }
-    }
-}
-
-@Composable
-fun SolicitudItem(nombre: String, tipo: String, fecha: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = if (tipo == "Familiar") Icons.Default.Person else Icons.Default.School,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = nombre,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-
-            Row {
-                Text(
-                    text = tipo,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        
+        // Lista de items de navegación
+        LazyColumn {
+            items(navItems) { item ->
+                DrawerNavItem(
+                    navItem = item,
+                    onItemClick = { route, isImplemented ->
+                        val handled = onNavigate(route, isImplemented)
+                        if (handled) {
+                            onCloseDrawer()
+                        }
+                    }
                 )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "• $fecha",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                
+                if (item.dividerAfter) {
+                    Divider(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 20.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
             }
         }
+    }
+}
 
-        IconButton(onClick = { /* Aprobar solicitud */ }) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "Aprobar",
-                tint = MaterialTheme.colorScheme.primary
-            )
+/**
+ * Item de navegación en el drawer
+ */
+@Composable
+private fun DrawerNavItem(
+    navItem: NavigationStructure.NavItem,
+    onItemClick: (String, Boolean) -> Unit
+) {
+    val isExpanded = remember { mutableStateOf(false) }
+    
+    Column {
+        Surface(
+            onClick = {
+                if (navItem.subItems.isEmpty()) {
+                    onItemClick(navItem.route, navItem.isImplemented)
+                } else {
+                    isExpanded.value = !isExpanded.value
+                }
+            },
+            color = Color.Transparent
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = navItem.icon,
+                    contentDescription = navItem.title,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Text(
+                    text = navItem.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                if (navItem.badge != null) {
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ) {
+                        Text(text = navItem.badge.toString())
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                
+                if (navItem.subItems.isNotEmpty()) {
+                    Icon(
+                        imageVector = if (isExpanded.value) 
+                            Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (isExpanded.value) 
+                            "Colapsar" else "Expandir"
+                    )
+                }
+            }
+        }
+        
+        // Mostrar subitems si está expandido
+        if (isExpanded.value && navItem.subItems.isNotEmpty()) {
+            navItem.subItems.forEach { subItem ->
+                Surface(
+                    onClick = { onItemClick(subItem.route, subItem.isImplemented) },
+                    color = Color.Transparent
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 56.dp, end = 24.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = subItem.icon,
+                            contentDescription = subItem.title,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Text(
+                            text = subItem.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        if (subItem.badge != null) {
+                            Badge(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ) {
+                                Text(text = subItem.badge.toString())
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun ProfesoresContent() {
-    // TODO: Mejoras pendientes para la sección de profesores
-    // - Implementar listado completo con filtros (departamento, antigüedad)
-    // - Añadir visualización de carga lectiva y horarios
-    // - Mostrar estadísticas de evaluación y rendimiento
-    // - Implementar gestión de tutorías y guardias
-    // - Añadir sistema de seguimiento de formación continua
-    // - Mostrar histórico de comunicaciones con familias
-    // - Implementar gestión de permisos y ausencias
-    // - Añadir evaluación de desempeño y objetivos
-    
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Gestión de Profesores",
-            style = MaterialTheme.typography.headlineMedium
-        )
-    }
-}
-
-@Composable
-fun AlumnosContent() {
-    // TODO: Mejoras pendientes para la sección de alumnos
-    // - Implementar listado completo con filtros avanzados
-    // - Añadir visualización de expedientes académicos y personales
-    // - Mostrar seguimiento de asistencia y puntualidad
-    // - Implementar sistema de necesidades educativas especiales
-    // - Añadir gestión de comportamiento e incidencias
-    // - Mostrar conexión con servicios sociales cuando aplique
-    // - Implementar historial médico relevante para el centro
-    // - Añadir sistema de becas y ayudas aplicadas
-    
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Gestión de Alumnos",
-            style = MaterialTheme.typography.headlineMedium
-        )
-    }
-}
-
-@Composable
-fun SolicitudesContent() {
-    // TODO: Mejoras pendientes para la sección de solicitudes
-    // - Implementar categorización de solicitudes por tipo
-    // - Añadir filtros por estado y fecha de recepción
-    // - Mostrar historial completo de comunicaciones por solicitud
-    // - Implementar notificaciones automáticas de estado
-    // - Añadir sistema de priorización y gestión de carga
-    // - Mostrar estadísticas de tiempos de respuesta
-    // - Implementar plantillas de respuesta predefinidas
-    // - Añadir flujos de aprobación para solicitudes complejas
-    
-    Column(
+private fun CursoListItem(
+    curso: Curso,
+    onEditClick: () -> Unit
+) {
+    Card(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Text(
-            text = "Solicitudes pendientes",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        SolicitudesRecentesList()
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = curso.nombre,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Edad: ${curso.edadMinima} - ${curso.edadMaxima} años",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "Año académico: ${curso.anioAcademico}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Surface(
+                    onClick = onEditClick,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(4.dp)
+                ) {
+                    Text(
+                        text = "Editar",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
+            }
+        }
     }
-}
-
-@Composable
-fun ConfiguracionContent() {
-    ConfiguracionScreen(perfil = PerfilConfiguracion.CENTRO)
 }
 
 @Preview(showBackground = true)
 @Composable
 fun CentroDashboardPreview() {
     UmeEguneroTheme {
-        CentroDashboardScreen(onLogout = {}, onNavigateToAddCurso = {}, onNavigateToEditCurso = {}, onNavigateToAddClase = {}, onNavigateToEditClase = {}, onNavigateToAddUser = {})
+        CentroDashboardScreen(
+            navController = rememberNavController()
+        )
     }
 }
 
@@ -638,7 +499,9 @@ fun CentroDashboardPreview() {
 @Composable
 fun CentroDashboardDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        CentroDashboardScreen(onLogout = {}, onNavigateToAddCurso = {}, onNavigateToEditCurso = {}, onNavigateToAddClase = {}, onNavigateToEditClase = {}, onNavigateToAddUser = {})
+        CentroDashboardScreen(
+            navController = rememberNavController()
+        )
     }
 }
 

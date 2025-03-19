@@ -27,6 +27,10 @@ import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
 import com.tfg.umeegunero.feature.centro.screen.academico.HiltAddCursoScreen
 import com.tfg.umeegunero.feature.centro.screen.academico.HiltAddClaseScreen
+import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
+import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
+import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
+import com.tfg.umeegunero.feature.common.screen.DummyScreen
 
 /**
  * Sealed class para las rutas de navegación de la app
@@ -67,6 +71,9 @@ sealed class AppScreens(val route: String) {
     object EditClase : AppScreens("edit_clase/{centroId}/{claseId}") {
         fun createRoute(centroId: String, claseId: String) = "edit_clase/$centroId/$claseId"
     }
+    
+    // Pantallas de configuración
+    object Config : AppScreens("config")
 
     // Otras pantallas
     object StudentDetail : AppScreens("student_detail/{studentId}") {
@@ -77,6 +84,13 @@ sealed class AppScreens(val route: String) {
     }
     object Chat : AppScreens("chat/{recipientId}") {
         fun createRoute(recipientId: String) = "chat/$recipientId"
+    }
+
+    // Ruta para pantalla dummy de funcionalidades en desarrollo
+    object Dummy : AppScreens("dummy/{title}") {
+        fun createRoute(title: String): String {
+            return "dummy/$title"
+        }
     }
 }
 
@@ -165,6 +179,25 @@ fun AppNavigation(
             )
         }
 
+        // Pantalla de configuración (compartida por todos los perfiles)
+        composable(route = AppScreens.Config.route) {
+            val perfil = when {
+                navController.previousBackStackEntry?.destination?.route == AppScreens.AdminDashboard.route -> 
+                    PerfilConfiguracion.ADMIN
+                navController.previousBackStackEntry?.destination?.route == AppScreens.CentroDashboard.route -> 
+                    PerfilConfiguracion.CENTRO
+                navController.previousBackStackEntry?.destination?.route == AppScreens.ProfesorDashboard.route -> 
+                    PerfilConfiguracion.PROFESOR
+                navController.previousBackStackEntry?.destination?.route == AppScreens.FamiliarDashboard.route -> 
+                    PerfilConfiguracion.FAMILIAR
+                else -> PerfilConfiguracion.SISTEMA
+            }
+            
+            ConfiguracionScreen(
+                perfil = perfil
+            )
+        }
+
         // Pantalla de añadir centro (admin)
         composable(route = AppScreens.AddCentro.route) {
             AddCentroScreen(
@@ -193,56 +226,15 @@ fun AppNavigation(
         // Pantalla de dashboard de administrador
         composable(route = AppScreens.AdminDashboard.route) {
             AdminDashboardScreen(
-                onLogout = {
-                    navController.navigate(AppScreens.Welcome.route) {
-                        popUpTo(AppScreens.AdminDashboard.route) { inclusive = true }
-                    }
-                },
-                onNavigateToAddCentro = {
-                    navController.navigate(AppScreens.AddCentro.route)
-                },
-                onNavigateToEditCentro = { centroId ->
-                    navController.navigate(AppScreens.EditCentro.createRoute(centroId))
-                },
-                onNavigateToAddUser = {
-                    navController.navigate(AppScreens.AddUser.createRoute(true))
-                }
+                navController = navController,
+                viewModel = hiltViewModel()
             )
         }
 
         // Pantalla de dashboard de centro
         composable(route = AppScreens.CentroDashboard.route) {
             CentroDashboardScreen(
-                onLogout = {
-                    navController.navigate(AppScreens.Welcome.route) {
-                        popUpTo(AppScreens.CentroDashboard.route) { inclusive = true }
-                    }
-                },
-                onNavigateToAddCurso = {
-                    // Aquí deberíamos obtener el ID del centro del usuario actual
-                    // Por ahora, usamos un ID de ejemplo
-                    val centroId = "centro_actual_id"
-                    navController.navigate(AppScreens.AddCurso.createRoute(centroId))
-                },
-                onNavigateToEditCurso = { cursoId ->
-                    // Aquí deberíamos obtener el ID del centro del usuario actual
-                    val centroId = "centro_actual_id"
-                    navController.navigate(AppScreens.EditCurso.createRoute(centroId, cursoId))
-                },
-                onNavigateToAddClase = {
-                    // Aquí deberíamos obtener el ID del centro del usuario actual
-                    val centroId = "centro_actual_id"
-                    navController.navigate(AppScreens.AddClase.createRoute(centroId))
-                },
-                onNavigateToEditClase = { claseId ->
-                    // Aquí deberíamos obtener el ID del centro del usuario actual
-                    val centroId = "centro_actual_id"
-                    navController.navigate(AppScreens.EditClase.createRoute(centroId, claseId))
-                },
-                onNavigateToAddUser = {
-                    // Pasamos false para indicar que no es el admin de la app
-                    navController.navigate(AppScreens.AddUser.createRoute(false))
-                }
+                navController = navController
             )
         }
 
@@ -418,6 +410,20 @@ fun AppNavigation(
                 claseId = claseId,
                 onNavigateBack = { navController.popBackStack() },
                 onClaseAdded = { navController.popBackStack() }
+            )
+        }
+
+        // Ruta para pantallas en desarrollo
+        composable(
+            route = AppScreens.Dummy.route,
+            arguments = listOf(
+                navArgument("title") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val title = backStackEntry.arguments?.getString("title") ?: "Función en desarrollo"
+            DummyScreen(
+                title = title,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
