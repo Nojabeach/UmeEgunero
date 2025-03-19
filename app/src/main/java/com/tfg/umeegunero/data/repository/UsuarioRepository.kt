@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Date
+import com.google.firebase.functions.ktx.functions
+import com.google.firebase.ktx.Firebase
+import timber.log.Timber
+import com.google.firebase.functions.FirebaseFunctions
 
 /**
  * Resultados posibles al realizar operaciones con repositorios
@@ -38,6 +42,7 @@ class UsuarioRepository @Inject constructor(
     val alumnosCollection = firestore.collection("alumnos")
     val registrosCollection = firestore.collection("registrosActividad")
     val mensajesCollection = firestore.collection("mensajes")
+    private val functions = Firebase.functions
 
     // AUTENTICACIÓN Y USUARIOS
 
@@ -759,6 +764,53 @@ class UsuarioRepository @Inject constructor(
                 return@withContext Result.Error(usuarioResult.exception)
             } else {
                 return@withContext Result.Error(Exception("No se encontró el usuario con email: $email"))
+            }
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Borra un usuario por su DNI, eliminándolo tanto de Firestore como de Firebase Authentication
+     */
+    suspend fun borrarUsuarioByDni(dni: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // 1. Buscar el usuario en Firestore por DNI
+            val usuarioDoc = usuariosCollection.document(dni).get().await()
+            
+            if (!usuarioDoc.exists()) {
+                return@withContext Result.Error(Exception("No se encontró el usuario con DNI: $dni"))
+            }
+            
+            // 2. Obtener el email del usuario para buscar en Firebase Auth
+            val usuario = usuarioDoc.toObject(Usuario::class.java)
+            val email = usuario?.email ?: return@withContext Result.Error(Exception("El usuario no tiene email registrado"))
+            
+            // 3. Eliminar el documento de Firestore
+            usuariosCollection.document(dni).delete().await()
+            
+            // 4. Intentar eliminar el usuario de Firebase Authentication usando la Cloud Function
+            try {
+                val data = hashMapOf(
+                    "email" to email
+                )
+                
+                // Llamada a la Cloud Function
+                functions.getHttpsCallable("deleteUserByEmail")
+                    .call(data)
+                    .addOnSuccessListener { result -> 
+                        val resultData = result.data
+                        Timber.d("Usuario con email $email eliminado de Firebase Authentication: $resultData") 
+                    }
+                    .addOnFailureListener { e ->
+                        Timber.e(e, "Error al eliminar usuario de Firebase Authentication: ${e.message}")
+                    }
+                
+                return@withContext Result.Success(Unit)
+            } catch (authError: Exception) {
+                // Si falla la autenticación, al menos informamos que se eliminó de Firestore
+                Timber.e(authError, "Error al intentar eliminar usuario de Auth: ${authError.message}")
+                return@withContext Result.Success(Unit) // Consideramos éxito aunque falle en Auth
             }
         } catch (e: Exception) {
             return@withContext Result.Error(e)

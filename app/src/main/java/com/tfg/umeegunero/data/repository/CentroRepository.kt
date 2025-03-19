@@ -16,6 +16,9 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.ktx.functions
+import com.google.firebase.ktx.Firebase
 
 @Singleton
 class CentroRepository @Inject constructor(
@@ -23,6 +26,7 @@ class CentroRepository @Inject constructor(
     private val auth: FirebaseAuth
 ) {
     private val centrosCollection = firestore.collection("centros")
+    private val functions = Firebase.functions
 
     /**
      * Obtiene todos los centros educativos
@@ -540,6 +544,15 @@ class CentroRepository @Inject constructor(
         try {
             Timber.d("Iniciando proceso de eliminación completa del centro $centroId")
             
+            // 0. Obtener la información del centro para saber los admins
+            val centroDoc = centrosCollection.document(centroId).get().await()
+            if (!centroDoc.exists()) {
+                return@withContext Result.Error(Exception("El centro no existe"))
+            }
+            
+            val centro = centroDoc.toObject(Centro::class.java)!!
+            val adminIds = centro.adminIds
+            
             // 1. Obtener todos los datos relacionados con el centro
             val alumnosResult = getAlumnosByCentro(centroId)
             val alumnos = if (alumnosResult is Result.Success) alumnosResult.data else emptyList()
@@ -588,7 +601,58 @@ class CentroRepository @Inject constructor(
             deleteNotificacionesByCentroId(centroId)
             deleteEventosByCentroId(centroId)
             
-            // 7. Finalmente, eliminar el centro
+            // 7. Eliminar los usuarios administradores del centro
+            val usuariosCollection = firestore.collection("usuarios")
+            val emailsToDelete = mutableListOf<String>()
+            
+            for (adminId in adminIds) {
+                try {
+                    // Obtener el usuario para conseguir su email
+                    val usuarioDoc = usuariosCollection.document(adminId).get().await()
+                    if (usuarioDoc.exists()) {
+                        val usuario = usuarioDoc.toObject(Usuario::class.java)!!
+                        val email = usuario.email
+                        
+                        // Añadir el email a la lista para eliminación en lote
+                        emailsToDelete.add(email)
+                        
+                        // Eliminar de Firestore
+                        usuariosCollection.document(adminId).delete().await()
+                        Timber.d("Eliminado usuario administrador $adminId de Firestore")
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al eliminar usuario administrador $adminId")
+                }
+            }
+            
+            // Intentar eliminar los usuarios de Firebase Authentication mediante Cloud Function
+            if (emailsToDelete.isNotEmpty()) {
+                try {
+                    val data = hashMapOf(
+                        "emails" to emailsToDelete
+                    )
+                    
+                    // Llamada a la Cloud Function
+                    functions
+                        .getHttpsCallable("deleteUsersByEmails")
+                        .call(data)
+                        .addOnSuccessListener { result ->
+                            val resultData = result.data
+                            Timber.d("Resultado de eliminación de usuarios: $resultData")
+                        }
+                        .addOnFailureListener { e ->
+                            Timber.e(e, "Error al llamar a la Cloud Function para eliminar usuarios")
+                        }
+                    
+                    Timber.d("Solicitud enviada para eliminar ${emailsToDelete.size} usuarios de Firebase Authentication")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al intentar eliminar usuarios de Firebase Authentication: ${e.message}")
+                }
+            }
+            
+            Timber.d("Procesados ${adminIds.size} administradores del centro")
+            
+            // 8. Finalmente, eliminar el centro
             centrosCollection.document(centroId).delete().await()
             Timber.d("Centro $centroId eliminado completamente")
             

@@ -2,6 +2,7 @@ package com.tfg.umeegunero.data.model
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
+import timber.log.Timber
 
 // Tipos de usuarios y estados
 enum class TipoUsuario {

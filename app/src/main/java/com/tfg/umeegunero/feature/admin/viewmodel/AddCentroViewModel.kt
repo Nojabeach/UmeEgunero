@@ -362,9 +362,12 @@ class AddCentroViewModel @Inject constructor(
                 
                 // Verificar si el administrador ya existe por DNI o correo electrónico
                 for (admin in _uiState.value.adminCentro) {
-                    val usuarioExistente = usuarioRepository.getUsuarioByEmail(admin.email)
-                    if (usuarioExistente is Result.Success && usuarioExistente.data != null) {
-                        throw Exception("Ya existe un usuario con el correo electrónico ${admin.email}. Por favor, utilice otro correo.")
+                    // Excluir el email del administrador de la aplicación
+                    if (admin.email != "admin@eguneroko.com") {
+                        val usuarioExistente = usuarioRepository.getUsuarioByEmail(admin.email)
+                        if (usuarioExistente is Result.Success && usuarioExistente.data != null) {
+                            throw Exception("Ya existe un usuario con el correo electrónico ${admin.email}. Por favor, utilice otro correo.")
+                        }
                     }
                     
                     val usuarioExistenteDni = usuarioRepository.getUsuarioByDni(admin.dni)
@@ -890,22 +893,35 @@ class AddCentroViewModel @Inject constructor(
                         // Guardar usuario en Firestore
                         val saveResult = usuarioRepository.guardarUsuario(usuario)
                         
-                        if (saveResult is Result.Success) {
-                            adminIds.add(admin.dni)
-                            Timber.d("Administrador de centro creado: ${admin.dni}")
-                        } else if (saveResult is Result.Error) {
-                            // Si falla guardar el usuario, intentamos eliminar la cuenta de Firebase Auth
-                            usuarioRepository.borrarUsuario(authResult.data)
-                            Timber.e(saveResult.exception, "Error al guardar administrador: ${admin.dni}")
+                        when (saveResult) {
+                            is Result.Success -> {
+                                adminIds.add(admin.dni)
+                                Timber.d("Administrador de centro creado: ${admin.dni}")
+                            }
+                            is Result.Error -> {
+                                // Si falla guardar en Firestore, intentamos eliminar la cuenta de Firebase Auth
+                                usuarioRepository.borrarUsuario(authResult.data)
+                                Timber.e(saveResult.exception, "Error al guardar administrador en Firestore: ${admin.dni}")
+                                throw saveResult.exception
+                            }
+                            is Result.Loading -> {
+                                // No debería ocurrir
+                                throw Exception("Estado de carga inesperado al guardar administrador")
+                            }
                         }
                     }
                     is Result.Error -> {
                         Timber.e(authResult.exception, "Error al crear cuenta para administrador: ${admin.dni}")
+                        throw authResult.exception
                     }
-                    else -> {}
+                    is Result.Loading -> {
+                        // No debería ocurrir
+                        throw Exception("Estado de carga inesperado al crear cuenta")
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error inesperado al crear administrador: ${admin.dni}")
+                throw e
             }
         }
         

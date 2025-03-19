@@ -150,12 +150,31 @@ class AdminDashboardViewModel @Inject constructor(
     fun deleteUsuario(usuarioDni: String) {
         viewModelScope.launch {
             try {
-                // Aquí debería implementarse la lógica para eliminar el usuario
-                // Por el momento solo recargamos los usuarios
-                loadUsuarios()
+                _uiState.update { it.copy(isLoading = true) }
+                
+                val result = usuarioRepository.borrarUsuarioByDni(usuarioDni)
+                
+                when (result) {
+                    is Result.Success -> {
+                        // Recargar la lista después de borrar
+                        loadUsuarios()
+                    }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.exception.message ?: "Error al eliminar el usuario"
+                            )
+                        }
+                    }
+                    else -> { /* Ignorar estado loading */ }
+                }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(error = e.message ?: "Error inesperado al eliminar el usuario")
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "Error inesperado al eliminar el usuario"
+                    )
                 }
             }
         }
