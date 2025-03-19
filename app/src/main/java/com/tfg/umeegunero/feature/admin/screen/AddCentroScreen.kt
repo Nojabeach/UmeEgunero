@@ -308,17 +308,128 @@ fun AddCentroScreenContent(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.98f)
+        containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
+        bottomBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 8.dp
+            ) {
+                // Botones de acción
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Button(
+                        onClick = { onCancelarClick() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Cancelar")
+                    }
+                    
+                    if (uiState.id.isNotBlank()) {
+                        var showDeleteDialog by remember { mutableStateOf(false) }
+                        
+                        Button(
+                            onClick = { showDeleteDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "Eliminar")
+                        }
+                        
+                        if (showDeleteDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteDialog = false },
+                                title = { Text("Eliminar centro") },
+                                text = { 
+                                    Text(
+                                        "¿Está seguro de que desea eliminar este centro? " +
+                                        "Esta acción eliminará permanentemente el centro y todos sus datos asociados " +
+                                        "(usuarios, alumnos, clases, cursos, etc.) y no puede deshacerse."
+                                    ) 
+                                },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            onGuardarClick(uiState.id, true)
+                                            showDeleteDialog = false
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.error
+                                        )
+                                    ) {
+                                        Text("Eliminar")
+                                    }
+                                },
+                                dismissButton = {
+                                    OutlinedButton(onClick = { showDeleteDialog = false }) {
+                                        Text("Cancelar")
+                                    }
+                                }
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = { onGuardarClick(uiState.id, false) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        enabled = calcularPorcentajeCompletado(uiState) >= 0.7f && !uiState.isLoading,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = if (uiState.id.isBlank()) "Guardar" else "Actualizar")
+                    }
+                }
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp)
+                .fillMaxSize()
                 .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Indicador de progreso mejorado con estilo educativo
             Box(
@@ -534,108 +645,6 @@ fun AddCentroScreenContent(
                             }
                         }
                     }
-                }
-            }
-
-            // Botones de acción
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(
-                    onClick = { onCancelarClick() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Cancelar")
-                }
-                
-                if (uiState.id.isNotBlank()) {
-                    var showDeleteDialog by remember { mutableStateOf(false) }
-                    
-                    Button(
-                        onClick = { showDeleteDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Eliminar")
-                    }
-                    
-                    if (showDeleteDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showDeleteDialog = false },
-                            title = { Text("Eliminar centro") },
-                            text = { 
-                                Text(
-                                    "¿Está seguro de que desea eliminar este centro? " +
-                                    "Esta acción eliminará permanentemente el centro y todos sus datos asociados " +
-                                    "(usuarios, alumnos, clases, cursos, etc.) y no puede deshacerse."
-                                ) 
-                            },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        onGuardarClick(uiState.id, true)
-                                        showDeleteDialog = false
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.error
-                                    )
-                                ) {
-                                    Text("Eliminar")
-                                }
-                            },
-                            dismissButton = {
-                                OutlinedButton(onClick = { showDeleteDialog = false }) {
-                                    Text("Cancelar")
-                                }
-                            }
-                        )
-                    }
-                }
-
-                Button(
-                    onClick = { onGuardarClick(uiState.id, false) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    enabled = calcularPorcentajeCompletado(uiState) >= 0.7f && !uiState.isLoading,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = if (uiState.id.isBlank()) "Guardar" else "Actualizar")
                 }
             }
         }
