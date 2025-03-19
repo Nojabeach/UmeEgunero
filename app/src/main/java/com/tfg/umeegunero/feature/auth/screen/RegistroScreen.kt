@@ -87,7 +87,7 @@ import com.tfg.umeegunero.data.model.RegistroUsuarioForm
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.feature.auth.viewmodel.RegistroUiState
 import com.tfg.umeegunero.feature.auth.viewmodel.RegistroViewModel
-import com.tfg.umeegunero.feature.common.components.FormProgressIndicator
+import com.tfg.umeegunero.feature.common.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
@@ -95,6 +95,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.material3.MenuAnchorType
 
 // Importar los componentes de otros archivos
 import com.tfg.umeegunero.feature.auth.screen.TipoFamiliarOptions
@@ -462,7 +463,8 @@ fun RegistroScreen(
             ) {
                 // Indicador de progreso
                 FormProgressIndicator(
-                    porcentaje = uiState.currentStep.toFloat() / uiState.totalSteps.toFloat()
+                    currentStep = uiState.currentStep,
+                    totalSteps = uiState.totalSteps
                 )
 
                 // Título del paso actual
@@ -1007,7 +1009,6 @@ fun RegistroScreen(
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
                             )
                             
                             ExposedDropdownMenu(

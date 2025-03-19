@@ -378,7 +378,6 @@ fun CursoDropdown(
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor()
         )
 
         if (!isLoading) {
@@ -436,7 +435,6 @@ fun ProfesorDropdown(
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor()
         )
 
         if (!isLoading) {
@@ -697,7 +695,6 @@ private fun AddClaseScreenContent(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = cursoExpanded.value) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
                         )
 
                         DropdownMenu(

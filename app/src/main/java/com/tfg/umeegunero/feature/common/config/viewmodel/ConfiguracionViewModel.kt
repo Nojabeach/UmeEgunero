@@ -1,10 +1,11 @@
-package com.tfg.umeegunero.feature.common.viewmodel
+package com.tfg.umeegunero.feature.common.config.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TemaPref
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,10 +19,29 @@ data class ConfiguracionUiState(
     val error: String? = null
 )
 
-@HiltViewModel
-class ConfiguracionViewModel @Inject constructor(
-    private val preferenciasRepository: PreferenciasRepository
-) : ViewModel() {
+/**
+ * Una interfaz para facilitar los tests del ConfiguracionViewModel
+ */
+interface IPreferenciasRepository {
+    val temaPreferencia: Flow<TemaPref>
+    suspend fun setTemaPreferencia(tema: TemaPref)
+}
+
+/**
+ * Adaptador para PreferenciasRepository
+ */
+class PreferenciasRepositoryAdapter(
+    private val repository: PreferenciasRepository
+) : IPreferenciasRepository {
+    override val temaPreferencia = repository.temaPreferencia
+    override suspend fun setTemaPreferencia(tema: TemaPref) = repository.setTemaPreferencia(tema)
+}
+
+/**
+ * Base abstracta del ConfiguracionViewModel
+ */
+abstract class ConfiguracionViewModelBase : ViewModel() {
+    protected abstract val preferenciasRepository: IPreferenciasRepository
 
     private val _uiState = MutableStateFlow(ConfiguracionUiState())
     val uiState: StateFlow<ConfiguracionUiState> = _uiState.asStateFlow()
@@ -58,4 +78,21 @@ class ConfiguracionViewModel @Inject constructor(
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
-} 
+}
+
+/**
+ * ViewModel para producción (inyectado por Hilt)
+ */
+@HiltViewModel
+class ConfiguracionViewModel @Inject constructor(
+    repository: PreferenciasRepository
+) : ConfiguracionViewModelBase() {
+    override val preferenciasRepository: IPreferenciasRepository = PreferenciasRepositoryAdapter(repository)
+}
+
+/**
+ * ViewModel para pruebas y previsualizaciones
+ */
+class TestConfiguracionViewModel(
+    override val preferenciasRepository: IPreferenciasRepository
+) : ConfiguracionViewModelBase() 

@@ -102,7 +102,7 @@ import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
-import com.tfg.umeegunero.feature.common.components.FormProgressIndicator
+import com.tfg.umeegunero.feature.common.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -287,7 +287,8 @@ fun AddCentroScreenContent(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     FormProgressIndicator(
-                        porcentaje = calcularPorcentajeCompletado(uiState),
+                        currentStep = (calcularPorcentajeCompletado(uiState) * 10).toInt(),
+                        totalSteps = 10,
                         modifier = Modifier
                             .fillMaxWidth(0.9f)
                     )
@@ -902,8 +903,7 @@ fun CiudadDropdown(
             ),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
+                .fillMaxWidth(),
             placeholder = { Text("Seleccione una ciudad", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) }
         )
 
@@ -971,8 +971,7 @@ fun ProvinciaDropdown(
             ),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
+                .fillMaxWidth(),
             placeholder = { Text("Seleccione una provincia", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) }
         )
 

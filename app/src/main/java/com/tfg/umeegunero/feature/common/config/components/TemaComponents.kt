@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.common.components
+package com.tfg.umeegunero.feature.common.config.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column

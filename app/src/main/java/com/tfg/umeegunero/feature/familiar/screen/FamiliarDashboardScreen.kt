@@ -97,9 +97,11 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
-import com.tfg.umeegunero.feature.common.viewmodel.ConfiguracionViewModel
-import com.tfg.umeegunero.feature.common.components.TemaSelector
-import com.tfg.umeegunero.feature.common.components.TemaActual
+import com.tfg.umeegunero.feature.common.config.components.TemaSelector
+import com.tfg.umeegunero.feature.common.config.components.TemaActual
+import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
+import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
+import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -389,7 +391,7 @@ fun FamiliarDashboardContent(
                 profesores = profesores,
                 onNavigateToChat = onNavigateToChat
             )
-            4 -> ConfiguracionContent()
+            4 -> ConfiguracionFamiliarContent()
             else -> FamiliarHomeContent(
                 hijoSeleccionado = hijoSeleccionado,
                 registrosActividad = registrosActividad,
@@ -1127,156 +1129,15 @@ fun ChatItem(
 }
 
 @Composable
-fun ConfiguracionContent(
-    viewModel: ConfiguracionViewModel = hiltViewModel()
-) {
-    val uiState = viewModel.uiState.collectAsState().value
-    val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Efecto para mostrar errores
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
-        }
-    }
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Configuración Familiar",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
-        
-        TemaSelector(
-            temaSeleccionado = uiState.temaSeleccionado,
-            onTemaSeleccionado = { viewModel.setTema(it) }
-        )
-        
-        TemaActual(
-            temaSeleccionado = uiState.temaSeleccionado
-        )
-        
-        // Más configuraciones pendientes
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Próximas funcionalidades",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = "• Gestión de perfil familiar completo\n" +
-                           "• Opciones de privacidad y compartición de datos\n" +
-                           "• Configuración de notificaciones\n" +
-                           "• Opciones de accesibilidad\n" +
-                           "• Gestión de dispositivos autorizados\n" +
-                           "• Sincronización con calendario familiar",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-            }
-        }
-    }
+fun ConfiguracionFamiliarContent() {
+    ConfiguracionScreen(perfil = PerfilConfiguracion.FAMILIAR)
 }
 
 @Preview(showBackground = true)
 @Composable
-fun ConfiguracionFamiliarPreview() {
+fun ConfiguracionFamiliarPreviewNew() {
     UmeEguneroTheme {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Configuración Familiar", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                // Para la vista previa usamos un mockup sin ViewModel real
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Configuración Familiar",
-                        style = MaterialTheme.typography.headlineMedium,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 24.dp)
-                    )
-                    
-                    // Mock de componentes para la vista previa
-                    TemaSelector(
-                        temaSeleccionado = TemaPref.SYSTEM,
-                        onTemaSeleccionado = { }
-                    )
-                    
-                    TemaActual(
-                        temaSeleccionado = TemaPref.SYSTEM
-                    )
-                    
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Próximas funcionalidades",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text(
-                                text = "• Gestión de perfil familiar completo\n" +
-                                       "• Opciones de privacidad y compartición de datos\n" +
-                                       "• Configuración de notificaciones\n" +
-                                       "• Opciones de accesibilidad\n" +
-                                       "• Gestión de dispositivos autorizados\n" +
-                                       "• Sincronización con calendario familiar",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        ConfiguracionScreen(perfil = PerfilConfiguracion.FAMILIAR)
     }
 }
 

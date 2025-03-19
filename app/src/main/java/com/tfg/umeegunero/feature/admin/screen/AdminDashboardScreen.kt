@@ -80,18 +80,20 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardUiState
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
-import com.tfg.umeegunero.feature.common.viewmodel.ConfiguracionUiState
-import com.tfg.umeegunero.feature.common.viewmodel.ConfiguracionViewModel
+import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.ui.theme.getNombreTema
-import com.tfg.umeegunero.feature.common.components.TemaSelector
-import com.tfg.umeegunero.feature.common.components.TemaActual
+import com.tfg.umeegunero.feature.common.config.components.TemaSelector
+import com.tfg.umeegunero.feature.common.config.components.TemaActual
+import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
+import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 import kotlinx.coroutines.launch
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -756,76 +758,8 @@ fun VinculacionesContent() {
 }
 
 @Composable
-fun ConfiguracionContent(
-    viewModel: ConfiguracionViewModel = hiltViewModel()
-) {
-    val uiState = viewModel.uiState.collectAsState().value
-    val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Efecto para mostrar errores
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
-        }
-    }
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Configuración",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
-        
-        TemaSelector(
-            temaSeleccionado = uiState.temaSeleccionado,
-            onTemaSeleccionado = { viewModel.setTema(it) }
-        )
-        
-        TemaActual(
-            temaSeleccionado = uiState.temaSeleccionado
-        )
-        
-        // Más configuraciones pendientes (tarjeta con las futuras funcionalidades)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Próximamente",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = "• Gestión completa de parámetros del sistema\n" +
-                           "• Paneles de administración de servicios cloud\n" +
-                           "• Estadísticas de uso y rendimiento\n" +
-                           "• Sistema de auditoría y registros de seguridad\n" +
-                           "• Configuración de copias de seguridad\n" +
-                           "• Personalización de la experiencia por defecto",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-            }
-        }
-    }
+fun ConfiguracionContent() {
+    ConfiguracionScreen(perfil = PerfilConfiguracion.ADMIN)
 }
 
 @Composable
