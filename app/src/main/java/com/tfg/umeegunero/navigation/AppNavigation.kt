@@ -169,7 +169,7 @@ fun AppNavigation(
         composable(route = AppScreens.AddCentro.route) {
             AddCentroScreen(
                 viewModel = hiltViewModel(),
-                onNavigateBack = { navController.popBackStack() }
+                navController = navController
             )
         }
 
@@ -186,7 +186,7 @@ fun AppNavigation(
 
             AddCentroScreen(
                 viewModel = hiltViewModel(),
-                onNavigateBack = { navController.popBackStack() }
+                navController = navController
             )
         }
 

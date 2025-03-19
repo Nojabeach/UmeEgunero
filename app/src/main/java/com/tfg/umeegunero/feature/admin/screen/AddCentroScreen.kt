@@ -33,8 +33,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationCity
@@ -93,6 +95,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
@@ -100,7 +103,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.data.model.Direccion
-import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
+import com.tfg.umeegunero.data.model.Contacto
+import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
 import com.tfg.umeegunero.feature.common.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -122,6 +126,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.MenuAnchorType
+import com.tfg.umeegunero.feature.admin.viewmodel.AdminCentroUsuario
+import androidx.compose.material3.AlertDialog
+import androidx.navigation.NavController
 
 // Datos para provincias con soporte multilingüe
 data class Provincia(
@@ -161,7 +168,7 @@ data class Municipio(
 @Composable
 fun AddCentroScreen(
     viewModel: AddCentroViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    navController: NavController
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val provinciasLista by viewModel.provincias.collectAsState()
@@ -175,8 +182,35 @@ fun AddCentroScreen(
             // Volver atrás después de un breve retraso
             scope.launch {
                 kotlinx.coroutines.delay(500)
-                onNavigateBack()
+                navController.popBackStack()
             }
+        }
+    }
+
+    val onGuardarClick: (String, Boolean) -> Unit = { centroId, isDeleting ->
+        if (isDeleting) {
+            // Lógica de eliminación de centro
+            viewModel.deleteCentro(centroId)
+            navController.popBackStack()
+        } else {
+            // Lógica de guardado o actualización de centro
+            val centro = Centro(
+                id = uiState.id.ifBlank { "" }, // Usar un valor por defecto si está en blanco
+                nombre = uiState.nombre,
+                direccion = Direccion(
+                    calle = uiState.calle,
+                    numero = uiState.numero,
+                    codigoPostal = uiState.codigoPostal,
+                    ciudad = uiState.ciudad,
+                    provincia = uiState.provincia
+                ),
+                contacto = Contacto(
+                    telefono = uiState.telefono,
+                    email = uiState.adminCentro.firstOrNull()?.email ?: ""
+                )
+            )
+
+            viewModel.saveCentro(centro)
         }
     }
 
@@ -191,23 +225,28 @@ fun AddCentroScreen(
         onCiudadChange = viewModel::updateCiudad,
         onProvinciaChange = viewModel::updateProvincia,
         onTelefonoChange = viewModel::updateTelefono,
-        onEmailChange = viewModel::updateEmail,
-        onPasswordChange = viewModel::updatePassword,
-        onConfirmPasswordChange = viewModel::updateConfirmPassword,
         onCiudadSelected = viewModel::seleccionarCiudad,
         onToggleMapa = viewModel::toggleMapa,
-        onGuardarClick = viewModel::saveCentro,
-        onCancelarClick = onNavigateBack,
-        onErrorDismiss = viewModel::clearError
+        onGuardarClick = onGuardarClick,
+        onCancelarClick = { navController.popBackStack() },
+        onErrorDismiss = viewModel::clearError,
+        onAddAdminCentro = viewModel::addAdminCentro,
+        onRemoveAdminCentro = viewModel::removeAdminCentro,
+        onUpdateAdminCentroDni = viewModel::updateAdminCentroDni,
+        onUpdateAdminCentroNombre = viewModel::updateAdminCentroNombre,
+        onUpdateAdminCentroApellidos = viewModel::updateAdminCentroApellidos,
+        onUpdateAdminCentroEmail = viewModel::updateAdminCentroEmail,
+        onUpdateAdminCentroTelefono = viewModel::updateAdminCentroTelefono,
+        onUpdateAdminCentroPassword = viewModel::updateAdminCentroPassword
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCentroScreenContent(
-    uiState: AddCentroUiState,
+    uiState: AddCentroViewModel.AddCentroState,
     provincias: List<String>,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    snackbarHostState: SnackbarHostState,
     onNombreChange: (String) -> Unit,
     onCalleChange: (String) -> Unit,
     onNumeroChange: (String) -> Unit,
@@ -215,14 +254,19 @@ fun AddCentroScreenContent(
     onCiudadChange: (String) -> Unit,
     onProvinciaChange: (String) -> Unit,
     onTelefonoChange: (String) -> Unit,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onConfirmPasswordChange: (String) -> Unit,
     onCiudadSelected: (Ciudad) -> Unit,
     onToggleMapa: () -> Unit,
-    onGuardarClick: () -> Unit,
+    onGuardarClick: (String, Boolean) -> Unit,
     onCancelarClick: () -> Unit,
-    onErrorDismiss: () -> Unit
+    onErrorDismiss: () -> Unit,
+    onAddAdminCentro: () -> Unit,
+    onRemoveAdminCentro: (Int) -> Unit,
+    onUpdateAdminCentroDni: (Int, String) -> Unit,
+    onUpdateAdminCentroNombre: (Int, String) -> Unit,
+    onUpdateAdminCentroApellidos: (Int, String) -> Unit,
+    onUpdateAdminCentroEmail: (Int, String) -> Unit,
+    onUpdateAdminCentroTelefono: (Int, String) -> Unit,
+    onUpdateAdminCentroPassword: (Int, String) -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -231,7 +275,7 @@ fun AddCentroScreenContent(
         uiState.error?.let {
             snackbarHostState.showSnackbar(
                 message = it,
-                duration = SnackbarDuration.Short
+                duration = SnackbarDuration.Long
             )
             onErrorDismiss()
         }
@@ -396,15 +440,15 @@ fun AddCentroScreenContent(
 
                     // Sección de contacto con diseño mejorado
                     SectionCard(
-                        title = "Datos de Contacto",
-                        subtitle = "Información para comunicaciones oficiales",
+                        title = "Datos de Contacto del Centro",
+                        subtitle = "Número de contacto general",
                         icon = Icons.Default.Phone,
                         accentColor = MaterialTheme.colorScheme.tertiary
                     ) {
                         EnhancedFormTextField(
                             value = uiState.telefono,
                             onValueChange = onTelefonoChange,
-                            label = "Teléfono de contacto",
+                            label = "Teléfono de contacto del centro",
                             error = uiState.telefonoError,
                             icon = Icons.Default.Phone,
                             modifier = Modifier
@@ -413,146 +457,185 @@ fun AddCentroScreenContent(
                             keyboardType = KeyboardType.Phone,
                             placeholder = "Ej: 944123456"
                         )
-
-                        EnhancedFormTextField(
-                            value = uiState.email,
-                            onValueChange = onEmailChange,
-                            label = "Email del centro",
-                            error = uiState.emailError,
-                            icon = Icons.Default.Email,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            keyboardType = KeyboardType.Email,
-                            placeholder = "Ej: secretaria@centro.edu.es"
-                        )
                     }
 
-                    // Sección de contraseñas (solo para nuevos centros)
+                    // Línea horizontal de división
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    ) {}
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Sección de administradores del centro
                     if (uiState.id.isBlank()) {
-                        Spacer(modifier = Modifier.height(24.dp))
-
                         SectionCard(
-                            title = "Cuenta de Acceso",
-                            subtitle = "Credenciales para el portal del centro",
-                            icon = Icons.Default.Lock,
-                            accentColor = MaterialTheme.colorScheme.secondary
+                            title = "Administradores del Centro",
+                            subtitle = "Debe tener al menos un administrador",
+                            icon = Icons.Default.School,
+                            modifier = Modifier.padding(bottom = 16.dp)
                         ) {
-                            var passwordVisible by remember { mutableStateOf(false) }
-                            var confirmPasswordVisible by remember { mutableStateOf(false) }
-
-                            EnhancedFormTextField(
-                                value = uiState.password,
-                                onValueChange = onPasswordChange,
-                                label = "Contraseña",
-                                error = uiState.passwordError,
-                                icon = Icons.Default.Lock,
-                                trailingIcon = {
-                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                        Icon(
-                                            imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
-                                        )
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp),
-                                keyboardType = KeyboardType.Password,
-                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
-                            )
-
-                            EnhancedFormTextField(
-                                value = uiState.confirmPassword,
-                                onValueChange = onConfirmPasswordChange,
-                                label = "Confirmar Contraseña",
-                                error = uiState.confirmPasswordError,
-                                icon = Icons.Default.Lock,
-                                trailingIcon = {
-                                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                                        Icon(
-                                            imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
-                                        )
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                keyboardType = KeyboardType.Password,
-                                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
+                            // Explicación sobre el administrador principal
+                            Text(
+                                text = "El primer administrador será el administrador principal del centro. El email y la contraseña de este administrador serán las credenciales de acceso del centro.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 16.dp)
                             )
                             
-                            // Texto informativo sobre las contraseñas
-                            Text(
-                                text = "La contraseña debe contener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
+                            // Mostrar una tarjeta por cada administrador
+                            uiState.adminCentro.forEachIndexed { index, admin ->
+                                AdminCentroCard(
+                                    admin = admin,
+                                    index = index,
+                                    canDelete = uiState.adminCentro.size > 1,
+                                    onDniChange = { onUpdateAdminCentroDni(index, it) },
+                                    onNombreChange = { onUpdateAdminCentroNombre(index, it) },
+                                    onApellidosChange = { onUpdateAdminCentroApellidos(index, it) },
+                                    onEmailChange = { onUpdateAdminCentroEmail(index, it) },
+                                    onTelefonoChange = { onUpdateAdminCentroTelefono(index, it) },
+                                    onPasswordChange = { onUpdateAdminCentroPassword(index, it) },
+                                    onRemove = { onRemoveAdminCentro(index) },
+                                    isPrimary = index == 0
+                                )
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                            
+                            // Botón para añadir más administradores
+                            Button(
+                                onClick = onAddAdminCentro,
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .align(Alignment.CenterHorizontally),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Añadir Administrador")
+                            }
+                            
+                            // Mostrar error si lo hay
+                            if (uiState.adminCentroError != null) {
+                                Text(
+                                    text = uiState.adminCentroError,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Botones de acción mejorados
+            // Botones de acción
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedButton(
-                    onClick = onCancelarClick,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    contentPadding = PaddingValues(vertical = 16.dp)
+                Button(
+                    onClick = { onCancelarClick() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Cancelar",
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Medium
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Cancelar")
+                }
+                
+                if (uiState.id.isNotBlank()) {
+                    var showDeleteDialog by remember { mutableStateOf(false) }
+                    
+                    Button(
+                        onClick = { showDeleteDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
                         )
-                    )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Eliminar")
+                    }
+                    
+                    if (showDeleteDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showDeleteDialog = false },
+                            title = { Text("Eliminar centro") },
+                            text = { 
+                                Text(
+                                    "¿Está seguro de que desea eliminar este centro? " +
+                                    "Esta acción eliminará permanentemente el centro y todos sus datos asociados " +
+                                    "(usuarios, alumnos, clases, cursos, etc.) y no puede deshacerse."
+                                ) 
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        onGuardarClick(uiState.id, true)
+                                        showDeleteDialog = false
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Text("Eliminar")
+                                }
+                            },
+                            dismissButton = {
+                                OutlinedButton(onClick = { showDeleteDialog = false }) {
+                                    Text("Cancelar")
+                                }
+                            }
+                        )
+                    }
                 }
 
                 Button(
-                    onClick = onGuardarClick,
-                    modifier = Modifier.weight(1f),
-                    enabled = uiState.isFormValid && !uiState.isLoading,
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(vertical = 16.dp),
+                    onClick = { onGuardarClick(uiState.id, false) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    enabled = calcularPorcentajeCompletado(uiState) >= 0.7f && !uiState.isLoading,
+                    modifier = Modifier.weight(1f)
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(18.dp),
                             color = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.Save,
-                            contentDescription = null
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Guardar Centro",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.Medium
-                            )
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = if (uiState.id.isBlank()) "Guardar" else "Actualizar")
                 }
             }
         }
@@ -730,7 +813,7 @@ fun EnhancedFormTextField(
 
 @Composable
 fun DireccionSection(
-    uiState: AddCentroUiState,
+    uiState: AddCentroViewModel.AddCentroState,
     onCalleChange: (String) -> Unit,
     onNumeroChange: (String) -> Unit,
     onCodigoPostalChange: (String) -> Unit,
@@ -851,12 +934,12 @@ fun DireccionSection(
         )
 
         // Mostrar mapa con la ubicación si tenemos coordenadas - Diseño más atractivo
-        if (uiState.tieneUbicacionValida) {
+        if (uiState.latitud != null && uiState.longitud != null) {
             MapaUbicacionSection(
                 mostrarMapa = uiState.mostrarMapa,
                 onToggleMapa = onToggleMapa,
-                latitud = uiState.latitud!!,
-                longitud = uiState.longitud!!,
+                latitud = uiState.latitud,
+                longitud = uiState.longitud,
                 direccionCompleta = uiState.direccionCompleta
             )
         }
@@ -1045,7 +1128,7 @@ fun MapaUbicacionSection(
         MapaUbicacion(
             latitud = latitud,
             longitud = longitud,
-            direccion = direccionCompleta,
+            direccionCompleta = direccionCompleta,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
@@ -1059,7 +1142,7 @@ fun MapaUbicacionSection(
 fun MapaUbicacion(
     latitud: Double,
     longitud: Double,
-    direccion: String,
+    direccionCompleta: String,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -1110,7 +1193,7 @@ fun MapaUbicacion(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = direccion,
+                text = direccionCompleta,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1121,7 +1204,7 @@ fun MapaUbicacion(
             Button(
                 onClick = {
                     // Abrir Google Maps con las coordenadas
-                    val gmmIntentUri = Uri.parse("geo:$latitud,$longitud?q=$latitud,$longitud($direccion)")
+                    val gmmIntentUri = Uri.parse("geo:$latitud,$longitud?q=$latitud,$longitud($direccionCompleta)")
                     val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                     mapIntent.setPackage("com.google.android.apps.maps")
 
@@ -1160,38 +1243,14 @@ fun MapaUbicacion(
     }
 }
 
-// Función para calcular el progreso del formulario
-private fun calculateFormProgress(uiState: AddCentroUiState): Float {
-    var fieldsCompleted = 0
-    var totalFields = 7 // Campos obligatorios básicos
-
-    // Verificar campos básicos
-    if (uiState.nombre.isNotBlank()) fieldsCompleted++
-    if (uiState.calle.isNotBlank()) fieldsCompleted++
-    if (uiState.numero.isNotBlank()) fieldsCompleted++
-    if (uiState.codigoPostal.isNotBlank()) fieldsCompleted++
-    if (uiState.ciudad.isNotBlank()) fieldsCompleted++
-    if (uiState.provincia.isNotBlank()) fieldsCompleted++
-    if (uiState.telefono.isNotBlank()) fieldsCompleted++
-
-    // Si es un nuevo centro, añadir campos de contraseña
-    if (uiState.id.isBlank()) {
-        totalFields += 2
-        if (uiState.password.isNotBlank()) fieldsCompleted++
-        if (uiState.confirmPassword.isNotBlank()) fieldsCompleted++
-    }
-
-    return fieldsCompleted.toFloat() / totalFields.toFloat()
-}
-
 /**
  * Calcula el porcentaje de completado del formulario para añadir o editar un centro
  * @param uiState Estado actual del formulario
  * @return Valor entre 0.0 y 1.0 que representa el porcentaje de completado
  */
-private fun calcularPorcentajeCompletado(uiState: AddCentroUiState): Float {
+private fun calcularPorcentajeCompletado(uiState: AddCentroViewModel.AddCentroState): Float {
     var camposCompletados = 0
-    var camposTotales = 8 // Campos principales obligatorios
+    var camposTotales = 6 // Campos principales obligatorios
 
     // Verificar campos principales
     if (uiState.nombre.isNotBlank()) camposCompletados++
@@ -1200,29 +1259,34 @@ private fun calcularPorcentajeCompletado(uiState: AddCentroUiState): Float {
     if (uiState.codigoPostal.isNotBlank()) camposCompletados++
     if (uiState.ciudad.isNotBlank()) camposCompletados++
     if (uiState.provincia.isNotBlank()) camposCompletados++
-    if (uiState.telefono.isNotBlank()) camposCompletados++
-    if (uiState.email.isNotBlank()) camposCompletados++
 
-    // Si es un nuevo centro, verificar las contraseñas
-    if (uiState.id.isBlank()) {
-        camposTotales += 2
-        if (uiState.password.isNotBlank()) camposCompletados++
-        if (uiState.confirmPassword.isNotBlank()) camposCompletados++
+    // Verificar administradores (al menos uno con datos válidos)
+    var adminCompletados = 0
+    var adminTotales = uiState.adminCentro.size * 5 // DNI, nombre, apellidos, email, password
+
+    uiState.adminCentro.forEach { admin ->
+        if (admin.dni.isNotBlank()) adminCompletados++
+        if (admin.nombre.isNotBlank()) adminCompletados++
+        if (admin.apellidos.isNotBlank()) adminCompletados++
+        if (admin.email.isNotBlank()) adminCompletados++
+        if (admin.password.isNotBlank()) adminCompletados++
     }
 
-    // Si hay errores en algún campo, reducir el porcentaje proporcionalmente
-    val errores = countErrors(uiState)
-
-    // Calcular porcentaje considerando también la ausencia de errores
-    return (camposCompletados.toFloat() / camposTotales.toFloat()) * (1.0f - (errores.toFloat() / camposTotales.toFloat()))
+    // Calcular porcentaje considerando tanto los campos básicos como los administradores
+    val porcentajeCamposBasicos = camposCompletados.toFloat() / camposTotales.toFloat()
+    val porcentajeAdmins = adminCompletados.toFloat() / adminTotales.toFloat()
+    
+    // Combinar ambos porcentajes (dando más peso a los campos básicos)
+    return (porcentajeCamposBasicos * 0.6f) + (porcentajeAdmins * 0.4f)
 }
 
 /**
  * Cuenta el número de errores en el estado del formulario
  */
-private fun countErrors(uiState: AddCentroUiState): Int {
+private fun countErrors(uiState: AddCentroViewModel.AddCentroState): Int {
     var errores = 0
 
+    // Errores en los campos básicos
     if (uiState.nombreError != null) errores++
     if (uiState.calleError != null) errores++
     if (uiState.numeroError != null) errores++
@@ -1230,11 +1294,17 @@ private fun countErrors(uiState: AddCentroUiState): Int {
     if (uiState.ciudadError != null) errores++
     if (uiState.provinciaError != null) errores++
     if (uiState.telefonoError != null) errores++
-    if (uiState.emailError != null) errores++
-
-    if (uiState.id.isBlank()) {
-        if (uiState.passwordError != null) errores++
-        if (uiState.confirmPasswordError != null) errores++
+    
+    // Errores en administradores
+    if (uiState.adminCentroError != null) errores++
+    
+    uiState.adminCentro.forEach { admin ->
+        if (admin.dniError != null) errores++
+        if (admin.nombreError != null) errores++
+        if (admin.apellidosError != null) errores++
+        if (admin.emailError != null) errores++
+        if (admin.telefonoError != null) errores++
+        if (admin.passwordError != null) errores++
     }
 
     return errores
@@ -1244,7 +1314,7 @@ private fun countErrors(uiState: AddCentroUiState): Int {
 @Composable
 fun AddCentroScreenPreview() {
     // Estado para el preview con campos vacíos para mostrar los placeholders
-    val previewState = AddCentroUiState(
+    val previewState = AddCentroViewModel.AddCentroState(
         nombre = "",
         calle = "",
         numero = "",
@@ -1252,14 +1322,18 @@ fun AddCentroScreenPreview() {
         ciudad = "",
         provincia = "",
         telefono = "",
-        email = "",
-        password = "",
-        confirmPassword = "",
-        tieneUbicacionValida = true,
-        latitud = 43.2569629,
-        longitud = -2.9045053,
-        direccionCompleta = "Gabriel Aresti Bidea 8, 48004 Bilbao, Vizcaya",
-        mostrarMapa = true
+        adminCentro = listOf(
+            AdminCentroUsuario(
+                dni = "",
+                nombre = "",
+                apellidos = "",
+                email = "",
+                telefono = "",
+                password = ""
+            )
+        ),
+        latitud = null,
+        longitud = null
     )
 
     UmeEguneroTheme {
@@ -1267,6 +1341,7 @@ fun AddCentroScreenPreview() {
             AddCentroScreenContent(
                 uiState = previewState,
                 provincias = listOf("Vizcaya / Bizkaia", "Guipúzcoa / Gipuzkoa", "Álava / Araba"),
+                snackbarHostState = remember { SnackbarHostState() },
                 onNombreChange = {},
                 onCalleChange = {},
                 onNumeroChange = {},
@@ -1274,24 +1349,29 @@ fun AddCentroScreenPreview() {
                 onCiudadChange = {},
                 onProvinciaChange = {},
                 onTelefonoChange = {},
-                onEmailChange = {},
-                onPasswordChange = {},
-                onConfirmPasswordChange = {},
                 onCiudadSelected = {},
                 onToggleMapa = {},
-                onGuardarClick = {},
+                onGuardarClick = { _, _ -> },
                 onCancelarClick = {},
-                onErrorDismiss = {}
+                onErrorDismiss = {},
+                onAddAdminCentro = {},
+                onRemoveAdminCentro = { _ -> },
+                onUpdateAdminCentroDni = { _, _ -> },
+                onUpdateAdminCentroNombre = { _, _ -> },
+                onUpdateAdminCentroApellidos = { _, _ -> },
+                onUpdateAdminCentroEmail = { _, _ -> },
+                onUpdateAdminCentroTelefono = { _, _ -> },
+                onUpdateAdminCentroPassword = { _, _ -> }
             )
         }
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
+@Preview(name = "Modo oscuro", uiMode = Configuration.UI_MODE_NIGHT_YES)
 fun AddCentroScreenDarkPreview() {
     // Estado para el preview con campos vacíos para mostrar los placeholders
-    val previewState = AddCentroUiState(
+    val previewState = AddCentroViewModel.AddCentroState(
         nombre = "",
         calle = "",
         numero = "",
@@ -1299,14 +1379,18 @@ fun AddCentroScreenDarkPreview() {
         ciudad = "",
         provincia = "",
         telefono = "",
-        email = "",
-        password = "",
-        confirmPassword = "",
-        tieneUbicacionValida = true,
-        latitud = 43.3397326,
-        longitud = -3.0098376,
-        direccionCompleta = "Amaia Kalea 28, 48930 Getxo, Vizcaya",
-        mostrarMapa = true
+        adminCentro = listOf(
+            AdminCentroUsuario(
+                dni = "",
+                nombre = "",
+                apellidos = "",
+                email = "",
+                telefono = "",
+                password = ""
+            )
+        ),
+        latitud = null,
+        longitud = null
     )
 
     UmeEguneroTheme(darkTheme = true) {
@@ -1314,6 +1398,7 @@ fun AddCentroScreenDarkPreview() {
             AddCentroScreenContent(
                 uiState = previewState,
                 provincias = listOf("Vizcaya / Bizkaia", "Guipúzcoa / Gipuzkoa", "Álava / Araba"),
+                snackbarHostState = remember { SnackbarHostState() },
                 onNombreChange = {},
                 onCalleChange = {},
                 onNumeroChange = {},
@@ -1321,15 +1406,261 @@ fun AddCentroScreenDarkPreview() {
                 onCiudadChange = {},
                 onProvinciaChange = {},
                 onTelefonoChange = {},
-                onEmailChange = {},
-                onPasswordChange = {},
-                onConfirmPasswordChange = {},
                 onCiudadSelected = {},
                 onToggleMapa = {},
-                onGuardarClick = {},
+                onGuardarClick = { _, _ -> },
                 onCancelarClick = {},
-                onErrorDismiss = {}
+                onErrorDismiss = {},
+                onAddAdminCentro = {},
+                onRemoveAdminCentro = { _ -> },
+                onUpdateAdminCentroDni = { _, _ -> },
+                onUpdateAdminCentroNombre = { _, _ -> },
+                onUpdateAdminCentroApellidos = { _, _ -> },
+                onUpdateAdminCentroEmail = { _, _ -> },
+                onUpdateAdminCentroTelefono = { _, _ -> },
+                onUpdateAdminCentroPassword = { _, _ -> }
             )
         }
     }
+}
+
+/**
+ * Componente para mostrar una tarjeta de administrador de centro
+ */
+@Composable
+fun AdminCentroCard(
+    admin: AdminCentroUsuario,
+    index: Int,
+    canDelete: Boolean,
+    onDniChange: (String) -> Unit,
+    onNombreChange: (String) -> Unit,
+    onApellidosChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onTelefonoChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onRemove: () -> Unit,
+    isPrimary: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPrimary) 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            else 
+                MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isPrimary) 2.dp else 1.dp
+        ),
+        border = if (isPrimary) 
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+        else
+            null
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Header de la tarjeta
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isPrimary) "Administrador Principal" else "Administrador ${index + 1}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    if (isPrimary) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            Text(
+                                text = "Credenciales de acceso",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                
+                if (canDelete) {
+                    IconButton(onClick = onRemove) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar administrador",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+            
+            if (isPrimary) {
+                Text(
+                    text = "Este administrador tendrá acceso principal al centro",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Campos de datos
+            OutlinedTextField(
+                value = admin.dni,
+                onValueChange = onDniChange,
+                label = { Text("DNI") },
+                isError = admin.dniError != null,
+                supportingText = { 
+                    if (admin.dniError != null) {
+                        Text(admin.dniError)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+            
+            OutlinedTextField(
+                value = admin.nombre,
+                onValueChange = onNombreChange,
+                label = { Text("Nombre") },
+                isError = admin.nombreError != null,
+                supportingText = { 
+                    if (admin.nombreError != null) {
+                        Text(admin.nombreError)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+            
+            OutlinedTextField(
+                value = admin.apellidos,
+                onValueChange = onApellidosChange,
+                label = { Text("Apellidos") },
+                isError = admin.apellidosError != null,
+                supportingText = { 
+                    if (admin.apellidosError != null) {
+                        Text(admin.apellidosError)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+            
+            OutlinedTextField(
+                value = admin.email,
+                onValueChange = onEmailChange,
+                label = { Text(if (isPrimary) "Email (acceso al centro)" else "Email") },
+                isError = admin.emailError != null,
+                supportingText = { 
+                    if (admin.emailError != null) {
+                        Text(admin.emailError)
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+            
+            OutlinedTextField(
+                value = admin.telefono,
+                onValueChange = onTelefonoChange,
+                label = { Text("Teléfono (opcional)") },
+                isError = admin.telefonoError != null,
+                supportingText = { 
+                    if (admin.telefonoError != null) {
+                        Text(admin.telefonoError)
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+            
+            var passwordVisible by remember { mutableStateOf(false) }
+            OutlinedTextField(
+                value = admin.password,
+                onValueChange = onPasswordChange,
+                label = { Text(if (isPrimary) "Contraseña (acceso al centro)" else "Contraseña") },
+                isError = admin.passwordError != null,
+                supportingText = { 
+                    if (admin.passwordError != null) {
+                        Text(admin.passwordError)
+                    }
+                },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Campo de texto para contraseñas
+ */
+@Composable
+fun PasswordTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    error: String? = null
+) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        isError = error != null,
+        supportingText = { 
+            if (error != null) {
+                Text(error)
+            }
+        },
+        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        trailingIcon = {
+            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                Icon(
+                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                )
+            }
+        },
+        modifier = modifier
+    )
 }
