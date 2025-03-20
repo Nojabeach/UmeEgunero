@@ -47,6 +47,9 @@ import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.feature.auth.viewmodel.RecuperarPasswordViewModel
 import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
 // TODO: Mejoras pendientes para la pantalla de recuperación de contraseña
 // - Implementar verificación en dos pasos con código SMS
@@ -238,5 +241,52 @@ fun SuccessContent(
         ) {
             Text("Volver al inicio de sesión")
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RecuperarPasswordScreenPreview() {
+    UmeEguneroTheme {
+        RecuperarPasswordForm(
+            email = "usuario@example.com",
+            emailError = null,
+            onEmailChange = {},
+            onSubmit = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RecuperarPasswordScreenErrorPreview() {
+    UmeEguneroTheme {
+        RecuperarPasswordForm(
+            email = "usuarioincorrecto",
+            emailError = "El correo electrónico no es válido",
+            onEmailChange = {},
+            onSubmit = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SuccessContentPreview() {
+    UmeEguneroTheme {
+        SuccessContent(onNavigateBack = {})
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun RecuperarPasswordScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        RecuperarPasswordForm(
+            email = "usuario@example.com",
+            emailError = null,
+            onEmailChange = {},
+            onSubmit = {}
+        )
     }
 } 

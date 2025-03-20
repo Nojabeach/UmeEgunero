@@ -73,6 +73,8 @@ import kotlinx.coroutines.delay
 import com.tfg.umeegunero.ui.theme.Error
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Info
 
 // Extensión para verificar si el tema es claro
 fun ColorScheme.isLight(): Boolean {
@@ -204,18 +206,19 @@ fun WelcomeScreen(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 12.dp)
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.app_icon),
                     contentDescription = "App Logo",
                     modifier = Modifier
-                        .size(70.dp)
-                        .clip(CircleShape),
+                        .size(90.dp)
+                        .clip(CircleShape)
+                        .background(Color.White, CircleShape),
                     contentScale = ContentScale.Crop
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
                     text = "UmeEgunero",
@@ -332,40 +335,48 @@ fun WelcomeScreen(
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // Botón para contactar con soporte
-                        TextButton(
-                            onClick = { /* Aquí se implementaría la lógica para contactar con soporte */ },
-                            modifier = Modifier.fillMaxWidth()
+                        // Botones de soporte y demo en fila para ocupar menos espacio
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Build,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "¿Necesitas ayuda? Contacta con soporte",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        // Botón para ver demo
-                        TextButton(
-                            onClick = onDemoRequested,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.School,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "Ver demo de la aplicación",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
+                            // Botón para contactar con soporte
+                            TextButton(
+                                onClick = { /* Aquí se implementaría la lógica para contactar con soporte */ },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Build,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Soporte técnico",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            
+                            // Botón para ver demo
+                            TextButton(
+                                onClick = onDemoRequested,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Ver demo",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -535,6 +546,7 @@ fun LoginButtons(
     onFamiliarLogin: () -> Unit
 ) {
     val isLight = isLightTheme()
+    var showBiometricInfo by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -559,7 +571,22 @@ fun LoginButtons(
             Text(
                 "Acceso Centro",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal
+                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Información biométrica",
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickable { showBiometricInfo = true },
+                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
             )
         }
 
@@ -582,7 +609,22 @@ fun LoginButtons(
             Text(
                 "Acceso Profesor",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal
+                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Información biométrica",
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickable { showBiometricInfo = true },
+                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
             )
         }
 
@@ -605,9 +647,45 @@ fun LoginButtons(
             Text(
                 "Acceso Familiar",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal
+                fontWeight = if (isLight) FontWeight.Medium else FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Información biométrica",
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickable { showBiometricInfo = true },
+                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
             )
         }
+    }
+
+    if (showBiometricInfo) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showBiometricInfo = false },
+            title = { Text("Acceso Biométrico") },
+            text = {
+                Text(
+                    "Para utilizar el acceso biométrico:\n\n" +
+                    "1. Inicia sesión normalmente primero\n" +
+                    "2. Ve a Configuración > Seguridad\n" +
+                    "3. Activa la autenticación biométrica\n" +
+                    "4. La próxima vez podrás acceder usando tu huella dactilar"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showBiometricInfo = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
     }
 }
 
@@ -644,7 +722,7 @@ fun isLightTheme(): Boolean {
 
 // Diálogo de selección de idioma
 @Composable
-fun LanguageSelectionDialog(
+private fun LanguageSelectionDialog(
     onLanguageSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {

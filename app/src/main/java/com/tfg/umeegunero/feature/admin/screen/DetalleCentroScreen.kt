@@ -62,6 +62,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.admin.viewmodel.DetalleCentroViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import com.google.firebase.Timestamp
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -585,4 +590,66 @@ data class InfoItem(
     val icon: ImageVector,
     val title: String,
     val content: String
-) 
+)
+
+@Preview(showBackground = true)
+@Composable
+fun DetalleCentroScreenPreview() {
+    UmeEguneroTheme {
+        // Simplemente mostrar un componente estático para el preview
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "IES Valle Inclán",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Información General", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Dirección: Calle Principal 123, 28001 Madrid")
+                    Text("Teléfono: 912345678")
+                    Text("Email: contacto@valleinclan.edu")
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun DetalleCentroScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        // Simplemente mostrar un componente estático para el preview
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "IES Valle Inclán",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Información General", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Dirección: Calle Principal 123, 28001 Madrid")
+                    Text("Teléfono: 912345678")
+                    Text("Email: contacto@valleinclan.edu")
+                }
+            }
+        }
+    }
+} 

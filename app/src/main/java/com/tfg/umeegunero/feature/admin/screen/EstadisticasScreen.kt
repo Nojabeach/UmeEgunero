@@ -32,6 +32,10 @@ import java.time.format.TextStyle
 import java.util.*
 import kotlin.math.min
 import kotlin.random.Random
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
+import androidx.navigation.compose.rememberNavController
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
 /**
  * Pantalla que muestra estadísticas del sistema
@@ -660,4 +664,154 @@ data class PieChartData(
     val label: String,
     val value: Float,
     val color: Color
-) 
+)
+
+// Añadir previews para la pantalla de estadísticas
+@Preview(showBackground = true)
+@Composable
+fun EstadisticasPreview() {
+    UmeEguneroTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Estadísticas del Sistema",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Resumen de Actividad",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        // Indicador de estadística
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Usuarios",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            
+                            Text(
+                                text = "356",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        // Indicador de estadística
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Centros",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            
+                            Text(
+                                text = "12",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        // Indicador de estadística
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Actividad",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            
+                            Text(
+                                text = "87%",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun EstadisticasPreviewDark() {
+    UmeEguneroTheme(darkTheme = true) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Estadísticas del Sistema",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Resumen de Actividad",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun IndicadorProgressPreview() {
+    UmeEguneroTheme {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(80.dp)
+        ) {
+            CircularProgressIndicator(
+                progress = { 0.75f },
+                strokeWidth = 8.dp,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            Text(
+                text = "75%",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+} 

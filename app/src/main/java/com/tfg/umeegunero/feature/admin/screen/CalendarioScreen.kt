@@ -33,6 +33,10 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.*
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.navigation.compose.rememberNavController
 
 /**
  * Pantalla de gestión del calendario escolar
@@ -483,4 +487,72 @@ data class EventoCalendario(
     val fecha: java.time.LocalDateTime,
     val tipo: TipoEvento,
     val descripcion: String
-) 
+)
+
+@Preview(showBackground = true)
+@Composable
+fun CalendarioScreenPreview() {
+    UmeEguneroTheme {
+        CalendarioScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun CalendarioScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        CalendarioScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EventoCalendarioItemPreview() {
+    UmeEguneroTheme {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = TipoEvento.REUNION.color.copy(alpha = 0.1f)
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(
+                            color = TipoEvento.REUNION.color,
+                            shape = MaterialTheme.shapes.small
+                        )
+                )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Reunión",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Text(
+                        text = "Evaluación del primer trimestre",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+} 

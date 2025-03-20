@@ -23,6 +23,10 @@ import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.navigation.compose.rememberNavController
 
 /**
  * Pantalla para editar un centro educativo existente
@@ -408,4 +412,98 @@ private fun isFormValid(state: com.tfg.umeegunero.feature.admin.viewmodel.AddCen
            state.ciudad.isNotBlank() && state.ciudadError == null &&
            state.provincia.isNotBlank() && state.provinciaError == null &&
            (state.telefono.isBlank() || state.telefonoError == null)
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EditCentroScreenPreview() {
+    UmeEguneroTheme {
+        // Simplemente mostrar un formulario básico para el preview
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Editar Centro Educativo",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            OutlinedTextField(
+                value = "IES Valle Inclán",
+                onValueChange = { },
+                label = { Text("Nombre del centro") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            OutlinedTextField(
+                value = "Calle Principal",
+                onValueChange = { },
+                label = { Text("Dirección") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            OutlinedTextField(
+                value = "28001 Madrid",
+                onValueChange = { },
+                label = { Text("Código Postal y Ciudad") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun EditCentroScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        // Simplemente mostrar un formulario básico para el preview
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Editar Centro Educativo",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            OutlinedTextField(
+                value = "IES Valle Inclán",
+                onValueChange = { },
+                label = { Text("Nombre del centro") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            OutlinedTextField(
+                value = "Calle Principal",
+                onValueChange = { },
+                label = { Text("Dirección") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            OutlinedTextField(
+                value = "28001 Madrid",
+                onValueChange = { },
+                label = { Text("Código Postal y Ciudad") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 } 
