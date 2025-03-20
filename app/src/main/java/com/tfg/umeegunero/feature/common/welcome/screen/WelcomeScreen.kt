@@ -1,5 +1,8 @@
 package com.tfg.umeegunero.feature.common.welcome.screen
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
 import android.content.res.Configuration
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -55,7 +58,8 @@ fun WelcomeScreen(
     onNavigateToLogin: (WelcomeUserType) -> Unit,
     onNavigateToRegister: () -> Unit,
     onCloseApp: () -> Unit,
-    onDemoRequested: () -> Unit = {}
+    onDemoRequested: () -> Unit = {},
+    onNavigateToSupport: () -> Unit = {}
 ) {
     // TODO: Mejoras pendientes para la pantalla de Bienvenida
     // - Implementar un vídeo de fondo o animaciones más atractivas
@@ -67,6 +71,7 @@ fun WelcomeScreen(
     // - Añadir modo demo de la aplicación (IMPLEMENTADO)
     // - Mejorar transiciones y animaciones
     // - Añadir soporte para autenticación biométrica (UI IMPLEMENTADA)
+    // - Añadir el poder mandar email a soporte local
     
     val isLight = MaterialTheme.colorScheme.isLight()
     val gradientColors = if (isLight) {
@@ -281,11 +286,10 @@ fun WelcomeScreen(
                         
                         // Botón para contactar con soporte
                         Button(
-                            onClick = { /* Lógica para contactar con soporte */ },
+                            onClick = onNavigateToSupport,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
-                                .padding(bottom = 8.dp),
+                                .height(48.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                             ),
@@ -299,30 +303,6 @@ fun WelcomeScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 "Soporte técnico local",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        
-                        // Botón para ver demo
-                        Button(
-                            onClick = onDemoRequested,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.School,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Ver video demo",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
@@ -696,20 +676,8 @@ fun WelcomeScreenLightPreview() {
             onNavigateToLogin = {},
             onNavigateToRegister = {},
             onCloseApp = {},
-            onDemoRequested = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun WelcomeScreenDarkPreview() {
-    UmeEguneroTheme(darkTheme = true) {
-        WelcomeScreen(
-            onNavigateToLogin = {},
-            onNavigateToRegister = {},
-            onCloseApp = {},
-            onDemoRequested = {}
+            onDemoRequested = {},
+            onNavigateToSupport = {}
         )
     }
 }

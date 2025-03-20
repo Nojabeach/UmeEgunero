@@ -3,6 +3,9 @@ package com.tfg.umeegunero.data.model
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import timber.log.Timber
+import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // Tipos de usuarios y estados
 enum class TipoUsuario {

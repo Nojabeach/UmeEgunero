@@ -144,7 +144,20 @@ object NavigationStructure {
         NavItem(
             title = "Configuración",
             icon = Icons.Filled.Settings,
-            route = AppScreens.Config.route
+            route = AppScreens.Config.route,
+            subItems = listOf(
+                NavItem(
+                    title = "Configuración General",
+                    icon = Icons.Filled.Settings,
+                    route = AppScreens.Config.route
+                ),
+                NavItem(
+                    title = "Configuración Email",
+                    icon = Icons.Filled.Email,
+                    route = AppScreens.EmailConfig.route
+                )
+            ),
+            isExpandable = true
         ),
         NavItem(
             title = "Cerrar Sesión",

@@ -68,6 +68,8 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/NOTICE.md"
+            excludes += "/META-INF/LICENSE.md"
         }
     }
 }
@@ -117,6 +119,7 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.functions)
     implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.config)
 
     // Corrutinas
     implementation(libs.kotlinx.coroutines.android)
@@ -147,6 +150,10 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+
+    // JavaMail
+    implementation("com.sun.mail:android-mail:1.6.7")
+    implementation("com.sun.mail:android-activation:1.6.7")
 }
 
 // Configuración de kapt

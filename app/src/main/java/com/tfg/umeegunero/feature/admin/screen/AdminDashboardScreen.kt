@@ -123,6 +123,10 @@ fun AdminDashboardScreen(
     navController: NavController,
     viewModel: AdminDashboardViewModel = hiltViewModel()
 ) {
+    // TODO: Mejoras pendientes para el panel de administración
+    // - Actualizar la pantalla de cambiar el tema de Android, no funciona
+    // - Crear pantalla de gestión de email y que se pueda acceder desde el menú lateral del perfil de administración
+    
     val uiState by viewModel.uiState.collectAsState()
     val currentUser = uiState.currentUser
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)

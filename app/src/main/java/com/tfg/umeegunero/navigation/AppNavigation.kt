@@ -53,6 +53,8 @@ import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
 import com.tfg.umeegunero.feature.familiar.viewmodel.FamiliarDashboardViewModel
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
 import com.tfg.umeegunero.feature.auth.screen.RecuperarPasswordScreen
+import com.tfg.umeegunero.feature.common.welcome.screen.SoporteTecnicoScreen
+import com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen
 
 /**
  * Navegación principal de la aplicación
@@ -84,10 +86,23 @@ fun AppNavigation(
                     navController.navigate(AppScreens.Registro.route)
                 },
                 onCloseApp = onCloseApp,
-                onDemoRequested = {
-                    // Navegar a una pantalla demo (podemos usar Dummy para esto)
-                    navController.navigate(AppScreens.Dummy.createRoute("Vista previa de la aplicación"))
+                onNavigateToSupport = {
+                    navController.navigate(AppScreens.SoporteTecnico.route)
                 }
+            )
+        }
+
+        // Pantalla de soporte técnico
+        composable(route = AppScreens.SoporteTecnico.route) {
+            SoporteTecnicoScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de configuración de email para el administrador
+        composable(route = AppScreens.EmailConfig.route) {
+            EmailConfigScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

@@ -7,6 +7,7 @@ sealed class AppScreens(val route: String) {
         fun createRoute(userType: String) = "login/$userType"
     }
     object Registro : AppScreens("registro")
+    object SoporteTecnico : AppScreens("soporte_tecnico")
 
     // Pantallas principales según tipo de usuario
     object AdminDashboard : AppScreens("admin_dashboard")
@@ -26,6 +27,7 @@ sealed class AppScreens(val route: String) {
         fun createRoute(isAdminApp: Boolean) = "add_user/$isAdminApp"
         fun createRoute(isAdminApp: Boolean, tipoUsuario: String) = "add_user/$isAdminApp?tipo=$tipoUsuario"
     }
+    object EmailConfig : AppScreens("email_config")
 
     // Rutas anidadas para los dashboards
     object Cursos : AppScreens("admin_dashboard/cursos")
