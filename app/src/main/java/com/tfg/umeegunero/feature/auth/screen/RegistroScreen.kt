@@ -523,18 +523,13 @@ fun RegistroScreen(
                                 apellidos = uiState.form.apellidos,
                                 telefono = uiState.form.telefono,
                                 subtipo = uiState.form.subtipo,
-                                onDniChange = { viewModel.updateFormField("dni", it) },
-                                onEmailChange = { viewModel.updateFormField("email", it) },
-                                onPasswordChange = { viewModel.updateFormField("password", it) },
-                                onConfirmPasswordChange = {
-                                    viewModel.updateFormField(
-                                        "confirmPassword",
-                                        it
-                                    )
-                                },
-                                onNombreChange = { viewModel.updateFormField("nombre", it) },
-                                onApellidosChange = { viewModel.updateFormField("apellidos", it) },
-                                onTelefonoChange = { viewModel.updateFormField("telefono", it) },
+                                onDniChange = { viewModel.updateDni(it) },
+                                onEmailChange = { viewModel.updateEmail(it) },
+                                onPasswordChange = { viewModel.updatePassword(it) },
+                                onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
+                                onNombreChange = { viewModel.updateNombre(it) },
+                                onApellidosChange = { viewModel.updateApellidos(it) },
+                                onTelefonoChange = { viewModel.updateTelefono(it) },
                                 onSubtipoChange = { viewModel.updateSubtipoFamiliar(it) },
                                 errors = uiState.formErrors
                             )
@@ -680,10 +675,6 @@ fun RegistroScreen(
         val scrollState = rememberScrollState()
         var passwordVisible by remember { mutableStateOf(false) }
         var confirmPasswordVisible by remember { mutableStateOf(false) }
-        // Validación en tiempo real
-        LaunchedEffect(dni, email, password, confirmPassword, nombre, apellidos, telefono) {
-            validateFields()
-        }
 
         Column(
             modifier = Modifier
@@ -714,11 +705,9 @@ fun RegistroScreen(
                             keyboardType = KeyboardType.Text,
                             imeAction = ImeAction.Next
                         ),
-                        isError = errors.containsKey("dni"),
+                        isError = errors["dni"] != null,
                         supportingText = {
-                            if (errors.containsKey("dni")) {
-                                Text(errors["dni"] ?: "")
-                            }
+                            errors["dni"]?.let { Text(it) }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -739,16 +728,14 @@ fun RegistroScreen(
                                 keyboardType = KeyboardType.Email,
                                 imeAction = ImeAction.Next
                             ),
-                            isError = errors.containsKey("email"),
+                            isError = errors["email"] != null,
                             supportingText = {
-                                if (errors.containsKey("email")) {
-                                    Text(errors["email"] ?: "")
-                                }
+                                errors["email"]?.let { Text(it) }
                             },
                             modifier = Modifier.weight(1f)
                         )
                         
-                        if (email.isNotEmpty() && !errors.containsKey("email")) {
+                        if (email.isNotEmpty() && errors["email"] == null) {
                             IconButton(
                                 onClick = { sendVerificationEmail() }
                             ) {
@@ -782,11 +769,9 @@ fun RegistroScreen(
                             keyboardType = KeyboardType.Password,
                             imeAction = ImeAction.Next
                         ),
-                        isError = errors.containsKey("password"),
+                        isError = errors["password"] != null,
                         supportingText = {
-                            if (errors.containsKey("password")) {
-                                Text(errors["password"] ?: "")
-                            }
+                            errors["password"]?.let { Text(it) }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -819,9 +804,9 @@ fun RegistroScreen(
                             keyboardType = KeyboardType.Password,
                             imeAction = ImeAction.Next
                         ),
-                        isError = errors.containsKey("confirmPassword"),
+                        isError = errors["confirmPassword"] != null,
                         supportingText = {
-                            if (errors.containsKey("confirmPassword")) {
+                            if (errors["confirmPassword"] != null) {
                                 Text(errors["confirmPassword"] ?: "")
                             } else if (confirmPassword.isNotEmpty() && confirmPassword == password) {
                                 Text(
@@ -858,11 +843,9 @@ fun RegistroScreen(
                             keyboardType = KeyboardType.Text,
                             imeAction = ImeAction.Next
                         ),
-                        isError = errors.containsKey("nombre"),
+                        isError = errors["nombre"] != null,
                         supportingText = {
-                            if (errors.containsKey("nombre")) {
-                                Text(errors["nombre"] ?: "")
-                            }
+                            errors["nombre"]?.let { Text(it) }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -879,11 +862,9 @@ fun RegistroScreen(
                             keyboardType = KeyboardType.Text,
                             imeAction = ImeAction.Next
                         ),
-                        isError = errors.containsKey("apellidos"),
+                        isError = errors["apellidos"] != null,
                         supportingText = {
-                            if (errors.containsKey("apellidos")) {
-                                Text(errors["apellidos"] ?: "")
-                            }
+                            errors["apellidos"]?.let { Text(it) }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -900,11 +881,9 @@ fun RegistroScreen(
                             keyboardType = KeyboardType.Phone,
                             imeAction = ImeAction.Done
                         ),
-                        isError = errors.containsKey("telefono"),
+                        isError = errors["telefono"] != null,
                         supportingText = {
-                            if (errors.containsKey("telefono")) {
-                                Text(errors["telefono"] ?: "")
-                            }
+                            errors["telefono"]?.let { Text(it) }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HowToReg
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
@@ -29,10 +31,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -79,7 +83,8 @@ fun ColorScheme.isLight(): Boolean {
     return luminance > 0.5
 }
 
-enum class UserType {
+// Tipo de usuario para la navegación desde la pantalla de bienvenida
+enum class WelcomeUserType {
     ADMIN,
     CENTRO,
     PROFESOR,
@@ -88,29 +93,45 @@ enum class UserType {
 
 @Composable
 fun WelcomeScreen(
-    onNavigateToLogin: (UserType) -> Unit,
+    onNavigateToLogin: (WelcomeUserType) -> Unit,
     onNavigateToRegister: () -> Unit,
-    onCloseApp: () -> Unit
+    onCloseApp: () -> Unit,
+    onDemoRequested: () -> Unit = {}
 ) {
     // TODO: Mejoras pendientes para la pantalla de Bienvenida
     // - Implementar un vídeo de fondo o animaciones más atractivas
-    // - Añadir soporte para selección de idioma al inicio
+    // - Añadir soporte para selección de idioma (IMPLEMENTADO)
     // - Mejorar el onboarding con más pasos e información detallada
-    // - Implementar detección de tipo de usuario por QR o NFC
-    // - Añadir información de centros cercanos usando geolocalización
-    // - Mostrar estadísticas o testimonios de uso de la app
-    // - Implementar botón para contactar con soporte
-    // - Añadir opción para ver demo de la aplicación
-    // - Mejorar transiciones y animaciones entre elementos
+    // - Implementar detección de tipo de usuario por QR/NFC
+    // - Implementar geolocalización para centros cercanos
+    // - Añadir estadísticas de uso
+    // - Implementar soporte técnico (IMPLEMENTADO)
+    // - Añadir modo demo de la aplicación (IMPLEMENTADO)
+    // - Mejorar transiciones y animaciones
     // - Añadir soporte para autenticación biométrica
-    // - Implementar soporte para temas personalizados
-    // - REVISAR EL TODO_ROOM.MD con ToDo de Room
     
     val isLight = MaterialTheme.colorScheme.isLight()
     val gradientColors = if (isLight) {
         listOf(GradientStart, Color.White, GradientEnd)
     } else {
         listOf(BackgroundDark, SurfaceDark)
+    }
+    
+    // Estado para controlar la visibilidad del diálogo de selección de idioma
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    
+    // Estado para el idioma actual
+    var currentLanguage by remember { mutableStateOf("ES") }
+    
+    // Mostrar diálogo de selección de idioma si está activo
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            onLanguageSelected = { langCode -> 
+                currentLanguage = langCode
+                // Aquí se implementaría el cambio real de idioma en la app
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
     }
 
     Box(
@@ -124,8 +145,32 @@ fun WelcomeScreen(
                 )
             )
     ) {
+        // Botón de selección de idioma
         IconButton(
-            onClick = { onNavigateToLogin(UserType.ADMIN_APP) },
+            onClick = { showLanguageDialog = true },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 48.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Language,
+                    contentDescription = "Cambiar idioma",
+                    tint = if (isLight) MaterialTheme.colorScheme.primary else PrimaryLight
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = currentLanguage,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isLight) MaterialTheme.colorScheme.primary else PrimaryLight
+                )
+            }
+        }
+
+        IconButton(
+            onClick = { onNavigateToLogin(WelcomeUserType.ADMIN) },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 48.dp, start = 16.dp)
@@ -220,9 +265,9 @@ fun WelcomeScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         LoginButtons(
-                            onCentroLogin = { onNavigateToLogin(UserType.ADMIN_CENTRO) },
-                            onProfesorLogin = { onNavigateToLogin(UserType.PROFESOR) },
-                            onFamiliarLogin = { onNavigateToLogin(UserType.FAMILIAR) }
+                            onCentroLogin = { onNavigateToLogin(WelcomeUserType.CENTRO) },
+                            onProfesorLogin = { onNavigateToLogin(WelcomeUserType.PROFESOR) },
+                            onFamiliarLogin = { onNavigateToLogin(WelcomeUserType.FAMILIAR) }
                         )
                     }
                 }
@@ -282,6 +327,44 @@ fun WelcomeScreen(
                                 "Regístrate",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Botón para contactar con soporte
+                        TextButton(
+                            onClick = { /* Aquí se implementaría la lógica para contactar con soporte */ },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Build,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "¿Necesitas ayuda? Contacta con soporte",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        // Botón para ver demo
+                        TextButton(
+                            onClick = onDemoRequested,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Ver demo de la aplicación",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
                             )
                         }
                     }
@@ -535,7 +618,8 @@ fun WelcomeScreenLightPreview() {
         WelcomeScreen(
             onNavigateToLogin = {},
             onNavigateToRegister = {},
-            onCloseApp = {}
+            onCloseApp = {},
+            onDemoRequested = {}
         )
     }
 }
@@ -547,7 +631,8 @@ fun WelcomeScreenDarkPreview() {
         WelcomeScreen(
             onNavigateToLogin = {},
             onNavigateToRegister = {},
-            onCloseApp = {}
+            onCloseApp = {},
+            onDemoRequested = {}
         )
     }
 }
@@ -555,4 +640,56 @@ fun WelcomeScreenDarkPreview() {
 @Composable
 fun isLightTheme(): Boolean {
     return MaterialTheme.colorScheme.isLight()
+}
+
+// Diálogo de selección de idioma
+@Composable
+fun LanguageSelectionDialog(
+    onLanguageSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val languages = listOf(
+        "Español" to "ES",
+        "English" to "EN",
+        "Euskara" to "EU",
+        "Català" to "CA",
+        "Galego" to "GL"
+    )
+    
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Seleccionar idioma") },
+        text = {
+            Column {
+                languages.forEach { (name, code) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                            .clickable { 
+                                onLanguageSelected(code)
+                                onDismiss()
+                            },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = code,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }

@@ -1,98 +1,58 @@
 package com.tfg.umeegunero.navigation
 
+import android.content.Context
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.tfg.umeegunero.data.model.Centro
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.UserType
-
 import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
+import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
+import com.tfg.umeegunero.feature.admin.screen.AlumnoListScreen
+import com.tfg.umeegunero.feature.admin.screen.CalendarioScreen
+import com.tfg.umeegunero.feature.admin.screen.ClasesScreen
+import com.tfg.umeegunero.feature.admin.screen.CursosScreen
+import com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen
+import com.tfg.umeegunero.feature.admin.screen.EditCentroScreen
+import com.tfg.umeegunero.feature.admin.screen.EstadisticasScreen
+import com.tfg.umeegunero.feature.admin.screen.FamiliarListScreen
+import com.tfg.umeegunero.feature.admin.screen.NotificacionesScreen
+import com.tfg.umeegunero.feature.admin.screen.ProfesorListScreen
+import com.tfg.umeegunero.feature.admin.screen.UserDetailScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen
-import com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen
-import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
-import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
-import androidx.compose.runtime.collectAsState
-
-import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
-import com.tfg.umeegunero.feature.common.users.screen.AddUserUiState
-import com.tfg.umeegunero.data.model.Centro
-import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
-import com.tfg.umeegunero.feature.centro.screen.academico.HiltAddCursoScreen
-import com.tfg.umeegunero.feature.centro.screen.academico.HiltAddClaseScreen
+import com.tfg.umeegunero.feature.centro.screen.academico.AddCursoScreen
+import com.tfg.umeegunero.feature.centro.screen.academico.AddClaseScreen
 import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
+import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
 import com.tfg.umeegunero.feature.common.screen.DummyScreen
-
-/**
- * Sealed class para las rutas de navegación de la app
- */
-sealed class AppScreens(val route: String) {
-    // Pantallas de acceso/autenticación
-    object Welcome : AppScreens("welcome")
-    object Login : AppScreens("login/{userType}") {
-        fun createRoute(userType: String) = "login/$userType"
-    }
-    object Register : AppScreens("register")
-
-    // Pantallas principales según tipo de usuario
-    object AdminDashboard : AppScreens("admin_dashboard")
-    object CentroDashboard : AppScreens("centro_dashboard")
-    object ProfesorDashboard : AppScreens("profesor_dashboard")
-    object FamiliarDashboard : AppScreens("familiar_dashboard")
-
-    // Pantallas de administración
-    object AddCentro : AppScreens("add_centro")
-    object EditCentro : AppScreens("edit_centro/{centroId}") {
-        fun createRoute(centroId: String) = "edit_centro/$centroId"
-    }
-    object AddUser : AppScreens("add_user/{isAdminApp}") {
-        fun createRoute(isAdminApp: Boolean) = "add_user/$isAdminApp"
-    }
-
-    // Pantallas de gestión académica
-    object AddCurso : AppScreens("add_curso/{centroId}") {
-        fun createRoute(centroId: String) = "add_curso/$centroId"
-    }
-    object EditCurso : AppScreens("edit_curso/{centroId}/{cursoId}") {
-        fun createRoute(centroId: String, cursoId: String) = "edit_curso/$centroId/$cursoId"
-    }
-    object AddClase : AppScreens("add_clase/{centroId}") {
-        fun createRoute(centroId: String) = "add_clase/$centroId"
-    }
-    object EditClase : AppScreens("edit_clase/{centroId}/{claseId}") {
-        fun createRoute(centroId: String, claseId: String) = "edit_clase/$centroId/$claseId"
-    }
-    
-    // Pantallas de configuración
-    object Config : AppScreens("config")
-
-    // Otras pantallas
-    object StudentDetail : AppScreens("student_detail/{studentId}") {
-        fun createRoute(studentId: String) = "student_detail/$studentId"
-    }
-    object ReportDetail : AppScreens("report_detail/{reportId}") {
-        fun createRoute(reportId: String) = "report_detail/$reportId"
-    }
-    object Chat : AppScreens("chat/{recipientId}") {
-        fun createRoute(recipientId: String) = "chat/$recipientId"
-    }
-
-    // Ruta para pantalla dummy de funcionalidades en desarrollo
-    object Dummy : AppScreens("dummy/{title}") {
-        fun createRoute(title: String): String {
-            return "dummy/$title"
-        }
-    }
-}
+import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
+import com.tfg.umeegunero.feature.familiar.screen.FamiliarDashboardScreen
+import com.tfg.umeegunero.feature.familiar.screen.HiltFamiliarDashboardScreen
+import com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen
+import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
+import com.tfg.umeegunero.feature.familiar.viewmodel.FamiliarDashboardViewModel
+import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
+import com.tfg.umeegunero.feature.auth.screen.RecuperarPasswordScreen
 
 /**
  * Navegación principal de la aplicación
@@ -110,18 +70,24 @@ fun AppNavigation(
         composable(route = AppScreens.Welcome.route) {
             WelcomeScreen(
                 onNavigateToLogin = { userType ->
-                    val userTypeStr = when(userType) {
-                        UserType.ADMIN_APP -> "ADMIN"
-                        UserType.ADMIN_CENTRO-> "CENTRO"
-                        UserType.PROFESOR -> "PROFESOR"
-                        UserType.FAMILIAR -> "FAMILIAR"
+                    val userTypeRoute = when (userType) {
+                        WelcomeUserType.ADMIN -> "ADMIN"
+                        WelcomeUserType.CENTRO -> "CENTRO"
+                        WelcomeUserType.PROFESOR -> "PROFESOR"
+                        WelcomeUserType.FAMILIAR -> "FAMILIAR"
                     }
-                    navController.navigate(AppScreens.Login.createRoute(userTypeStr))
+                    navController.navigate(
+                        AppScreens.Login.createRoute(userTypeRoute)
+                    )
                 },
                 onNavigateToRegister = {
-                    navController.navigate(AppScreens.Register.route)
+                    navController.navigate(AppScreens.Registro.route)
                 },
-                onCloseApp = onCloseApp // Pasamos la función de cierre
+                onCloseApp = onCloseApp,
+                onDemoRequested = {
+                    // Navegar a una pantalla demo (podemos usar Dummy para esto)
+                    navController.navigate(AppScreens.Dummy.createRoute("Vista previa de la aplicación"))
+                }
             )
         }
 
@@ -160,20 +126,19 @@ fun AppNavigation(
                     }
                 },
                 onForgotPassword = {
-                    // Pendiente: Hay que implementar la recuperación de contraseña cuando tenga tiempo
+                    navController.navigate(AppScreens.RecuperarPassword.route)
                 }
             )
         }
 
         // Pantalla de registro
-        composable(route = AppScreens.Register.route) {
+        composable(route = AppScreens.Registro.route) {
             RegistroScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
                 onRegistroCompletado = {
-                    // Navegamos a la pantalla de inicio de sesión para familiares
                     navController.navigate(AppScreens.Login.createRoute("FAMILIAR")) {
-                        popUpTo(AppScreens.Register.route) { inclusive = true }
+                        popUpTo(AppScreens.Welcome.route)
                     }
                 }
             )
@@ -181,6 +146,7 @@ fun AppNavigation(
 
         // Pantalla de configuración (compartida por todos los perfiles)
         composable(route = AppScreens.Config.route) {
+            // Determinamos el perfil basado en la ruta anterior
             val perfil = when {
                 navController.previousBackStackEntry?.destination?.route == AppScreens.AdminDashboard.route -> 
                     PerfilConfiguracion.ADMIN
@@ -193,8 +159,27 @@ fun AppNavigation(
                 else -> PerfilConfiguracion.SISTEMA
             }
             
+            // Registramos la ruta anterior para poder volver a ella
+            val previousRoute = when (perfil) {
+                PerfilConfiguracion.ADMIN -> AppScreens.AdminDashboard.route
+                PerfilConfiguracion.CENTRO -> AppScreens.CentroDashboard.route
+                PerfilConfiguracion.PROFESOR -> AppScreens.ProfesorDashboard.route
+                PerfilConfiguracion.FAMILIAR -> AppScreens.FamiliarDashboard.route
+                else -> AppScreens.Welcome.route
+            }
+            
             ConfiguracionScreen(
-                perfil = perfil
+                perfil = perfil,
+                onNavigateBack = { 
+                    // Navegamos de regreso a la pantalla de inicio correspondiente
+                    navController.navigate(previousRoute) {
+                        popUpTo(AppScreens.Config.route) { inclusive = true }
+                    }
+                },
+                onMenuClick = {
+                    // Volvemos a la pantalla anterior, que ya tiene su drawer configurado
+                    navController.popBackStack()
+                }
             )
         }
 
@@ -217,9 +202,34 @@ fun AppNavigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
 
-            AddCentroScreen(
+            EditCentroScreen(
+                navController = navController,
+                centroId = centroId,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de detalle de centro (admin)
+        composable(
+            route = AppScreens.DetalleCentro.route,
+            arguments = listOf(
+                navArgument("centroId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            
+            DetalleCentroScreen(
                 viewModel = hiltViewModel(),
-                navController = navController
+                onNavigateBack = { navController.popBackStack() },
+                onMenuClick = {
+                    // Volvemos a la pantalla anterior, que ya tiene su drawer configurado
+                    navController.popBackStack()
+                },
+                onEditCentro = { centroId ->
+                    navController.navigate(AppScreens.EditCentro.createRoute(centroId))
+                }
             )
         }
 
@@ -240,8 +250,31 @@ fun AppNavigation(
 
         // Pantalla de dashboard de profesor
         composable(route = AppScreens.ProfesorDashboard.route) {
+            val viewModel: ProfesorDashboardViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsState()
+            
             ProfesorDashboardScreen(
+                navController = navController,
+                isLoading = uiState.isLoading,
+                error = uiState.error,
+                selectedTab = uiState.selectedTab,
+                onTabSelected = viewModel::setSelectedTab,
+                alumnosPendientes = uiState.alumnosPendientes,
+                alumnos = uiState.alumnos,
+                mensajesNoLeidos = emptyList(),
+                totalMensajesNoLeidos = uiState.totalMensajesNoLeidos,
+                onNavigateToDetalleAlumno = { alumnoId -> 
+                    navController.navigate(AppScreens.StudentDetail.createRoute(alumnoId)) 
+                },
+                onNavigateToChat = { familiarId, alumnoId ->
+                    navController.navigate(AppScreens.Chat.createRoute(familiarId, alumnoId))
+                },
+                onCrearRegistroActividad = { alumnoId ->
+                    // Acción para crear registro
+                },
+                onErrorDismissed = viewModel::clearError,
                 onLogout = {
+                    viewModel.logout()
                     navController.navigate(AppScreens.Welcome.route) {
                         popUpTo(AppScreens.ProfesorDashboard.route) { inclusive = true }
                     }
@@ -249,14 +282,10 @@ fun AppNavigation(
             )
         }
 
-        // Pantalla de dashboard de familiar - Integración con FamiliarNavGraph
+        // Pantalla de dashboard de familiar
         composable(route = AppScreens.FamiliarDashboard.route) {
-            FamiliarNavGraph(
-                onLogout = {
-                    navController.navigate(AppScreens.Welcome.route) {
-                        popUpTo(AppScreens.FamiliarDashboard.route) { inclusive = true }
-                    }
-                }
+            HiltFamiliarDashboardScreen(
+                navController = navController
             )
         }
 
@@ -271,6 +300,8 @@ fun AppNavigation(
             )
         ) { backStackEntry ->
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: true
+            // Comentado temporalmente hasta implementar AddUserScreen y componentes relacionados
+            /*
             val viewModel: AddUserViewModel = hiltViewModel()
             val viewModelUiState = viewModel.uiState.collectAsState().value
 
@@ -328,6 +359,14 @@ fun AppNavigation(
                 onClearError = viewModel::clearError,
                 onNavigateBack = { navController.popBackStack() }
             )
+            */
+            
+            // Mientras tanto, mostramos una pantalla dummy para añadir usuario
+            DummyScreen(
+                title = "Añadir Usuario",
+                onNavigateBack = { navController.popBackStack() },
+                onMenuClick = {}
+            )
         }
 
         // Pantallas de gestión académica
@@ -342,7 +381,9 @@ fun AppNavigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
 
-            HiltAddCursoScreen(
+            AddCursoScreen(
+                viewModel = hiltViewModel(),
+                cursoId = "",
                 centroId = centroId,
                 onNavigateBack = { navController.popBackStack() },
                 onCursoAdded = { navController.popBackStack() }
@@ -364,9 +405,10 @@ fun AppNavigation(
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
             val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
 
-            HiltAddCursoScreen(
-                centroId = centroId,
+            AddCursoScreen(
+                viewModel = hiltViewModel(),
                 cursoId = cursoId,
+                centroId = centroId,
                 onNavigateBack = { navController.popBackStack() },
                 onCursoAdded = { navController.popBackStack() }
             )
@@ -383,7 +425,9 @@ fun AppNavigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
 
-            HiltAddClaseScreen(
+            AddClaseScreen(
+                viewModel = hiltViewModel(),
+                claseId = "",
                 centroId = centroId,
                 onNavigateBack = { navController.popBackStack() },
                 onClaseAdded = { navController.popBackStack() }
@@ -405,26 +449,183 @@ fun AppNavigation(
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
             val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
 
-            HiltAddClaseScreen(
-                centroId = centroId,
+            AddClaseScreen(
+                viewModel = hiltViewModel(),
                 claseId = claseId,
+                centroId = centroId,
                 onNavigateBack = { navController.popBackStack() },
                 onClaseAdded = { navController.popBackStack() }
             )
         }
 
-        // Ruta para pantallas en desarrollo
+        // Pantalla para funcionalidades en desarrollo
         composable(
             route = AppScreens.Dummy.route,
             arguments = listOf(
-                navArgument("title") { type = NavType.StringType }
+                navArgument("title") {
+                    type = NavType.StringType
+                }
             )
         ) { backStackEntry ->
-            val title = backStackEntry.arguments?.getString("title") ?: "Función en desarrollo"
+            val title = backStackEntry.arguments?.getString("title") ?: "Funcionalidad en Desarrollo"
+            
             DummyScreen(
                 title = title,
+                onNavigateBack = { navController.popBackStack() },
+                onMenuClick = {}
+            )
+        }
+
+        // Pantalla de perfil
+        composable(
+            route = AppScreens.Perfil.route
+        ) {
+            PerfilScreen(
+                title = "Mi Perfil",
+                onNavigateBack = { navController.popBackStack() },
+                onMenuClick = {}
+            )
+        }
+
+        // Pantalla de calendario
+        composable(route = AppScreens.Calendario.route) {
+            CalendarioScreen(
+                navController = navController
+            )
+        }
+
+        // Pantalla de gestión de cursos (admin)
+        composable(
+            route = AppScreens.Cursos.route
+        ) {
+            CursosScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantalla de gestión de clases (admin)
+        composable(
+            route = AppScreens.Clases.route
+        ) {
+            ClasesScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de gestión de profesores (admin)
+        composable(
+            route = AppScreens.ProfesorList.route
+        ) {
+            ProfesorListScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de gestión de alumnos (admin)
+        composable(
+            route = AppScreens.AlumnoList.route
+        ) {
+            AlumnoListScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de gestión de familiares (admin)
+        composable(
+            route = AppScreens.FamiliarList.route
+        ) {
+            FamiliarListScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantalla de detalle de usuario
+        composable(
+            route = AppScreens.UserDetail.route,
+            arguments = listOf(
+                navArgument("dni") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val dni = backStackEntry.arguments?.getString("dni") ?: ""
+            
+            UserDetailScreen(
+                navController = navController,
+                dni = dni
+            )
+        }
+
+        // Estadísticas
+        composable(route = AppScreens.Estadisticas.route) {
+            EstadisticasScreen(navController = navController)
+        }
+        
+        // Notificaciones
+        composable(route = AppScreens.Notificaciones.route) {
+            NotificacionesScreen(navController = navController)
+        }
+
+        // Pantalla de chat
+        composable(
+            route = AppScreens.Chat.route,
+            arguments = listOf(
+                navArgument("familiarId") { type = NavType.StringType },
+                navArgument("alumnoId") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { entry ->
+            val familiarId = entry.arguments?.getString("familiarId") ?: ""
+            val alumnoId = entry.arguments?.getString("alumnoId")
+            
+            com.tfg.umeegunero.feature.profesor.screen.ChatScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.navigateUp() }
+            )
+        }
+
+        // Pantalla de recuperación de contraseña
+        composable(route = AppScreens.RecuperarPassword.route) {
+            RecuperarPasswordScreen(
+                viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+    }
+}
+
+@Composable
+fun NavGraph(
+    navController: NavHostController,
+    context: Context = LocalContext.current,
+    startDestination: String = AppScreens.Login.route
+) {
+    // ... existing code ...
+    
+    NavHost(
+        navController = navController,
+        startDestination = startDestination
+    ) {
+        // ... existing code ...
+        
+        // Estadísticas
+        composable(route = AppScreens.Estadisticas.route) {
+            EstadisticasScreen(navController = navController)
+        }
+        
+        // Notificaciones
+        composable(route = AppScreens.Notificaciones.route) {
+            NotificacionesScreen(navController = navController)
+        }
+        
+        // ... existing code ...
     }
 }

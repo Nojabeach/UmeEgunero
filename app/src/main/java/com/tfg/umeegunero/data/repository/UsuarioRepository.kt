@@ -17,6 +17,8 @@ import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import timber.log.Timber
 import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.Query
 
 /**
  * Resultados posibles al realizar operaciones con repositorios
@@ -43,6 +45,17 @@ class UsuarioRepository @Inject constructor(
     val registrosCollection = firestore.collection("registrosActividad")
     val mensajesCollection = firestore.collection("mensajes")
     private val functions = Firebase.functions
+
+    // TODO: Mejoras pendientes para el repositorio de usuarios
+    // - Implementar caché local con Room para funcionamiento offline
+    // - Añadir sincronización periódica en segundo plano
+    // - Mejorar la seguridad con cifrado de datos sensibles
+    // - Implementar sistema de permisos granular por tipo de usuario
+    // - Desarrollar sistema de perfiles extendidos con información adicional
+    // - Añadir soporte para múltiples roles por usuario
+    // - Implementar registro de actividad del usuario
+    // - Desarrollar sistema de notificaciones basado en acciones del usuario
+    // - Añadir soporte para gestión de preferencias personalizadas
 
     // AUTENTICACIÓN Y USUARIOS
 
@@ -832,6 +845,50 @@ class UsuarioRepository @Inject constructor(
             }
         } catch (e: Exception) {
             return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Escucha mensajes entre dos usuarios en tiempo real 
+     */
+    suspend fun escucharMensajes(
+        emisorId: String, 
+        receptorId: String, 
+        alumnoId: String? = null, 
+        onMensajeRecibido: (Mensaje) -> Unit
+    ) {
+        try {
+            val query = if (alumnoId != null) {
+                mensajesCollection
+                    .whereEqualTo("alumnoId", alumnoId)
+                    .whereIn("emisorId", listOf(emisorId, receptorId))
+                    .whereIn("receptorId", listOf(emisorId, receptorId))
+            } else {
+                mensajesCollection
+                    .whereIn("emisorId", listOf(emisorId, receptorId))
+                    .whereIn("receptorId", listOf(emisorId, receptorId))
+            }
+
+            // Ordenar por timestamp para obtener los mensajes en orden
+            query.orderBy("timestamp", Query.Direction.ASCENDING)
+                .addSnapshotListener { snapshots, e ->
+                    if (e != null) {
+                        Timber.e(e, "Error escuchando mensajes")
+                        return@addSnapshotListener
+                    }
+
+                    snapshots?.documentChanges?.forEach { change ->
+                        // Solo procesamos mensajes nuevos o modificados
+                        if (change.type == DocumentChange.Type.ADDED || 
+                            change.type == DocumentChange.Type.MODIFIED) {
+                            val mensaje = change.document.toObject(Mensaje::class.java)
+                            onMensajeRecibido(mensaje)
+                        }
+                    }
+                }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al configurar escucha de mensajes")
+            throw e
         }
     }
 }

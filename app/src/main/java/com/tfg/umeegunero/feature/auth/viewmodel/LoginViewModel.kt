@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.feature.auth.viewmodel
 
+import android.content.SharedPreferences
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -35,11 +36,20 @@ data class LoginUiState(
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    init {
+        // Comprobar si hay credenciales guardadas
+        val savedEmail = sharedPreferences.getString(PREF_SAVED_EMAIL, "")
+        if (!savedEmail.isNullOrEmpty()) {
+            updateEmail(savedEmail)
+        }
+    }
 
     /**
      * Actualiza el email y valida su formato
@@ -87,7 +97,7 @@ class LoginViewModel @Inject constructor(
     /**
      * Realiza el inicio de sesión
      */
-    fun login(userType: UserType) {
+    fun login(userType: UserType, rememberUser: Boolean = false) {
         val email = _uiState.value.email
         val password = _uiState.value.password
 
@@ -154,6 +164,14 @@ class LoginViewModel @Inject constructor(
                             val tienePerfil = usuario.perfiles.any { it.tipo == tipoUsuarioFirebase }
 
                             if (tienePerfil) {
+                                // Si el usuario seleccionó recordar usuario, guardamos el email
+                                if (rememberUser) {
+                                    saveUserCredentials(email)
+                                } else {
+                                    // Si no quiere recordar, borramos credenciales guardadas
+                                    clearSavedCredentials()
+                                }
+                                
                                 // Login exitoso
                                 _uiState.update {
                                     it.copy(
@@ -214,6 +232,26 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
+     * Guarda las credenciales del usuario para recordarlas
+     */
+    private fun saveUserCredentials(email: String) {
+        sharedPreferences.edit()
+            .putString(PREF_SAVED_EMAIL, email)
+            .apply()
+        Timber.d("Credenciales guardadas para: $email")
+    }
+
+    /**
+     * Limpia las credenciales guardadas
+     */
+    private fun clearSavedCredentials() {
+        sharedPreferences.edit()
+            .remove(PREF_SAVED_EMAIL)
+            .apply()
+        Timber.d("Credenciales eliminadas")
+    }
+
+    /**
      * Limpia los errores
      */
     fun clearError() {
@@ -229,5 +267,9 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             LoginUiState()
         }
+    }
+    
+    companion object {
+        private const val PREF_SAVED_EMAIL = "savedEmail"
     }
 }

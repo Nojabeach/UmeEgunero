@@ -91,14 +91,18 @@ import com.tfg.umeegunero.feature.common.config.components.TemaActual
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
+import androidx.navigation.NavController
+import com.tfg.umeegunero.navigation.AppScreens
+import androidx.navigation.compose.rememberNavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesorDashboardScreen(
+    navController: NavController,
     onLogout: () -> Unit,
     onNavigateToRegistroActividad: (String) -> Unit = {},
     onNavigateToDetalleAlumno: (String) -> Unit = {},
-    onNavigateToChat: (String) -> Unit = {},
+    onNavigateToChat: (String, String) -> Unit = { _, _ -> },
     alumnosPendientes: List<Alumno> = emptyList(),
     alumnos: List<Alumno> = emptyList(),
     mensajesNoLeidos: List<Triple<String, String, Boolean>> = emptyList(),
@@ -313,7 +317,8 @@ fun ProfesorDashboardScreen(
                 isLoading = isLoading,
                 onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
                 onNavigateToChat = onNavigateToChat,
-                onCrearRegistroActividad = onCrearRegistroActividad
+                onCrearRegistroActividad = onCrearRegistroActividad,
+                navController = navController
             )
         }
     }
@@ -328,8 +333,9 @@ fun ProfesorDashboardContent(
     mensajesNoLeidos: List<Triple<String, String, Boolean>> = emptyList(),
     isLoading: Boolean = false,
     onNavigateToDetalleAlumno: (String) -> Unit = {},
-    onNavigateToChat: (String) -> Unit = {},
-    onCrearRegistroActividad: (String) -> Unit = {}
+    onNavigateToChat: (String, String) -> Unit = { _, _ -> },
+    onCrearRegistroActividad: (String) -> Unit = {},
+    navController: NavController
 ) {
     Box(
         modifier = Modifier
@@ -376,20 +382,15 @@ fun ProfesorHomeContent(
     onCrearRegistroActividad: (String) -> Unit = {}
 ) {
     // TODO: Mejoras pendientes para la pantalla principal del profesor
-    // - Implementar sistema de notificaciones importantes al inicio
-    // - Añadir resumen de actividades pendientes del día
-    // - Mostrar estadísticas de registros completados/pendientes
-    // - Implementar acceso rápido a los alumnos más frecuentes
-    // - Añadir widgets personalizables para información relevante
-    // - Mostrar eventos o recordatorios del calendario escolar
-    // - Implementar acceso a reuniones programadas con familiares
-    // - Añadir sección de avisos o comunicados del centro
-    // - Permitir visualización rápida de horario diario/semanal
-    // - Mostrar indicadores de rendimiento del grupo/clase
-    // - Implementar recordatorios de entrega de evaluaciones
-    // - Añadir acceso a recursos didácticos personalizados
-    // - Incluir resumen de comunicaciones pendientes con familias
-    // - Mostrar alertas de situaciones especiales (alergias, medicación)
+    // - Implementar sistema de gestión de actividades
+    // - Añadir calendario de eventos y planificación
+    // - Mejorar sistema de chat y comunicaciones
+    // - Implementar herramientas de evaluación
+    // - Añadir reportes y estadísticas avanzadas
+    // - Mejorar gestión de grupos y alumnos
+    // - Implementar biblioteca de recursos educativos
+    // - Añadir integración con otras plataformas educativas
+    // - Mejorar la experiencia de usuario con animaciones fluidas
     
     val today = LocalDate.now()
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
@@ -591,14 +592,11 @@ fun MisAlumnosContent(
     onNavigateToDetalleAlumno: (String) -> Unit = {}
 ) {
     // TODO: Mejoras pendientes para la sección de alumnos
-    // - Implementar filtrado por clase, edad o grupo
-    // - Añadir búsqueda de alumnos por nombre
-    // - Mostrar indicadores visuales de estado de asistencia (ausente, presente, etc.)
-    // - Implementar vistas de asistencia diaria/semanal
-    // - Añadir funcionalidad para generar informes individuales o grupales
-    // - Permitir ordenación de la lista por diferentes criterios
-    // - Implementar gestión de incidencias por alumno
-    // - Añadir acceso directo a historial de cada alumno
+    // - Implementar filtros de búsqueda avanzados
+    // - Añadir visualización por grupos/clases
+    // - Mejorar detalles de perfil de alumno
+    // - Implementar sistema de etiquetas personalizadas
+    // - Añadir indicadores de progreso académico
     
     Column(
         modifier = Modifier
@@ -696,14 +694,11 @@ fun AlumnoListItem(
 @Composable
 fun HistorialContent() {
     // TODO: Mejoras pendientes para la sección de historial
-    // - Implementar filtrado por fechas, tipo de actividad o alumno
-    // - Añadir exportación de datos a diferentes formatos (PDF, Excel)
-    // - Mostrar gráficos y estadísticas de actividades
-    // - Implementar búsqueda avanzada en el historial
-    // - Añadir visualización por calendario de registros
-    // - Permitir edición de registros anteriores (con marca de edición)
-    // - Implementar comparativas entre periodos
-    // - Añadir opción para crear informes personalizados
+    // - Implementar filtros por fechas y tipos de actividad
+    // - Añadir exportación de datos a diferentes formatos
+    // - Mejorar visualización de estadísticas temporales
+    // - Implementar búsqueda en el historial
+    // - Añadir categorización de registros históricos
     
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -719,17 +714,14 @@ fun HistorialContent() {
 @Composable
 fun MensajesContent(
     mensajes: List<Triple<String, String, Boolean>> = emptyList(),
-    onNavigateToChat: (String) -> Unit = {}
+    onNavigateToChat: (String, String) -> Unit = { _, _ -> }
 ) {
     // TODO: Mejoras pendientes para la sección de mensajes
-    // - Implementar filtrado de mensajes por origen o importancia
-    // - Añadir búsqueda en el contenido de los mensajes
-    // - Mostrar indicadores de estado de lectura y respuesta
-    // - Implementar categorización automática de conversaciones
-    // - Añadir plantillas de respuestas predefinidas
-    // - Permitir adjuntar archivos o imágenes en los mensajes
-    // - Implementar chat grupal para comunicación con múltiples familias
-    // - Añadir opción para programar envío de mensajes
+    // - Implementar notificaciones en tiempo real
+    // - Añadir soporte para mensajes multimedia
+    // - Mejorar organización por conversaciones
+    // - Implementar búsqueda en mensajes
+    // - Añadir plantillas de mensajes predefinidos
     
     Column(
         modifier = Modifier
@@ -764,7 +756,7 @@ fun MensajesContent(
                         nombre = emisorId, // Idealmente aquí mostrarías el nombre real del emisor
                         ultimoMensaje = texto,
                         noLeido = noLeido,
-                        onClick = { onNavigateToChat(emisorId) }
+                        onClick = { onNavigateToChat(emisorId, "") }
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
@@ -847,7 +839,20 @@ fun ConfiguracionProfesorPreviewNew() {
 @Composable
 fun ProfesorDashboardPreview() {
     UmeEguneroTheme {
-        ProfesorDashboardScreen(onLogout = {})
+        ProfesorDashboardScreen(
+            navController = rememberNavController(),
+            onLogout = {},
+            onNavigateToRegistroActividad = {},
+            onNavigateToDetalleAlumno = {},
+            onNavigateToChat = { _, _ -> },
+            alumnosPendientes = emptyList(),
+            alumnos = emptyList(),
+            mensajesNoLeidos = emptyList(),
+            totalMensajesNoLeidos = 0,
+            isLoading = false,
+            error = null,
+            selectedTab = 0
+        )
     }
 }
 
@@ -855,6 +860,19 @@ fun ProfesorDashboardPreview() {
 @Composable
 fun ProfesorDashboardDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        ProfesorDashboardScreen(onLogout = {})
+        ProfesorDashboardScreen(
+            navController = rememberNavController(),
+            onLogout = {},
+            onNavigateToRegistroActividad = {},
+            onNavigateToDetalleAlumno = {},
+            onNavigateToChat = { _, _ -> },
+            alumnosPendientes = emptyList(),
+            alumnos = emptyList(),
+            mensajesNoLeidos = emptyList(),
+            totalMensajesNoLeidos = 0,
+            isLoading = false,
+            error = null,
+            selectedTab = 0
+        )
     }
 }

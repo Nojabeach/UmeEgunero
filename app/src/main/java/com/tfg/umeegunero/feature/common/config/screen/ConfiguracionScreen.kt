@@ -1,25 +1,33 @@
 package com.tfg.umeegunero.feature.common.config.screen
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +45,7 @@ import com.tfg.umeegunero.feature.common.config.viewmodel.TestConfiguracionViewM
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Tipos de perfil para la configuración
@@ -53,13 +62,17 @@ enum class PerfilConfiguracion {
  * Pantalla de configuración común para todos los perfiles de usuario
  * Permite cambiar el tema de la aplicación y muestra las funcionalidades próximas
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfiguracionScreen(
     viewModel: ConfiguracionViewModelBase = hiltViewModel<ConfiguracionViewModel>(),
-    perfil: PerfilConfiguracion = PerfilConfiguracion.SISTEMA
+    perfil: PerfilConfiguracion = PerfilConfiguracion.SISTEMA,
+    onNavigateBack: () -> Unit = {},
+    onMenuClick: () -> Unit = {}
 ) {
     val uiState = viewModel.uiState.collectAsState().value
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     
     // Configurar el título según el perfil
     val titulo = when (perfil) {
@@ -107,14 +120,34 @@ fun ConfiguracionScreen(
                 "• Gestión de datos personales\n" +
                 "• Configuración de privacidad"
     }
-    
+
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = { Text(titulo, fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver atrás",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menú principal",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
@@ -140,29 +173,27 @@ fun ConfiguracionScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
             
-            TemaSelector(
-                temaSeleccionado = uiState.temaSeleccionado,
-                onTemaSeleccionado = { viewModel.setTema(it) }
-            )
-            
+            // Selector de tema
             TemaActual(
                 temaSeleccionado = uiState.temaSeleccionado
             )
-            
-            // Más configuraciones pendientes (tarjeta con las futuras funcionalidades)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Sección de próximas funcionalidades
             Card(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
                         text = "Próximamente",
@@ -194,7 +225,8 @@ fun ConfiguracionScreenPreview() {
     UmeEguneroTheme {
         ConfiguracionScreen(
             viewModel = viewModel,
-            perfil = PerfilConfiguracion.ADMIN
+            onNavigateBack = {},
+            onMenuClick = {}
         )
     }
 }
@@ -209,7 +241,8 @@ fun ConfiguracionProfesorScreenPreview() {
     UmeEguneroTheme {
         ConfiguracionScreen(
             viewModel = viewModel,
-            perfil = PerfilConfiguracion.PROFESOR
+            onNavigateBack = {},
+            onMenuClick = {}
         )
     }
 }
@@ -224,7 +257,8 @@ fun ConfiguracionFamiliarScreenPreview() {
     UmeEguneroTheme {
         ConfiguracionScreen(
             viewModel = viewModel,
-            perfil = PerfilConfiguracion.FAMILIAR
+            onNavigateBack = {},
+            onMenuClick = {}
         )
     }
 }

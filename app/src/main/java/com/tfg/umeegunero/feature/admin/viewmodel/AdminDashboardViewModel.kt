@@ -26,7 +26,8 @@ data class AdminDashboardUiState(
     val isLoadingUsuarios: Boolean = false,
     val error: String? = null,
     val currentUser: Usuario? = null,
-    val navigateToWelcome: Boolean = false
+    val navigateToWelcome: Boolean = false,
+    val showListadoCentros: Boolean = false
 )
 
 @HiltViewModel
@@ -244,5 +245,17 @@ class AdminDashboardViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun setShowListadoCentros(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showListadoCentros = show)
+    }
+
+    /**
+     * Muestra el listado de centros
+     */
+    fun showListadoCentros() {
+        _uiState.update { it.copy(showListadoCentros = true) }
+        loadCentros() // Recargar centros para asegurar datos actualizados
     }
 }

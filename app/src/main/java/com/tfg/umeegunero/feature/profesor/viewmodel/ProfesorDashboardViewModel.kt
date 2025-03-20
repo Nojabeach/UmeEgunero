@@ -10,6 +10,7 @@ import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +35,8 @@ data class ProfesorDashboardUiState(
     val registrosActividad: List<RegistroActividad> = emptyList(),
     val mensajesNoLeidos: List<Mensaje> = emptyList(),
     val totalMensajesNoLeidos: Int = 0,
-    val selectedTab: Int = 0
+    val selectedTab: Int = 0,
+    val navigateToWelcome: Boolean = false
 )
 
 /**
@@ -45,7 +47,8 @@ data class ProfesorDashboardUiState(
  */
 @HiltViewModel
 class ProfesorDashboardViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfesorDashboardUiState())
@@ -399,5 +402,23 @@ class ProfesorDashboardViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Cierra la sesión del usuario
+     */
+    fun logout() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            authRepository.signOut()
+            
+            _uiState.update { 
+                it.copy(
+                    isLoading = false,
+                    navigateToWelcome = true
+                )
+            }
+        }
     }
 }

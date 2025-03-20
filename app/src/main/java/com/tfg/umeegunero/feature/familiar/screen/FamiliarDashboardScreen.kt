@@ -423,14 +423,15 @@ fun FamiliarHomeContent(
     onMarcarRegistroComoVisto: (String) -> Unit
 ) {
     // TODO: Mejoras pendientes para la pantalla principal del familiar
-    // - Implementar resumen visual de actividades diarias
-    // - Añadir gráficos de progreso y evolución del alumno
-    // - Mostrar eventos importantes del calendario escolar
-    // - Implementar notificaciones y alertas personalizables
-    // - Añadir sistema de recordatorios y eventos familiares
-    // - Mostrar calendario de horarios y actividades escolares
-    // - Implementar sección de noticias y eventos del centro
-    // - Añadir acceso rápido a comunicación con profesores
+    // - Implementar estadísticas y gráficos de progreso
+    // - Añadir calendario de actividades y eventos
+    // - Mejorar visualización de notificaciones
+    // - Implementar filtros avanzados de búsqueda
+    // - Añadir sincronización de datos offline
+    // - Mejorar interfaz con animaciones y transiciones
+    // - Implementar comunicación en tiempo real
+    // - Añadir compartir contenido con otros familiares
+    // - Implementar alertas personalizables
     
     val today = LocalDate.now()
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
@@ -702,14 +703,11 @@ fun MisHijosContent(
     onNavigateToDetalleHijo: (String) -> Unit
 ) {
     // TODO: Mejoras pendientes para la sección de hijos
-    // - Implementar visualización de múltiples hijos con perfil completo
-    // - Añadir seguimiento de progreso académico y personal
-    // - Mostrar historial médico y alergias relevantes
-    // - Implementar gestión de autorizaciones y permisos
-    // - Añadir recordatorios de actividades extraescolares
-    // - Permitir adjuntar documentación importante (médica, académica)
-    // - Implementar sistema de objetivos y logros personalizados
-    // - Añadir sección de comentarios y notas personales
+    // - Implementar perfiles detallados por hijo
+    // - Añadir seguimiento de progreso académico
+    // - Mejorar visualización de información médica relevante
+    // - Implementar historial de asistencia
+    // - Añadir gestión de autorizaciones digitales
     
     Column(
         modifier = Modifier
@@ -827,14 +825,11 @@ fun ActividadesContent(
     onNavigateToDetalleRegistro: (String) -> Unit
 ) {
     // TODO: Mejoras pendientes para la sección de actividades
-    // - Implementar filtrado por tipo de actividad y fecha
-    // - Añadir visualización en calendario mensual/semanal
-    // - Mostrar estadísticas y tendencias de actividades
-    // - Implementar seguimiento de rutinas diarias
-    // - Añadir comparativas con períodos anteriores
-    // - Permitir exportar informes en diferentes formatos
-    // - Implementar notificaciones de nuevas actividades
-    // - Añadir opción para solicitar información adicional
+    // - Implementar calendario integrado de actividades
+    // - Añadir filtros por tipo de actividad
+    // - Mejorar visualización de detalles de actividad
+    // - Implementar recordatorios personalizables
+    // - Añadir opción para inscripción online
     
     Column(
         modifier = Modifier
@@ -1016,14 +1011,11 @@ fun MensajesContent(
     onNavigateToChat: (String, String?) -> Unit
 ) {
     // TODO: Mejoras pendientes para la sección de mensajes
-    // - Implementar filtrado por profesor o tema
-    // - Añadir búsqueda en el contenido de mensajes
-    // - Mostrar estado de lectura y respuesta de mensajes
-    // - Implementar opción para mensajes importantes/destacados
-    // - Añadir notificaciones personalizables por conversación
-    // - Permitir adjuntar archivos, fotos y videos
-    // - Implementar chats grupales para comisiones de padres
-    // - Añadir videollamadas programadas con profesores
+    // - Implementar chat en tiempo real
+    // - Añadir soporte para archivos adjuntos
+    // - Mejorar organización de conversaciones
+    // - Implementar notificaciones personalizables
+    // - Añadir traducción automática de mensajes
     
     Column(
         modifier = Modifier

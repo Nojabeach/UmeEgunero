@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Menu
@@ -31,6 +32,8 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -47,6 +50,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
@@ -107,6 +111,11 @@ import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.feature.common.screen.DummyScreen
 import com.tfg.umeegunero.navigation.NavigationStructure.NavItem
 import androidx.navigation.PopUpToBuilder
+import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.dp
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,31 +142,49 @@ fun AdminDashboardScreen(
     
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = true,
         drawerContent = {
-            DrawerContent(
-                navItems = navItems,
-                currentUser = currentUser,
-                onNavigate = { route, isImplemented ->
-                    handleNavigation(route, navController, viewModel, isImplemented)
-                },
-                onCloseDrawer = {
-                    scope.launch { drawerState.close() }
-                }
-            )
+            ModalDrawerSheet(
+                modifier = Modifier.fillMaxSize(),
+                drawerContainerColor = MaterialTheme.colorScheme.background,
+                drawerContentColor = MaterialTheme.colorScheme.onBackground
+            ) {
+                Spacer(modifier = Modifier.height(24.dp)) // Espacio para evitar el notch
+                DrawerContent(
+                    navItems = navItems,
+                    currentUser = currentUser,
+                    onNavigate = { route, isImplemented ->
+                        val handled = handleNavigation(route, navController, viewModel, isImplemented)
+                        if (handled) {
+                            scope.launch { drawerState.close() }
+                        }
+                        handled
+                    },
+                    onCloseDrawer = {
+                        scope.launch { drawerState.close() }
+                    }
+                )
+            }
         }
     ) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
+                TopAppBar(
                     title = { Text("Panel de Administración") },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(
                                 imageVector = Icons.Default.Menu,
-                                contentDescription = "Menú"
+                                contentDescription = "Menú",
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             }
         ) { paddingValues ->
@@ -168,8 +195,7 @@ fun AdminDashboardScreen(
             ) {
                 DashboardContent(
                     navController = navController,
-                    viewModel = viewModel,
-                    currentUser = currentUser
+                    viewModel = viewModel
                 )
             }
         }
@@ -177,7 +203,7 @@ fun AdminDashboardScreen(
 }
 
 @Composable
-private fun AdminDashboardContent(viewModel: AdminDashboardViewModel) {
+private fun AdminDashboardContent() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -311,6 +337,8 @@ fun CentroEducativoItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -355,7 +383,7 @@ fun CentroEducativoItem(
                 )
             }
 
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = { showDeleteDialog = true }) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Eliminar",
@@ -363,6 +391,38 @@ fun CentroEducativoItem(
                 )
             }
         }
+    }
+    
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Eliminar centro") },
+            text = { 
+                Text(
+                    "¿Está seguro de que desea eliminar este centro? " +
+                    "Esta acción eliminará permanentemente el centro y todos sus datos asociados " +
+                    "(usuarios, alumnos, clases, cursos, etc.) y no puede deshacerse."
+                ) 
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
@@ -559,42 +619,97 @@ fun AdminDashboardPreview() {
 }
 
 /**
- * Función para manejar la navegación desde el menú lateral
+ * Maneja la navegación hacia diferentes rutas
  */
 private fun handleNavigation(
     route: String,
     navController: NavController,
     viewModel: AdminDashboardViewModel,
-    isImplemented: Boolean = true
+    isImplemented: Boolean
 ): Boolean {
-    // Primero verificamos si la opción está implementada
+    // Si la ruta no está implementada, navegamos a una pantalla dummy
     if (!isImplemented) {
-        // Extraemos el último segmento de la ruta para usarlo como título
-        val title = route.split("/").last().replace("_", " ").replaceFirstChar { it.uppercase() }
-        navController.navigate("dummy/$title") {
-            launchSingleTop = true
-        }
+        val title = getRouteTitleForDummy(route)
+        navController.navigate(AppScreens.Dummy.createRoute(title))
         return true
     }
 
-    // Para rutas implementadas
-    return when {
-        route == "logout" -> {
+    return when (route) {
+        "admin_dashboard" -> {
+            // Estamos en el dashboard, no hacemos nada
+            true
+        }
+        "admin_dashboard/list_centros" -> {
+            viewModel.showListadoCentros()
+            true
+        }
+        "add_centro" -> {
+            navController.navigate(route)
+            true
+        }
+        "admin_dashboard/cursos" -> {
+            navController.navigate(route)
+            true
+        }
+        "admin_dashboard/clases" -> {
+            navController.navigate(route)
+            true
+        }
+        "admin_dashboard/profesores" -> {
+            navController.navigate(route)
+            true
+        }
+        "admin_dashboard/alumnos" -> {
+            navController.navigate(route)
+            true
+        }
+        "admin_dashboard/familiares" -> {
+            navController.navigate(route)
+            true
+        }
+        "config" -> {
+            navController.navigate(route)
+            true
+        }
+        "logout" -> {
             viewModel.logout()
             true
         }
-        route.startsWith("admin_dashboard") -> {
-            // Rutas internas al dashboard - se manejan localmente
+        else -> {
+            // Para otras rutas que existen pero no son manejadas específicamente
+            if (route.startsWith("add_user") || route.startsWith("detalle_centro") || 
+                route.startsWith("edit_centro")) {
+                navController.navigate(route)
+                return true
+            }
+            // Si llegamos aquí, no sabemos manejar la ruta
             false
         }
-        else -> {
-            // Navegación externa
-            navController.navigate(route) {
-                // Configuración de navegación
-                launchSingleTop = true
-            }
-            true
-        }
+    }
+}
+
+/**
+ * Obtiene el título para la pantalla dummy basado en la ruta
+ */
+private fun getRouteTitleForDummy(route: String): String {
+    return when {
+        route.contains("cursos") -> "Gestión de Cursos"
+        route.contains("clases") -> "Gestión de Clases"
+        route.contains("calendario") -> "Calendario Escolar"
+        route.contains("profesores") -> "Listado de Profesores"
+        route.contains("asignar_profesores") -> "Asignar Profesores"
+        route.contains("alumnos") -> "Listado de Alumnos"
+        route.contains("asignar_alumnos") -> "Asignar Alumnos"
+        route.contains("add_alumno") -> "Añadir Alumno"
+        route.contains("solicitudes_vinculacion") -> "Solicitudes Pendientes"
+        route.contains("familiares_vinculados") -> "Familiares Vinculados"
+        route.contains("gestionar_vinculaciones") -> "Gestionar Vinculaciones"
+        route.contains("admins_centro") -> "Administradores del Centro"
+        route.contains("config_centro") -> "Configuración del Centro"
+        route.contains("permisos_roles") -> "Permisos y Roles"
+        route.contains("datos_personales") -> "Datos Personales"
+        route.contains("cambiar_password") -> "Cambiar Contraseña"
+        else -> "Funcionalidad en Desarrollo"
     }
 }
 
@@ -604,10 +719,69 @@ private fun handleNavigation(
 @Composable
 private fun DashboardContent(
     navController: NavController,
-    viewModel: AdminDashboardViewModel,
-    currentUser: Usuario?
+    viewModel: AdminDashboardViewModel
+) {
+    // Utilizamos un estado para saber si estamos mostrando la pantalla de bienvenida o el listado
+    val uiState by viewModel.uiState.collectAsState()
+    val showListadoCentros = uiState.showListadoCentros
+    
+    if (!showListadoCentros) {
+        // Pantalla de bienvenida
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Bienvenido al Panel de Administración",
+                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = "Selecciona una opción del menú lateral para comenzar",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center
+            )
+        }
+    } else {
+        // Listado de centros
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            CentrosListContent(
+                navController = navController,
+                viewModel = viewModel
+            )
+            
+            // FAB para añadir nuevo centro
+            ExtendedFloatingActionButton(
+                onClick = { navController.navigate(AppScreens.AddCentro.route) },
+                icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
+                text = { Text("Añadir centro") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CentrosListContent(
+    navController: NavController,
+    viewModel: AdminDashboardViewModel
 ) {
     val centros by viewModel.centros.collectAsState(initial = emptyList())
+    val uiState by viewModel.uiState.collectAsState()
     
     Column(
         modifier = Modifier
@@ -622,12 +796,36 @@ private fun DashboardContent(
             modifier = Modifier.padding(bottom = 16.dp)
         )
         
-        if (centros.isEmpty()) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No hay centros disponibles")
+                CircularProgressIndicator()
+            }
+        } else if (centros.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "No hay centros disponibles",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Button(
+                        onClick = { navController.navigate(AppScreens.AddCentro.route) }
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Añadir centro")
+                    }
+                }
             }
         } else {
             LazyColumn {
@@ -636,6 +834,9 @@ private fun DashboardContent(
                         centro = centro,
                         onEditClick = {
                             navController.navigate(AppScreens.EditCentro.createRoute(centro.id))
+                        },
+                        onDeleteClick = {
+                            viewModel.deleteCentro(centro.id)
                         }
                     )
                 }
@@ -647,8 +848,11 @@ private fun DashboardContent(
 @Composable
 private fun CentroListItem(
     centro: Centro,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -658,11 +862,25 @@ private fun CentroListItem(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = centro.nombre,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Icono del centro educativo
+                Icon(
+                    imageVector = Icons.Default.School,
+                    contentDescription = "Centro educativo",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Text(
+                    text = centro.nombre,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             
             Spacer(modifier = Modifier.height(8.dp))
             
@@ -677,19 +895,57 @@ private fun CentroListItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                Surface(
-                    onClick = onEditClick,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(4.dp)
-                ) {
-                    Text(
-                        text = "Editar",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                // Botón para editar
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                // Botón para eliminar
+                IconButton(onClick = { showDeleteDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             }
         }
+    }
+    
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Eliminar centro") },
+            text = { 
+                Text(
+                    "¿Está seguro de que desea eliminar este centro? " +
+                    "Esta acción eliminará permanentemente el centro y todos sus datos asociados " +
+                    "(usuarios, alumnos, clases, cursos, etc.) y no puede deshacerse."
+                ) 
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteClick()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
@@ -731,7 +987,7 @@ private fun DrawerContent(
             )
         }
         
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(vertical = 12.dp),
             color = MaterialTheme.colorScheme.outlineVariant
         )
@@ -750,7 +1006,7 @@ private fun DrawerContent(
                 )
                 
                 if (item.dividerAfter) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp, horizontal = 20.dp),
                         color = MaterialTheme.colorScheme.outlineVariant
                     )

@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.util.regex.Pattern
 
 /**
  * Estado UI para la pantalla de registro
@@ -29,7 +30,16 @@ data class RegistroUiState(
     val totalSteps: Int = 3,
     val centros: List<Centro> = emptyList(),
     val isLoadingCentros: Boolean = false,
-    val formErrors: Map<String, String> = emptyMap()
+    val formErrors: Map<String, String> = emptyMap(),
+    // Errores de validación en tiempo real
+    val dniError: String? = null,
+    val emailError: String? = null,
+    val passwordError: String? = null,
+    val confirmPasswordError: String? = null,
+    val nombreError: String? = null,
+    val apellidosError: String? = null,
+    val telefonoError: String? = null,
+    val direccionError: String? = null
 )
 
 @HiltViewModel
@@ -338,73 +348,51 @@ class RegistroViewModel @Inject constructor(
     }
 
     /**
-     * Envía el formulario de registro
+     * Envía la solicitud de registro
      */
     fun submitRegistration() {
-        // Validar todos los pasos
-        var isValid = true
-        val allErrors = mutableMapOf<String, String>()
-
-        // Validación completa de datos personales
-        val form = _uiState.value.form
-        if (form.dni.isBlank() || !isDniValid(form.dni))
-            allErrors["dni"] = "DNI inválido"
-        if (form.email.isBlank() || !isEmailValid(form.email))
-            allErrors["email"] = "Email inválido"
-        if (form.password.isBlank() || form.password.length < 6)
-            allErrors["password"] = "Contraseña inválida"
-        if (form.confirmPassword != form.password)
-            allErrors["confirmPassword"] = "Las contraseñas no coinciden"
-        if (form.nombre.isBlank())
-            allErrors["nombre"] = "Nombre obligatorio"
-        if (form.apellidos.isBlank())
-            allErrors["apellidos"] = "Apellidos obligatorios"
-        if (form.telefono.isBlank() || !isTelefonoValid(form.telefono))
-            allErrors["telefono"] = "Teléfono inválido"
-
-        // Validación de dirección
-        if (form.direccion.calle.isBlank())
-            allErrors["calle"] = "Calle obligatoria"
-        if (form.direccion.numero.isBlank())
-            allErrors["numero"] = "Número obligatorio"
-        if (form.direccion.codigoPostal.isBlank() || !isCodigoPostalValid(form.direccion.codigoPostal))
-            allErrors["codigoPostal"] = "Código postal inválido"
-        if (form.direccion.ciudad.isBlank())
-            allErrors["ciudad"] = "Ciudad obligatoria"
-        if (form.direccion.provincia.isBlank())
-            allErrors["provincia"] = "Provincia obligatoria"
-
-        // Validación de alumnos y centro
-        if (form.alumnosDni.isEmpty())
-            allErrors["alumnos"] = "Debe indicar al menos un alumno"
-        form.alumnosDni.forEachIndexed { index, dni ->
-            if (!isDniValid(dni))
-                allErrors["alumno_$index"] = "DNI del alumno ${index + 1} inválido"
+        // Validar todos los campos antes de proceder
+        val dniError = validateDni(_uiState.value.form.dni)
+        val emailError = validateEmail(_uiState.value.form.email)
+        val nombreError = validateNombre(_uiState.value.form.nombre)
+        val apellidosError = validateApellidos(_uiState.value.form.apellidos)
+        val telefonoError = validateTelefono(_uiState.value.form.telefono)
+        val passwordError = validatePassword(_uiState.value.form.password)
+        val confirmPasswordError = validateConfirmPassword(_uiState.value.form.password, _uiState.value.form.confirmPassword)
+        
+        // Actualizar errores
+        _uiState.update { 
+            it.copy(
+                dniError = dniError,
+                emailError = emailError,
+                nombreError = nombreError,
+                apellidosError = apellidosError,
+                telefonoError = telefonoError,
+                passwordError = passwordError,
+                confirmPasswordError = confirmPasswordError
+            )
         }
-        if (form.centroId.isBlank())
-            allErrors["centro"] = "Debe seleccionar un centro"
-
-        // Si hay errores, actualizar estado
-        if (allErrors.isNotEmpty()) {
-            _uiState.update {
-                it.copy(
-                    formErrors = allErrors,
-                    currentStep = 1  // Vuelve al primer paso para mostrar errores
-                )
-            }
+        
+        // Si hay errores, no continuar con el registro
+        if (dniError != null || emailError != null || nombreError != null || 
+            apellidosError != null || telefonoError != null || 
+            passwordError != null || confirmPasswordError != null) {
+            // Mostramos un mensaje de error general
+            _uiState.update { it.copy(error = "Por favor, corrige los errores antes de continuar.") }
             return
         }
+        
+        // Si no hay errores, proceder con el registro
+        _uiState.update { it.copy(isLoading = true) }
 
-        // Enviar formulario
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-
             when (val result = usuarioRepository.registrarUsuario(_uiState.value.form)) {
                 is Result.Success -> {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            success = true
+                            success = true,
+                            error = null
                         )
                     }
                 }
@@ -412,11 +400,13 @@ class RegistroViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = "Error al registrar: ${result.exception.message}"
+                            error = "Error al registrar usuario: ${result.exception.message}"
                         )
                     }
                 }
-                else -> { /* Ignorar estado Loading */ }
+                is Result.Loading -> {
+                    // No hacer nada, ya hemos establecido isLoading a true
+                }
             }
         }
     }
@@ -473,5 +463,182 @@ class RegistroViewModel @Inject constructor(
     fun scanQRCode() {
         // Esta función en una implementación real iniciaría el escáner de QR
         // y procesaría el resultado
+    }
+
+    /**
+     * Actualiza el valor del DNI y valida en tiempo real
+     */
+    fun updateDni(dni: String) {
+        _uiState.update { 
+            it.copy(
+                form = it.form.copy(dni = dni), 
+                dniError = validateDni(dni)
+            ) 
+        }
+    }
+
+    /**
+     * Valida formato del DNI
+     */
+    private fun validateDni(dni: String): String? {
+        return when {
+            dni.isBlank() -> "El DNI es obligatorio"
+            !Pattern.matches(DNI_PATTERN, dni) -> "El formato del DNI no es válido (ejemplo: 12345678A)"
+            else -> null
+        }
+    }
+
+    /**
+     * Actualiza el valor del email y valida en tiempo real
+     */
+    fun updateEmail(email: String) {
+        _uiState.update { 
+            it.copy(
+                form = it.form.copy(email = email), 
+                emailError = validateEmail(email)
+            ) 
+        }
+    }
+
+    /**
+     * Valida formato del email
+     */
+    private fun validateEmail(email: String): String? {
+        return when {
+            email.isBlank() -> "El email es obligatorio"
+            !Pattern.matches(EMAIL_PATTERN, email) -> "El formato del email no es válido"
+            else -> null
+        }
+    }
+
+    /**
+     * Actualiza el valor del nombre y valida en tiempo real
+     */
+    fun updateNombre(nombre: String) {
+        _uiState.update { 
+            it.copy(
+                form = it.form.copy(nombre = nombre), 
+                nombreError = validateNombre(nombre)
+            ) 
+        }
+    }
+
+    /**
+     * Valida formato del nombre
+     */
+    private fun validateNombre(nombre: String): String? {
+        return when {
+            nombre.isBlank() -> "El nombre es obligatorio"
+            nombre.length < 2 -> "El nombre debe tener al menos 2 caracteres"
+            else -> null
+        }
+    }
+
+    /**
+     * Actualiza el valor de los apellidos y valida en tiempo real
+     */
+    fun updateApellidos(apellidos: String) {
+        _uiState.update { 
+            it.copy(
+                form = it.form.copy(apellidos = apellidos), 
+                apellidosError = validateApellidos(apellidos)
+            ) 
+        }
+    }
+
+    /**
+     * Valida formato de los apellidos
+     */
+    private fun validateApellidos(apellidos: String): String? {
+        return when {
+            apellidos.isBlank() -> "Los apellidos son obligatorios"
+            apellidos.length < 2 -> "Los apellidos deben tener al menos 2 caracteres"
+            else -> null
+        }
+    }
+
+    /**
+     * Actualiza el valor del teléfono y valida en tiempo real
+     */
+    fun updateTelefono(telefono: String) {
+        _uiState.update { 
+            it.copy(
+                form = it.form.copy(telefono = telefono), 
+                telefonoError = validateTelefono(telefono)
+            ) 
+        }
+    }
+
+    /**
+     * Valida formato del teléfono
+     */
+    private fun validateTelefono(telefono: String): String? {
+        return when {
+            telefono.isBlank() -> null // El teléfono no es obligatorio
+            !Pattern.matches(PHONE_PATTERN, telefono) -> "El formato del teléfono no es válido"
+            else -> null
+        }
+    }
+
+    /**
+     * Actualiza el valor de la contraseña y valida en tiempo real
+     */
+    fun updatePassword(password: String) {
+        val passwordError = validatePassword(password)
+        val confirmPasswordError = if (_uiState.value.form.confirmPassword.isNotEmpty()) {
+            validateConfirmPassword(password, _uiState.value.form.confirmPassword)
+        } else {
+            _uiState.value.confirmPasswordError
+        }
+
+        _uiState.update { 
+            it.copy(
+                form = it.form.copy(password = password), 
+                passwordError = passwordError,
+                confirmPasswordError = confirmPasswordError
+            ) 
+        }
+    }
+
+    /**
+     * Valida formato de la contraseña
+     */
+    private fun validatePassword(password: String): String? {
+        return when {
+            password.isBlank() -> "La contraseña es obligatoria"
+            password.length < 6 -> "La contraseña debe tener al menos 6 caracteres"
+            !password.any { it.isDigit() } -> "La contraseña debe contener al menos un número"
+            !password.any { it.isLetter() } -> "La contraseña debe contener al menos una letra"
+            else -> null
+        }
+    }
+
+    /**
+     * Actualiza el valor de la confirmación de contraseña y valida en tiempo real
+     */
+    fun updateConfirmPassword(confirmPassword: String) {
+        _uiState.update { 
+            it.copy(
+                form = it.form.copy(confirmPassword = confirmPassword), 
+                confirmPasswordError = validateConfirmPassword(it.form.password, confirmPassword)
+            ) 
+        }
+    }
+
+    /**
+     * Valida que la confirmación de contraseña coincida con la contraseña
+     */
+    private fun validateConfirmPassword(password: String, confirmPassword: String): String? {
+        return when {
+            confirmPassword.isBlank() -> "La confirmación de contraseña es obligatoria"
+            password != confirmPassword -> "Las contraseñas no coinciden"
+            else -> null
+        }
+    }
+
+    companion object {
+        private const val DNI_PATTERN = "^[0-9]{8}[A-Za-z]$"
+        private const val EMAIL_PATTERN = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+"
+        private const val PHONE_PATTERN = "^[6-9][0-9]{8}$"
     }
 }
