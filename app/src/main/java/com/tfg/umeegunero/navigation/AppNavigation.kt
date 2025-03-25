@@ -92,7 +92,7 @@ fun AppNavigation(
                     navController.navigate(AppScreens.Dummy.createRoute("Vista previa de la aplicación"))
                 },
                 onNavigateToTechnicalSupport = {
-                    navController.navigate(AppScreens.TechnicalSupport.route)
+                    navController.navigate(AppScreens.SoporteTecnico.route)
                 },
                 onNavigateToFAQ = {
                     navController.navigate(AppScreens.FAQ.route)
@@ -101,7 +101,7 @@ fun AppNavigation(
         }
 
         // Pantalla de soporte técnico
-        composable(route = AppScreens.TechnicalSupport.route) {
+        composable(route = AppScreens.SoporteTecnico.route) {
             TechnicalSupportScreen(
                 onNavigateBack = { navController.popBackStack() }
             )

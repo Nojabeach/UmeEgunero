@@ -45,6 +45,8 @@ import com.tfg.umeegunero.R
 import com.tfg.umeegunero.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.sin
+import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
+import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
 
 // Extensión para verificar si el tema es claro
 fun ColorScheme.isLight(): Boolean {

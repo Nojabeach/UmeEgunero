@@ -92,4 +92,7 @@ sealed class AppScreens(val route: String) {
 
     // Pantalla de recuperación de contraseña
     object RecuperarPassword : AppScreens("recuperar_password")
+
+    // Pantalla de soporte técnico
+    object FAQ : AppScreens("preguntas_frecuentes")
 } 
