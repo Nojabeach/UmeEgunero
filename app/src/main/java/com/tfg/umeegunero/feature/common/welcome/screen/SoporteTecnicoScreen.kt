@@ -248,22 +248,13 @@ fun SoporteTecnicoScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
                             ),
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = !uiState.isLoading
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text(
-                                    "Enviar mensaje",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                            Text(
+                                "Enviar Mensaje",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                         
                         Spacer(modifier = Modifier.height(8.dp))

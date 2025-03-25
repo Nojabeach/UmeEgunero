@@ -45,7 +45,7 @@ fun SplashScreen(
 
     LaunchedEffect(key1 = true) {
         startAnimation = true
-        kotlinx.coroutines.delay(2000)
+        kotlinx.coroutines.delay(3000)
         onSplashComplete()
     }
 

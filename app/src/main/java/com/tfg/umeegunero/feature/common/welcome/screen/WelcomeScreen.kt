@@ -609,9 +609,15 @@ fun WelcomeScreen(
                                     ),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SupportAgent,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         "Soporte técnico",
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
@@ -626,9 +632,15 @@ fun WelcomeScreen(
                                     ),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Help,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "Preguntas frecuentes",
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        "FAQ",
+                                        style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
@@ -1044,13 +1056,13 @@ fun LoginButtons(
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.School,
-                contentDescription = null,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.School,
+                    contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = Color.White
-            )
+                )
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -1061,21 +1073,21 @@ fun LoginButtons(
             )
             
             Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = "Información biométrica",
                 modifier = Modifier
                     .size(20.dp)
                     .clickable { showBiometricInfo = true },
                 tint = Color.White.copy(alpha = 0.8f)
-            )
-            
-            Spacer(modifier = Modifier.width(4.dp))
-            
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
             )
         }
 
@@ -1102,13 +1114,13 @@ fun LoginButtons(
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = Color.White
-            )
+                )
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -1119,21 +1131,21 @@ fun LoginButtons(
             )
             
             Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = "Información biométrica",
                 modifier = Modifier
                     .size(20.dp)
                     .clickable { showBiometricInfo = true },
                 tint = Color.White.copy(alpha = 0.8f)
-            )
-            
-            Spacer(modifier = Modifier.width(4.dp))
-            
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
             )
         }
 
@@ -1160,13 +1172,13 @@ fun LoginButtons(
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Chat,
-                contentDescription = null,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                    contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = Color.White
-            )
+                )
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -1177,21 +1189,21 @@ fun LoginButtons(
             )
             
             Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = "Información biométrica",
                 modifier = Modifier
                     .size(20.dp)
                     .clickable { showBiometricInfo = true },
                 tint = Color.White.copy(alpha = 0.8f)
-            )
-            
-            Spacer(modifier = Modifier.width(4.dp))
-            
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
             )
         }
     }

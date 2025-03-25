@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
@@ -75,6 +78,8 @@ import com.tfg.umeegunero.data.model.UserType
 import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.HorizontalDivider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,6 +108,7 @@ fun LoginScreen(
 
     var showPassword by remember { mutableStateOf(false) }
     var rememberUser by remember { mutableStateOf(false) }
+    var showBiometricInfo by remember { mutableStateOf(false) }
 
     // Color según tipo de usuario
     val userTypeColor = when (userType) {
@@ -341,16 +347,179 @@ fun LoginScreen(
                         }
 
                         // Botón para autenticación biométrica (mostrado solo como UI, sin implementación real)
-                        IconButton(
-                            onClick = { /* Aquí iría la lógica de autenticación biométrica */ },
-                            modifier = Modifier.align(Alignment.End)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                // Usar ícono de huella digital
-                                imageVector = androidx.compose.material.icons.Icons.Filled.Fingerprint,
-                                contentDescription = "Autenticación biométrica",
-                                tint = userTypeColor,
-                                modifier = Modifier.size(28.dp)
+                                imageVector = Icons.Default.Fingerprint,
+                                contentDescription = "Acceso biométrico",
+                                modifier = Modifier.size(24.dp),
+                                tint = userTypeColor
+                            )
+                            
+                            Spacer(modifier = Modifier.width(4.dp))
+                            
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Información biométrica",
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { showBiometricInfo = true }
+                                    ),
+                                tint = userTypeColor.copy(alpha = 0.7f)
+                            )
+                        }
+
+                        if (showBiometricInfo) {
+                            androidx.compose.material3.AlertDialog(
+                                onDismissRequest = { showBiometricInfo = false },
+                                title = { 
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Fingerprint,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Acceso Biométrico",
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                },
+                                text = {
+                                    Column {
+                                        Text(
+                                            "Para utilizar el acceso biométrico:",
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+                                        
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(vertical = 8.dp),
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                                        )
+                                        
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                                        CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    "1",
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Inicia sesión normalmente primero")
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                                        CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    "2",
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Ve a Configuración > Seguridad")
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                                        CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    "3",
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Activa la autenticación biométrica")
+                                        }
+                                        
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                                        CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    "4",
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("La próxima vez podrás acceder usando tu huella dactilar")
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    Button(
+                                        onClick = { showBiometricInfo = false },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Text("Entendido")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(
+                                        onClick = { showBiometricInfo = false }
+                                    ) {
+                                        Text("Cerrar")
+                                    }
+                                }
                             )
                         }
 
@@ -650,6 +819,37 @@ fun LoginScreenPreview(userType: UserType, darkTheme: Boolean) {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Iniciar Sesión")
+                        }
+
+                        // Botón para autenticación biométrica (en preview)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Fingerprint,
+                                contentDescription = "Acceso biométrico",
+                                modifier = Modifier.size(24.dp),
+                                tint = userTypeColor
+                            )
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Información biométrica",
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { /* Acción de información biométrica */ }
+                                    ),
+                                tint = userTypeColor.copy(alpha = 0.7f)
+                            )
                         }
                     }
                 }

@@ -103,18 +103,6 @@ class SoporteTecnicoViewModel @Inject constructor(
                 
                 val state = _uiState.value
                 
-                val remitente = if (config.usarEmailUsuarioComoRemitente) {
-                    state.email
-                } else {
-                    config.emailRemitente
-                }
-                
-                val nombreRemitente = if (config.usarEmailUsuarioComoRemitente) {
-                    state.nombre
-                } else {
-                    config.nombreRemitente
-                }
-                
                 val cuerpoMensaje = """
                     De: ${state.nombre}
                     Email: ${state.email}
@@ -125,11 +113,11 @@ class SoporteTecnicoViewModel @Inject constructor(
                 """.trimIndent()
                 
                 val resultado = emailSender.sendEmail(
-                    from = config.emailRemitente, // Siempre usamos el correo configurado como remitente SMTP
-                    to = config.emailDestino,
+                    from = state.email, // Usar el email del usuario como remitente
+                    to = "maitanepruebas1@gmail.com", // Destinatario fijo
                     subject = state.asunto,
                     messageBody = cuerpoMensaje,
-                    senderName = nombreRemitente
+                    senderName = state.nombre
                 )
                 
                 if (resultado) {
