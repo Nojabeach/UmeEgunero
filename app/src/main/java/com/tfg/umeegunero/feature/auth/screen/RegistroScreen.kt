@@ -156,11 +156,15 @@ fun RegistroScreen(
     }
 
     // Mostrar errores en Snackbar
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
+    LaunchedEffect(uiState.error, uiState.passwordError) {
+        if (uiState.error != null) {
             scope.launch {
-                snackbarHostState.showSnackbar(message = it)
+                snackbarHostState.showSnackbar(message = uiState.error ?: "Error desconocido")
                 viewModel.clearError()
+            }
+        } else if (uiState.passwordError != null) {
+            scope.launch {
+                snackbarHostState.showSnackbar(message = uiState.passwordError ?: "")
             }
         }
     }
@@ -294,9 +298,9 @@ fun RegistroScreen(
                                 keyboardType = KeyboardType.Email,
                                 imeAction = ImeAction.Next
                             ),
-                            isError = uiState.formErrors["email"] != null,
+                            isError = uiState.formErrors["email"] != null || uiState.emailError != null,
                             supportingText = {
-                                uiState.formErrors["email"]?.let { 
+                                (uiState.formErrors["email"] ?: uiState.emailError)?.let { 
                                     Text(
                                         text = it,
                                         color = MaterialTheme.colorScheme.error
@@ -305,6 +309,143 @@ fun RegistroScreen(
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        
+                        // DNI (campo obligatorio)
+                        OutlinedTextField(
+                            value = uiState.form.dni,
+                            onValueChange = { viewModel.updateDni(it) },
+                            label = { Text("DNI") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Person, contentDescription = null)
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Next
+                            ),
+                            isError = uiState.formErrors["dni"] != null || uiState.dniError != null,
+                            supportingText = {
+                                (uiState.formErrors["dni"] ?: uiState.dniError)?.let { 
+                                    Text(
+                                        text = it,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        // Nombre (campo obligatorio)
+                        OutlinedTextField(
+                            value = uiState.form.nombre,
+                            onValueChange = { viewModel.updateNombre(it) },
+                            label = { Text("Nombre") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Person, contentDescription = null)
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Next
+                            ),
+                            isError = uiState.formErrors["nombre"] != null || uiState.nombreError != null,
+                            supportingText = {
+                                (uiState.formErrors["nombre"] ?: uiState.nombreError)?.let { 
+                                    Text(
+                                        text = it,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        // Apellidos (campo obligatorio)
+                        OutlinedTextField(
+                            value = uiState.form.apellidos,
+                            onValueChange = { viewModel.updateApellidos(it) },
+                            label = { Text("Apellidos") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Person, contentDescription = null)
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Next
+                            ),
+                            isError = uiState.formErrors["apellidos"] != null || uiState.apellidosError != null,
+                            supportingText = {
+                                (uiState.formErrors["apellidos"] ?: uiState.apellidosError)?.let { 
+                                    Text(
+                                        text = it,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        // Teléfono (campo obligatorio)
+                        OutlinedTextField(
+                            value = uiState.form.telefono,
+                            onValueChange = { viewModel.updateTelefono(it) },
+                            label = { Text("Teléfono") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Phone, contentDescription = null)
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Phone,
+                                imeAction = ImeAction.Next
+                            ),
+                            isError = uiState.formErrors["telefono"] != null || uiState.telefonoError != null,
+                            supportingText = {
+                                (uiState.formErrors["telefono"] ?: uiState.telefonoError)?.let { 
+                                    Text(
+                                        text = it,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Selector de tipo de familiar
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Relación con el alumno",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
+                            // Opciones de tipo de familiar
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                RelacionFamiliarOption(
+                                    selected = uiState.form.subtipo == SubtipoFamiliar.PADRE,
+                                    onClick = { viewModel.updateSubtipoFamiliar(SubtipoFamiliar.PADRE) },
+                                    title = "Padre"
+                                )
+                                
+                                RelacionFamiliarOption(
+                                    selected = uiState.form.subtipo == SubtipoFamiliar.MADRE,
+                                    onClick = { viewModel.updateSubtipoFamiliar(SubtipoFamiliar.MADRE) },
+                                    title = "Madre"
+                                )
+                                
+                                RelacionFamiliarOption(
+                                    selected = uiState.form.subtipo == SubtipoFamiliar.TUTOR,
+                                    onClick = { viewModel.updateSubtipoFamiliar(SubtipoFamiliar.TUTOR) },
+                                    title = "Tutor"
+                                )
+                                
+                                RelacionFamiliarOption(
+                                    selected = uiState.form.subtipo == SubtipoFamiliar.OTRO,
+                                    onClick = { viewModel.updateSubtipoFamiliar(SubtipoFamiliar.OTRO) },
+                                    title = "Otro"
+                                )
+                            }
+                        }
 
                         // Contraseña con feedback
                         Column(
@@ -370,6 +511,14 @@ fun RegistroScreen(
                                                 }
                                             )
                                         }
+                                        
+                                        // Texto de ayuda para que el usuario entienda los requisitos
+                                        Text(
+                                            text = "La contraseña debe tener al menos 6 caracteres, incluir una letra y un número.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        )
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -378,8 +527,19 @@ fun RegistroScreen(
 
                         // Botón de registro
                         Button(
-                            onClick = { viewModel.submitRegistration() },
-                            enabled = !uiState.isLoading,
+                            onClick = { 
+                                // Verificar si todos los campos obligatorios están completos
+                                if (isFormValid(uiState)) {
+                                    viewModel.submitRegistration() 
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            message = "Por favor completa todos los campos obligatorios"
+                                        )
+                                    }
+                                }
+                            },
+                            enabled = !uiState.isLoading && isFormValid(uiState),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp)
@@ -394,6 +554,20 @@ fun RegistroScreen(
                                 )
                             }
                             Text("Registrarse con Email")
+                        }
+
+                        // Si hay errores en los campos específicos, mostrarlos aquí
+                        AnimatedVisibility(
+                            visible = uiState.passwordError != null,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            Text(
+                                text = uiState.passwordError ?: "",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
                         }
 
                         // Separador
@@ -434,6 +608,33 @@ fun RegistroScreen(
                 // Términos y condiciones
                 TermsAndConditions()
 
+                // Información sobre proceso de vinculación de alumnos
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Vinculación con tus hijos",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "Una vez creada tu cuenta, deberás:\n" +
+                                  "• Proporcionar los DNIs de tus hijos para vincularlos\n" +
+                                  "• Seleccionar el centro educativo al que pertenecen\n" +
+                                  "• Esperar la aprobación del administrador del centro",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+
                 // Información sobre el proceso de aprobación
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -451,9 +652,10 @@ fun RegistroScreen(
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            text = "1. Completa el registro con tu email o cuenta de Google\n" +
-                                  "2. El administrador del centro revisará tu solicitud\n" +
-                                  "3. Una vez aprobada, podrás acceder a la información de tus hijos",
+                            text = "1. Completa todos los campos del formulario (DNI, email, nombre, apellidos, teléfono y contraseña)\n" +
+                                  "2. Se creará tu cuenta y tendrás que vincularla con tus hijos\n" +
+                                  "3. El administrador del centro revisará tu solicitud\n" +
+                                  "4. Una vez aprobada, podrás acceder a la información de tus hijos",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -494,29 +696,19 @@ fun RegistroScreen(
                     )
                     
                     PasswordRequirementItem(
-                        text = "Mínimo 8 caracteres",
-                        isMet = uiState.form.password.length >= 8,
+                        text = "Mínimo 6 caracteres",
+                        isMet = uiState.form.password.length >= 6,
                         icon = Icons.Default.FormatSize
                     )
                     PasswordRequirementItem(
-                        text = "Al menos una mayúscula",
-                        isMet = uiState.form.password.any { it.isUpperCase() },
-                        icon = Icons.Default.TextFormat
-                    )
-                    PasswordRequirementItem(
-                        text = "Al menos una minúscula",
-                        isMet = uiState.form.password.any { it.isLowerCase() },
+                        text = "Al menos una letra",
+                        isMet = uiState.form.password.any { it.isLetter() },
                         icon = Icons.Default.TextFormat
                     )
                     PasswordRequirementItem(
                         text = "Al menos un número",
                         isMet = uiState.form.password.any { it.isDigit() },
                         icon = Icons.Default.Pin
-                    )
-                    PasswordRequirementItem(
-                        text = "Al menos un carácter especial",
-                        isMet = uiState.form.password.any { !it.isLetterOrDigit() },
-                        icon = Icons.Default.Grade
                     )
                 }
             },
@@ -680,39 +872,51 @@ private fun TermsAndConditions() {
 
 private fun calcularPorcentajeCompletado(uiState: RegistroUiState): Float {
     var camposCompletados = 0
-    var camposTotales = 2 // Email y contraseña
+    var camposTotales = 6 // Email, DNI, Nombre, Apellidos, Teléfono y contraseña
 
-    if (uiState.form.email.isNotBlank()) camposCompletados++
+    if (uiState.form.email.isNotBlank() && uiState.emailError == null) camposCompletados++
+    if (uiState.form.dni.isNotBlank() && uiState.dniError == null) camposCompletados++
+    if (uiState.form.nombre.isNotBlank() && uiState.nombreError == null) camposCompletados++
+    if (uiState.form.apellidos.isNotBlank() && uiState.apellidosError == null) camposCompletados++
+    if (uiState.form.telefono.isNotBlank() && uiState.telefonoError == null) camposCompletados++
     if (uiState.form.password.isNotBlank() && isPasswordValid(uiState.form.password)) camposCompletados++
 
     return camposCompletados.toFloat() / camposTotales.toFloat()
 }
 
+private fun isFormValid(uiState: RegistroUiState): Boolean {
+    return uiState.form.email.isNotBlank() && uiState.emailError == null &&
+           uiState.form.dni.isNotBlank() && uiState.dniError == null &&
+           uiState.form.nombre.isNotBlank() && uiState.nombreError == null &&
+           uiState.form.apellidos.isNotBlank() && uiState.apellidosError == null &&
+           uiState.form.telefono.isNotBlank() && uiState.telefonoError == null &&
+           uiState.form.password.isNotBlank() && isPasswordValid(uiState.form.password)
+}
+
 private fun isPasswordValid(password: String): Boolean {
-    return password.length >= 8 &&
-           password.any { it.isUpperCase() } &&
-           password.any { it.isLowerCase() } &&
-           password.any { it.isDigit() } &&
-           password.any { !it.isLetterOrDigit() }
+    // Validamos según los mismos criterios que el ViewModel
+    return password.length >= 6 &&
+           password.any { it.isLetter() } &&
+           password.any { it.isDigit() }
 }
 
 private fun calculatePasswordStrength(password: String): Float {
     var strength = 0f
     
-    // Longitud mínima
-    if (password.length >= 8) strength += 0.2f
+    // Longitud mínima (6 caracteres)
+    if (password.length >= 6) strength += 0.33f
     
-    // Mayúsculas
-    if (password.any { it.isUpperCase() }) strength += 0.2f
+    // Al menos una letra
+    if (password.any { it.isLetter() }) strength += 0.33f
     
-    // Minúsculas
-    if (password.any { it.isLowerCase() }) strength += 0.2f
+    // Al menos un número
+    if (password.any { it.isDigit() }) strength += 0.34f
     
-    // Números
-    if (password.any { it.isDigit() }) strength += 0.2f
-    
-    // Caracteres especiales
-    if (password.any { !it.isLetterOrDigit() }) strength += 0.2f
+    // Puntos extra por complejidad (pero no requeridos)
+    if (password.length >= 8) strength += 0.1f
+    if (password.any { it.isUpperCase() }) strength += 0.1f
+    if (password.any { it.isLowerCase() }) strength += 0.1f
+    if (password.any { !it.isLetterOrDigit() }) strength += 0.1f
     
     return strength.coerceIn(0f, 1f)
 }
@@ -725,5 +929,37 @@ private fun generatePasswordSuggestions(): List<String> {
     
     return List(3) {
         "${adjectives.random()}${nouns.random()}$numbers${specialChars.random()}"
+    }
+}
+
+@Composable
+private fun RelacionFamiliarOption(
+    selected: Boolean,
+    onClick: () -> Unit,
+    title: String
+) {
+    Card(
+        modifier = Modifier
+            .padding(4.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = onClick
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
     }
 }

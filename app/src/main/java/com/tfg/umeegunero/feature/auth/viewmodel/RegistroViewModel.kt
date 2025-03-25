@@ -483,7 +483,7 @@ class RegistroViewModel @Inject constructor(
     private fun validateDni(dni: String): String? {
         return when {
             dni.isBlank() -> "El DNI es obligatorio"
-            !Pattern.matches(DNI_PATTERN, dni) -> "El formato del DNI no es válido (ejemplo: 12345678A)"
+            !isDniValid(dni) -> "El DNI no tiene un formato válido"
             else -> null
         }
     }
