@@ -54,6 +54,7 @@ import com.tfg.umeegunero.feature.common.academico.screen.GestionClasesScreen
 import com.tfg.umeegunero.feature.common.academico.screen.CalendarioScreen
 import com.tfg.umeegunero.feature.common.stats.screen.EstadisticasScreen
 import com.tfg.umeegunero.feature.admin.screen.AdminNotificacionesScreen
+import com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen
 
 /**
  * Navegación principal de la aplicación
@@ -179,6 +180,26 @@ fun AppNavigation(
             GestionClasesScreen(
                 navController = navController,
                 cursoId = cursoId
+            )
+        }
+
+        composable(
+            route = AppScreens.EditClase.route,
+            arguments = listOf(
+                navArgument("cursoId") { type = NavType.StringType },
+                navArgument("claseId") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+            val claseId = backStackEntry.arguments?.getString("claseId")
+            EditClaseScreen(
+                navController = navController,
+                cursoId = cursoId,
+                claseId = claseId
             )
         }
 

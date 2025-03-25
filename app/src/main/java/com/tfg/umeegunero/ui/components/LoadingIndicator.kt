@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -20,11 +21,13 @@ import androidx.compose.ui.unit.dp
  *
  * @param message Mensaje opcional a mostrar debajo del indicador de carga
  * @param modifier Modificador para personalizar el componente
+ * @param color Color opcional para el indicador de carga, por defecto usa el color primario del tema
  */
 @Composable
 fun LoadingIndicator(
     message: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary
 ) {
     Column(
         modifier = modifier,
@@ -32,7 +35,7 @@ fun LoadingIndicator(
     ) {
         CircularProgressIndicator(
             modifier = Modifier.size(48.dp),
-            color = MaterialTheme.colorScheme.primary
+            color = color
         )
         
         if (!message.isNullOrBlank()) {

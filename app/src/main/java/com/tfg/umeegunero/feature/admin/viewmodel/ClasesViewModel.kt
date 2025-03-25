@@ -33,6 +33,9 @@ class ClasesViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ClasesUiState(isLoading = true))
     val uiState: StateFlow<ClasesUiState> = _uiState.asStateFlow()
+    
+    // ID del curso seleccionado actualmente (en una implementación completa podría venir de preferencias o alguna otra fuente)
+    private var cursoSeleccionadoId: String = "curso_primero_a"
 
     /**
      * Carga todas las clases desde el repositorio
@@ -42,10 +45,11 @@ class ClasesViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                val result = claseRepository.getAllClases()
+                // Usar el método getClasesByCursoId en lugar de getAllClases
+                val result = claseRepository.getClasesByCursoId(cursoSeleccionadoId)
                 
                 when (result) {
-                    is Result.Success -> {
+                    is Result.Success<List<Clase>> -> {
                         _uiState.update { 
                             it.copy(
                                 clases = result.data,
@@ -87,10 +91,11 @@ class ClasesViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                val result = claseRepository.deleteClase(claseId)
+                // Usar el método eliminarClase en lugar de deleteClase
+                val result = claseRepository.eliminarClase(claseId)
                 
                 when (result) {
-                    is Result.Success -> {
+                    is Result.Success<Boolean> -> {
                         // Recargar la lista de clases después de eliminar
                         loadClases()
                         Timber.d("Clase eliminada con ID: $claseId")
@@ -118,6 +123,14 @@ class ClasesViewModel @Inject constructor(
                 Timber.e(e, "Error inesperado al eliminar la clase")
             }
         }
+    }
+    
+    /**
+     * Actualiza el ID del curso seleccionado y recarga las clases
+     */
+    fun setCursoId(cursoId: String) {
+        this.cursoSeleccionadoId = cursoId
+        loadClases()
     }
 
     /**

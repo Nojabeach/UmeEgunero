@@ -43,6 +43,10 @@ sealed class AppScreens(val route: String) {
     object GestionClases : AppScreens("gestion_clases/{cursoId}") {
         fun createRoute(cursoId: String) = "gestion_clases/$cursoId"
     }
+    object EditClase : AppScreens("edit_clase/{cursoId}?claseId={claseId}") {
+        fun createRoute(cursoId: String, claseId: String? = null) = 
+            if (claseId != null) "edit_clase/$cursoId?claseId=$claseId" else "edit_clase/$cursoId"
+    }
     object Calendario : AppScreens("calendario")
     object Estadisticas : AppScreens("estadisticas")
     object Notificaciones : AppScreens("notificaciones")

@@ -18,6 +18,10 @@ val CentroColor = Color(0xFF2962FF)   // Azul intenso para centros
 val ProfesorColor = Color(0xFF00B8D4) // Cian intenso para profesores
 val FamiliarColor = Color(0xFF00C853) // Verde intenso para familiares
 
+// Colores para módulos académicos
+val AcademicoColor = Color(0xFF7C4DFF) // Violeta para sección académica
+val AcademicoColorDark = Color(0xFF4527A0) // Violeta oscuro para sección académica
+
 // Colores para UI
 val Background = Color(0xFFF5F5F5)    // Fondo claro (para modo claro)
 val BackgroundDark = Color(0xFF121212) // Fondo oscuro (para modo oscuro)
