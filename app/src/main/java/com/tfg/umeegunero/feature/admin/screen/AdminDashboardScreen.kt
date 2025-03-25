@@ -638,56 +638,87 @@ private fun handleNavigation(
         return true
     }
 
-    return when (route) {
-        "admin_dashboard" -> {
+    return when {
+        route == "admin_dashboard" -> {
             // Estamos en el dashboard, no hacemos nada
             true
         }
-        "admin_dashboard/list_centros" -> {
+        route == "admin_dashboard/list_centros" -> {
             viewModel.showListadoCentros()
             true
         }
-        "add_centro" -> {
+        route == "add_centro" -> {
             navController.navigate(route)
             true
         }
-        "admin_dashboard/cursos" -> {
+        route == "admin_dashboard/cursos" -> {
             navController.navigate(route)
             true
         }
-        "admin_dashboard/clases" -> {
+        route == "admin_dashboard/clases" -> {
             navController.navigate(route)
             true
         }
-        "admin_dashboard/profesores" -> {
+        route == "admin_dashboard/profesores" -> {
             navController.navigate(route)
             true
         }
-        "admin_dashboard/alumnos" -> {
+        route == "admin_dashboard/alumnos" -> {
             navController.navigate(route)
             true
         }
-        "admin_dashboard/familiares" -> {
+        route == "admin_dashboard/familiares" -> {
             navController.navigate(route)
             true
         }
-        "config" -> {
+        route == "config" -> {
             navController.navigate(route)
             true
         }
-        "logout" -> {
+        route == "logout" -> {
             viewModel.logout()
             true
         }
-        else -> {
-            // Para otras rutas que existen pero no son manejadas específicamente
-            if (route.startsWith("add_user") || route.startsWith("detalle_centro") || 
-                route.startsWith("edit_centro")) {
-                navController.navigate(route)
-                return true
+        // Manejo especial para rutas que requieren parámetros
+        route == AppScreens.GestionCursos.route -> {
+            // Para la gestión de cursos, usamos un centroId por defecto o lo solicitamos
+            val centroId = viewModel.obtenerCentroSeleccionadoOPrimero()
+            if (centroId.isNotEmpty()) {
+                navController.navigate(AppScreens.GestionCursos.createRoute(centroId))
+                true
+            } else {
+                // Si no hay centros, mostrar un mensaje o ir a una pantalla dummy
+                navController.navigate(AppScreens.Dummy.createRoute("No hay centros disponibles"))
+                true
             }
-            // Si llegamos aquí, no sabemos manejar la ruta
-            false
+        }
+        route == AppScreens.GestionClases.route -> {
+            // Para la gestión de clases, usamos un cursoId por defecto o lo solicitamos
+            val cursoId = viewModel.obtenerCursoSeleccionadoOPrimero()
+            if (cursoId.isNotEmpty()) {
+                navController.navigate(AppScreens.GestionClases.createRoute(cursoId))
+                true
+            } else {
+                // Si no hay cursos, mostrar un mensaje o ir a una pantalla dummy
+                navController.navigate(AppScreens.Dummy.createRoute("No hay cursos disponibles"))
+                true
+            }
+        }
+        route.startsWith("add_user") || route.startsWith("detalle_centro") || 
+        route.startsWith("edit_centro") -> {
+            navController.navigate(route)
+            true
+        }
+        else -> {
+            // Si llegamos aquí, intentamos navegar directamente
+            try {
+                navController.navigate(route)
+                true
+            } catch (e: Exception) {
+                // Si falla la navegación, vamos a una pantalla dummy
+                navController.navigate(AppScreens.Dummy.createRoute("Ruta no implementada"))
+                false
+            }
         }
     }
 }

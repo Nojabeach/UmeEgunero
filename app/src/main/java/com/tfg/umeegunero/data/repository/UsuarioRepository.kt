@@ -33,7 +33,7 @@ sealed class Result<out T> {
  * Repositorio para gestionar usuarios y operaciones relacionadas
  */
 @Singleton
-class UsuarioRepository @Inject constructor(
+open class UsuarioRepository @Inject constructor(
     val auth: FirebaseAuth,
     val firestore: FirebaseFirestore
 ) {
@@ -122,22 +122,35 @@ class UsuarioRepository @Inject constructor(
      */
     suspend fun iniciarSesion(email: String, password: String): Result<String> = withContext(Dispatchers.IO) {
         try {
+            Timber.d("Intentando login en Firebase Auth para email: $email")
             val authResult = auth.signInWithEmailAndPassword(email, password).await()
-            val uid = authResult.user?.uid ?: throw Exception("Error al iniciar sesión")
+            val uid = authResult.user?.uid ?: throw Exception("Error al iniciar sesión: UID no disponible")
+            Timber.d("Login exitoso en Firebase Auth, UID: $uid")
 
             // Actualizar último acceso del usuario
+            Timber.d("Buscando usuario en Firestore por email: $email")
             val userQuery = usuariosCollection.whereEqualTo("email", email).get().await()
 
             if (!userQuery.isEmpty) {
                 val userDoc = userQuery.documents.first()
+                Timber.d("Usuario encontrado en Firestore con DNI: ${userDoc.id}")
+                
+                // Actualizar último acceso
                 userDoc.reference.update("ultimoAcceso", Timestamp.now()).await()
+                Timber.d("Último acceso actualizado para usuario: ${userDoc.id}")
+                
                 return@withContext Result.Success(userDoc.id) // Devuelve el DNI como ID
             } else {
-                throw Exception("Usuario no encontrado en la base de datos")
+                Timber.e("Usuario no encontrado en Firestore para email: $email")
+                // Cerrar sesión ya que el usuario no existe en Firestore
+                auth.signOut()
+                return@withContext Result.Error(Exception("Usuario no encontrado en la base de datos"))
             }
         } catch (e: FirebaseAuthException) {
+            Timber.e(e, "Error de autenticación para email: $email")
             return@withContext Result.Error(Exception("Error de autenticación: ${e.message}"))
         } catch (e: Exception) {
+            Timber.e(e, "Error inesperado durante el login para email: $email")
             return@withContext Result.Error(e)
         }
     }
@@ -889,6 +902,87 @@ class UsuarioRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al configurar escucha de mensajes")
             throw e
+        }
+    }
+
+    /**
+     * Obtiene un alumno por su ID
+     */
+    open suspend fun getAlumnoPorId(alumnoId: String): Result<Alumno> = withContext(Dispatchers.IO) {
+        try {
+            val alumnoDoc = alumnosCollection.document(alumnoId).get().await()
+
+            if (alumnoDoc.exists()) {
+                val alumno = alumnoDoc.toObject(Alumno::class.java)
+                
+                // Obtener los datos de los familiares vinculados
+                val alumnoData = alumno ?: throw Exception("Error al convertir datos del alumno")
+                val familiares = mutableListOf<Familiar>()
+                
+                if (alumnoData.familiares.isNotEmpty()) {
+                    // Suponiendo que familiares contiene IDs de usuarios familiares
+                    for (familiarId in alumnoData.familiares) {
+                        try {
+                            val familiarDoc = usuariosCollection.document(familiarId.id).get().await()
+                            if (familiarDoc.exists()) {
+                                val usuario = familiarDoc.toObject(Usuario::class.java)
+                                if (usuario != null) {
+                                    // Crear un objeto Familiar con la información del usuario
+                                    val familiar = Familiar(
+                                        id = familiarId.id,
+                                        nombre = usuario.nombre,
+                                        apellidos = usuario.apellidos,
+                                        parentesco = familiarId.parentesco
+                                    )
+                                    familiares.add(familiar)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al obtener familiar ${familiarId.id}")
+                            // Continuamos con el siguiente familiar aunque este falle
+                        }
+                    }
+                }
+                
+                // Si hemos obtenido familiares, actualizar el objeto Alumno
+                val alumnoConFamiliares = if (familiares.isNotEmpty()) {
+                    alumnoData.copy(familiares = familiares)
+                } else {
+                    alumnoData
+                }
+                
+                return@withContext Result.Success(alumnoConFamiliares)
+            } else {
+                throw Exception("Alumno no encontrado")
+            }
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    companion object {
+        /**
+         * Crea un mock del repositorio para pruebas y vistas previas
+         */
+        fun createMock(): UsuarioRepository {
+            // Creamos un mock usando Mockito o implementamos una versión simple
+            return object : UsuarioRepository(
+                FirebaseAuth.getInstance(),
+                FirebaseFirestore.getInstance()
+            ) {
+                override suspend fun getAlumnoPorId(alumnoId: String): Result<Alumno> {
+                    return Result.Success(
+                        Alumno(
+                            id = alumnoId,
+                            dni = "12345678A",
+                            nombre = "Alumno de Prueba",
+                            apellidos = "Apellidos de Prueba",
+                            curso = "1º ESO",
+                            clase = "1ºA"
+                        )
+                    )
+                }
+            }
         }
     }
 }

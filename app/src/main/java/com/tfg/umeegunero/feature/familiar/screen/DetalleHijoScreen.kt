@@ -77,7 +77,7 @@ data class AlumnoDetalleModel(
     val dni: String,
     val nombre: String,
     val apellidos: String,
-    val fechaNacimiento: com.google.firebase.Timestamp,
+    val fechaNacimiento: String,
     val centroId: String,
     val centroNombre: String,
     val clase: String,
@@ -267,9 +267,8 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             // Fecha de nacimiento
-                            val fechaFormateada = if (alumno.fechaNacimiento != null) {
-                                val formato = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                                formato.format(alumno.fechaNacimiento.toDate())
+                            val fechaFormateada = if (alumno.fechaNacimiento != null && alumno.fechaNacimiento.isNotEmpty()) {
+                                alumno.fechaNacimiento
                             } else {
                                 "Fecha no disponible"
                             }
@@ -397,9 +396,9 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Alergias
-                            if (!alumno.alergias.isEmpty()) {
+                            if (alumno.alergias.isNotEmpty()) {
                                 Text(
-                                    text = "Alergias: ${alumno.alergias}",
+                                    text = "Alergias: ${alumno.alergias.joinToString(", ")}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.error
                                 )
@@ -408,9 +407,9 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Medicación
-                            if (alumno.medicacion.isNotBlank()) {
+                            if (alumno.medicacion.isNotEmpty()) {
                                 Text(
-                                    text = "Medicación: ${alumno.medicacion}",
+                                    text = "Medicación: ${alumno.medicacion.joinToString(", ")}",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -427,7 +426,7 @@ fun DetalleHijoScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = alumno.observacionesMedicas?.takeIf { it.isNotBlank() }
+                                text = alumno.observacionesMedicas.takeIf { it.isNotEmpty() }
                                     ?: "No se han registrado observaciones médicas",
                                 style = MaterialTheme.typography.bodyLarge
                             )
@@ -565,19 +564,29 @@ fun formatDate(timestamp: Timestamp): String {
     return dateFormat.format(timestamp.toDate())
 }
 
-fun calcularEdad(fechaNacimiento: Timestamp): Int {
-    val fechaNac = fechaNacimiento.toDate()
-    val today = Calendar.getInstance()
-    val calendar = Calendar.getInstance()
-    calendar.time = fechaNac
+/**
+ * Calcula la edad a partir de la fecha de nacimiento
+ */
+private fun calcularEdad(fechaNacimiento: String?): Int {
+    if (fechaNacimiento.isNullOrEmpty()) return 0
 
-    var edad = today.get(Calendar.YEAR) - calendar.get(Calendar.YEAR)
+    return try {
+        val formato = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        val fechaNac = formato.parse(fechaNacimiento)
+        val hoy = Calendar.getInstance()
+        val fechaNacCal = Calendar.getInstance().apply {
+            time = fechaNac ?: return 0
+        }
 
-    if (today.get(Calendar.DAY_OF_YEAR) < calendar.get(Calendar.DAY_OF_YEAR)) {
-        edad--
+        var edad = hoy.get(Calendar.YEAR) - fechaNacCal.get(Calendar.YEAR)
+        if (hoy.get(Calendar.DAY_OF_YEAR) < fechaNacCal.get(Calendar.DAY_OF_YEAR)) {
+            edad--
+        }
+        
+        edad
+    } catch (e: Exception) {
+        0 // En caso de error, devuelve 0
     }
-
-    return edad
 }
 
 @Preview(showBackground = true)
@@ -607,7 +616,7 @@ fun DetalleHijoScreenPreviewContent() {
         dni = "12345678X",
         nombre = "Martín",
         apellidos = "García López",
-        fechaNacimiento = com.google.firebase.Timestamp.now(),
+        fechaNacimiento = "01/01/2010",
         centroId = "centro1",
         centroNombre = "Colegio San José",
         clase = "4º de Primaria",
@@ -724,8 +733,7 @@ fun DetalleHijoScreenPreviewContent() {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        val fechaNacimientoStr = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                            .format(alumnoMock.fechaNacimiento.toDate())
+                        val fechaNacimientoStr = alumnoMock.fechaNacimiento.takeIf { it.isNotEmpty() } ?: "01/01/2010"
                         val edad = calcularEdad(alumnoMock.fechaNacimiento)
 
                         Text(

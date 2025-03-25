@@ -180,23 +180,6 @@ data class Aula(
     val alumnoIds: List<String> = emptyList()
 )
 
-data class Alumno(
-    @DocumentId val dni: String = "",
-    val nombre: String = "",
-    val apellidos: String = "",
-    val fechaNacimiento: Timestamp = Timestamp.now(),
-    val centroId: String = "",
-    val aulaId: String = "",
-    val familiarIds: List<String> = emptyList(),
-    val profesorIds: List<String> = emptyList(), // Añadido campo profesorIds
-    val activo: Boolean = true,
-    val necesidadesEspeciales: String = "",
-    val alergias: List<String> = emptyList(),
-    val medicacion: String = "", // Añadido campo medicacion
-    val observacionesMedicas: String = "", // Añadido campo observacionesMedicas
-    val observaciones: String = ""
-)
-
 data class SolicitudRegistro(
     @DocumentId val id: String = "",
     val usuarioId: String = "",

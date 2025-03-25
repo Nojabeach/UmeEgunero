@@ -1,17 +1,22 @@
 package com.tfg.umeegunero.navigation
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.data.model.TipoUsuario
+import androidx.navigation.NavController
+import com.tfg.umeegunero.navigation.AppScreens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import com.tfg.umeegunero.navigation.AppScreens
 
 /**
  * Estructura de navegación de la aplicación
@@ -47,9 +52,91 @@ object NavigationStructure {
     }
 
     /**
+     * Componente para el contenido del drawer
+     */
+    @Composable
+    fun DrawerContent(
+        navController: NavController,
+        onDrawerClose: () -> Unit
+    ) {
+        var expandedItem by remember { mutableStateOf<String?>(null) }
+        val navItems = getNavItemsByTipo(TipoUsuario.ADMIN_APP) // TODO: Obtener el tipo de usuario actual
+
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(vertical = 8.dp)
+        ) {
+            navItems.forEach { item ->
+                if (item.subItems.isNotEmpty()) {
+                    ExpandableNavItem(
+                        item = item,
+                        isExpanded = expandedItem == item.id,
+                        onExpand = { expandedItem = if (expandedItem == item.id) null else item.id },
+                        onItemClick = { route ->
+                            navController.navigate(route)
+                            onDrawerClose()
+                        }
+                    )
+                } else {
+                    NavItem(
+                        item = item,
+                        onItemClick = { route ->
+                            navController.navigate(route)
+                            onDrawerClose()
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun ExpandableNavItem(
+        item: NavItem,
+        isExpanded: Boolean,
+        onExpand: () -> Unit,
+        onItemClick: (String) -> Unit
+    ) {
+        Column {
+            ListItem(
+                headlineContent = { Text(item.title) },
+                leadingContent = { Icon(item.icon, contentDescription = null) },
+                trailingContent = {
+                    Icon(
+                        if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (isExpanded) "Contraer" else "Expandir"
+                    )
+                },
+                modifier = Modifier.clickable { onExpand() }
+            )
+            if (isExpanded) {
+                item.subItems.forEach { subItem ->
+                    NavItem(
+                        item = subItem,
+                        onItemClick = onItemClick
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun NavItem(
+        item: NavItem,
+        onItemClick: (String) -> Unit
+    ) {
+        ListItem(
+            headlineContent = { Text(item.title) },
+            leadingContent = { Icon(item.icon, contentDescription = null) },
+            modifier = Modifier.clickable { onItemClick(item.route) }
+        )
+    }
+
+    /**
      * Items de navegación para admin de la app
      */
-    val adminAppNavItems = listOf(
+    private val adminAppNavItems = listOf(
         NavItem(
             title = "Dashboard",
             icon = Icons.Filled.Dashboard,
@@ -80,12 +167,12 @@ object NavigationStructure {
                 NavItem(
                     title = "Cursos",
                     icon = Icons.Filled.Class,
-                    route = "admin_dashboard/cursos"
+                    route = AppScreens.GestionCursos.route
                 ),
                 NavItem(
                     title = "Clases",
                     icon = Icons.Filled.Groups,
-                    route = "admin_dashboard/clases"
+                    route = AppScreens.GestionClases.route
                 ),
                 NavItem(
                     title = "Calendario Escolar",
@@ -102,17 +189,17 @@ object NavigationStructure {
                 NavItem(
                     title = "Profesores",
                     icon = Icons.Filled.Person,
-                    route = "admin_dashboard/profesores"
+                    route = AppScreens.ProfesorList.route
                 ),
                 NavItem(
                     title = "Alumnos",
                     icon = Icons.Filled.Person,
-                    route = "admin_dashboard/alumnos"
+                    route = AppScreens.AlumnoList.route
                 ),
                 NavItem(
                     title = "Familiares",
                     icon = Icons.Filled.Group,
-                    route = "admin_dashboard/familiares"
+                    route = AppScreens.FamiliarList.route
                 ),
                 NavItem(
                     title = "Añadir Usuario",
@@ -139,7 +226,7 @@ object NavigationStructure {
         NavItem(
             title = "Perfil",
             icon = Icons.Filled.Person,
-            route = "perfil"
+            route = AppScreens.Perfil.route
         ),
         NavItem(
             title = "Configuración",
@@ -169,7 +256,7 @@ object NavigationStructure {
     /**
      * Elementos de navegación para el administrador de centro
      */
-    val adminCentroNavItems = listOf(
+    private val adminCentroNavItems = listOf(
         NavItem(
             title = "Dashboard",
             icon = Icons.Filled.Dashboard,
@@ -183,12 +270,12 @@ object NavigationStructure {
                 NavItem(
                     title = "Cursos",
                     icon = Icons.Filled.Class,
-                    route = "admin_dashboard/cursos"
+                    route = AppScreens.GestionCursos.route
                 ),
                 NavItem(
                     title = "Clases",
                     icon = Icons.Filled.Groups,
-                    route = "admin_dashboard/clases"
+                    route = AppScreens.GestionClases.route
                 ),
                 NavItem(
                     title = "Calendario Escolar",
@@ -205,17 +292,17 @@ object NavigationStructure {
                 NavItem(
                     title = "Profesores",
                     icon = Icons.Filled.Person,
-                    route = "admin_dashboard/profesores"
+                    route = AppScreens.ProfesorList.route
                 ),
                 NavItem(
                     title = "Alumnos",
                     icon = Icons.Filled.Person,
-                    route = "admin_dashboard/alumnos"
+                    route = AppScreens.AlumnoList.route
                 ),
                 NavItem(
                     title = "Familiares",
                     icon = Icons.Filled.Group,
-                    route = "admin_dashboard/familiares"
+                    route = AppScreens.FamiliarList.route
                 ),
                 NavItem(
                     title = "Añadir Usuario",
@@ -242,7 +329,20 @@ object NavigationStructure {
         NavItem(
             title = "Configuración",
             icon = Icons.Filled.Settings,
-            route = AppScreens.Config.route
+            route = AppScreens.Config.route,
+            subItems = listOf(
+                NavItem(
+                    title = "Configuración General",
+                    icon = Icons.Filled.Settings,
+                    route = AppScreens.Config.route
+                ),
+                NavItem(
+                    title = "Configuración Email",
+                    icon = Icons.Filled.Email,
+                    route = AppScreens.EmailConfig.route
+                )
+            ),
+            isExpandable = true
         ),
         NavItem(
             title = "Cerrar Sesión",

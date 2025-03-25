@@ -142,16 +142,19 @@ class LoginViewModel @Inject constructor(
             }
 
             try {
+                Timber.d("Iniciando proceso de login para email: $email")
                 val result = usuarioRepository.iniciarSesion(email, password)
 
                 when (result) {
                     is Result.Success -> {
                         val usuarioId = result.data
+                        Timber.d("Login exitoso en Firebase Auth, obteniendo datos de usuario...")
 
                         // Obtener datos completos del usuario
                         val usuarioResult = usuarioRepository.getUsuarioPorDni(usuarioId)
                         if (usuarioResult is Result.Success) {
                             val usuario = usuarioResult.data
+                            Timber.d("Datos de usuario obtenidos: ${usuario.email}")
 
                             // Verificar que el usuario tiene el tipo adecuado de perfil
                             val tipoUsuarioFirebase = when (userType) {
@@ -161,7 +164,10 @@ class LoginViewModel @Inject constructor(
                                 UserType.FAMILIAR -> com.tfg.umeegunero.data.model.TipoUsuario.FAMILIAR
                             }
 
-                            val tienePerfil = usuario.perfiles.any { it.tipo == tipoUsuarioFirebase }
+                            val perfiles = usuario.perfiles ?: emptyList()
+                            Timber.d("Perfiles del usuario: ${perfiles.map { it.tipo }}")
+                            
+                            val tienePerfil = perfiles.any { it.tipo == tipoUsuarioFirebase }
 
                             if (tienePerfil) {
                                 // Si el usuario seleccionó recordar usuario, guardamos el email
@@ -194,39 +200,44 @@ class LoginViewModel @Inject constructor(
                                 Timber.d("Usuario sin perfil $userType: $email")
                             }
                         } else if (usuarioResult is Result.Error) {
+                            Timber.e(usuarioResult.exception, "Error al obtener datos de usuario")
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
                                     error = "Error al obtener datos de usuario: ${usuarioResult.exception.message}"
                                 )
                             }
-                            Timber.e(usuarioResult.exception, "Error al obtener datos de usuario")
+                            // Cerrar sesión ya que no pudimos obtener los datos
+                            usuarioRepository.cerrarSesion()
                         }
                     }
                     is Result.Error -> {
+                        Timber.e(result.exception, "Error en el login")
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = "Error de inicio de sesión: ${result.exception.message}"
+                                error = "Error al iniciar sesión: ${result.exception.message}"
                             )
                         }
-                        Timber.e(result.exception, "Error de inicio de sesión")
                     }
                     else -> {
-                        // No debería llegar aquí
+                        Timber.e("Estado inesperado en el login")
                         _uiState.update {
-                            it.copy(isLoading = false)
+                            it.copy(
+                                isLoading = false,
+                                error = "Error inesperado al iniciar sesión"
+                            )
                         }
                     }
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Error general en el proceso de login")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = "Error inesperado: ${e.message}"
                     )
                 }
-                Timber.e(e, "Excepción durante el login")
             }
         }
     }

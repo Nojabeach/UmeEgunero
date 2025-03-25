@@ -258,4 +258,22 @@ class AdminDashboardViewModel @Inject constructor(
         _uiState.update { it.copy(showListadoCentros = true) }
         loadCentros() // Recargar centros para asegurar datos actualizados
     }
+
+    /**
+     * Obtiene el ID del centro seleccionado o el primero de la lista si no hay ninguno seleccionado
+     */
+    fun obtenerCentroSeleccionadoOPrimero(): String {
+        // Por ahora, simplemente devolvemos el ID del primer centro si existe
+        return _uiState.value.centros.firstOrNull()?.id ?: ""
+    }
+
+    /**
+     * Obtiene el ID del curso seleccionado o el primero si no hay ninguno seleccionado
+     * Para este ejemplo, devolvemos un ID estático ya que los cursos no están implementados todavía
+     */
+    fun obtenerCursoSeleccionadoOPrimero(): String {
+        // Este es un valor temporal, en una implementación real obtendríamos el ID
+        // de un curso real consultando a Firestore
+        return "curso_primero_a" // ID demo para pruebas
+    }
 }

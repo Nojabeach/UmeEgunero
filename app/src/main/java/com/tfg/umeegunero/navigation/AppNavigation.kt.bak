@@ -28,6 +28,7 @@ import com.tfg.umeegunero.feature.admin.screen.AlumnoListScreen
 import com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen
 import com.tfg.umeegunero.feature.admin.screen.EditCentroScreen
 import com.tfg.umeegunero.feature.admin.screen.FamiliarListScreen
+import com.tfg.umeegunero.feature.admin.screen.NotificacionesScreen
 import com.tfg.umeegunero.feature.admin.screen.ProfesorListScreen
 import com.tfg.umeegunero.feature.admin.screen.UserDetailScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
@@ -52,6 +53,7 @@ import com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen
 import com.tfg.umeegunero.feature.common.academico.screen.GestionCursosScreen
 import com.tfg.umeegunero.feature.common.academico.screen.GestionClasesScreen
 import com.tfg.umeegunero.feature.common.academico.screen.CalendarioScreen
+import com.tfg.umeegunero.feature.common.notifications.screen.NotificacionesScreen
 import com.tfg.umeegunero.feature.common.stats.screen.EstadisticasScreen
 import com.tfg.umeegunero.feature.admin.screen.AdminNotificacionesScreen
 
@@ -297,34 +299,6 @@ fun AppNavigation(
                 onNavigateBack = { navController.popBackStack() },
                 onMenuClick = {}
             )
-        }
-
-        // Dashboard para Administrador de App
-        composable(route = AppScreens.AdminDashboard.route) {
-            AdminDashboardScreen(navController = navController)
-        }
-
-        // Dashboard para Administrador de Centro
-        composable(route = AppScreens.CentroDashboard.route) {
-            CentroDashboardScreen(navController = navController)
-        }
-
-        // Dashboard para Profesor
-        composable(route = AppScreens.ProfesorDashboard.route) {
-            val viewModel: ProfesorDashboardViewModel = hiltViewModel()
-            ProfesorDashboardScreen(
-                navController = navController,
-                onLogout = {
-                    navController.navigate(AppScreens.Welcome.route) {
-                        popUpTo(AppScreens.ProfesorDashboard.route) { inclusive = true }
-                    }
-                }
-            )
-        }
-
-        // Dashboard para Familiar
-        composable(route = AppScreens.FamiliarDashboard.route) {
-            HiltFamiliarDashboardScreen(navController = navController)
         }
     }
 }

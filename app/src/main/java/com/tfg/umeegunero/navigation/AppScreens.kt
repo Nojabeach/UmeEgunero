@@ -37,62 +37,30 @@ sealed class AppScreens(val route: String) {
     object FamiliarList : AppScreens("admin_dashboard/familiares")
 
     // Pantallas de gestión académica
-    object AddCurso : AppScreens("add_curso/{centroId}") {
-        fun createRoute(centroId: String) = "add_curso/$centroId"
+    object GestionCursos : AppScreens("gestion_cursos/{centroId}") {
+        fun createRoute(centroId: String) = "gestion_cursos/$centroId"
     }
-    object EditCurso : AppScreens("edit_curso/{centroId}/{cursoId}") {
-        fun createRoute(centroId: String, cursoId: String) = "edit_curso/$centroId/$cursoId"
+    object GestionClases : AppScreens("gestion_clases/{cursoId}") {
+        fun createRoute(cursoId: String) = "gestion_clases/$cursoId"
     }
-    object AddClase : AppScreens("add_clase/{centroId}") {
-        fun createRoute(centroId: String) = "add_clase/$centroId"
-    }
-    object EditClase : AppScreens("edit_clase/{centroId}/{claseId}") {
-        fun createRoute(centroId: String, claseId: String) = "edit_clase/$centroId/$claseId"
-    }
-    
-    // Pantallas de configuración
+    object Calendario : AppScreens("calendario")
+    object Estadisticas : AppScreens("estadisticas")
+    object Notificaciones : AppScreens("notificaciones")
     object Config : AppScreens("config")
+    object Perfil : AppScreens("perfil")
+    object Dummy : AppScreens("dummy/{title}") {
+        fun createRoute(title: String) = "dummy/$title"
+    }
 
-    // Otras pantallas
-    object StudentDetail : AppScreens("student_detail/{studentId}") {
-        fun createRoute(studentId: String) = "student_detail/$studentId"
-    }
-    object ReportDetail : AppScreens("report_detail/{reportId}") {
-        fun createRoute(reportId: String) = "report_detail/$reportId"
-    }
-    object Chat : AppScreens("chat/{familiarId}/{alumnoId?}") {
-        fun createRoute(familiarId: String, alumnoId: String? = null): String {
-            return if (alumnoId != null) {
-                "chat/$familiarId/$alumnoId"
-            } else {
-                "chat/$familiarId"
-            }
-        }
-    }
-    
-    // Pantalla de detalles de usuario
+    // Pantallas de detalle y chat
     object UserDetail : AppScreens("user_detail/{dni}") {
         fun createRoute(dni: String) = "user_detail/$dni"
     }
-    
-    // Pantallas de estadísticas y notificaciones
-    object Estadisticas : AppScreens("estadisticas")
-    object Notificaciones : AppScreens("notificaciones")
-    object Calendario : AppScreens("calendario")
-    
-    // Pantalla de perfil
-    object Perfil : AppScreens("perfil")
-
-    // Ruta para pantalla dummy de funcionalidades en desarrollo
-    object Dummy : AppScreens("dummy/{title}") {
-        fun createRoute(title: String): String {
-            return "dummy/$title"
-        }
+    object StudentDetail : AppScreens("student_detail/{alumnoId}") {
+        fun createRoute(alumnoId: String) = "student_detail/$alumnoId"
     }
-
-    // Pantalla de recuperación de contraseña
-    object RecuperarPassword : AppScreens("recuperar_password")
-
-    // Pantalla de soporte técnico
-    object FAQ : AppScreens("preguntas_frecuentes")
+    object Chat : AppScreens("chat/{familiarId}/{alumnoId}") {
+        fun createRoute(familiarId: String, alumnoId: String? = null) = 
+            if (alumnoId != null) "chat/$familiarId/$alumnoId" else "chat/$familiarId"
+    }
 } 

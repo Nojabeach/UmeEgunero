@@ -318,7 +318,7 @@ private fun DashboardContent(
                         curso = curso,
                         onEditClick = {
                             val centroId = "centro1" // Valor temporal
-                            navController.navigate(AppScreens.EditCurso.createRoute(centroId, curso.id))
+                            navController.navigate(AppScreens.Dummy.createRoute("Editar Curso: ${curso.nombre}"))
                         }
                     )
                 }

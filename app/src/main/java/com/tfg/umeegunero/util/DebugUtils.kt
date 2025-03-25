@@ -113,15 +113,30 @@ class DebugUtils @Inject constructor(
             Log.d("DebugUtils", "Guardando administrador en Firestore...")
             val savedResult = usuarioRepository.guardarUsuario(admin)
 
-            if (savedResult is com.tfg.umeegunero.data.repository.Result.Success) {
-                Log.d("DebugUtils", "Administrador creado correctamente en Firestore")
-            } else if (savedResult is com.tfg.umeegunero.data.repository.Result.Error) {
-                Log.e("DebugUtils", "Error al guardar administrador en Firestore: ${savedResult.exception.message}")
-                throw savedResult.exception
+            when (savedResult) {
+                is com.tfg.umeegunero.data.repository.Result.Success -> {
+                    Log.d("DebugUtils", "Administrador creado correctamente en Firestore")
+                }
+                is com.tfg.umeegunero.data.repository.Result.Error -> {
+                    Log.e("DebugUtils", "Error al guardar administrador en Firestore: ${savedResult.exception.message}")
+                    // Intentar eliminar el usuario de Firebase Auth si falló en Firestore
+                    try {
+                        firebaseAuth.currentUser?.delete()?.await()
+                        Log.d("DebugUtils", "Usuario eliminado de Firebase Auth después de fallo en Firestore")
+                    } catch (e: Exception) {
+                        Log.e("DebugUtils", "Error al eliminar usuario de Firebase Auth: ${e.message}")
+                    }
+                    throw savedResult.exception
+                }
+                else -> {
+                    Log.e("DebugUtils", "Estado inesperado al guardar administrador")
+                    throw Exception("Estado inesperado al guardar administrador")
+                }
             }
 
             // 5. Cerramos sesión por seguridad
             firebaseAuth.signOut()
+            Log.d("DebugUtils", "Sesión cerrada después de crear administrador")
 
         } catch (e: Exception) {
             Log.e("DebugUtils", "Error al crear administrador por defecto", e)

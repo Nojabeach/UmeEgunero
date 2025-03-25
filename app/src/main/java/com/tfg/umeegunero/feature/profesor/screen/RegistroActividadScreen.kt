@@ -950,7 +950,7 @@ fun RegistroActividadScreenPreview() {
             dni = "12345678X",
             nombre = "Lucas",
             apellidos = "Martínez García",
-            fechaNacimiento = Timestamp(Date())
+            fechaNacimiento = "01/01/2018"
         )
         
         // En lugar de crear un ViewModel real, simulamos la pantalla con datos mockeados
