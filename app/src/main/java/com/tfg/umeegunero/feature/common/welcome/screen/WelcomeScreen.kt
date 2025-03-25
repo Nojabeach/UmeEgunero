@@ -2,6 +2,7 @@ package com.tfg.umeegunero.feature.common.welcome.screen
 
 import android.content.res.Configuration
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,21 +20,28 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlin.math.sin
 
 // Extensión para verificar si el tema es claro
 fun ColorScheme.isLight(): Boolean {
@@ -55,7 +63,9 @@ fun WelcomeScreen(
     onNavigateToLogin: (WelcomeUserType) -> Unit,
     onNavigateToRegister: () -> Unit,
     onCloseApp: () -> Unit,
-    onDemoRequested: () -> Unit = {}
+    onDemoRequested: () -> Unit = {},
+    onNavigateToTechnicalSupport: () -> Unit = {},
+    onNavigateToFAQ: () -> Unit = {}
 ) {
     // TODO: Mejoras pendientes para la pantalla de Bienvenida
     // - Implementar un vídeo de fondo o animaciones más atractivas
@@ -69,14 +79,56 @@ fun WelcomeScreen(
     // - Añadir soporte para autenticación biométrica (UI IMPLEMENTADA)
     
     val isLight = MaterialTheme.colorScheme.isLight()
+    
+    // Colores de fondo mejorados con gradientes más vibrantes
     val gradientColors = if (isLight) {
-        listOf(GradientStart, Color.White, GradientEnd)
+        listOf(
+            Color(0xFF1E88E5).copy(alpha = 0.25f), // Azul vibrante
+            Color(0xFF6A1B9A).copy(alpha = 0.15f), // Púrpura intenso
+            Color(0xFF00695C).copy(alpha = 0.18f)  // Verde esmeralda
+        )
     } else {
-        listOf(BackgroundDark, SurfaceDark)
+        listOf(
+            Color(0xFF1A237E).copy(alpha = 0.9f),  // Azul oscuro más intenso
+            Color(0xFF4A148C).copy(alpha = 0.7f),  // Púrpura oscuro
+            Color(0xFF1B5E20).copy(alpha = 0.8f)   // Verde oscuro
+        )
     }
+    
+    // Animación del fondo más notable
+    val infiniteTransition = rememberInfiniteTransition(label = "Background Animation")
+    val offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(15000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "Background Offset"
+    )
+    
+    // Animación adicional para elementos visuales
+    val pulseAnimation by infiniteTransition.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutQuad),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "Pulse Animation"
+    )
     
     // Estado para la lista desplazable
     val scrollState = rememberLazyListState()
+    
+    // Efecto de desplazamiento paralaje
+    val logoOffset by derivedStateOf {
+        if (scrollState.firstVisibleItemIndex > 0) {
+            0f
+        } else {
+            scrollState.firstVisibleItemScrollOffset * 0.5f
+        }
+    }
     
     Box(
         modifier = Modifier
@@ -84,11 +136,93 @@ fun WelcomeScreen(
             .background(
                 brush = Brush.linearGradient(
                     colors = gradientColors,
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    start = Offset(offset, 0f),
+                    end = Offset(1f - offset, 1f)
                 )
             )
     ) {
+        // Extraer colores fuera del composable Canvas con colores más intensos
+        val primaryColorTransparent = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+        val secondaryColorTransparent = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+        val tertiaryColorTransparent = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
+        val primaryLineColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        val secondaryLineColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+        val tertiaryLineColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+        
+        // Colores y valores para las ondas
+        val waveColors = listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.07f),
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
+        )
+        
+        // Elementos decorativos de fondo mejorados - usando un Canvas composable
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val canvasWidth = size.width
+            val canvasHeight = size.height
+            
+            // Círculos dinámicos con mayor tamaño y visibilidad
+            repeat(25) { i ->
+                val xPos = (canvasWidth * (i / 25f + offset * 0.6f)) % (canvasWidth * 1.2f) - 100f
+                val yPos = (canvasHeight * ((i % 8) / 8f)) - 50f
+                val radius = (30f + (i % 5) * 25f) * (if (i % 3 == 0) pulseAnimation * 0.7f else 1f)
+                
+                val circleColor = when (i % 3) {
+                    0 -> primaryColorTransparent
+                    1 -> secondaryColorTransparent
+                    else -> tertiaryColorTransparent
+                }
+                
+                drawCircle(
+                    color = circleColor,
+                    radius = radius,
+                    center = Offset(xPos, yPos)
+                )
+            }
+            
+            // Líneas decorativas más visibles
+            repeat(3) { i ->
+                val lineY = canvasHeight * (0.2f + i * 0.25f)
+                val lineColor = when (i) {
+                    0 -> primaryLineColor
+                    1 -> secondaryLineColor
+                    else -> tertiaryLineColor
+                }
+                
+                drawLine(
+                    color = lineColor,
+                    start = Offset(0f, lineY + offset * 50),
+                    end = Offset(canvasWidth, lineY - offset * 30),
+                    strokeWidth = (2 + i).dp.toPx()
+                )
+            }
+            
+            // Añadir ondas horizontales
+            repeat(3) { i ->
+                val startY = canvasHeight * (0.3f + i * 0.2f)
+                val amplitude = 50f * (i + 1)
+                val frequency = 0.02f * (i + 1)
+                
+                val path = Path()
+                path.moveTo(0f, startY)
+                
+                for (x in 0..canvasWidth.toInt() step 5) {
+                    val xFloat = x.toFloat()
+                    val yOffset = amplitude * sin((xFloat * frequency) + offset * 5)
+                    path.lineTo(xFloat, startY + yOffset)
+                }
+                
+                drawPath(
+                    path = path,
+                    color = waveColors[i],
+                    style = Stroke(
+                        width = (1 + i).dp.toPx(),
+                        pathEffect = PathEffect.cornerPathEffect(10f)
+                    )
+                )
+            }
+        }
+        
         // Contenido principal desplazable
         LazyColumn(
             state = scrollState,
@@ -99,45 +233,103 @@ fun WelcomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Logo y título
+            // Logo y título con efecto de paralaje mejorado - sin slogan
             item {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(top = 32.dp, bottom = 16.dp)
+                Box(
+                    modifier = Modifier
+                        .padding(top = 32.dp, bottom = 16.dp)
+                        .offset(y = (-logoOffset * 0.3f).dp),
+                    contentAlignment = Alignment.Center
                 ) {
+                    // Fondo circular con efecto de pulso
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
-                            .shadow(8.dp, CircleShape)
+                            .size(110.dp)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                                    )
+                                ),
+                                shape = CircleShape
+                            )
+                            .scale(pulseAnimation * 0.9f)
+                    )
+                    
+                    // Título de la app con diseño elegante
+                    Card(
+                        modifier = Modifier
+                            .padding(top = 8.dp, bottom = 16.dp)
+                            .fillMaxWidth(0.85f)
+                            .shadow(
+                                elevation = 12.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                spotColor = MaterialTheme.colorScheme.primary
+                            ),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isLight)
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
+                                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+                                        )
+                                    )
+                                )
+                                .padding(vertical = 14.dp, horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                // Icono más grande y visible
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .shadow(
+                                            elevation = 6.dp,
+                                            shape = CircleShape
+                                        )
                             .clip(CircleShape)
-                            .background(Color.White, CircleShape),
+                                        .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.app_icon),
                             contentDescription = "App Logo",
                             modifier = Modifier
-                                .size(90.dp)
+                                            .size(40.dp)
                                 .clip(CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
 
+                                // Texto más legible con sombra sutil
                     Text(
                         text = "UmeEgunero",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Text(
-                        text = "Comunicación escolar simplificada",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center
-                    )
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -155,29 +347,52 @@ fun WelcomeScreen(
                     Text(
                         text = "ACCESO A LA PLATAFORMA",
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier
+                            .padding(bottom = 12.dp)
+                            .graphicsLayer(alpha = 0.9f)
                     )
 
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                            .padding(bottom = 16.dp)
+                            .shadow(
+                                elevation = 16.dp,
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(24.dp)
+                            ),
                         colors = CardDefaults.cardColors(
                             containerColor = if (isLight)
-                                Surface.copy(alpha = 0.95f)
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                             else
-                                SurfaceDark.copy(alpha = 0.9f)
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
                         ),
                         elevation = CardDefaults.cardElevation(
                             defaultElevation = if (isLight) 4.dp else 6.dp
                         ),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(24.dp)
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 16.dp)
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = if (isLight) {
+                                            listOf(
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                MaterialTheme.colorScheme.surface
+                                            )
+                                        } else {
+                                            listOf(
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+                                            )
+                                        }
+                                    )
+                                )
                         ) {
                             LoginButtons(
                                 onCentroLogin = { onNavigateToLogin(WelcomeUserType.CENTRO) },
@@ -197,21 +412,42 @@ fun WelcomeScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 8.dp),
+                            .padding(bottom = 8.dp)
+                            .shadow(
+                                elevation = 8.dp,
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(24.dp)
+                            ),
                         colors = CardDefaults.cardColors(
                             containerColor = if (isLight)
-                                Surface.copy(alpha = 0.95f)
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                             else
-                                SurfaceDark.copy(alpha = 0.9f)
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
                         ),
                         elevation = CardDefaults.cardElevation(
                             defaultElevation = if (isLight) 4.dp else 6.dp
                         ),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(24.dp)
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = if (isLight) {
+                                            listOf(
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                MaterialTheme.colorScheme.surface
+                                            )
+                                        } else {
+                                            listOf(
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+                                            )
+                                        }
+                                    )
+                                )
                         ) {
                             Text(
                                 text = "¿Eres familiar y no tienes cuenta?",
@@ -226,11 +462,15 @@ fun WelcomeScreen(
                                 onClick = onNavigateToRegister,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp),
+                                    .height(52.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Secondary
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 4.dp,
+                                    pressedElevation = 0.dp
+                                )
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.HowToReg,
@@ -241,7 +481,7 @@ fun WelcomeScreen(
                                 Text(
                                     "Regístrate",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
@@ -254,78 +494,121 @@ fun WelcomeScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                        .padding(bottom = 8.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            spotColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(24.dp)
+                        ),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isLight)
-                            Surface.copy(alpha = 0.95f)
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                         else
-                            SurfaceDark.copy(alpha = 0.9f)
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
                     ),
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = if (isLight) 4.dp else 6.dp
                     ),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = if (isLight) {
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.05f)
+                                        )
+                                    } else {
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+                                        )
+                                    },
+                                    start = Offset(0f, 0f),
+                                    end = Offset(Float.POSITIVE_INFINITY, 0f)
+                                )
+                            )
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(16.dp)
                     ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SupportAgent,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Opciones adicionales",
+                                    text = "Soporte y asistencia",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f),
-                            modifier = Modifier.padding(bottom = 12.dp),
-                            textAlign = TextAlign.Center
+                                    textAlign = TextAlign.Start
                         )
+                            }
                         
-                        // Botón para contactar con soporte
-                        Button(
-                            onClick = { /* Lógica para contactar con soporte */ },
+                            HorizontalDivider(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
-                                .padding(bottom = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
+                                    .padding(bottom = 16.dp),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                            )
+                            
+                            // Botones para contactar con soporte
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                SupportButton(
+                                    icon = Icons.Default.Build,
+                                    text = "Soporte",
+                                    onClick = onNavigateToTechnicalSupport,
+                                    modifier = Modifier.weight(1f),
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                )
+                                
+                                SupportButton(
+                                    icon = Icons.Default.Help,
+                                    text = "FAQ",
+                                    onClick = onNavigateToFAQ,
+                                    modifier = Modifier.weight(1f),
+                                    containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Build,
+                                    imageVector = Icons.Default.Info,
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp)
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Soporte técnico local",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        
-                        // Botón para ver demo
-                        Button(
-                            onClick = onDemoRequested,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.School,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Ver video demo",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
+                                    text = "Tiempo de respuesta estimado: < 24h",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
                         }
                     }
                 }
@@ -333,7 +616,7 @@ fun WelcomeScreen(
             
             // Espacio adicional al final para dispositivos más pequeños
             item {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
         
@@ -342,17 +625,20 @@ fun WelcomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp)
-                .padding(top = 100.dp), // Aumentado para evitar la top bar
+                .padding(top = 70.dp), // Aumentado para evitar la top bar
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // Botón de acceso admin (izquierda)
             FloatingActionButton(
                 onClick = { onNavigateToLogin(WelcomeUserType.ADMIN) },
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(48.dp),
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                 contentColor = if (isLight) AdminColor else PrimaryLight,
                 shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                )
             ) {
                 Icon(
                     imageVector = Icons.Default.Lock,
@@ -364,11 +650,14 @@ fun WelcomeScreen(
             // Botón para cerrar la aplicación (derecha)
             FloatingActionButton(
                 onClick = onCloseApp,
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(48.dp),
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                 contentColor = Error,
                 shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                )
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
@@ -388,26 +677,72 @@ fun OnboardingCarousel() {
         CarouselItem(
             icon = Icons.Default.School,
             title = "Comunicación Escuela-Familia",
-            description = "Información diaria sobre la actividad de tu hijo/a en el centro educativo."
+            description = "Información diaria sobre la actividad de tu hijo/a en el centro educativo con notificaciones en tiempo real.",
+            infoDetail = "Con UmeEgunero, mantén una conexión directa con los educadores de tus hijos."
         ),
         CarouselItem(
             icon = Icons.AutoMirrored.Filled.Chat,
-            title = "Chat Privado",
-            description = "Comunicación directa y segura con profesores para resolver cualquier duda."
+            title = "Chat Privado y Seguro",
+            description = "Comunicación directa y cifrada con profesores para resolver cualquier duda al instante.",
+            infoDetail = "Mensajería con cifrado de extremo a extremo para garantizar la privacidad."
         ),
         CarouselItem(
             icon = Icons.Default.Build,
-            title = "Informes Diarios",
-            description = "Control de comidas, descanso y actividades, siempre actualizado."
+            title = "Informes Diarios Completos",
+            description = "Control detallado de comidas, descanso, actividades y desarrollo educativo actualizado.",
+            infoDetail = "Visualiza estadísticas y progreso en tiempo real con gráficos interactivos."
+        ),
+        CarouselItem(
+            icon = Icons.Default.CalendarMonth,
+            title = "Calendario Escolar",
+            description = "Accede al calendario de eventos, excursiones y actividades del centro educativo.",
+            infoDetail = "Sincroniza con tu calendario personal y recibe recordatorios automáticos."
+        ),
+        CarouselItem(
+            icon = Icons.Default.Notifications,
+            title = "Notificaciones Importantes",
+            description = "Recibe alertas sobre cambios de horario, eventos especiales o necesidades específicas.",
+            infoDetail = "Configura el nivel de prioridad para cada tipo de notificación según tus preferencias."
         )
     )
 
     var currentPage by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(key1 = true) {
+    // Control para habilitar/deshabilitar la animación automática
+    var autoScrollEnabled by remember { mutableStateOf(true) }
+    
+    // Animación de transición suave entre slides
+    val transition = updateTransition(targetState = currentPage, label = "Page Transition")
+    
+    // Animación de escala para el icono
+    val iconScale by transition.animateFloat(
+        transitionSpec = {
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        },
+        label = "Icon Scale Animation"
+    ) { page ->
+        if (page == currentPage) 1f else 0.8f
+    }
+    
+    // Animación de opacidad para el texto
+    val textAlpha by transition.animateFloat(
+        transitionSpec = {
+            tween(durationMillis = 500)
+        },
+        label = "Text Alpha Animation"
+    ) { page ->
+        if (page == currentPage) 1f else 0f
+    }
+
+    LaunchedEffect(key1 = autoScrollEnabled) {
+        if (autoScrollEnabled) {
         while (true) {
             delay(5000)
             currentPage = (currentPage + 1) % items.size
+            }
         }
     }
 
@@ -417,9 +752,9 @@ fun OnboardingCarousel() {
         ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(240.dp),
+                .height(280.dp),
             elevation = CardDefaults.elevatedCardElevation(
-                defaultElevation = if (isLight) 4.dp else 8.dp
+                defaultElevation = if (isLight) 6.dp else 10.dp
             ),
             colors = CardDefaults.elevatedCardColors(
                 containerColor = if (isLight)
@@ -427,23 +762,66 @@ fun OnboardingCarousel() {
                 else
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
             ),
-            shape = RoundedCornerShape(24.dp)
+            shape = RoundedCornerShape(28.dp)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = if (isLight) 
+                                listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                                    Color.White
+                                )
+                            else 
+                                listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    MaterialTheme.colorScheme.surface
+                                ),
+                            radius = 800f
+                        )
+                    )
                     .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                CarouselItemContent(item = items[currentPage])
+                CarouselItemContent(
+                    item = items[currentPage],
+                    iconScale = iconScale,
+                    textAlpha = textAlpha
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Controles de navegación y pausa
         Row(
             modifier = Modifier.padding(top = 8.dp),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Botón para ir atrás
+            IconButton(
+                onClick = { 
+                    currentPage = if (currentPage > 0) currentPage - 1 else items.size - 1
+                    // Al navegar manualmente, pausamos la rotación automática
+                    autoScrollEnabled = false
+                },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Anterior",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            // Indicadores y botón de pausa
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
         ) {
             repeat(items.size) { index ->
                 val width by animateDpAsState(
@@ -460,20 +838,54 @@ fun OnboardingCarousel() {
                         .padding(horizontal = 3.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isLight) {
                                 if (currentPage == index)
                                     MaterialTheme.colorScheme.primary
                                 else
                                     MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                            } else {
-                                if (currentPage == index)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                            }
                         )
                         .width(width)
                         .height(8.dp)
+                            .clickable { 
+                                currentPage = index
+                                // Al navegar manualmente, pausamos la rotación automática
+                                autoScrollEnabled = false
+                            }
+                    )
+                }
+                
+                // Botón para pausar/reanudar la rotación automática
+                IconButton(
+                    onClick = { autoScrollEnabled = !autoScrollEnabled },
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(32.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            shape = CircleShape
+                        ),
+                ) {
+                    Icon(
+                        imageVector = if (autoScrollEnabled) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (autoScrollEnabled) "Pausar" else "Reanudar",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            
+            // Botón para ir adelante
+            IconButton(
+                onClick = { 
+                    currentPage = (currentPage + 1) % items.size
+                    // Al navegar manualmente, pausamos la rotación automática
+                    autoScrollEnabled = false
+                },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = "Siguiente",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -483,22 +895,38 @@ fun OnboardingCarousel() {
 data class CarouselItem(
     val icon: Any,
     val title: String,
-    val description: String
+    val description: String,
+    val infoDetail: String = ""
 )
 
 @Composable
-fun CarouselItemContent(item: CarouselItem) {
+fun CarouselItemContent(
+    item: CarouselItem,
+    iconScale: Float = 1f,
+    textAlpha: Float = 1f
+) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    shape = CircleShape
+                )
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
     ) {
         when (item.icon) {
             is androidx.compose.ui.graphics.vector.ImageVector -> {
                 Icon(
                     imageVector = item.icon,
                     contentDescription = item.title,
-                    modifier = Modifier.size(64.dp),
+                        modifier = Modifier
+                            .size(64.dp * iconScale),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -506,9 +934,11 @@ fun CarouselItemContent(item: CarouselItem) {
                 Icon(
                     painter = item.icon,
                     contentDescription = item.title,
-                    modifier = Modifier.size(64.dp),
+                        modifier = Modifier
+                            .size(64.dp * iconScale),
                     tint = MaterialTheme.colorScheme.primary
                 )
+                }
             }
         }
 
@@ -519,7 +949,8 @@ fun CarouselItemContent(item: CarouselItem) {
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.graphicsLayer(alpha = textAlpha)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -528,10 +959,27 @@ fun CarouselItemContent(item: CarouselItem) {
             text = item.description,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .graphicsLayer(alpha = textAlpha),
             lineHeight = 20.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        
+        if (item.infoDetail.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = item.infoDetail,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .graphicsLayer(alpha = textAlpha * 0.8f),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
 
@@ -546,122 +994,180 @@ fun LoginButtons(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Botón de acceso centro con diseño mejorado
         Button(
             onClick = onCentroLogin,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
-                .padding(vertical = 4.dp),
+                .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isLight) Color(0xFF007AFF) else MaterialTheme.colorScheme.primary
+                containerColor = if (isLight) Color(0xFF0277BD) else MaterialTheme.colorScheme.primary
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 0.dp
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.School,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 "Acceso Centro",
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+            
             Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = "Información biométrica",
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(20.dp)
                     .clickable { showBiometricInfo = true },
-                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                tint = Color.White.copy(alpha = 0.8f)
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
             )
         }
 
+        // Botón de acceso profesor con diseño mejorado
         Button(
             onClick = onProfesorLogin,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
-                .padding(vertical = 4.dp),
+                .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isLight) Color(0xFF34C759) else MaterialTheme.colorScheme.secondary
+                containerColor = if (isLight) Color(0xFF2E7D32) else MaterialTheme.colorScheme.secondary
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 0.dp
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Person,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 "Acceso Profesor",
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+            
             Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = "Información biométrica",
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(20.dp)
                     .clickable { showBiometricInfo = true },
-                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                tint = Color.White.copy(alpha = 0.8f)
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
             )
         }
 
+        // Botón de acceso familiar con diseño mejorado
         Button(
             onClick = onFamiliarLogin,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
-                .padding(vertical = 4.dp),
+                .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isLight) Color(0xFF5856D6) else MaterialTheme.colorScheme.tertiary
+                containerColor = if (isLight) Color(0xFF512DA8) else MaterialTheme.colorScheme.tertiary
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 0.dp
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Chat,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 "Acceso Familiar",
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+            
             Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = "Información biométrica",
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(20.dp)
                     .clickable { showBiometricInfo = true },
-                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                tint = Color.White.copy(alpha = 0.8f)
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = "Acceso biométrico",
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
             )
         }
     }
@@ -669,19 +1175,144 @@ fun LoginButtons(
     if (showBiometricInfo) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showBiometricInfo = false },
-            title = { Text("Acceso Biométrico") },
+            title = { 
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Fingerprint,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Acceso Biométrico",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
             text = {
+                Column {
                 Text(
-                    "Para utilizar el acceso biométrico:\n\n" +
-                    "1. Inicia sesión normalmente primero\n" +
-                    "2. Ve a Configuración > Seguridad\n" +
-                    "3. Activa la autenticación biométrica\n" +
-                    "4. La próxima vez podrás acceder usando tu huella dactilar"
-                )
+                        "Para utilizar el acceso biométrico:",
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "1",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Inicia sesión normalmente primero")
+                    }
+                    
+                    Row(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "2",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Ve a Configuración > Seguridad")
+                    }
+                    
+                    Row(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "3",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Activa la autenticación biométrica")
+                    }
+                    
+                    Row(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "4",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("La próxima vez podrás acceder usando tu huella dactilar")
+                    }
+                }
             },
             confirmButton = {
-                TextButton(onClick = { showBiometricInfo = false }) {
+                Button(
+                    onClick = { showBiometricInfo = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
                     Text("Entendido")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showBiometricInfo = false }
+                ) {
+                    Text("Cerrar")
                 }
             }
         )
@@ -824,4 +1455,41 @@ private fun LanguageSelectionDialog(
             }
         }
     )
+}
+
+@Composable
+fun SupportButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.primary
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .height(48.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 0.dp
+        )
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }

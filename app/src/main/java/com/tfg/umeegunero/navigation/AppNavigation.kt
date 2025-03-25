@@ -53,6 +53,8 @@ import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
 import com.tfg.umeegunero.feature.familiar.viewmodel.FamiliarDashboardViewModel
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
 import com.tfg.umeegunero.feature.auth.screen.RecuperarPasswordScreen
+import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
+import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
 
 /**
  * Navegación principal de la aplicación
@@ -87,6 +89,12 @@ fun AppNavigation(
                 onDemoRequested = {
                     // Navegar a una pantalla demo (podemos usar Dummy para esto)
                     navController.navigate(AppScreens.Dummy.createRoute("Vista previa de la aplicación"))
+                },
+                onNavigateToTechnicalSupport = {
+                    navController.navigate(AppScreens.TechnicalSupport.route)
+                },
+                onNavigateToFAQ = {
+                    navController.navigate(AppScreens.FAQ.route)
                 }
             )
         }
@@ -597,6 +605,24 @@ fun AppNavigation(
             RecuperarPasswordScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de soporte técnico
+        composable(route = AppScreens.TechnicalSupport.route) {
+            TechnicalSupportScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Pantalla de preguntas frecuentes
+        composable(route = AppScreens.FAQ.route) {
+            FAQScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
             )
         }
     }

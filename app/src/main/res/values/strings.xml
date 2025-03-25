@@ -16,4 +16,37 @@
     <string name="onboarding_desc_4">Accede a toda la información incluso sin conexión y sincroniza cuando vuelvas a tener cobertura.</string>
     <string name="next">Siguiente</string>
     <string name="back">Anterior</string>
+    
+    <!-- Splash Screen -->
+    <string name="splash_designed_by">Diseñado y creado por Maitane Ibañez Irazabal</string>
+    <string name="app_version">Versión 1.0</string>
+    
+    <!-- Botones de Soporte -->
+    <string name="support_technical">Soporte técnico</string>
+    <string name="support_faq">FAQ</string>
+    <string name="support_response_time">Tiempo de respuesta estimado: &lt; 24h</string>
+    
+    <!-- Soporte Técnico -->
+    <string name="tech_support_title">Soporte Técnico</string>
+    <string name="tech_support_subtitle">Envíanos tu consulta técnica</string>
+    <string name="tech_support_name">Nombre completo</string>
+    <string name="tech_support_email">Email</string>
+    <string name="tech_support_phone">Teléfono (opcional)</string>
+    <string name="tech_support_issue_type">Tipo de problema</string>
+    <string name="tech_support_description">Descripción del problema</string>
+    <string name="tech_support_send">Enviar consulta</string>
+    <string name="tech_support_cancel">Cancelar</string>
+    <string name="tech_support_attach">Adjuntar captura</string>
+    <string name="tech_support_email_subject">Soporte Técnico UmeEgunero - Consulta</string>
+    <string name="tech_support_email_chooser">Enviar email mediante...</string>
+    
+    <!-- Centro de Ayuda - FAQ -->
+    <string name="faq_title">Preguntas Frecuentes</string>
+    <string name="faq_search_hint">Buscar en las preguntas frecuentes</string>
+    <string name="faq_category_general">General</string>
+    <string name="faq_category_account">Cuenta y acceso</string>
+    <string name="faq_category_usage">Uso de la app</string>
+    <string name="faq_category_notifications">Notificaciones</string>
+    <string name="faq_category_privacy">Privacidad y datos</string>
+    <string name="faq_not_found">No se encontraron resultados para tu búsqueda</string>
 </resources>
