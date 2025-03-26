@@ -22,9 +22,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.tfg.umeegunero.feature.common.academico.model.Curso
+import com.tfg.umeegunero.data.model.Curso
+import com.tfg.umeegunero.feature.common.academico.viewmodel.GestionCursosViewModel
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.theme.AcademicoColor
 
 /**

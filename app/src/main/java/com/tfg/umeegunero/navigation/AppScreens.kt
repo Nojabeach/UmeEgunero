@@ -27,6 +27,9 @@ sealed class AppScreens(val route: String) {
         fun createRoute(isAdminApp: Boolean) = "add_user/$isAdminApp"
         fun createRoute(isAdminApp: Boolean, tipoUsuario: String) = "add_user/$isAdminApp?tipo=$tipoUsuario"
     }
+    object EditUser : AppScreens("edit_user/{dni}") {
+        fun createRoute(dni: String) = "edit_user/$dni"
+    }
     object EmailConfig : AppScreens("email_config")
 
     // Rutas anidadas para los dashboards
@@ -40,8 +43,16 @@ sealed class AppScreens(val route: String) {
     object GestionCursos : AppScreens("gestion_cursos/{centroId}") {
         fun createRoute(centroId: String) = "gestion_cursos/$centroId"
     }
+    object AddCurso : AppScreens("add_curso/{centroId}?cursoId={cursoId}") {
+        fun createRoute(centroId: String, cursoId: String? = null) = 
+            if (cursoId != null) "add_curso/$centroId?cursoId=$cursoId" else "add_curso/$centroId"
+    }
     object GestionClases : AppScreens("gestion_clases/{cursoId}") {
         fun createRoute(cursoId: String) = "gestion_clases/$cursoId"
+    }
+    object AddClase : AppScreens("add_clase/{cursoId}?claseId={claseId}") {
+        fun createRoute(cursoId: String, claseId: String? = null) = 
+            if (claseId != null) "add_clase/$cursoId?claseId=$claseId" else "add_clase/$cursoId"
     }
     object EditClase : AppScreens("edit_clase/{cursoId}?claseId={claseId}") {
         fun createRoute(cursoId: String, claseId: String? = null) = 
