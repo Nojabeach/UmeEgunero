@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.admin.viewmodel
+package com.tfg.umeegunero.feature.common.users.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

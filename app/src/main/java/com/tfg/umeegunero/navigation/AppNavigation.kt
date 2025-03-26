@@ -27,7 +27,7 @@ import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
 import com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen
 import com.tfg.umeegunero.feature.admin.screen.EditCentroScreen
 import com.tfg.umeegunero.feature.common.academico.screen.ListFamiliarScreen
-import com.tfg.umeegunero.feature.admin.screen.UserDetailScreen
+import com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen
@@ -245,7 +245,7 @@ fun AppNavigation(
                     navController.navigate(AppScreens.AddUser.createRoute(false, TipoUsuario.ALUMNO.toString()))
                 },
                 onNavigateToEditAlumno = { dni ->
-                    navController.navigate(AppScreens.EditUser.createRoute(dni))
+                    navController.navigate(AppScreens.UserDetail.createRoute(dni))
                 }
             )
         }
@@ -256,21 +256,8 @@ fun AppNavigation(
                     navController.navigate(AppScreens.AddUser.createRoute(false, TipoUsuario.PROFESOR.toString()))
                 },
                 onNavigateToEditProfesor = { dni ->
-                    navController.navigate(AppScreens.EditUser.createRoute(dni))
+                    navController.navigate(AppScreens.UserDetail.createRoute(dni))
                 }
-            )
-        }
-
-        composable(
-            route = AppScreens.EditUser.route,
-            arguments = listOf(
-                navArgument("dni") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val dni = backStackEntry.arguments?.getString("dni") ?: ""
-            UserDetailScreen(
-                navController = navController,
-                dni = dni
             )
         }
 

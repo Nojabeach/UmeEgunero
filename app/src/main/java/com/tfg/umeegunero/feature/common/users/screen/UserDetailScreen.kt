@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.admin.screen
+package com.tfg.umeegunero.feature.common.users.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,7 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.feature.admin.viewmodel.UserDetailViewModel
+import com.tfg.umeegunero.feature.common.users.viewmodel.UserDetailViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import androidx.compose.ui.tooling.preview.Preview
@@ -248,26 +248,23 @@ fun UserDetailScreen(
             onDismissRequest = { 
                 viewModel.hideDeleteConfirmation()
             },
-            title = { Text("Confirmar eliminación") },
-            text = { 
-                val nombre = uiState.usuario?.nombre ?: ""
-                val apellidos = uiState.usuario?.apellidos ?: ""
-                Text("¿Estás seguro de que deseas eliminar al usuario $nombre $apellidos? Esta acción no se puede deshacer.")
-            },
+            title = { Text("Confirmar Eliminación") },
+            text = { Text("¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        uiState.usuario?.let {
-                            viewModel.deleteUsuario(it.dni) 
-                            navController.popBackStack()
+                        uiState.usuario?.dni?.let { dni ->
+                            viewModel.deleteUsuario(dni)
                         }
                     }
                 ) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                    Text("Eliminar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.hideDeleteConfirmation() }) {
+                TextButton(
+                    onClick = { viewModel.hideDeleteConfirmation() }
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -275,69 +272,68 @@ fun UserDetailScreen(
     }
 }
 
+/**
+ * Encabezado con avatar y nombre del usuario
+ */
 @Composable
-fun UserHeader(usuario: Usuario) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
+private fun UserHeader(usuario: Usuario) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar (representado como un círculo con la inicial)
         Surface(
-            modifier = Modifier.size(100.dp),
+            modifier = Modifier.size(80.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primaryContainer
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = usuario.nombre.firstOrNull()?.toString() ?: "?",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onPrimary
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.width(16.dp))
         
-        // Nombre completo
-        Text(
-            text = "${usuario.nombre} ${usuario.apellidos}",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        
-        // Tipo de usuario
-        val tipoText = when {
-            usuario.perfiles.any { it.tipo == TipoUsuario.ADMIN_APP } -> "Administrador de la Aplicación"
-            usuario.perfiles.any { it.tipo == TipoUsuario.ADMIN_CENTRO } -> "Administrador de Centro"
-            usuario.perfiles.any { it.tipo == TipoUsuario.PROFESOR } -> "Profesor"
-            usuario.perfiles.any { it.tipo == TipoUsuario.ALUMNO } -> "Alumno"
-            usuario.perfiles.any { it.tipo == TipoUsuario.FAMILIAR } -> "Familiar"
-            else -> "Usuario"
+        Column {
+            Text(
+                text = "${usuario.nombre} ${usuario.apellidos}",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = usuario.email,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        
-        Text(
-            text = tipoText,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
+/**
+ * Fila de información con icono, etiqueta y valor
+ */
 @Composable
-fun InfoRow(
+private fun InfoRow(
     icon: ImageVector,
     label: String,
     value: String
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
+            modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.primary
         )
         
@@ -346,20 +342,22 @@ fun InfoRow(
         Column {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
 }
 
+/**
+ * Sección de información específica para profesores
+ */
 @Composable
-fun ProfesorInfoSection(usuario: Usuario) {
+private fun ProfesorInfoSection(usuario: Usuario) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -367,37 +365,24 @@ fun ProfesorInfoSection(usuario: Usuario) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Información de Profesor",
+                text = "Información del Profesor",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Como es una pantalla de ejemplo, mostramos datos ficticios
-            InfoRow(
-                icon = Icons.Default.School,
-                label = "Centro Educativo",
-                value = usuario.perfiles.firstOrNull { it.tipo == TipoUsuario.PROFESOR }?.centroId ?: "No asignado"
-            )
-            
-            InfoRow(
-                icon = Icons.Default.Class,
-                label = "Clases Asignadas",
-                value = "3 clases"
-            )
-            
-            InfoRow(
-                icon = Icons.Default.CalendarMonth,
-                label = "Horario",
-                value = "Lunes a Viernes, 8:00 - 14:00"
-            )
+            // Aquí puedes agregar información específica del profesor
+            // Por ejemplo: especialidad, cursos asignados, etc.
         }
     }
 }
 
+/**
+ * Sección de información específica para alumnos
+ */
 @Composable
-fun AlumnoInfoSection(usuario: Usuario) {
+private fun AlumnoInfoSection(usuario: Usuario) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -405,37 +390,24 @@ fun AlumnoInfoSection(usuario: Usuario) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Información de Alumno",
+                text = "Información del Alumno",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Como es una pantalla de ejemplo, mostramos datos ficticios
-            InfoRow(
-                icon = Icons.Default.School,
-                label = "Centro Educativo",
-                value = usuario.perfiles.firstOrNull { it.tipo == TipoUsuario.ALUMNO }?.centroId ?: "No asignado"
-            )
-            
-            InfoRow(
-                icon = Icons.Default.Class,
-                label = "Clase",
-                value = "Aula de 3 años A"
-            )
-            
-            InfoRow(
-                icon = Icons.Default.Groups,
-                label = "Familiares Vinculados",
-                value = "2 familiares"
-            )
+            // Aquí puedes agregar información específica del alumno
+            // Por ejemplo: curso, clase, notas, etc.
         }
     }
 }
 
+/**
+ * Sección de información específica para familiares
+ */
 @Composable
-fun FamiliarInfoSection(usuario: Usuario) {
+private fun FamiliarInfoSection(usuario: Usuario) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -443,177 +415,31 @@ fun FamiliarInfoSection(usuario: Usuario) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Información de Familiar",
+                text = "Información del Familiar",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Como es una pantalla de ejemplo, mostramos datos ficticios
-            InfoRow(
-                icon = Icons.Default.ChildCare,
-                label = "Alumnos Vinculados",
-                value = "${usuario.perfiles.firstOrNull { it.tipo == TipoUsuario.FAMILIAR }?.alumnos?.size ?: 0} alumno(s)"
-            )
-            
-            InfoRow(
-                icon = Icons.Default.School,
-                label = "Centro Educativo",
-                value = usuario.perfiles.firstOrNull { it.tipo == TipoUsuario.FAMILIAR }?.centroId ?: "No asignado"
-            )
-            
-            InfoRow(
-                icon = Icons.Default.Notifications,
-                label = "Notificaciones",
-                value = "Activadas"
-            )
+            // Aquí puedes agregar información específica del familiar
+            // Por ejemplo: alumnos asociados, permisos, etc.
         }
     }
 }
 
-@Preview(showBackground = true)
+@Preview(
+    name = "Light Mode",
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_NO
+)
 @Composable
-private fun UserDetailScreenPreview() {
+fun UserDetailScreenPreview() {
     UmeEguneroTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Encabezado con avatar y nombre
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Avatar (representado como un círculo con la inicial)
-                Surface(
-                    modifier = Modifier.size(100.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "L",
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Nombre completo
-                Text(
-                    text = "Laura Martínez García",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                // Tipo de usuario
-                Text(
-                    text = "Profesor",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Información personal
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Información Personal",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // DNI
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Badge,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Column {
-                            Text(
-                                text = "DNI",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            
-                            Text(
-                                text = "12345678A",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun UserDetailScreenDarkPreview() {
-    UmeEguneroTheme(darkTheme = true) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Encabezado con avatar y nombre
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Avatar (representado como un círculo con la inicial)
-                Surface(
-                    modifier = Modifier.size(100.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "M",
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Nombre completo
-                Text(
-                    text = "María López Sánchez",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                // Tipo de usuario
-                Text(
-                    text = "Familiar",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        val navController = rememberNavController()
+        UserDetailScreen(
+            navController = navController,
+            dni = "12345678A"
+        )
     }
 } 
