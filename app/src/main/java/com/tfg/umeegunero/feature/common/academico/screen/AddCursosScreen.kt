@@ -94,10 +94,18 @@ fun AddCursosScreen(
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
 
-    // Efecto para cargar el curso si estamos en modo edición
-    LaunchedEffect(viewModel.cursoId) {
-        if (viewModel.cursoId.isNotBlank()) {
-            viewModel.loadCurso(viewModel.cursoId)
+    // Efecto para mostrar mensajes de éxito
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            snackbarHostState.showSnackbar(uiState.successMessage ?: "Operación exitosa")
+            onCursoAdded()
+        }
+    }
+
+    // Efecto para mostrar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
         }
     }
 

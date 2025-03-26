@@ -36,8 +36,26 @@ class AddCursosViewModel @Inject constructor(
     private val cursoRepository: CursoRepository
 ) : ViewModel() {
 
+    private val _cursoId = MutableStateFlow<String>("")
+    val cursoId: StateFlow<String> = _cursoId.asStateFlow()
+
     private val _uiState = MutableStateFlow(AddCursosUiState())
     val uiState: StateFlow<AddCursosUiState> = _uiState.asStateFlow()
+
+    // Efecto para cargar el curso si estamos en modo edición
+    init {
+        viewModelScope.launch {
+            _cursoId.collect { id ->
+                if (id.isNotBlank()) {
+                    loadCurso(id)
+                }
+            }
+        }
+    }
+
+    fun setCursoId(id: String) {
+        _cursoId.value = id
+    }
 
     /**
      * Actualiza el nombre del curso

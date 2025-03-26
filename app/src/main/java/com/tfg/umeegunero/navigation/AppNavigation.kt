@@ -59,6 +59,8 @@ import com.tfg.umeegunero.feature.common.academico.screen.AddCursosScreen
 import com.tfg.umeegunero.feature.common.academico.screen.AddClasesScreen
 import com.tfg.umeegunero.feature.common.academico.screen.HiltListAlumnoScreen
 import com.tfg.umeegunero.feature.common.academico.screen.HiltListProfesorScreen
+import com.tfg.umeegunero.feature.common.academico.viewmodel.AddCursosViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.AddClasesViewModel
 
 /**
  * Navegación principal de la aplicación
@@ -187,10 +189,10 @@ fun AppNavigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
             val cursoId = backStackEntry.arguments?.getString("cursoId")
+            val viewModel: AddCursosViewModel = hiltViewModel()
+            cursoId?.let { viewModel.setCursoId(it) }
             AddCursosScreen(
-                viewModel = hiltViewModel(),
-                cursoId = cursoId ?: "",
-                centroId = centroId,
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onCursoAdded = { navController.popBackStack() }
             )
@@ -222,10 +224,10 @@ fun AppNavigation(
         ) { backStackEntry ->
             val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
             val claseId = backStackEntry.arguments?.getString("claseId")
+            val viewModel: AddClasesViewModel = hiltViewModel()
+            claseId?.let { viewModel.setClaseId(it) }
             AddClasesScreen(
-                viewModel = hiltViewModel(),
-                claseId = claseId ?: "",
-                centroId = cursoId,
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onClaseAdded = { navController.popBackStack() }
             )

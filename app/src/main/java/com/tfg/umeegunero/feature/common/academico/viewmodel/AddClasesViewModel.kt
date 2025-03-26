@@ -206,9 +206,17 @@ class AddClasesViewModel @Inject constructor(
     }
 
     /**
+     * Establece el ID de la clase y carga sus datos
+     */
+    fun setClaseId(claseId: String) {
+        _uiState.update { it.copy(id = claseId) }
+        loadClase(claseId)
+    }
+
+    /**
      * Carga una clase existente para edición
      */
-    fun loadClase(claseId: String) {
+    private fun loadClase(claseId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             when (val result = claseRepository.getClaseById(claseId)) {
