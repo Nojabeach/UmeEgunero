@@ -26,7 +26,7 @@ import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
 import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
 import com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen
 import com.tfg.umeegunero.feature.admin.screen.EditCentroScreen
-import com.tfg.umeegunero.feature.admin.screen.FamiliarListScreen
+import com.tfg.umeegunero.feature.common.academico.screen.ListFamiliarScreen
 import com.tfg.umeegunero.feature.admin.screen.UserDetailScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
@@ -61,6 +61,8 @@ import com.tfg.umeegunero.feature.common.academico.screen.HiltListAlumnoScreen
 import com.tfg.umeegunero.feature.common.academico.screen.HiltListProfesorScreen
 import com.tfg.umeegunero.feature.common.academico.viewmodel.AddCursosViewModel
 import com.tfg.umeegunero.feature.common.academico.viewmodel.AddClasesViewModel
+import com.tfg.umeegunero.feature.common.academico.screen.EditCursoScreen
+import com.tfg.umeegunero.feature.common.academico.viewmodel.EditCursoViewModel
 
 /**
  * Navegación principal de la aplicación
@@ -189,13 +191,16 @@ fun AppNavigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
             val cursoId = backStackEntry.arguments?.getString("cursoId")
-            val viewModel: AddCursosViewModel = hiltViewModel()
-            cursoId?.let { viewModel.setCursoId(it) }
-            AddCursosScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() },
-                onCursoAdded = { navController.popBackStack() }
-            )
+            if (cursoId != null) {
+                EditCursoScreen(navController = navController)
+            } else {
+                val viewModel: AddCursosViewModel = hiltViewModel()
+                AddCursosScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onCursoAdded = { navController.popBackStack() }
+                )
+            }
         }
 
         composable(
@@ -269,10 +274,9 @@ fun AppNavigation(
             )
         }
 
-        composable(route = AppScreens.FamiliarList.route) {
-            FamiliarListScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
+        composable(AppScreens.FamiliarList.route) {
+            ListFamiliarScreen(
+                navController = navController
             )
         }
 

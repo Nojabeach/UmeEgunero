@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.admin.screen
+package com.tfg.umeegunero.feature.common.academico.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,26 +16,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.tfg.umeegunero.data.model.Clase
-import com.tfg.umeegunero.feature.admin.viewmodel.ClasesViewModel
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.feature.common.academico.viewmodel.ListFamiliarViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 
 /**
- * Pantalla que muestra el listado de clases disponibles
+ * Pantalla que muestra el listado de familiares
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClasesScreen(
+fun ListFamiliarScreen(
     navController: NavController,
-    viewModel: ClasesViewModel = hiltViewModel()
+    viewModel: ListFamiliarViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Efecto para cargar las clases al inicio
+    // Efecto para cargar los familiares al inicio
     LaunchedEffect(Unit) {
-        viewModel.loadClases()
+        viewModel.loadFamiliares()
     }
     
     // Mostrar error en Snackbar si existe
@@ -50,7 +51,7 @@ fun ClasesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Gestión de Clases") },
+                title = { Text("Gestión de Familiares") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -70,11 +71,11 @@ fun ClasesScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
-                    // TODO: Navegar a la pantalla de añadir clase cuando esté implementada
-                    navController.navigate(AppScreens.Dummy.createRoute("Añadir Clase"))
+                    // Navegamos a la pantalla de añadir usuario con tipo FAMILIAR
+                    navController.navigate(AppScreens.AddUser.createRoute(false, TipoUsuario.FAMILIAR.toString()))
                 },
                 icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
-                text = { Text("Nueva Clase") },
+                text = { Text("Nuevo Familiar") },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
@@ -87,9 +88,9 @@ fun ClasesScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                LoadingIndicator(message = "Cargando clases...")
+                LoadingIndicator(message = "Cargando familiares...")
             }
-        } else if (uiState.clases.isEmpty()) {
+        } else if (uiState.familiares.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -101,7 +102,7 @@ fun ClasesScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Class,
+                        imageVector = Icons.Default.PeopleAlt,
                         contentDescription = null,
                         modifier = Modifier.size(72.dp),
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
@@ -110,7 +111,7 @@ fun ClasesScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
-                        text = "No hay clases disponibles",
+                        text = "No hay familiares disponibles",
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center
                     )
@@ -118,7 +119,7 @@ fun ClasesScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Text(
-                        text = "Añade tu primera clase utilizando el botón de abajo",
+                        text = "Añade tu primer familiar utilizando el botón de abajo",
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
@@ -132,15 +133,17 @@ fun ClasesScreen(
                     .padding(paddingValues)
                     .padding(16.dp)
             ) {
-                items(uiState.clases) { clase ->
-                    ClaseItem(
-                        clase = clase,
+                items(uiState.familiares) { familiar ->
+                    FamiliarItem(
+                        familiar = familiar,
+                        onViewClick = {
+                            navController.navigate(AppScreens.UserDetail.createRoute(familiar.dni))
+                        },
                         onEditClick = {
-                            // TODO: Navegar a la pantalla de editar clase cuando esté implementada
-                            navController.navigate(AppScreens.Dummy.createRoute("Editar Clase"))
+                            navController.navigate(AppScreens.Dummy.createRoute("Editar Familiar"))
                         },
                         onDeleteClick = {
-                            viewModel.deleteClase(clase.id)
+                            viewModel.deleteFamiliar(familiar.dni)
                         }
                     )
                     
@@ -153,8 +156,9 @@ fun ClasesScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClaseItem(
-    clase: Clase,
+fun FamiliarItem(
+    familiar: Usuario,
+    onViewClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
@@ -167,12 +171,12 @@ fun ClaseItem(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Encabezado con el nombre de la clase
+            // Encabezado con el nombre del familiar
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Class,
+                    imageVector = Icons.Default.Person,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -180,7 +184,7 @@ fun ClaseItem(
                 Spacer(modifier = Modifier.width(8.dp))
                 
                 Text(
-                    text = clase.nombre,
+                    text = "${familiar.nombre} ${familiar.apellidos}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -190,10 +194,10 @@ fun ClaseItem(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Información adicional de la clase
+            // Información adicional del familiar
             Row {
                 Icon(
-                    imageVector = Icons.Default.Person,
+                    imageVector = Icons.Default.Email,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -202,7 +206,7 @@ fun ClaseItem(
                 Spacer(modifier = Modifier.width(4.dp))
                 
                 Text(
-                    text = "Profesor titular: ${if (clase.profesorTitularId.isNotEmpty()) clase.profesorTitularId else "No asignado"}",
+                    text = familiar.email,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
@@ -212,7 +216,7 @@ fun ClaseItem(
             
             Row {
                 Icon(
-                    imageVector = Icons.Default.People,
+                    imageVector = Icons.Default.Phone,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -221,7 +225,7 @@ fun ClaseItem(
                 Spacer(modifier = Modifier.width(4.dp))
                 
                 Text(
-                    text = "Alumnos: ${clase.alumnosIds.size} / ${clase.capacidadMaxima}",
+                    text = familiar.telefono ?: "No disponible",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
@@ -231,7 +235,7 @@ fun ClaseItem(
             
             Row {
                 Icon(
-                    imageVector = Icons.Default.Room,
+                    imageVector = Icons.Default.Badge,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -240,7 +244,7 @@ fun ClaseItem(
                 Spacer(modifier = Modifier.width(4.dp))
                 
                 Text(
-                    text = "Aula: ${if (clase.aula.isNotEmpty()) clase.aula else "No asignada"}",
+                    text = "DNI: ${familiar.dni}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
@@ -253,7 +257,21 @@ fun ClaseItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                // Botón para editar
+                TextButton(
+                    onClick = onViewClick,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = "Ver",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Ver")
+                }
+                
                 TextButton(
                     onClick = onEditClick,
                     colors = ButtonDefaults.textButtonColors(
@@ -263,15 +281,12 @@ fun ClaseItem(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Editar",
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
-                    
                     Spacer(modifier = Modifier.width(4.dp))
-                    
                     Text("Editar")
                 }
                 
-                // Botón para eliminar
                 TextButton(
                     onClick = { showDeleteDialog = true },
                     colors = ButtonDefaults.textButtonColors(
@@ -281,31 +296,28 @@ fun ClaseItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Eliminar",
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
-                    
                     Spacer(modifier = Modifier.width(4.dp))
-                    
                     Text("Eliminar")
                 }
             }
         }
     }
     
-    // Diálogo de confirmación para eliminar
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Confirmar eliminación") },
-            text = { Text("¿Estás seguro de que deseas eliminar la clase '${clase.nombre}'? Esta acción no se puede deshacer.") },
+            title = { Text("Eliminar Familiar") },
+            text = { Text("¿Estás seguro de que deseas eliminar este familiar?") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDeleteClick()
                         showDeleteDialog = false
+                        onDeleteClick()
                     }
                 ) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                    Text("Eliminar")
                 }
             },
             dismissButton = {

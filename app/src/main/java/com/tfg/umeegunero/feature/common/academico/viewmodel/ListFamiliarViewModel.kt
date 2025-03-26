@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.admin.viewmodel
+package com.tfg.umeegunero.feature.common.academico.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,24 +16,24 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Estado de UI para la pantalla de gestión de familiares
+ * Estado de UI para la pantalla de listado de familiares
  */
-data class FamiliaresUiState(
+data class ListFamiliarUiState(
     val familiares: List<Usuario> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
 
 /**
- * ViewModel para la gestión de familiares
+ * ViewModel para el listado de familiares
  */
 @HiltViewModel
-class FamiliaresViewModel @Inject constructor(
+class ListFamiliarViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(FamiliaresUiState(isLoading = true))
-    val uiState: StateFlow<FamiliaresUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(ListFamiliarUiState(isLoading = true))
+    val uiState: StateFlow<ListFamiliarUiState> = _uiState.asStateFlow()
 
     /**
      * Carga todos los familiares desde el repositorio
