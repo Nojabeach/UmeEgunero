@@ -2,7 +2,7 @@ package com.tfg.umeegunero.ui.viewmodels.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.domain.model.Clase
+import com.tfg.umeegunero.data.model.Clase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
