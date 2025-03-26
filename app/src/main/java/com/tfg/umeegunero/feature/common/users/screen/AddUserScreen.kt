@@ -77,7 +77,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.feature.common.ui.components.FormProgressIndicator
+import com.tfg.umeegunero.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.AdminColor
 import com.tfg.umeegunero.ui.theme.CentroColor
 import com.tfg.umeegunero.ui.theme.FamiliarColor

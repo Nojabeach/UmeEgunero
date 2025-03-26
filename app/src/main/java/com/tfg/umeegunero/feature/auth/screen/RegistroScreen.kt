@@ -98,7 +98,7 @@ import com.tfg.umeegunero.data.model.RegistroUsuarioForm
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.feature.auth.viewmodel.RegistroUiState
 import com.tfg.umeegunero.feature.auth.viewmodel.RegistroViewModel
-import com.tfg.umeegunero.feature.common.ui.components.FormProgressIndicator
+import com.tfg.umeegunero.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape

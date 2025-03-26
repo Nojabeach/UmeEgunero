@@ -106,7 +106,7 @@ import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
-import com.tfg.umeegunero.feature.common.ui.components.FormProgressIndicator
+import com.tfg.umeegunero.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
