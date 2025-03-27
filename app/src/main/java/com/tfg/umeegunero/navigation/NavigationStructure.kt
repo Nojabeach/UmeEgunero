@@ -171,6 +171,18 @@ object NavigationStructure {
                     icon = Icons.Outlined.Email,
                     route = AppScreens.EmailConfig.route,
                     description = "Configuración de email"
+                ),
+                NavItem(
+                    title = "Soporte Técnico",
+                    icon = Icons.Outlined.Help,
+                    route = AppScreens.SoporteTecnico.route,
+                    description = "Contactar con soporte técnico"
+                ),
+                NavItem(
+                    title = "FAQ",
+                    icon = Icons.Outlined.Info,
+                    route = AppScreens.FAQ.route, 
+                    description = "Preguntas frecuentes"
                 )
             ),
             dividerAfter = true
@@ -353,6 +365,26 @@ object NavigationStructure {
             icon = Icons.Filled.Settings,
             route = AppScreens.Configuracion.route,
             description = "Ajustes del centro educativo",
+            subItems = listOf(
+                NavItem(
+                    title = "Parámetros",
+                    icon = Icons.Outlined.Tune,
+                    route = AppScreens.Configuracion.route,
+                    description = "Parámetros generales"
+                ),
+                NavItem(
+                    title = "Soporte Técnico",
+                    icon = Icons.Outlined.Help,
+                    route = AppScreens.SoporteTecnico.route,
+                    description = "Contactar con soporte técnico"
+                ),
+                NavItem(
+                    title = "FAQ",
+                    icon = Icons.Outlined.Info,
+                    route = AppScreens.FAQ.route, 
+                    description = "Preguntas frecuentes"
+                )
+            ),
             dividerAfter = true
         )
     )
@@ -507,6 +539,26 @@ object NavigationStructure {
             icon = Icons.Filled.Settings,
             route = AppScreens.Configuracion.route,
             description = "Ajustes de la aplicación",
+            subItems = listOf(
+                NavItem(
+                    title = "Parámetros",
+                    icon = Icons.Outlined.Tune,
+                    route = AppScreens.Configuracion.route,
+                    description = "Parámetros generales"
+                ),
+                NavItem(
+                    title = "Soporte Técnico",
+                    icon = Icons.Outlined.Help,
+                    route = AppScreens.SoporteTecnico.route,
+                    description = "Contactar con soporte técnico"
+                ),
+                NavItem(
+                    title = "FAQ",
+                    icon = Icons.Outlined.Info,
+                    route = AppScreens.FAQ.route, 
+                    description = "Preguntas frecuentes"
+                )
+            ),
             dividerAfter = true
         )
     )
@@ -655,6 +707,26 @@ object NavigationStructure {
             icon = Icons.Filled.Settings,
             route = AppScreens.Configuracion.route,
             description = "Ajustes de la aplicación",
+            subItems = listOf(
+                NavItem(
+                    title = "Parámetros",
+                    icon = Icons.Outlined.Tune,
+                    route = AppScreens.Configuracion.route,
+                    description = "Parámetros generales"
+                ),
+                NavItem(
+                    title = "Soporte Técnico",
+                    icon = Icons.Outlined.Help,
+                    route = AppScreens.SoporteTecnico.route,
+                    description = "Contactar con soporte técnico"
+                ),
+                NavItem(
+                    title = "FAQ",
+                    icon = Icons.Outlined.Info,
+                    route = AppScreens.FAQ.route, 
+                    description = "Preguntas frecuentes"
+                )
+            ),
             dividerAfter = true
         )
     )
