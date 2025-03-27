@@ -3,7 +3,7 @@ package com.tfg.umeegunero
 import android.app.Application
 import com.google.firebase.BuildConfig
 import com.tfg.umeegunero.util.DebugUtils
-import com.tfg.umeegunero.utils.RemoteConfigManager
+import com.tfg.umeegunero.util.RemoteConfigManager
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import javax.inject.Inject

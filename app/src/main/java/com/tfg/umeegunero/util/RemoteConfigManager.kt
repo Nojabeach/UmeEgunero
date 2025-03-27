@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.utils
+package com.tfg.umeegunero.util
 
 import android.content.Context
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
