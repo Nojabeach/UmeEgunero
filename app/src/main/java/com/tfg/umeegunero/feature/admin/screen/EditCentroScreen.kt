@@ -24,14 +24,18 @@ import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Direccion
-import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.EditCentroViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import androidx.compose.ui.tooling.preview.Preview
 import android.content.res.Configuration
+import android.net.Uri
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.foundation.lazy.LazyColumn
+import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
 
 /**
  * Pantalla para editar un centro educativo existente
@@ -41,41 +45,37 @@ import androidx.compose.foundation.lazy.LazyColumn
 fun EditCentroScreen(
     navController: NavController,
     centroId: String,
-    viewModel: AddCentroViewModel = hiltViewModel()
+    viewModel: EditCentroViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // Cargar los datos del centro al inicio
-    LaunchedEffect(centroId) {
-        viewModel.loadCentro(centroId)
+    
+    LaunchedEffect(key1 = Unit) {
+        viewModel.loadCentro()
     }
     
-    // Observar cambios en el estado y navegar de vuelta si la operación fue exitosa
-    LaunchedEffect(uiState.success) {
+    LaunchedEffect(key1 = uiState.success) {
         if (uiState.success) {
             navController.popBackStack()
         }
     }
-
+    
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Editar Centro Educativo") },
+                title = { Text(text = "Editar Centro") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            contentDescription = "Volver atrás",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -87,7 +87,7 @@ fun EditCentroScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                LoadingIndicator()
+                CircularProgressIndicator()
             }
         } else {
             EditCentroContent(
@@ -99,36 +99,15 @@ fun EditCentroScreen(
                 onUpdateCiudad = viewModel::updateCiudad,
                 onUpdateProvincia = viewModel::updateProvincia,
                 onUpdateTelefono = viewModel::updateTelefono,
-                onUpdateAdminEmail = { index, email ->
-                    viewModel.updateAdminCentroEmail(index, email)
-                },
-                onUpdateAdminPassword = { index, password ->
-                    viewModel.updateAdminCentroPassword(index, password)
-                },
+                onUpdateAdminEmail = viewModel::updateAdminEmail,
+                onUpdateAdminPassword = viewModel::updateAdminPassword,
                 onUpdateLatitud = viewModel::updateLatitud,
                 onUpdateLongitud = viewModel::updateLongitud,
                 onSeleccionarCiudad = viewModel::seleccionarCiudad,
-                onGuardar = {
-                    val centro = Centro(
-                        id = uiState.id,
-                        nombre = uiState.nombre,
-                        direccion = Direccion(
-                            calle = uiState.calle,
-                            numero = uiState.numero,
-                            codigoPostal = uiState.codigoPostal,
-                            ciudad = uiState.ciudad,
-                            provincia = uiState.provincia
-                        ),
-                        contacto = Contacto(
-                            telefono = uiState.telefono,
-                            email = uiState.adminCentro.firstOrNull()?.email ?: ""
-                        ),
-                        latitud = uiState.latitud ?: 0.0,
-                        longitud = uiState.longitud ?: 0.0
-                    )
-                    viewModel.saveCentro(centro)
-                },
+                onGuardar = viewModel::updateCentro,
                 onNavigateBack = { navController.popBackStack() },
+                onAddAdminCentro = viewModel::addAdminCentro,
+                onRemoveAdminCentro = viewModel::removeAdminCentro,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
@@ -139,7 +118,7 @@ fun EditCentroScreen(
 
 @Composable
 private fun EditCentroContent(
-    uiState: com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel.AddCentroState,
+    uiState: AddCentroUiState,
     onUpdateNombre: (String) -> Unit,
     onUpdateCalle: (String) -> Unit,
     onUpdateNumero: (String) -> Unit,
@@ -154,6 +133,8 @@ private fun EditCentroContent(
     onSeleccionarCiudad: (com.tfg.umeegunero.data.model.Ciudad) -> Unit,
     onGuardar: () -> Unit,
     onNavigateBack: () -> Unit,
+    onAddAdminCentro: () -> Unit,
+    onRemoveAdminCentro: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -467,74 +448,148 @@ private fun EditCentroContent(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Información de administrador del centro
+        // Sección de Administradores
         Text(
-            text = "Administrador del Centro",
+            text = "Administradores del Centro",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
-        if (uiState.adminCentro.isNotEmpty()) {
-            // Email del administrador
-            OutlinedTextField(
-                value = uiState.adminCentro[0].email,
-                onValueChange = { onUpdateAdminEmail(0, it) },
-                label = { Text("Email de acceso *") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Email,
-                        contentDescription = null
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                isError = uiState.adminCentro[0].emailError != null,
-                supportingText = uiState.adminCentro[0].emailError?.let { { Text(it) } },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                )
+        if (uiState.adminCentroError != null) {
+            Text(
+                text = uiState.adminCentroError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Contraseña del administrador
-            OutlinedTextField(
-                value = uiState.adminCentro[0].password,
-                onValueChange = { onUpdateAdminPassword(0, it) },
-                label = { Text("Contraseña *") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null
-                    )
-                },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+        }
+        
+        // Lista de administradores
+        uiState.adminCentro.forEachIndexed { index, admin ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    // Título del administrador
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (index == 0) "Administrador Principal" else "Administrador Adicional ${index}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
                         )
+                        
+                        // Botón para eliminar administrador (solo para administradores secundarios)
+                        if (index > 0) {
+                            IconButton(
+                                onClick = { onRemoveAdminCentro(index) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Eliminar administrador",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                     }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                isError = uiState.adminCentro[0].passwordError != null,
-                supportingText = {
-                    if (uiState.adminCentro[0].passwordError != null) {
-                        Text(uiState.adminCentro[0].passwordError!!)
-                    } else {
-                        Text("Deje en blanco para mantener la contraseña actual")
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { focusManager.clearFocus() }
+                    
+                    // Email
+                    OutlinedTextField(
+                        value = admin.email,
+                        onValueChange = { onUpdateAdminEmail(index, it) },
+                        label = { Text("Email *") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = admin.emailError != null,
+                        supportingText = admin.emailError?.let { { Text(it) } },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        )
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Contraseña
+                    var passwordVisible by remember { mutableStateOf(false) }
+                    OutlinedTextField(
+                        value = admin.password,
+                        onValueChange = { onUpdateAdminPassword(index, it) },
+                        label = { Text("Contraseña") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null
+                            )
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                )
+                            }
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = admin.passwordError != null,
+                        supportingText = {
+                            if (admin.passwordError != null) {
+                                Text(admin.passwordError)
+                            } else {
+                                Text("Deje en blanco para mantener la contraseña actual")
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done
+                        )
+                    )
+                }
+            }
+        }
+        
+        // Botón para añadir un nuevo administrador
+        if (uiState.adminCentro.size < 3) { // Limitar a 3 administradores
+            Button(
+                onClick = onAddAdminCentro,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-            )
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Añadir administrador",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Añadir Administrador")
+                }
+            }
         }
         
         Spacer(modifier = Modifier.height(32.dp))
@@ -571,7 +626,7 @@ private fun EditCentroContent(
     }
 }
 
-private fun isFormValid(state: com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel.AddCentroState): Boolean {
+private fun isFormValid(state: AddCentroUiState): Boolean {
     return state.nombre.isNotBlank() && state.nombreError == null &&
            state.calle.isNotBlank() && state.calleError == null &&
            state.numero.isNotBlank() && state.numeroError == null &&

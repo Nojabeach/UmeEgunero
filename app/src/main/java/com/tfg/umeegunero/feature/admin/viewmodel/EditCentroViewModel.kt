@@ -4,316 +4,452 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Centro
+import com.tfg.umeegunero.data.model.Contacto
+import com.tfg.umeegunero.data.model.Direccion
+import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.data.repository.CentroRepository
+import com.tfg.umeegunero.data.repository.Result
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
-import com.tfg.umeegunero.feature.admin.viewmodel.AdminCentro
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.regex.Pattern
 import javax.inject.Inject
 
 @HiltViewModel
 class EditCentroViewModel @Inject constructor(
     private val centroRepository: CentroRepository,
-    savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-
+    
     private val _uiState = MutableStateFlow(AddCentroUiState())
     val uiState: StateFlow<AddCentroUiState> = _uiState.asStateFlow()
-
-    // ID del centro que se está editando
-    private val centroId: String = savedStateHandle["centroId"] ?: ""
-
-    init {
-        if (centroId.isNotBlank()) {
-            // Cargar los datos del centro
-            loadCentroData(centroId)
-        }
-    }
-
+    
+    private val centroId: String = savedStateHandle.get<String>("centroId") ?: ""
+    
+    // Patrón de validación para email
+    private val emailPattern = Pattern.compile(
+        "[a-zA-Z0-9+._%\\-]{1,256}" +
+        "@" +
+        "[a-zA-Z0-9][a-zA-Z0-9\\-]{0,64}" +
+        "(" +
+        "\\." +
+        "[a-zA-Z0-9][a-zA-Z0-9\\-]{0,25}" +
+        ")+"
+    )
+    
     /**
-     * Actualiza la latitud del centro
+     * Carga los datos del centro desde el repositorio
      */
-    fun updateLatitud(latitud: Double?) {
-        _uiState.update { 
-            it.copy(
-                latitud = latitud,
-                tieneUbicacionValida = (latitud != null && it.longitud != null)
-            )
+    fun loadCentro() {
+        if (centroId.isEmpty()) {
+            _uiState.update { it.copy(error = "ID de centro no proporcionado") }
+            return
         }
-    }
-
-    /**
-     * Actualiza la longitud del centro
-     */
-    fun updateLongitud(longitud: Double?) {
-        _uiState.update { 
-            it.copy(
-                longitud = longitud,
-                tieneUbicacionValida = (it.latitud != null && longitud != null)
-            )
-        }
-    }
-
-    /**
-     * Carga los datos del centro desde la API
-     */
-    private fun loadCentroData(centroId: String) {
+        
         viewModelScope.launch {
-            try {
-                val resultCentro = centroRepository.getCentroById(centroId)
-                
-                if (resultCentro is com.tfg.umeegunero.data.repository.Result.Success) {
-                    updateUiStateWithCentro(resultCentro.data)
-                } else if (resultCentro is com.tfg.umeegunero.data.repository.Result.Error) {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        error = "Error al cargar el centro: ${resultCentro.exception.message}"
-                    )}
+            _uiState.update { it.copy(isLoading = true) }
+            
+            when (val result = centroRepository.getCentroById(centroId)) {
+                is Result.Success -> {
+                    val centro = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            id = centro.id,
+                            nombre = centro.nombre,
+                            calle = centro.direccion.calle,
+                            numero = centro.direccion.numero,
+                            codigoPostal = centro.direccion.codigoPostal,
+                            ciudad = centro.direccion.ciudad,
+                            provincia = centro.direccion.provincia,
+                            telefono = centro.contacto.telefono,
+                            latitud = centro.latitud,
+                            longitud = centro.longitud,
+                            adminCentro = listOf(
+                                com.tfg.umeegunero.feature.admin.viewmodel.AdminCentro(
+                                    email = centro.contacto.email,
+                                    password = "",
+                                    emailError = null,
+                                    passwordError = null
+                                )
+                            ),
+                            isLoading = false,
+                            error = null,
+                            success = false
+                        )
+                    }
+                    Timber.d("Centro cargado correctamente: ${centro.nombre}")
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = "Error inesperado: ${e.message}"
-                )}
+                is Result.Error -> {
+                    _uiState.update { it.copy(
+                        error = "Error al cargar el centro: ${result.exception.message}",
+                        isLoading = false
+                    )}
+                    Timber.e(result.exception, "Error al cargar el centro")
+                }
+                is Result.Loading -> {
+                    // Ya estamos en estado de carga, no hacemos nada adicional
+                }
             }
         }
     }
-
+    
+    /**
+     * Actualiza el centro con los datos del formulario
+     */
+    fun updateCentro() {
+        if (!validarFormulario()) {
+            return
+        }
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            val currentState = _uiState.value
+            val centro = Centro(
+                id = centroId,
+                nombre = currentState.nombre,
+                direccion = Direccion(
+                    calle = currentState.calle,
+                    numero = currentState.numero,
+                    codigoPostal = currentState.codigoPostal,
+                    ciudad = currentState.ciudad,
+                    provincia = currentState.provincia
+                ),
+                contacto = Contacto(
+                    telefono = currentState.telefono,
+                    email = currentState.adminCentro.firstOrNull()?.email ?: ""
+                ),
+                latitud = currentState.latitud ?: 0.0,
+                longitud = currentState.longitud ?: 0.0
+            )
+            
+            when (val result = centroRepository.updateCentro(centroId, centro)) {
+                is Result.Success -> {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        success = true,
+                        error = null
+                    )}
+                    Timber.d("Centro actualizado correctamente: ${centro.nombre}")
+                    
+                    // Actualizar contraseñas de administradores si hay cambios
+                    currentState.adminCentro.forEachIndexed { index, admin ->
+                        if (admin.password.isNotBlank()) {
+                            // En una implementación real, aquí iría la lógica para actualizar 
+                            // la contraseña del administrador en el sistema de autenticación
+                            Timber.d("Actualizando contraseña para administrador: ${admin.email}")
+                        }
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(
+                        error = "Error al actualizar el centro: ${result.exception.message}",
+                        isLoading = false
+                    )}
+                    Timber.e(result.exception, "Error al actualizar el centro")
+                }
+                is Result.Loading -> {
+                    // Ya estamos en estado de carga, no hacemos nada adicional
+                }
+            }
+        }
+    }
+    
+    /**
+     * Valida todos los campos del formulario
+     */
+    private fun validarFormulario(): Boolean {
+        var isValid = true
+        
+        // Validar nombre
+        if (_uiState.value.nombre.isBlank()) {
+            _uiState.update { it.copy(nombreError = "El nombre es obligatorio") }
+            isValid = false
+        } else {
+            _uiState.update { it.copy(nombreError = null) }
+        }
+        
+        // Validar calle
+        if (_uiState.value.calle.isBlank()) {
+            _uiState.update { it.copy(calleError = "La calle es obligatoria") }
+            isValid = false
+        } else {
+            _uiState.update { it.copy(calleError = null) }
+        }
+        
+        // Validar número
+        if (_uiState.value.numero.isBlank()) {
+            _uiState.update { it.copy(numeroError = "El número es obligatorio") }
+            isValid = false
+        } else {
+            _uiState.update { it.copy(numeroError = null) }
+        }
+        
+        // Validar código postal
+        if (_uiState.value.codigoPostal.isBlank()) {
+            _uiState.update { it.copy(codigoPostalError = "El código postal es obligatorio") }
+            isValid = false
+        } else if (_uiState.value.codigoPostal.length != 5 || !_uiState.value.codigoPostal.all { it.isDigit() }) {
+            _uiState.update { it.copy(codigoPostalError = "El código postal debe tener 5 dígitos") }
+            isValid = false
+        } else {
+            _uiState.update { it.copy(codigoPostalError = null) }
+        }
+        
+        // Validar ciudad
+        if (_uiState.value.ciudad.isBlank()) {
+            _uiState.update { it.copy(ciudadError = "La ciudad es obligatoria") }
+            isValid = false
+        } else {
+            _uiState.update { it.copy(ciudadError = null) }
+        }
+        
+        // Validar provincia
+        if (_uiState.value.provincia.isBlank()) {
+            _uiState.update { it.copy(provinciaError = "La provincia es obligatoria") }
+            isValid = false
+        } else {
+            _uiState.update { it.copy(provinciaError = null) }
+        }
+        
+        // Validar teléfono si está presente
+        if (_uiState.value.telefono.isNotBlank() && (_uiState.value.telefono.length < 9 || !_uiState.value.telefono.all { it.isDigit() })) {
+            _uiState.update { it.copy(telefonoError = "El teléfono debe tener al menos 9 dígitos") }
+            isValid = false
+        } else {
+            _uiState.update { it.copy(telefonoError = null) }
+        }
+        
+        // Validar email de administradores
+        val adminCentroUpdated = _uiState.value.adminCentro.mapIndexed { index, admin ->
+            if (admin.email.isBlank()) {
+                admin.copy(emailError = "El email es obligatorio")
+            } else if (!emailPattern.matcher(admin.email).matches()) {
+                admin.copy(emailError = "Email no válido")
+            } else {
+                admin.copy(emailError = null)
+            }
+        }
+        
+        _uiState.update { it.copy(adminCentro = adminCentroUpdated) }
+        
+        // Comprobar si hay algún error en los administradores
+        if (adminCentroUpdated.any { it.emailError != null || it.passwordError != null }) {
+            isValid = false
+        }
+        
+        return isValid
+    }
+    
     /**
      * Actualiza el nombre del centro
      */
     fun updateNombre(nombre: String) {
-        _uiState.update { it.copy(
-            nombre = nombre,
-            nombreError = if (nombre.isBlank()) "El nombre es obligatorio" else null
-        )}
+        _uiState.update { currentState ->
+            currentState.copy(
+                nombre = nombre,
+                nombreError = if (nombre.isBlank()) "El nombre es obligatorio" else null
+            )
+        }
     }
-
+    
     /**
      * Actualiza la calle del centro
      */
     fun updateCalle(calle: String) {
-        _uiState.update { it.copy(
-            calle = calle,
-            calleError = if (calle.isBlank()) "La calle es obligatoria" else null
-        )}
+        _uiState.update { currentState ->
+            currentState.copy(
+                calle = calle,
+                calleError = if (calle.isBlank()) "La calle es obligatoria" else null
+            )
+        }
     }
-
+    
     /**
      * Actualiza el número del centro
      */
     fun updateNumero(numero: String) {
-        _uiState.update { it.copy(
-            numero = numero,
-            numeroError = if (numero.isBlank()) "El número es obligatorio" else null
-        )}
+        _uiState.update { currentState ->
+            currentState.copy(
+                numero = numero,
+                numeroError = if (numero.isBlank()) "El número es obligatorio" else null
+            )
+        }
     }
-
+    
     /**
-     * Actualiza el código postal del centro
+     * Actualiza el código postal y busca ciudades según el código
      */
     fun updateCodigoPostal(codigoPostal: String) {
-        _uiState.update { it.copy(
-            codigoPostal = codigoPostal,
-            codigoPostalError = if (codigoPostal.isBlank()) "El código postal es obligatorio" else null
-        )}
+        if (codigoPostal.length > 5) return
+        
+        _uiState.update { currentState ->
+            currentState.copy(
+                codigoPostal = codigoPostal,
+                codigoPostalError = when {
+                    codigoPostal.isBlank() -> "El código postal es obligatorio"
+                    codigoPostal.length != 5 || !codigoPostal.all { it.isDigit() } ->
+                        "El código postal debe tener 5 dígitos"
+                    else -> null
+                },
+                ciudadesSugeridas = emptyList()  // Limpiar sugerencias al cambiar el código postal
+            )
+        }
+        
+        // Si el código postal tiene 5 dígitos, buscar ciudades
+        if (codigoPostal.length == 5 && codigoPostal.all { it.isDigit() }) {
+            buscarCiudades(codigoPostal)
+        }
     }
-
+    
+    /**
+     * Busca ciudades por código postal
+     */
+    private fun buscarCiudades(codigoPostal: String) {
+        // En una implementación real, aquí iría la lógica para buscar ciudades por código postal
+        // Por simplicidad, solo simulamos la respuesta
+        val ciudadesFicticias = listOf(
+            Ciudad("Madrid", "Madrid", codigoPostal),
+            Ciudad("Barcelona", "Barcelona", codigoPostal),
+            Ciudad("Valencia", "Valencia", codigoPostal)
+        )
+        
+        _uiState.update { it.copy(ciudadesSugeridas = ciudadesFicticias) }
+    }
+    
     /**
      * Actualiza la ciudad del centro
      */
     fun updateCiudad(ciudad: String) {
-        _uiState.update { it.copy(
-            ciudad = ciudad,
-            ciudadError = if (ciudad.isBlank()) "La ciudad es obligatoria" else null
-        )}
+        _uiState.update { currentState ->
+            currentState.copy(
+                ciudad = ciudad,
+                ciudadError = if (ciudad.isBlank()) "La ciudad es obligatoria" else null
+            )
+        }
     }
-
+    
     /**
      * Actualiza la provincia del centro
      */
     fun updateProvincia(provincia: String) {
-        _uiState.update { it.copy(
-            provincia = provincia,
-            provinciaError = if (provincia.isBlank()) "La provincia es obligatoria" else null
-        )}
+        _uiState.update { currentState ->
+            currentState.copy(
+                provincia = provincia,
+                provinciaError = if (provincia.isBlank()) "La provincia es obligatoria" else null
+            )
+        }
     }
-
+    
     /**
      * Actualiza el teléfono del centro
      */
     fun updateTelefono(telefono: String) {
-        _uiState.update { it.copy(
-            telefono = telefono,
-            telefonoError = validatePhoneNumber(telefono)
-        )}
-    }
-
-    /**
-     * Valida un número de teléfono
-     */
-    private fun validatePhoneNumber(telefono: String): String? {
-        return when {
-            telefono.isBlank() -> null // El teléfono es opcional
-            !Pattern.matches("^[6-9][0-9]{8}$", telefono) -> "El formato del teléfono no es válido"
-            else -> null
+        _uiState.update { currentState ->
+            currentState.copy(
+                telefono = telefono,
+                telefonoError = if (telefono.isNotBlank() && (telefono.length < 9 || !telefono.all { it.isDigit() }))
+                    "El teléfono debe tener al menos 9 dígitos"
+                else null
+            )
         }
     }
-
+    
     /**
-     * Valida un correo electrónico
-     */
-    private fun validateEmail(email: String): String? {
-        return when {
-            email.isBlank() -> "El email es obligatorio"
-            !Pattern.matches("[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+", email) -> "El formato del email no es válido"
-            else -> null
-        }
-    }
-
-    /**
-     * Valida una contraseña
-     */
-    private fun validatePassword(password: String): String? {
-        return when {
-            password.isBlank() -> null // Permitimos contraseña vacía en modo edición
-            password.length < 6 -> "La contraseña debe tener al menos 6 caracteres"
-            !password.any { it.isDigit() } -> "La contraseña debe contener al menos un número"
-            !password.any { it.isLetter() } -> "La contraseña debe contener al menos una letra"
-            else -> null
-        }
-    }
-
-    /**
-     * Actualiza el email del administrador
+     * Actualiza el email de un administrador
      */
     fun updateAdminEmail(index: Int, email: String) {
-        val adminList = _uiState.value.adminCentro.toMutableList()
-        if (index < adminList.size) {
-            val admin = adminList[index].copy(
+        val adminCentro = _uiState.value.adminCentro.toMutableList()
+        if (index < adminCentro.size) {
+            adminCentro[index] = adminCentro[index].copy(
                 email = email,
-                emailError = validateEmail(email)
+                emailError = when {
+                    email.isBlank() -> "El email es obligatorio"
+                    !emailPattern.matcher(email).matches() -> "Email no válido"
+                    else -> null
+                }
             )
-            adminList[index] = admin
-            _uiState.update { it.copy(adminCentro = adminList) }
+            _uiState.update { it.copy(adminCentro = adminCentro) }
         }
     }
-
+    
     /**
-     * Actualiza la contraseña del administrador
+     * Actualiza la contraseña de un administrador
      */
     fun updateAdminPassword(index: Int, password: String) {
-        val adminList = _uiState.value.adminCentro.toMutableList()
-        if (index < adminList.size) {
-            val admin = adminList[index].copy(
+        val adminCentro = _uiState.value.adminCentro.toMutableList()
+        if (index < adminCentro.size) {
+            adminCentro[index] = adminCentro[index].copy(
                 password = password,
-                passwordError = if (password.isNotBlank()) validatePassword(password) else null
+                passwordError = if (password.isNotBlank() && password.length < 6)
+                    "La contraseña debe tener al menos 6 caracteres"
+                else null
             )
-            adminList[index] = admin
-            _uiState.update { it.copy(adminCentro = adminList) }
+            _uiState.update { it.copy(adminCentro = adminCentro) }
         }
     }
-
+    
     /**
-     * Selecciona una ciudad de las sugeridas
+     * Actualiza la latitud del centro
      */
-    fun seleccionarCiudad(ciudad: com.tfg.umeegunero.data.model.Ciudad) {
-        _uiState.update { it.copy(
-            ciudad = ciudad.nombre,
-            provincia = ciudad.provincia,
-            ciudadesSugeridas = emptyList()
-        )}
+    fun updateLatitud(latitud: Double?) {
+        _uiState.update { it.copy(latitud = latitud) }
     }
-
+    
     /**
-     * Guarda los cambios del centro
+     * Actualiza la longitud del centro
      */
-    fun guardarCentro(onSuccess: () -> Unit, onError: (String) -> Unit) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            
-            try {
-                val centro = buildCentroFromState()
-                val result = centroRepository.updateCentro(centroId, centro)
-                
-                when (result) {
-                    is com.tfg.umeegunero.data.repository.Result.Success -> {
-                        _uiState.update { it.copy(isLoading = false) }
-                        onSuccess()
-                    }
-                    is com.tfg.umeegunero.data.repository.Result.Error -> {
-                        _uiState.update { it.copy(isLoading = false) }
-                        onError("Error al actualizar el centro: ${result.exception.message}")
-                    }
-                    else -> {
-                        _uiState.update { it.copy(isLoading = false) }
-                        onError("Estado inesperado al actualizar el centro")
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
-                onError("Error inesperado: ${e.message}")
-            }
+    fun updateLongitud(longitud: Double?) {
+        _uiState.update { it.copy(longitud = longitud) }
+    }
+    
+    /**
+     * Selecciona una ciudad de las sugerencias
+     */
+    fun seleccionarCiudad(ciudad: Ciudad) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                ciudad = ciudad.nombre,
+                provincia = ciudad.provincia,
+                ciudadesSugeridas = emptyList()
+            )
         }
     }
-
+    
     /**
-     * Construye un objeto Centro a partir del estado
+     * Añade un nuevo administrador
      */
-    private fun buildCentroFromState(): Centro {
-        with(_uiState.value) {
-            return Centro(
-                id = centroId,
-                nombre = nombre,
-                direccion = com.tfg.umeegunero.data.model.Direccion(
-                    calle = calle,
-                    numero = numero,
-                    codigoPostal = codigoPostal,
-                    ciudad = ciudad,
-                    provincia = provincia
-                ),
-                latitud = latitud ?: 0.0,
-                longitud = longitud ?: 0.0,
-                contacto = com.tfg.umeegunero.data.model.Contacto(
-                    telefono = telefono,
-                    email = adminCentro.firstOrNull()?.email ?: ""
+    fun addAdminCentro() {
+        _uiState.update { currentState ->
+            val currentAdmins = currentState.adminCentro.toMutableList()
+            // Añadir un nuevo administrador con campos vacíos
+            currentAdmins.add(
+                com.tfg.umeegunero.feature.admin.viewmodel.AdminCentro(
+                    email = "",
+                    password = "",
+                    emailError = null,
+                    passwordError = null
                 )
             )
+            currentState.copy(adminCentro = currentAdmins)
         }
     }
-
+    
     /**
-     * Actualiza el estado con los datos del centro cargado
+     * Elimina un administrador secundario
      */
-    private fun updateUiStateWithCentro(centro: Centro) {
-        // Crear un objeto AdminCentro con la info del centro
-        val admin = AdminCentro(
-            email = centro.contacto.email,
-            password = "",
-            emailError = null,
-            passwordError = null
-        )
-        
-        _uiState.update { 
-            it.copy(
-                nombre = centro.nombre,
-                calle = centro.direccion.calle,
-                numero = centro.direccion.numero,
-                codigoPostal = centro.direccion.codigoPostal,
-                ciudad = centro.direccion.ciudad,
-                provincia = centro.direccion.provincia,
-                latitud = centro.latitud,
-                longitud = centro.longitud,
-                telefono = centro.contacto.telefono,
-                adminCentro = listOf(admin),
-                isLoading = false,
-                tieneUbicacionValida = centro.latitud != 0.0 && centro.longitud != 0.0
-            )
+    fun removeAdminCentro(index: Int) {
+        if (index > 0) { // No permitir eliminar el administrador principal
+            _uiState.update { currentState ->
+                val currentAdmins = currentState.adminCentro.toMutableList()
+                currentAdmins.removeAt(index)
+                currentState.copy(adminCentro = currentAdmins)
+            }
         }
     }
 } 
