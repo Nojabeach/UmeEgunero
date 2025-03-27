@@ -8,6 +8,7 @@ sealed class AppScreens(val route: String) {
     }
     object Registro : AppScreens("registro")
     object SoporteTecnico : AppScreens("soporte_tecnico")
+    object FAQ : AppScreens("faq")
 
     // Pantallas principales según tipo de usuario
     object AdminDashboard : AppScreens("admin_dashboard")

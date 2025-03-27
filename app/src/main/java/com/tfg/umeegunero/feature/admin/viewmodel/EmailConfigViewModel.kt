@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EmailSoporteConfig
 import com.tfg.umeegunero.data.repository.ConfigRepository
-import com.tfg.umeegunero.data.service.RemoteConfigService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,11 +18,6 @@ import javax.inject.Inject
  */
 data class EmailConfigUiState(
     val emailDestino: String = "",
-    val emailRemitente: String = "",
-    val passwordTemporal: String = "", // Contraseña temporal solo para UI
-    val nombreRemitente: String = "",
-    val usarEmailUsuarioComoRemitente: Boolean = false,
-    val mostrarPassword: Boolean = false,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val cambiosPendientes: Boolean = false,
@@ -37,8 +31,7 @@ data class EmailConfigUiState(
  */
 @HiltViewModel
 class EmailConfigViewModel @Inject constructor(
-    private val configRepository: ConfigRepository,
-    private val remoteConfigService: RemoteConfigService
+    private val configRepository: ConfigRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(EmailConfigUiState(isLoading = true))
@@ -57,16 +50,9 @@ class EmailConfigViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = true) }
                 val config = configRepository.getEmailSoporteConfig()
                 
-                // Obtenemos la contraseña de Remote Config
-                val password = remoteConfigService.getSMTPPassword()
-                
                 _uiState.update { 
                     it.copy(
                         emailDestino = config.emailDestino,
-                        emailRemitente = config.emailRemitente,
-                        passwordTemporal = password, // Cargamos la contraseña para la UI
-                        nombreRemitente = config.nombreRemitente,
-                        usarEmailUsuarioComoRemitente = config.usarEmailUsuarioComoRemitente,
                         isLoading = false,
                         cambiosPendientes = false,
                         ultimaActualizacion = config.ultimaActualizacion
@@ -99,63 +85,6 @@ class EmailConfigViewModel @Inject constructor(
     }
     
     /**
-     * Actualiza el email del remitente
-     */
-    fun updateEmailRemitente(email: String) {
-        _uiState.update { 
-            it.copy(
-                emailRemitente = email,
-                cambiosPendientes = true,
-                errores = it.errores - "emailRemitente"
-            ) 
-        }
-    }
-    
-    /**
-     * Actualiza la contraseña del remitente (solo temporal para la UI)
-     */
-    fun updatePasswordRemitente(password: String) {
-        _uiState.update { 
-            it.copy(
-                passwordTemporal = password,
-                cambiosPendientes = true,
-                errores = it.errores - "passwordRemitente"
-            ) 
-        }
-    }
-    
-    /**
-     * Actualiza el nombre del remitente
-     */
-    fun updateNombreRemitente(nombre: String) {
-        _uiState.update { 
-            it.copy(
-                nombreRemitente = nombre,
-                cambiosPendientes = true
-            ) 
-        }
-    }
-    
-    /**
-     * Actualiza la opción de usar el email del usuario como remitente
-     */
-    fun updateUsarEmailUsuarioComoRemitente(usar: Boolean) {
-        _uiState.update { 
-            it.copy(
-                usarEmailUsuarioComoRemitente = usar,
-                cambiosPendientes = true
-            ) 
-        }
-    }
-    
-    /**
-     * Cambia la visibilidad de la contraseña
-     */
-    fun togglePasswordVisibility() {
-        _uiState.update { it.copy(mostrarPassword = !it.mostrarPassword) }
-    }
-    
-    /**
      * Limpia el mensaje de estado
      */
     fun clearMensaje() {
@@ -176,20 +105,6 @@ class EmailConfigViewModel @Inject constructor(
             errores["emailDestino"] = "Ingresa un email válido"
         }
         
-        // Validar email remitente
-        if (state.emailRemitente.isBlank()) {
-            errores["emailRemitente"] = "El email del remitente es obligatorio"
-        } else if (!state.emailRemitente.matches(Regex("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"))) {
-            errores["emailRemitente"] = "Ingresa un email válido"
-        }
-        
-        // Validar contraseña
-        if (state.passwordTemporal.isBlank()) {
-            errores["passwordRemitente"] = "La contraseña es obligatoria"
-        } else if (state.passwordTemporal.length < 8) {
-            errores["passwordRemitente"] = "La contraseña debe tener al menos 8 caracteres"
-        }
-        
         _uiState.update { it.copy(errores = errores) }
         return errores.isEmpty()
     }
@@ -207,25 +122,18 @@ class EmailConfigViewModel @Inject constructor(
                 val state = _uiState.value
                 val config = EmailSoporteConfig(
                     emailDestino = state.emailDestino,
-                    emailRemitente = state.emailRemitente,
-                    nombreRemitente = state.nombreRemitente,
-                    usarEmailUsuarioComoRemitente = state.usarEmailUsuarioComoRemitente,
                     ultimaActualizacion = Timestamp.now()
                 )
                 
                 // Guardamos el estado del modelo en Firestore
                 val resultado = configRepository.saveEmailSoporteConfig(config)
                 
-                // Para la contraseña, necesitaríamos un método diferente para Firebase Remote Config
-                // Nota: La contraseña no se guarda aquí, se debe configurar manualmente desde la consola de Firebase
-                // Se muestra un mensaje informativo al usuario
-                
                 if (resultado) {
                     _uiState.update { 
                         it.copy(
                             isSaving = false,
                             cambiosPendientes = false,
-                            mensaje = "Configuración guardada correctamente.\nLa contraseña se debe modificar desde la consola de Firebase.",
+                            mensaje = "Configuración guardada correctamente",
                             ultimaActualizacion = config.ultimaActualizacion
                         ) 
                     }
@@ -249,12 +157,5 @@ class EmailConfigViewModel @Inject constructor(
                 }
             }
         }
-    }
-    
-    /**
-     * Recarga la configuración descartando los cambios
-     */
-    fun descartarCambios() {
-        cargarConfiguracion()
     }
 } 

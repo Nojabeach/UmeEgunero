@@ -142,7 +142,7 @@ fun StudentDetailScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 InfoRow(
-                    icon = Icons.Default.Class,
+                    icon = Icons.Default.MenuBook,
                     label = "Curso",
                     value = uiState.alumno!!.curso
                 )

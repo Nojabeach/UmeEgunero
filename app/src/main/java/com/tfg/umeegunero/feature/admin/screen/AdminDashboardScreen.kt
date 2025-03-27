@@ -115,6 +115,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -153,7 +154,7 @@ fun AdminDashboardScreen(
                 drawerContainerColor = MaterialTheme.colorScheme.background,
                 drawerContentColor = MaterialTheme.colorScheme.onBackground
             ) {
-                Spacer(modifier = Modifier.height(24.dp)) // Espacio para evitar el notch
+                Spacer(modifier = Modifier.height(24.dp))
                 DrawerContent(
                     navItems = navItems,
                     currentUser = currentUser,
@@ -638,87 +639,68 @@ private fun handleNavigation(
         return true
     }
 
-    return when {
-        route == "admin_dashboard" -> {
+    return when (route) {
+        AppScreens.AdminDashboard.route -> {
             // Estamos en el dashboard, no hacemos nada
             true
         }
-        route == "admin_dashboard/list_centros" -> {
-            viewModel.showListadoCentros()
-            true
-        }
-        route == "add_centro" -> {
+        AppScreens.Cursos.route -> {
             navController.navigate(route)
             true
         }
-        route == "admin_dashboard/cursos" -> {
+        AppScreens.Clases.route -> {
             navController.navigate(route)
             true
         }
-        route == "admin_dashboard/clases" -> {
+        AppScreens.ProfesorList.route -> {
             navController.navigate(route)
             true
         }
-        route == "admin_dashboard/profesores" -> {
+        AppScreens.AlumnoList.route -> {
             navController.navigate(route)
             true
         }
-        route == "admin_dashboard/alumnos" -> {
+        AppScreens.FamiliarList.route -> {
             navController.navigate(route)
             true
         }
-        route == "admin_dashboard/familiares" -> {
+        AppScreens.GestionCentros.route -> {
             navController.navigate(route)
             true
         }
-        route == "config" -> {
+        AppScreens.AddCentro.route -> {
             navController.navigate(route)
             true
         }
-        route == "logout" -> {
+        AppScreens.Configuracion.route -> {
+            navController.navigate(route)
+            true
+        }
+        AppScreens.Perfil.route -> {
+            navController.navigate(route)
+            true
+        }
+        AppScreens.Notificaciones.route -> {
+            navController.navigate(route)
+            true
+        }
+        AppScreens.EmailConfig.route -> {
+            navController.navigate(route)
+            true
+        }
+        AppScreens.Estadisticas.route -> {
+            navController.navigate(route)
+            true
+        }
+        "logout" -> {
             viewModel.logout()
             true
         }
-        // Manejo especial para rutas que requieren parámetros
-        route == AppScreens.GestionCursos.route -> {
-            // Para la gestión de cursos, usamos un centroId por defecto o lo solicitamos
-            val centroId = viewModel.obtenerCentroSeleccionadoOPrimero()
-            if (centroId.isNotEmpty()) {
-                navController.navigate(AppScreens.GestionCursos.createRoute(centroId))
-                true
-            } else {
-                // Si no hay centros, mostrar un mensaje o ir a una pantalla dummy
-                navController.navigate(AppScreens.Dummy.createRoute("No hay centros disponibles"))
-                true
-            }
-        }
-        route == AppScreens.GestionClases.route -> {
-            // Para la gestión de clases, usamos un cursoId por defecto o lo solicitamos
-            val cursoId = viewModel.obtenerCursoSeleccionadoOPrimero()
-            if (cursoId.isNotEmpty()) {
-                navController.navigate(AppScreens.GestionClases.createRoute(cursoId))
-                true
-            } else {
-                // Si no hay cursos, mostrar un mensaje o ir a una pantalla dummy
-                navController.navigate(AppScreens.Dummy.createRoute("No hay cursos disponibles"))
-                true
-            }
-        }
-        route.startsWith("add_user") || route.startsWith("detalle_centro") || 
-        route.startsWith("edit_centro") -> {
-            navController.navigate(route)
-            true
-        }
         else -> {
-            // Si llegamos aquí, intentamos navegar directamente
-            try {
-                navController.navigate(route)
-                true
-            } catch (e: Exception) {
-                // Si falla la navegación, vamos a una pantalla dummy
-                navController.navigate(AppScreens.Dummy.createRoute("Ruta no implementada"))
-                false
-            }
+            // Para cualquier otra ruta no manejada, mostramos una pantalla dummy
+            val title = getRouteTitleForDummy(route)
+            navController.navigate(AppScreens.Dummy.createRoute(title))
+            true
         }
     }
 }
@@ -728,6 +710,11 @@ private fun handleNavigation(
  */
 private fun getRouteTitleForDummy(route: String): String {
     return when {
+        route.contains("comunicaciones/comunicados") -> "Sistema de Comunicados"
+        route.contains("reportes/uso") -> "Estadísticas de Uso de Plataforma"
+        route.contains("reportes/rendimiento") -> "Métricas de Rendimiento"
+        route.contains("usuarios/administradores") -> "Gestión de Administradores"
+        route.contains("configuracion/seguridad") -> "Configuración de Seguridad"
         route.contains("cursos") -> "Gestión de Cursos"
         route.contains("clases") -> "Gestión de Clases"
         route.contains("calendario") -> "Calendario Escolar"
@@ -997,236 +984,206 @@ private fun DrawerContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(vertical = 24.dp)
+            .padding(horizontal = 8.dp)
     ) {
-        // Cabecera con información del usuario
-        Column(
+        // Perfil del usuario
+        UserProfileHeader(currentUser)
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Lista de navegación
+        LazyColumn(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp)
         ) {
-            Text(
-                text = "Administrador App",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = currentUser?.email ?: "Usuario",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 12.dp),
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
-        
-        // Lista de items de navegación
-        LazyColumn {
-            items(navItems) { item ->
+            items(navItems) { navItem ->
                 DrawerNavItem(
-                    navItem = item,
-                    onItemClick = { route, isImplemented ->
-                        val handled = onNavigate(route, isImplemented)
-                        if (handled) {
-                            onCloseDrawer()
-                        }
-                    }
+                    navItem = navItem, 
+                    onItemClick = onNavigate
                 )
-                
-                if (item.dividerAfter) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 20.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                }
             }
         }
+        
+        // Botón de cerrar sesión
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        NavigationDrawerItem(
+            label = { Text("Cerrar Sesión") },
+            selected = false,
+            onClick = { onNavigate("logout", true) },
+            icon = { 
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    contentDescription = "Cerrar sesión"
+                )
+            },
+            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
-/**
- * Item de navegación en el drawer
- */
+@Composable
+private fun UserProfileHeader(currentUser: Usuario?) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Avatar del usuario
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = currentUser?.nombre?.firstOrNull()?.toString() ?: "A",
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Nombre del usuario
+        Text(
+            text = "${currentUser?.nombre ?: "Admin"} ${currentUser?.apellidos ?: ""}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        
+        // Rol del usuario
+        Text(
+            text = "Administrador del Sistema",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
 @Composable
 private fun DrawerNavItem(
     navItem: NavItem,
-    onItemClick: (String, Boolean) -> Unit
+    onItemClick: (String, Boolean) -> Boolean
 ) {
-    val isExpanded = remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    val hasSubItems = navItem.subItems.isNotEmpty()
     
     Column {
-        Surface(
-            onClick = {
-                if (navItem.subItems.isEmpty()) {
-                    onItemClick(navItem.route, navItem.isImplemented)
-                } else {
-                    isExpanded.value = !isExpanded.value
+        // Ítem principal
+        NavigationDrawerItem(
+            label = { 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = navItem.title,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    
+                    if (hasSubItems) {
+                        Icon(
+                            imageVector = if (expanded) 
+                                            Icons.Default.ExpandLess 
+                                          else 
+                                            Icons.Default.ExpandMore,
+                            contentDescription = if (expanded) "Contraer" else "Expandir",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             },
-            color = Color.Transparent
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            badge = {
+                if (navItem.badge != null && navItem.badge > 0) {
+                    Badge { Text(text = navItem.badge.toString()) }
+                } else if (navItem.description.isNotEmpty() && !hasSubItems) {
+                    Text(
+                        text = navItem.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
+            selected = false,
+            onClick = {
+                if (hasSubItems) {
+                    expanded = !expanded
+                    true
+                } else {
+                    onItemClick(navItem.route, navItem.isImplemented)
+                }
+            },
+            icon = {
                 Icon(
                     imageVector = navItem.icon,
                     contentDescription = navItem.title,
                     tint = MaterialTheme.colorScheme.primary
                 )
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Text(
-                    text = navItem.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                if (navItem.badge != null) {
-                    Badge(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    ) {
-                        Text(text = navItem.badge.toString())
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                
-                if (navItem.subItems.isNotEmpty()) {
-                    Icon(
-                        imageVector = if (isExpanded.value) 
-                            Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (isExpanded.value) 
-                            "Colapsar" else "Expandir"
+            },
+            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+        )
+        
+        // Subitems
+        if (expanded && hasSubItems) {
+            Column(
+                modifier = Modifier.padding(start = 16.dp)
+            ) {
+                navItem.subItems.forEach { subItem ->
+                    NavigationDrawerItem(
+                        label = { 
+                            Text(
+                                text = subItem.title,
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
+                        badge = {
+                            if (subItem.badge != null && subItem.badge > 0) {
+                                Badge { Text(text = subItem.badge.toString()) }
+                            } else if (subItem.description.isNotEmpty()) {
+                                Text(
+                                    text = subItem.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        },
+                        selected = false,
+                        onClick = { onItemClick(subItem.route, subItem.isImplemented) },
+                        icon = {
+                            Icon(
+                                imageVector = subItem.icon,
+                                contentDescription = subItem.title,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                 }
             }
         }
         
-        // Mostrar subitems si está expandido
-        if (isExpanded.value && navItem.subItems.isNotEmpty()) {
-            navItem.subItems.forEach { subItem ->
-                Surface(
-                    onClick = { onItemClick(subItem.route, subItem.isImplemented) },
-                    color = Color.Transparent
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 56.dp, end = 24.dp, top = 8.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = subItem.icon,
-                            contentDescription = subItem.title,
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Text(
-                            text = subItem.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        if (subItem.badge != null) {
-                            Badge(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            ) {
-                                Text(text = subItem.badge.toString())
-                            }
-                        }
-                    }
-                }
-                
-                // Mostrar sub-subitems recursivamente si existen
-                if (subItem.subItems.isNotEmpty()) {
-                    val subExpanded = remember { mutableStateOf(false) }
-                    
-                    Surface(
-                        onClick = { subExpanded.value = !subExpanded.value },
-                        color = Color.Transparent
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 72.dp, end = 24.dp, top = 4.dp, bottom = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = if (subExpanded.value) 
-                                    Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = if (subExpanded.value) 
-                                    "Colapsar" else "Expandir",
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            Text(
-                                text = "Más opciones",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    
-                    if (subExpanded.value) {
-                        subItem.subItems.forEach { subSubItem ->
-                            Surface(
-                                onClick = { onItemClick(subSubItem.route, subSubItem.isImplemented) },
-                                color = Color.Transparent
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = 88.dp, end = 24.dp, top = 6.dp, bottom = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = subSubItem.icon,
-                                        contentDescription = subSubItem.title,
-                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    
-                                    Text(
-                                        text = subSubItem.title,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    
-                                    if (subSubItem.badge != null) {
-                                        Badge(
-                                            containerColor = MaterialTheme.colorScheme.error,
-                                            contentColor = MaterialTheme.colorScheme.onError
-                                        ) {
-                                            Text(text = subSubItem.badge.toString())
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        // Divisor después del ítem si es necesario
+        if (navItem.dividerAfter) {
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
         }
     }
 }

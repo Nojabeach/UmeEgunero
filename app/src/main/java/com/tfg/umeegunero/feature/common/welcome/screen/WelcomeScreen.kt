@@ -1364,7 +1364,9 @@ fun WelcomeScreenLightPreview() {
             onNavigateToRegister = {},
             onCloseApp = {},
             onDemoRequested = {},
-            onNavigateToSupport = {}
+            onNavigateToSupport = {},
+            onNavigateToTechnicalSupport = {},
+            onNavigateToFAQ = {}
         )
     }
 }

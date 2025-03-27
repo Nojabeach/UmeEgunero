@@ -21,6 +21,17 @@ import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
 import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
+import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
+import com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen
+import com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen
+import com.tfg.umeegunero.feature.familiar.screen.FamiliarDashboardScreen
+import com.tfg.umeegunero.feature.common.screen.DummyScreen
+import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
+import com.tfg.umeegunero.feature.admin.screen.EstadisticasScreen
+import com.tfg.umeegunero.feature.admin.screen.AdminNotificacionesScreen
+import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
+import com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen
 
 /**
  * Navegación principal de la aplicación
@@ -71,6 +82,9 @@ fun Navigation(
                     onCloseApp = onCloseApp,
                     onNavigateToTechnicalSupport = {
                         navController.navigate(AppScreens.SoporteTecnico.route)
+                    },
+                    onNavigateToFAQ = {
+                        navController.navigate(AppScreens.FAQ.route)
                     }
                 )
             }
@@ -78,6 +92,13 @@ fun Navigation(
             // Pantalla de soporte técnico
             composable(route = AppScreens.SoporteTecnico.route) {
                 TechnicalSupportScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            
+            // Pantalla de FAQ
+            composable(route = AppScreens.FAQ.route) {
+                FAQScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
@@ -127,6 +148,199 @@ fun Navigation(
                             popUpTo(AppScreens.Welcome.route)
                         }
                     }
+                )
+            }
+
+            // Dashboards
+            composable(route = AppScreens.AdminDashboard.route) {
+                AdminDashboardScreen(
+                    navController = navController,
+                    viewModel = hiltViewModel()
+                )
+            }
+
+            // Rutas anidadas del AdminDashboard
+            composable(route = AppScreens.Cursos.route) {
+                DummyScreen(
+                    title = "Gestión de Cursos",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.Clases.route) {
+                DummyScreen(
+                    title = "Gestión de Clases",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.ProfesorList.route) {
+                DummyScreen(
+                    title = "Listado de Profesores",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.AlumnoList.route) {
+                DummyScreen(
+                    title = "Listado de Alumnos",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.FamiliarList.route) {
+                DummyScreen(
+                    title = "Listado de Familiares",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // Otros dashboards
+            composable(route = AppScreens.CentroDashboard.route) {
+                CentroDashboardScreen(
+                    navController = navController,
+                    viewModel = hiltViewModel()
+                )
+            }
+
+            composable(route = AppScreens.ProfesorDashboard.route) {
+                ProfesorDashboardScreen(
+                    navController = navController,
+                    onLogout = {
+                        navController.navigate(AppScreens.Welcome.route) {
+                            popUpTo(AppScreens.ProfesorDashboard.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(route = AppScreens.FamiliarDashboard.route) {
+                FamiliarDashboardScreen(
+                    viewModel = hiltViewModel(),
+                    onLogout = {
+                        navController.navigate(AppScreens.Welcome.route) {
+                            popUpTo(AppScreens.FamiliarDashboard.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // Pantallas de gestión
+            composable(route = AppScreens.GestionCentros.route) {
+                DummyScreen(
+                    title = "Gestión de Centros",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.GestionAcademica.route) {
+                DummyScreen(
+                    title = "Gestión Académica",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.Configuracion.route) {
+                ConfiguracionScreen(
+                    viewModel = hiltViewModel(),
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.Calendario.route) {
+                DummyScreen(
+                    title = "Calendario",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.Estadisticas.route) {
+                EstadisticasScreen(
+                    navController = navController
+                )
+            }
+
+            composable(route = AppScreens.Notificaciones.route) {
+                AdminNotificacionesScreen(
+                    navController = navController
+                )
+            }
+
+            composable(route = AppScreens.Perfil.route) {
+                PerfilScreen(
+                    title = "Mi Perfil",
+                    onNavigateBack = { navController.popBackStack() },
+                    onMenuClick = {}
+                )
+            }
+
+            composable(route = AppScreens.EmailConfig.route) {
+                EmailConfigScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // Pantallas de detalle
+            composable(
+                route = AppScreens.DetalleCentro.route,
+                arguments = listOf(
+                    navArgument("centroId") { type = NavType.StringType }
+                )
+            ) {
+                DummyScreen(
+                    title = "Detalle del Centro",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.DetalleUsuario.route,
+                arguments = listOf(
+                    navArgument("userId") { type = NavType.StringType }
+                )
+            ) {
+                DummyScreen(
+                    title = "Detalle del Usuario",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.DetalleAlumno.route,
+                arguments = listOf(
+                    navArgument("alumnoId") { type = NavType.StringType }
+                )
+            ) {
+                DummyScreen(
+                    title = "Detalle del Alumno",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.DetalleFamiliar.route,
+                arguments = listOf(
+                    navArgument("familiarId") { type = NavType.StringType },
+                    navArgument("alumnoId") { type = NavType.StringType }
+                )
+            ) {
+                DummyScreen(
+                    title = "Detalle del Familiar",
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // Pantalla dummy para rutas no implementadas
+            composable(
+                route = AppScreens.Dummy.route,
+                arguments = listOf(
+                    navArgument("title") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val title = backStackEntry.arguments?.getString("title") ?: "Funcionalidad en Desarrollo"
+                DummyScreen(
+                    title = title,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }

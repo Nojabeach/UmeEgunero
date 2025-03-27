@@ -98,7 +98,7 @@ class LoginViewModel @Inject constructor(
      * Realiza el inicio de sesión
      */
     fun login(userType: UserType, rememberUser: Boolean = false) {
-        val email = _uiState.value.email
+        val email = _uiState.value.email.trim()
         val password = _uiState.value.password
 
         // Validar campos antes de enviar
@@ -192,7 +192,7 @@ class LoginViewModel @Inject constructor(
                                 _uiState.update {
                                     it.copy(
                                         isLoading = false,
-                                        error = "No tienes permisos para acceder como $userType"
+                                        error = "No tienes permisos para acceder como $userType. Por favor, verifica tus credenciales."
                                     )
                                 }
                                 // Cerrar sesión ya que no tiene los permisos correctos
@@ -204,7 +204,7 @@ class LoginViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
-                                    error = "Error al obtener datos de usuario: ${usuarioResult.exception.message}"
+                                    error = "Error al obtener datos de usuario. Por favor, intenta de nuevo."
                                 )
                             }
                             // Cerrar sesión ya que no pudimos obtener los datos
@@ -213,10 +213,17 @@ class LoginViewModel @Inject constructor(
                     }
                     is Result.Error -> {
                         Timber.e(result.exception, "Error en el login")
+                        val errorMessage = when {
+                            result.exception.message?.contains("password") == true -> 
+                                "Contraseña incorrecta. Por favor, verifica tus credenciales."
+                            result.exception.message?.contains("email") == true -> 
+                                "Email no encontrado. Por favor, verifica tus credenciales."
+                            else -> "Error al iniciar sesión. Por favor, verifica tus credenciales."
+                        }
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = "Error al iniciar sesión: ${result.exception.message}"
+                                error = errorMessage
                             )
                         }
                     }
@@ -225,7 +232,7 @@ class LoginViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = "Error inesperado al iniciar sesión"
+                                error = "Error inesperado al iniciar sesión. Por favor, intenta de nuevo."
                             )
                         }
                     }
@@ -235,7 +242,7 @@ class LoginViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = "Error inesperado: ${e.message}"
+                        error = "Error inesperado. Por favor, intenta de nuevo."
                     )
                 }
             }

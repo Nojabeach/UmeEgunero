@@ -127,4 +127,16 @@ fun DummyScreenPreview() {
             onNavigateBack = {}
         )
     }
+}
+
+/**
+ * Versión simplificada para cuando no necesitamos navegación hacia atrás
+ */
+@Composable
+fun DummyScreen(title: String) {
+    DummyScreen(
+        title = title,
+        onNavigateBack = {},
+        onMenuClick = {}
+    )
 } 

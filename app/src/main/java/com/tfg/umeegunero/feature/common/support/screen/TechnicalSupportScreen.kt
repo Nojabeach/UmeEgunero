@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tfg.umeegunero.data.model.EmailSoporteConfig
 
 @Composable
 fun TechnicalSupportScreen(
@@ -29,6 +30,9 @@ fun TechnicalSupportScreen(
     var message by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -242,19 +246,26 @@ fun TechnicalSupportScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:soporte@umeegunero.com")
-                            putExtra(Intent.EXTRA_SUBJECT, selectedTopic)
-                            putExtra(Intent.EXTRA_TEXT, """
-                                Nombre: $name
-                                Email: $email
-                                
-                                Mensaje:
-                                $message
-                            """.trimIndent())
-                        }
-                        context.startActivity(intent)
-                        showEmailDialog = false
+                        val emailMessage = """
+                            Nombre: $name
+                            Email: $email
+                            
+                            $message
+                        """.trimIndent()
+
+                        EmailSender.SendMailTask(
+                            userEmail = email,
+                            subject = selectedTopic,
+                            message = emailMessage,
+                            onSuccess = {
+                                showEmailDialog = false
+                                showSuccessDialog = true
+                            },
+                            onFailure = { e ->
+                                errorMessage = e.message ?: "Error desconocido"
+                                showErrorDialog = true
+                            }
+                        ).execute()
                     },
                     enabled = name.isNotBlank() && email.isNotBlank() && 
                              selectedTopic.isNotBlank() && message.isNotBlank()
@@ -265,6 +276,58 @@ fun TechnicalSupportScreen(
             dismissButton = {
                 TextButton(onClick = { showEmailDialog = false }) {
                     Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { showSuccessDialog = false },
+            title = { 
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Éxito")
+                }
+            },
+            text = { Text("Tu mensaje ha sido enviado correctamente. Te responderemos lo antes posible.") },
+            confirmButton = {
+                TextButton(onClick = { showSuccessDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { 
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Error,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Error")
+                }
+            },
+            text = { Text(errorMessage) },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog = false }) {
+                    Text("OK")
                 }
             }
         )
