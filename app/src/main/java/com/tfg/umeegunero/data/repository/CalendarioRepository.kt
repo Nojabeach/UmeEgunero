@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.common.academico.repository
+package com.tfg.umeegunero.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Evento
@@ -8,13 +8,24 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.Result
 
+/**
+ * Repositorio para gestionar las operaciones relacionadas con el calendario
+ * Maneja la persistencia y recuperación de eventos en Firestore
+ */
 @Singleton
 class CalendarioRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
     private val eventosCollection = firestore.collection("eventos")
 
+    /**
+     * Obtiene los eventos de un mes específico
+     * @param year Año del mes
+     * @param month Mes (1-12)
+     * @return Lista de eventos del mes
+     */
     suspend fun getEventosByMonth(year: Int, month: Int): List<Evento> {
         return try {
             val startOfMonth = LocalDateTime.of(year, month, 1, 0, 0)
@@ -34,6 +45,11 @@ class CalendarioRepository @Inject constructor(
         }
     }
 
+    /**
+     * Guarda un nuevo evento
+     * @param evento Evento a guardar
+     * @return Resultado de la operación
+     */
     suspend fun saveEvento(evento: Evento): Result<Evento> {
         return try {
             val docRef = eventosCollection.document()
@@ -45,6 +61,11 @@ class CalendarioRepository @Inject constructor(
         }
     }
 
+    /**
+     * Elimina un evento
+     * @param eventoId ID del evento a eliminar
+     * @return Resultado de la operación
+     */
     suspend fun deleteEvento(eventoId: String): Result<Unit> {
         return try {
             eventosCollection.document(eventoId).delete().await()
@@ -54,6 +75,11 @@ class CalendarioRepository @Inject constructor(
         }
     }
 
+    /**
+     * Actualiza un evento existente
+     * @param evento Evento a actualizar
+     * @return Resultado de la operación
+     */
     suspend fun updateEvento(evento: Evento): Result<Evento> {
         return try {
             eventosCollection.document(evento.id).set(evento).await()

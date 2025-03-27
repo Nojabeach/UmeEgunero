@@ -1,7 +1,7 @@
 package com.tfg.umeegunero.di
 
 import com.google.firebase.firestore.FirebaseFirestore
-import com.tfg.umeegunero.feature.common.academico.repository.CalendarioRepository
+import com.tfg.umeegunero.data.repository.CalendarioRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

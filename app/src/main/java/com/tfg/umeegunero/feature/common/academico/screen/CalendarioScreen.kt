@@ -49,7 +49,6 @@ fun CalendarioScreen(
     viewModel: CalendarioViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
     
     // Efecto para cargar los eventos al inicio

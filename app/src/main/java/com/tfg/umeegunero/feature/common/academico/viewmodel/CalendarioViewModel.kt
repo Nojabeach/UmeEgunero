@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
-import com.tfg.umeegunero.feature.common.academico.repository.CalendarioRepository
+import com.tfg.umeegunero.data.repository.CalendarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +16,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import javax.inject.Inject
+import kotlin.Result
 
 /**
  * Estado de UI para la pantalla de calendario
@@ -30,7 +31,9 @@ data class CalendarioUiState(
     val selectedEventType: TipoEvento? = null,
     val eventDescription: String = "",
     val isSuccess: Boolean = false,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val selectedYear: Int = LocalDate.now().year,
+    val selectedMonth: Int = LocalDate.now().monthValue
 )
 
 /**
@@ -43,6 +46,10 @@ class CalendarioViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CalendarioUiState())
     val uiState: StateFlow<CalendarioUiState> = _uiState.asStateFlow()
+
+    init {
+        loadEventos()
+    }
 
     /**
      * Carga los eventos del mes actual
@@ -139,7 +146,7 @@ class CalendarioViewModel @Inject constructor(
             
             try {
                 val newEvent = Evento(
-                    tipo = currentState.selectedEventType!!,
+                    tipo = currentState.selectedEventType,
                     descripcion = currentState.eventDescription,
                     fecha = currentState.selectedDate.atStartOfDay()
                 )

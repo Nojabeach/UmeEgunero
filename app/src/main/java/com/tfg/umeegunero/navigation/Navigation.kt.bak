@@ -1,0 +1,481 @@
+package com.tfg.umeegunero.navigation
+
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import kotlinx.coroutines.launch
+import com.tfg.umeegunero.R
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.UserType
+import com.tfg.umeegunero.feature.admin.screen.*
+import com.tfg.umeegunero.feature.auth.screen.LoginScreen
+import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
+import com.tfg.umeegunero.feature.common.academico.screen.*
+import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
+import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
+import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
+import com.tfg.umeegunero.feature.common.screen.DummyScreen
+import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
+import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
+import com.tfg.umeegunero.feature.familiar.screen.FamiliarDashboardScreen
+import com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen
+import com.tfg.umeegunero.feature.profesor.screen.StudentDetailScreen
+import com.tfg.umeegunero.feature.profesor.screen.ChatScreen
+import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
+import com.tfg.umeegunero.feature.common.stats.screen.EstadisticasScreen
+import com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen
+import com.tfg.umeegunero.feature.common.academico.viewmodel.AddCursosViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.AddClasesViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.EditCursoViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.EditClaseViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.GestionCursosViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.GestionClasesViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioViewModel
+import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
+import com.tfg.umeegunero.feature.common.welcome.viewmodel.SoporteTecnicoViewModel
+import com.tfg.umeegunero.feature.common.dashboard.viewmodel.CentroDashboardViewModel
+import com.tfg.umeegunero.feature.common.dashboard.viewmodel.AdminDashboardViewModel
+import com.tfg.umeegunero.feature.common.users.viewmodel.UserDetailViewModel
+import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
+import com.tfg.umeegunero.feature.familiar.viewmodel.FamiliarDashboardViewModel
+import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
+import com.tfg.umeegunero.feature.profesor.viewmodel.StudentDetailViewModel
+import com.tfg.umeegunero.feature.profesor.viewmodel.ChatViewModel
+import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
+import com.tfg.umeegunero.feature.auth.viewmodel.RegistroViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.EmailConfigViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.DetalleCentroViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+
+/**
+ * Navegación principal de la aplicación
+ */
+@Composable
+fun Navigation(
+    navController: NavHostController = rememberNavController(),
+    onCloseApp: () -> Unit = {}
+) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                NavigationDrawerContent(
+                    navController = navController,
+                    onCloseDrawer = { 
+                        scope.launch {
+                            drawerState.close()
+                        }
+                    }
+                )
+            }
+        }
+    ) {
+        NavHost(
+            navController = navController,
+            startDestination = AppScreens.Welcome.route
+        ) {
+            // Pantallas de acceso/autenticación
+            composable(route = AppScreens.Welcome.route) {
+                WelcomeScreen(
+                    onNavigateToLogin = { userType ->
+                        val userTypeRoute = when (userType) {
+                            WelcomeUserType.ADMIN -> "ADMIN"
+                            WelcomeUserType.CENTRO -> "CENTRO"
+                            WelcomeUserType.PROFESOR -> "PROFESOR"
+                            WelcomeUserType.FAMILIAR -> "FAMILIAR"
+                        }
+                        navController.navigate(AppScreens.Login.createRoute(userTypeRoute))
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate(AppScreens.Registro.route)
+                    },
+                    onCloseApp = onCloseApp,
+                    onNavigateToTechnicalSupport = {
+                        navController.navigate(AppScreens.SoporteTecnico.route)
+                    }
+                )
+            }
+
+            composable(route = AppScreens.SoporteTecnico.route) {
+                TechnicalSupportScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.Login.route,
+                arguments = listOf(
+                    navArgument("userType") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val userTypeStr = backStackEntry.arguments?.getString("userType") ?: "FAMILIAR"
+                val userType = remember(userTypeStr) {
+                    when(userTypeStr) {
+                        "ADMIN" -> UserType.ADMIN_APP
+                        "CENTRO" -> UserType.ADMIN_CENTRO
+                        "PROFESOR" -> UserType.PROFESOR
+                        else -> UserType.FAMILIAR
+                    }
+                }
+
+                LoginScreen(
+                    userType = userType,
+                    viewModel = hiltViewModel(),
+                    onNavigateBack = { navController.popBackStack() },
+                    onLoginSuccess = {
+                        val route = when(userType) {
+                            UserType.ADMIN_APP -> AppScreens.AdminDashboard.route
+                            UserType.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
+                            UserType.PROFESOR -> AppScreens.ProfesorDashboard.route
+                            UserType.FAMILIAR -> AppScreens.FamiliarDashboard.route
+                        }
+                        navController.navigate(route) {
+                            popUpTo(AppScreens.Welcome.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(route = AppScreens.Registro.route) {
+                RegistroScreen(
+                    viewModel = hiltViewModel(),
+                    onNavigateBack = { navController.popBackStack() },
+                    onRegistroCompletado = {
+                        navController.navigate(AppScreens.Login.createRoute("FAMILIAR")) {
+                            popUpTo(AppScreens.Welcome.route)
+                        }
+                    }
+                )
+            }
+
+            // Pantallas de gestión académica
+            composable(
+                route = AppScreens.GestionCursos.route,
+                arguments = listOf(
+                    navArgument("centroId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+                GestionCursosScreen(
+                    navController = navController,
+                    centroId = centroId
+                )
+            }
+
+            composable(
+                route = AppScreens.AddCurso.route,
+                arguments = listOf(
+                    navArgument("centroId") { type = NavType.StringType },
+                    navArgument("cursoId") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+                val cursoId = backStackEntry.arguments?.getString("cursoId")
+                if (cursoId != null) {
+                    EditCursoScreen(navController = navController)
+                } else {
+                    val viewModel: AddCursosViewModel = hiltViewModel()
+                    AddCursosScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { navController.popBackStack() },
+                        onCursoAdded = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
+                route = AppScreens.GestionClases.route,
+                arguments = listOf(
+                    navArgument("cursoId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+                GestionClasesScreen(
+                    navController = navController,
+                    cursoId = cursoId
+                )
+            }
+
+            composable(
+                route = AppScreens.AddClase.route,
+                arguments = listOf(
+                    navArgument("cursoId") { type = NavType.StringType },
+                    navArgument("claseId") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+                val claseId = backStackEntry.arguments?.getString("claseId")
+                val viewModel: AddClasesViewModel = hiltViewModel()
+                claseId?.let { viewModel.setClaseId(it) }
+                AddClasesScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onClaseAdded = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.EditClase.route,
+                arguments = listOf(
+                    navArgument("cursoId") { type = NavType.StringType },
+                    navArgument("claseId") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+                val claseId = backStackEntry.arguments?.getString("claseId")
+                val viewModel: EditClaseViewModel = hiltViewModel()
+                
+                // Cargar datos de la clase si estamos editando
+                claseId?.let { viewModel.cargarClase(it) }
+                
+                EditClaseScreen(
+                    navController = navController,
+                    cursoId = cursoId,
+                    claseId = claseId,
+                    viewModel = viewModel
+                )
+            }
+
+            // Pantallas de gestión de usuarios
+            composable(AppScreens.AlumnoList.route) {
+                HiltListAlumnoScreen(
+                    onNavigateToAddAlumno = {
+                        navController.navigate(AppScreens.AddUser.createRoute(false, TipoUsuario.ALUMNO.toString()))
+                    },
+                    onNavigateToEditAlumno = { dni ->
+                        navController.navigate(AppScreens.UserDetail.createRoute(dni))
+                    }
+                )
+            }
+
+            composable(AppScreens.ProfesorList.route) {
+                HiltListProfesorScreen(
+                    onNavigateToAddProfesor = {
+                        navController.navigate(AppScreens.AddUser.createRoute(false, TipoUsuario.PROFESOR.toString()))
+                    },
+                    onNavigateToEditProfesor = { dni ->
+                        navController.navigate(AppScreens.UserDetail.createRoute(dni))
+                    }
+                )
+            }
+
+            composable(AppScreens.FamiliarList.route) {
+                HiltListFamiliarScreen(
+                    onNavigateToAddFamiliar = {
+                        navController.navigate(AppScreens.AddUser.createRoute(false, TipoUsuario.FAMILIAR.toString()))
+                    },
+                    onNavigateToEditFamiliar = { dni ->
+                        navController.navigate(AppScreens.UserDetail.createRoute(dni))
+                    }
+                )
+            }
+
+            // Pantallas de detalle y configuración
+            composable(
+                route = AppScreens.UserDetail.route,
+                arguments = listOf(
+                    navArgument("dni") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val dni = backStackEntry.arguments?.getString("dni") ?: ""
+                UserDetailScreen(
+                    dni = dni,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.StudentDetail.route,
+                arguments = listOf(
+                    navArgument("alumnoId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+                StudentDetailScreen(
+                    alumnoId = alumnoId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.Chat.route,
+                arguments = listOf(
+                    navArgument("familiarId") { type = NavType.StringType },
+                    navArgument("alumnoId") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val familiarId = backStackEntry.arguments?.getString("familiarId") ?: ""
+                val alumnoId = backStackEntry.arguments?.getString("alumnoId")
+                ChatScreen(
+                    familiarId = familiarId,
+                    alumnoId = alumnoId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.Config.route) {
+                ConfiguracionScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.Perfil.route) {
+                PerfilScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // Pantallas de administración
+            composable(route = AppScreens.AdminDashboard.route) {
+                AdminDashboardScreen(
+                    onNavigateToAddCentro = {
+                        navController.navigate(AppScreens.AddCentro.route)
+                    },
+                    onNavigateToEditCentro = { centroId ->
+                        navController.navigate(AppScreens.EditCentro.createRoute(centroId))
+                    },
+                    onNavigateToDetalleCentro = { centroId ->
+                        navController.navigate(AppScreens.DetalleCentro.createRoute(centroId))
+                    }
+                )
+            }
+
+            composable(route = AppScreens.AddCentro.route) {
+                AddCentroScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCentroAdded = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.EditCentro.route,
+                arguments = listOf(
+                    navArgument("centroId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+                EditCentroScreen(
+                    centroId = centroId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onCentroUpdated = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = AppScreens.DetalleCentro.route,
+                arguments = listOf(
+                    navArgument("centroId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+                DetalleCentroScreen(
+                    centroId = centroId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.EmailConfig.route) {
+                EmailConfigScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // Pantallas de dashboard específicas
+            composable(route = AppScreens.CentroDashboard.route) {
+                CentroDashboardScreen(
+                    onNavigateToGestionCursos = { centroId ->
+                        navController.navigate(AppScreens.GestionCursos.createRoute(centroId))
+                    },
+                    onNavigateToGestionClases = { cursoId ->
+                        navController.navigate(AppScreens.GestionClases.createRoute(cursoId))
+                    },
+                    onNavigateToCalendario = {
+                        navController.navigate(AppScreens.Calendario.route)
+                    },
+                    onNavigateToEstadisticas = {
+                        navController.navigate(AppScreens.Estadisticas.route)
+                    }
+                )
+            }
+
+            composable(route = AppScreens.ProfesorDashboard.route) {
+                ProfesorDashboardScreen(
+                    onNavigateToStudentDetail = { alumnoId ->
+                        navController.navigate(AppScreens.StudentDetail.createRoute(alumnoId))
+                    },
+                    onNavigateToChat = { familiarId, alumnoId ->
+                        navController.navigate(AppScreens.Chat.createRoute(familiarId, alumnoId))
+                    }
+                )
+            }
+
+            composable(route = AppScreens.FamiliarDashboard.route) {
+                FamiliarDashboardScreen(
+                    onNavigateToChat = { profesorId, alumnoId ->
+                        navController.navigate(AppScreens.Chat.createRoute(profesorId, alumnoId))
+                    }
+                )
+            }
+
+            // Pantallas adicionales
+            composable(
+                route = AppScreens.Dummy.route,
+                arguments = listOf(
+                    navArgument("title") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val title = backStackEntry.arguments?.getString("title") ?: ""
+                DummyScreen(
+                    title = title,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Contenido del drawer de navegación
+ */
+@Composable
+private fun NavigationDrawerContent(
+    navController: NavController,
+    onCloseDrawer: () -> Unit
+) {
+    // Aquí iría el contenido del drawer de navegación
+    // Se puede mover desde AppDrawerContent.kt
+} 

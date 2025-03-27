@@ -45,14 +45,14 @@ sealed class AppScreens(val route: String) {
     }
     object AddCurso : AppScreens("add_curso/{centroId}?cursoId={cursoId}") {
         fun createRoute(centroId: String, cursoId: String? = null) = 
-            if (cursoId != null) "add_curso/$centroId?cursoId=$cursoId" else "add_curso/$centroId"
+            "add_curso/$centroId${if (cursoId != null) "?cursoId=$cursoId" else ""}"
     }
     object GestionClases : AppScreens("gestion_clases/{cursoId}") {
         fun createRoute(cursoId: String) = "gestion_clases/$cursoId"
     }
     object AddClase : AppScreens("add_clase/{cursoId}?claseId={claseId}") {
         fun createRoute(cursoId: String, claseId: String? = null) = 
-            if (claseId != null) "add_clase/$cursoId?claseId=$claseId" else "add_clase/$cursoId"
+            "add_clase/$cursoId${if (claseId != null) "?claseId=$claseId" else ""}"
     }
     object EditClase : AppScreens("edit_clase/{cursoId}?claseId={claseId}") {
         fun createRoute(cursoId: String, claseId: String? = null) = 
@@ -77,5 +77,21 @@ sealed class AppScreens(val route: String) {
     object Chat : AppScreens("chat/{familiarId}/{alumnoId}") {
         fun createRoute(familiarId: String, alumnoId: String? = null) = 
             if (alumnoId != null) "chat/$familiarId/$alumnoId" else "chat/$familiarId"
+    }
+
+    object GestionCentros : AppScreens("gestion_centros")
+    object GestionAcademica : AppScreens("gestion_academica")
+    object Configuracion : AppScreens("configuracion")
+    object ListaAlumnos : AppScreens("lista_alumnos")
+    object ListaProfesores : AppScreens("lista_profesores")
+    object ListaFamiliares : AppScreens("lista_familiares")
+    object DetalleUsuario : AppScreens("detalle_usuario/{userId}") {
+        fun createRoute(userId: String) = "detalle_usuario/$userId"
+    }
+    object DetalleAlumno : AppScreens("detalle_alumno/{alumnoId}") {
+        fun createRoute(alumnoId: String) = "detalle_alumno/$alumnoId"
+    }
+    object DetalleFamiliar : AppScreens("detalle_familiar/{familiarId}/{alumnoId}") {
+        fun createRoute(familiarId: String, alumnoId: String) = "detalle_familiar/$familiarId/$alumnoId"
     }
 } 

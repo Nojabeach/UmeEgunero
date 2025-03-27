@@ -22,6 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tfg.umeegunero.feature.common.dashboard.viewmodel.CentroDashboardViewModel
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.navigation.NavigationDrawerContent
 import com.tfg.umeegunero.navigation.NavigationStructure
 import kotlinx.coroutines.launch
 
@@ -37,13 +38,14 @@ fun CentroDashboardScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                NavigationStructure.DrawerContent(
+                NavigationDrawerContent(
                     navController = navController,
-                    onDrawerClose = {
+                    onCloseDrawer = {
                         scope.launch {
                             drawerState.close()
                         }
-                    }
+                    },
+                    navItems = NavigationStructure.getCentroNavItems()
                 )
             }
         }
