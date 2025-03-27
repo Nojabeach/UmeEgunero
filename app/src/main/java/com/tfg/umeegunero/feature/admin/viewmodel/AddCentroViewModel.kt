@@ -424,58 +424,47 @@ class AddCentroViewModel @Inject constructor(
                 
                 var resultId: String? = null
 
-                // Determinamos si es una actualización o un nuevo centro
-                if (centro.id.isBlank()) {
-                    // Si es un nuevo centro, primero creamos la cuenta en Firebase Auth
-                    val authResult = centroRepository.createUserWithEmailAndPassword(
-                        adminPrincipal.email,
-                        adminPrincipal.password
+                // Obtener el objeto Centro completo
+                if (centro.id.isNotBlank()) {
+                    // Si ya tiene un ID, estamos actualizando un centro existente
+                    val centroToUpdate = Centro(
+                        id = centro.id,
+                        nombre = centro.nombre,
+                        direccion = Direccion(
+                            calle = centro.direccion.calle,
+                            numero = centro.direccion.numero,
+                            codigoPostal = centro.direccion.codigoPostal,
+                            ciudad = centro.direccion.ciudad,
+                            provincia = centro.direccion.provincia
+                        ),
+                        latitud = centro.latitud,
+                        longitud = centro.longitud,
+                        contacto = Contacto(
+                            telefono = centro.contacto.telefono,
+                            email = centro.contacto.email
+                        )
                     )
-
-                    when (authResult) {
-                        is Result.Success -> {
-                            // Hemos creado la cuenta de usuario correctamente, ahora añadimos el centro
-                            val dbResult = centroRepository.addCentro(centro)
-                            
-                            when (dbResult) {
-                                is Result.Success -> {
-                                    resultId = dbResult.data
-                                    
-                                    // Crear los usuarios administradores de centro
-                                    val adminIds = crearAdministradoresCentro(resultId)
-                                    
-                                    // Actualizar el centro con los IDs de los administradores
-                                    if (adminIds.isNotEmpty()) {
-                                        val centroConAdmins = centro.copy(adminIds = adminIds)
-                                        centroRepository.updateCentro(centroConAdmins)
-                                    }
-                                }
-                                is Result.Error -> {
-                                    // Si falla la creación del centro, intentamos eliminar la cuenta de usuario
-                                    centroRepository.deleteUser(authResult.data)
-                                    throw dbResult.exception
-                                }
-                                is Result.Loading -> { /* No debería ocurrir */ }
-                            }
-                        }
-                        is Result.Error -> {
-                            throw authResult.exception
-                        }
-                        is Result.Loading -> { /* No debería ocurrir */ }
-                    }
+                    centroRepository.updateCentro(centroToUpdate.id, centroToUpdate)
                 } else {
-                    // Si es una actualización, simplemente actualizamos el centro
-                    val updateResult = centroRepository.updateCentro(centro)
-                    
-                    when (updateResult) {
-                        is Result.Success -> {
-                            resultId = centro.id
-                        }
-                        is Result.Error -> {
-                            throw updateResult.exception
-                        }
-                        is Result.Loading -> { /* No debería ocurrir */ }
-                    }
+                    // Si no tiene ID, estamos creando un nuevo centro
+                    val nuevoCentro = Centro(
+                        id = "",
+                        nombre = centro.nombre,
+                        direccion = Direccion(
+                            calle = centro.direccion.calle,
+                            numero = centro.direccion.numero,
+                            codigoPostal = centro.direccion.codigoPostal,
+                            ciudad = centro.direccion.ciudad,
+                            provincia = centro.direccion.provincia
+                        ),
+                        latitud = centro.latitud,
+                        longitud = centro.longitud,
+                        contacto = Contacto(
+                            telefono = centro.contacto.telefono,
+                            email = centro.contacto.email
+                        )
+                    )
+                    centroRepository.addCentro(nuevoCentro)
                 }
 
                 // Si todo ha ido bien, actualizamos el estado
@@ -997,5 +986,19 @@ class AddCentroViewModel @Inject constructor(
         }
         
         return adminIds
+    }
+
+    /**
+     * Actualiza la latitud del centro
+     */
+    fun updateLatitud(latitud: Double?) {
+        _uiState.update { it.copy(latitud = latitud) }
+    }
+
+    /**
+     * Actualiza la longitud del centro
+     */
+    fun updateLongitud(longitud: Double?) {
+        _uiState.update { it.copy(longitud = longitud) }
     }
 }

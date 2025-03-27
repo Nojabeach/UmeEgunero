@@ -209,9 +209,13 @@ fun AddCentroScreen(
                 contacto = Contacto(
                     telefono = uiState.telefono,
                     email = uiState.adminCentro.firstOrNull()?.email ?: ""
-                )
+                ),
+                // Asegurarse de que las coordenadas siempre tengan valores válidos
+                latitud = uiState.latitud ?: obtenerLatitudPorDefecto(uiState.ciudad, uiState.provincia),
+                longitud = uiState.longitud ?: obtenerLongitudPorDefecto(uiState.ciudad, uiState.provincia),
+                adminIds = emptyList() // Se llenará después de crear los administradores
             )
-
+            
             viewModel.saveCentro(centro)
         }
     }
@@ -1414,4 +1418,166 @@ fun PasswordTextField(
         },
         modifier = modifier
     )
+}
+
+/**
+ * Obtiene una latitud por defecto para una ciudad y provincia
+ * Esto es usado cuando no se puede obtener la ubicación exacta mediante geocodificación
+ */
+private fun obtenerLatitudPorDefecto(ciudad: String, provincia: String): Double {
+    // Coordenadas por defecto para algunas ciudades principales
+    val coordenadasPorDefecto = mapOf(
+        "Madrid" to 40.416775,
+        "Barcelona" to 41.390205,
+        "Valencia" to 39.469907,
+        "Sevilla" to 37.389092,
+        "Zaragoza" to 41.648823,
+        "Málaga" to 36.721261,
+        "Murcia" to 37.992235,
+        "Palma" to 39.569600,
+        "Las Palmas de Gran Canaria" to 28.124169,
+        "Bilbao" to 43.262985
+    )
+    
+    // Si la ciudad está en nuestro mapa, usamos su latitud
+    if (coordenadasPorDefecto.containsKey(ciudad)) {
+        return coordenadasPorDefecto[ciudad]!!
+    }
+    
+    // Si no, usamos una aproximación por provincia o una ubicación en el centro de España
+    val latitudPorProvincia = mapOf(
+        "Madrid" to 40.416775,
+        "Barcelona" to 41.390205,
+        "Valencia" to 39.469907,
+        "Alicante" to 38.346544,
+        "Sevilla" to 37.389092,
+        "Málaga" to 36.721261,
+        "Murcia" to 37.992235,
+        "Cádiz" to 36.527061,
+        "Vizcaya" to 43.262985,
+        "Asturias" to 43.361915,
+        "La Coruña" to 43.370876,
+        "Zaragoza" to 41.648823,
+        "Granada" to 37.178055,
+        "Tarragona" to 41.118883,
+        "Córdoba" to 37.888175,
+        "Gerona" to 41.979401,
+        "Guipúzcoa" to 43.320812,
+        "Toledo" to 39.862832,
+        "Almería" to 36.834047,
+        "Badajoz" to 38.880050,
+        "La Rioja" to 42.466,
+        "Huelva" to 37.261422,
+        "Valladolid" to 41.652251,
+        "Castellón" to 39.986356,
+        "Jaén" to 37.778424,
+        "Ciudad Real" to 38.986006,
+        "Cáceres" to 39.475388,
+        "Cantabria" to 43.462306,
+        "Albacete" to 38.994349,
+        "Lérida" to 41.617060,
+        "León" to 42.598726,
+        "Navarra" to 42.695391,
+        "Salamanca" to 40.970104,
+        "Burgos" to 42.343926,
+        "Álava" to 42.846718,
+        "Lugo" to 43.010681,
+        "Zamora" to 41.503490,
+        "Huesca" to 42.135986,
+        "Cuenca" to 40.070782,
+        "Segovia" to 40.942903,
+        "Pontevedra" to 42.431196,
+        "Orense" to 42.335344,
+        "Guadalajara" to 40.632771,
+        "Palencia" to 42.010369,
+        "Ávila" to 40.656685,
+        "Teruel" to 40.345673,
+        "Soria" to 41.764431,
+        "Islas Baleares" to 39.569600,
+        "Las Palmas" to 28.124169,
+        "Santa Cruz de Tenerife" to 28.463628
+    )
+    
+    return latitudPorProvincia[provincia] ?: 40.416775 // Madrid por defecto
+}
+
+/**
+ * Obtiene una longitud por defecto para una ciudad y provincia
+ * Esto es usado cuando no se puede obtener la ubicación exacta mediante geocodificación
+ */
+private fun obtenerLongitudPorDefecto(ciudad: String, provincia: String): Double {
+    // Coordenadas por defecto para algunas ciudades principales
+    val coordenadasPorDefecto = mapOf(
+        "Madrid" to -3.703790,
+        "Barcelona" to 2.154007,
+        "Valencia" to -0.376288,
+        "Sevilla" to -5.984459,
+        "Zaragoza" to -0.889085,
+        "Málaga" to -4.421766,
+        "Murcia" to -1.130542,
+        "Palma" to 2.650200,
+        "Las Palmas de Gran Canaria" to -15.430700,
+        "Bilbao" to -2.935013
+    )
+    
+    // Si la ciudad está en nuestro mapa, usamos su longitud
+    if (coordenadasPorDefecto.containsKey(ciudad)) {
+        return coordenadasPorDefecto[ciudad]!!
+    }
+    
+    // Si no, usamos una aproximación por provincia o una ubicación en el centro de España
+    val longitudPorProvincia = mapOf(
+        "Madrid" to -3.703790,
+        "Barcelona" to 2.154007,
+        "Valencia" to -0.376288,
+        "Alicante" to -0.486357,
+        "Sevilla" to -5.984459,
+        "Málaga" to -4.421766,
+        "Murcia" to -1.130542,
+        "Cádiz" to -6.288597,
+        "Vizcaya" to -2.935013,
+        "Asturias" to -5.849389,
+        "La Coruña" to -8.396027,
+        "Zaragoza" to -0.889085,
+        "Granada" to -3.600217,
+        "Tarragona" to 1.244044,
+        "Córdoba" to -4.779424,
+        "Gerona" to 2.820334,
+        "Guipúzcoa" to -1.984503,
+        "Toledo" to -4.027323,
+        "Almería" to -2.457819,
+        "Badajoz" to -6.970720,
+        "La Rioja" to -2.446,
+        "Huelva" to -6.944722,
+        "Valladolid" to -4.724532,
+        "Castellón" to -0.045149,
+        "Jaén" to -3.789757,
+        "Ciudad Real" to -3.927526,
+        "Cáceres" to -6.371308,
+        "Cantabria" to -3.805119,
+        "Albacete" to -1.856469,
+        "Lérida" to 0.620800,
+        "León" to -5.569710,
+        "Navarra" to -1.676069,
+        "Salamanca" to -5.663149,
+        "Burgos" to -3.696906,
+        "Álava" to -2.671635,
+        "Lugo" to -7.555851,
+        "Zamora" to -5.743510,
+        "Huesca" to -0.408900,
+        "Cuenca" to -2.134647,
+        "Segovia" to -4.108807,
+        "Pontevedra" to -8.644134,
+        "Orense" to -7.864380,
+        "Guadalajara" to -3.166493,
+        "Palencia" to -4.523238,
+        "Ávila" to -4.681185,
+        "Teruel" to -1.106543,
+        "Soria" to -2.464921,
+        "Islas Baleares" to 2.650200,
+        "Las Palmas" to -15.430700,
+        "Santa Cruz de Tenerife" to -16.251881
+    )
+    
+    return longitudPorProvincia[provincia] ?: -3.703790 // Madrid por defecto
 }

@@ -293,7 +293,14 @@ fun Navigation(
                 val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
                 DetalleCentroScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onMenuClick = {},
+                    onMenuClick = { 
+                        navController.navigate(AppScreens.AdminDashboard.route) {
+                            popUpTo(AppScreens.AdminDashboard.route) {
+                                inclusive = false
+                            }
+                            launchSingleTop = true
+                        }
+                    },
                     onEditCentro = { centroId ->
                         navController.navigate(AppScreens.EditCentro.createRoute(centroId))
                     }

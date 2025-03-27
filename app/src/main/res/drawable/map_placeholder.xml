@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="100dp"
+    android:viewportWidth="200"
+    android:viewportHeight="100">
+
+    <!-- Fondo del mapa -->
+    <path
+        android:fillColor="#E8EAF6"
+        android:pathData="M0,0h200v100h-200z" />
+
+    <!-- Líneas horizontales -->
+    <path
+        android:strokeWidth="0.5"
+        android:strokeColor="#BDBDBD"
+        android:pathData="M0,20h200M0,40h200M0,60h200M0,80h200" />
+
+    <!-- Líneas verticales -->
+    <path
+        android:strokeWidth="0.5"
+        android:strokeColor="#BDBDBD"
+        android:pathData="M20,0v100M40,0v100M60,0v100M80,0v100M100,0v100M120,0v100M140,0v100M160,0v100M180,0v100" />
+
+    <!-- Carreteras principales -->
+    <path
+        android:strokeWidth="2"
+        android:strokeColor="#B0BEC5"
+        android:pathData="M0,50h200M100,0v100" />
+
+    <!-- Marcador de ubicación -->
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M100,50m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+
+    <!-- Círculo de precisión -->
+    <path
+        android:strokeWidth="1"
+        android:strokeColor="#F44336"
+        android:fillColor="#F4433620"
+        android:pathData="M100,50m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0" />
+
+    <!-- Texto informativo -->
+    <path
+        android:fillColor="#424242"
+        android:pathData="M75,10h50v5h-50z" />
+    <path
+        android:fillColor="#424242"
+        android:pathData="M75,90h50v5h-50z" />
+</vector>

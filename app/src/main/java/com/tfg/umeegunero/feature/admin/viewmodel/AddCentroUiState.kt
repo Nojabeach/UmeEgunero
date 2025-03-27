@@ -25,7 +25,7 @@ data class AddCentroUiState(
     val telefonoError: String? = null,
     
     // Administradores del centro
-    val adminCentro: List<AdminCentroUsuario> = listOf(AdminCentroUsuario()),
+    val adminCentro: List<AdminCentro> = listOf(AdminCentro()),
     val adminCentroError: String? = null,
 
     // Estado de la UI
@@ -87,4 +87,16 @@ data class AdminCentroUsuario(
                 email.isNotBlank() && emailError == null &&
                 telefonoError == null && // Telefono es opcional pero no debe tener error
                 password.isNotBlank() && passwordError == null
+}
+
+// Modelo para representar un usuario administrador de centro simplificado
+data class AdminCentro(
+    val email: String = "",
+    val emailError: String? = null,
+    val password: String = "",
+    val passwordError: String? = null
+) {
+    val isValid: Boolean
+        get() = email.isNotBlank() && emailError == null &&
+                (password.isBlank() || passwordError == null) // Permitimos contraseña vacía en edición
 } 

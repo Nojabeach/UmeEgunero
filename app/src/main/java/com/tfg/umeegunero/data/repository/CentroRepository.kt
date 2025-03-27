@@ -120,19 +120,22 @@ class CentroRepository @Inject constructor(
     }
 
     /**
-     * Actualiza un centro existente
+     * Actualiza un centro existente usando su ID
      */
-    suspend fun updateCentro(centro: Centro): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun updateCentro(centroId: String, centro: Centro): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             // Verificar que el centro existe
-            val centroDoc = centrosCollection.document(centro.id).get().await()
+            val centroDoc = centrosCollection.document(centroId).get().await()
 
             if (!centroDoc.exists()) {
                 return@withContext Result.Error(Exception("El centro no existe"))
             }
 
+            // Asegurarnos de que el centro tiene el ID correcto
+            val centroConId = centro.copy(id = centroId)
+
             // Actualizar el centro
-            centrosCollection.document(centro.id).set(centro).await()
+            centrosCollection.document(centroId).set(centroConId).await()
 
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {

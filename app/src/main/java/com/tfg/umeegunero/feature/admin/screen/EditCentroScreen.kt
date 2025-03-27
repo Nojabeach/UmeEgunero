@@ -3,6 +3,7 @@ package com.tfg.umeegunero.feature.admin.screen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -15,6 +16,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -27,6 +30,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import android.content.res.Configuration
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.foundation.lazy.LazyColumn
 
 /**
  * Pantalla para editar un centro educativo existente
@@ -94,6 +99,14 @@ fun EditCentroScreen(
                 onUpdateCiudad = viewModel::updateCiudad,
                 onUpdateProvincia = viewModel::updateProvincia,
                 onUpdateTelefono = viewModel::updateTelefono,
+                onUpdateAdminEmail = { index, email ->
+                    viewModel.updateAdminCentroEmail(index, email)
+                },
+                onUpdateAdminPassword = { index, password ->
+                    viewModel.updateAdminCentroPassword(index, password)
+                },
+                onUpdateLatitud = viewModel::updateLatitud,
+                onUpdateLongitud = viewModel::updateLongitud,
                 onSeleccionarCiudad = viewModel::seleccionarCiudad,
                 onGuardar = {
                     val centro = Centro(
@@ -134,6 +147,10 @@ private fun EditCentroContent(
     onUpdateCiudad: (String) -> Unit,
     onUpdateProvincia: (String) -> Unit,
     onUpdateTelefono: (String) -> Unit,
+    onUpdateAdminEmail: (Int, String) -> Unit,
+    onUpdateAdminPassword: (Int, String) -> Unit,
+    onUpdateLatitud: (Double?) -> Unit,
+    onUpdateLongitud: (Double?) -> Unit,
     onSeleccionarCiudad: (com.tfg.umeegunero.data.model.Ciudad) -> Unit,
     onGuardar: () -> Unit,
     onNavigateBack: () -> Unit,
@@ -143,6 +160,7 @@ private fun EditCentroContent(
     val focusManager = LocalFocusManager.current
     val provinciasLista = listOf("Álava", "Albacete", "Alicante", "Almería", "Asturias", "Ávila", "Badajoz", "Barcelona", "Burgos", "Cáceres", "Cádiz", "Cantabria", "Castellón", "Ciudad Real", "Córdoba", "Cuenca", "Girona", "Granada", "Guadalajara", "Guipúzcoa", "Huelva", "Huesca", "Islas Baleares", "Jaén", "La Coruña", "La Rioja", "Las Palmas", "León", "Lérida", "Lugo", "Madrid", "Málaga", "Murcia", "Navarra", "Orense", "Palencia", "Pontevedra", "Salamanca", "Santa Cruz de Tenerife", "Segovia", "Sevilla", "Soria", "Tarragona", "Teruel", "Toledo", "Valencia", "Valladolid", "Vizcaya", "Zamora", "Zaragoza")
     var expandedProvincia by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
     
     Column(
         modifier = modifier
@@ -308,34 +326,35 @@ private fun EditCentroContent(
         Spacer(modifier = Modifier.height(8.dp))
         
         // Provincia
-        ExposedDropdownMenuBox(
-            expanded = expandedProvincia,
-            onExpandedChange = { expandedProvincia = it }
-        ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = uiState.provincia,
                 onValueChange = onUpdateProvincia,
                 label = { Text("Provincia *") },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Map,
+                        imageVector = Icons.Default.LocationCity,
                         contentDescription = null
                     )
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
+                trailingIcon = {
+                    IconButton(onClick = { expandedProvincia = !expandedProvincia }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Desplegar provincias"
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
                 isError = uiState.provinciaError != null,
                 supportingText = uiState.provinciaError?.let { { Text(it) } },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProvincia)
-                }
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
             
-            ExposedDropdownMenu(
+            DropdownMenu(
                 expanded = expandedProvincia,
-                onDismissRequest = { expandedProvincia = false }
+                onDismissRequest = { expandedProvincia = false },
+                modifier = Modifier.fillMaxWidth(0.9f)
             ) {
                 provinciasLista.forEach { provincia ->
                     DropdownMenuItem(
@@ -351,9 +370,73 @@ private fun EditCentroContent(
         
         Spacer(modifier = Modifier.height(16.dp))
         
+        // Coordenadas geográficas
+        Text(
+            text = "Coordenadas Geográficas",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        // Latitud
+        OutlinedTextField(
+            value = uiState.latitud?.toString() ?: "",
+            onValueChange = { 
+                try {
+                    val latValue = if (it.isBlank()) null else it.toDouble()
+                    onUpdateLatitud(latValue)
+                } catch (e: NumberFormatException) {
+                    // No hacemos nada si el texto no es un número válido
+                }
+            },
+            label = { Text("Latitud") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Place,
+                    contentDescription = null
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next
+            ),
+            supportingText = { Text("Ej: 40.416775 (Madrid)") }
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Longitud
+        OutlinedTextField(
+            value = uiState.longitud?.toString() ?: "",
+            onValueChange = { 
+                try {
+                    val longValue = if (it.isBlank()) null else it.toDouble()
+                    onUpdateLongitud(longValue)
+                } catch (e: NumberFormatException) {
+                    // No hacemos nada si el texto no es un número válido
+                }
+            },
+            label = { Text("Longitud") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Place,
+                    contentDescription = null
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next
+            ),
+            supportingText = { Text("Ej: -3.703790 (Madrid)") }
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
         // Contacto
         Text(
-            text = "Información de Contacto",
+            text = "Contacto",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -366,7 +449,7 @@ private fun EditCentroContent(
             label = { Text("Teléfono") },
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Call,
+                    imageVector = Icons.Default.Phone,
                     contentDescription = null
                 )
             },
@@ -375,16 +458,91 @@ private fun EditCentroContent(
             supportingText = uiState.telefonoError?.let { { Text(it) } },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Phone,
-                imeAction = ImeAction.Done
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
             )
         )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Información de administrador del centro
+        Text(
+            text = "Administrador del Centro",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        if (uiState.adminCentro.isNotEmpty()) {
+            // Email del administrador
+            OutlinedTextField(
+                value = uiState.adminCentro[0].email,
+                onValueChange = { onUpdateAdminEmail(0, it) },
+                label = { Text("Email de acceso *") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = null
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState.adminCentro[0].emailError != null,
+                supportingText = uiState.adminCentro[0].emailError?.let { { Text(it) } },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                )
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Contraseña del administrador
+            OutlinedTextField(
+                value = uiState.adminCentro[0].password,
+                onValueChange = { onUpdateAdminPassword(0, it) },
+                label = { Text("Contraseña *") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null
+                    )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                        )
+                    }
+                },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState.adminCentro[0].passwordError != null,
+                supportingText = {
+                    if (uiState.adminCentro[0].passwordError != null) {
+                        Text(uiState.adminCentro[0].passwordError!!)
+                    } else {
+                        Text("Deje en blanco para mantener la contraseña actual")
+                    }
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus() }
+                )
+            )
+        }
         
         Spacer(modifier = Modifier.height(32.dp))
         
         // Botones de acción
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             OutlinedButton(
                 onClick = onNavigateBack,
@@ -393,12 +551,21 @@ private fun EditCentroContent(
                 Text("Cancelar")
             }
             
+            Spacer(modifier = Modifier.width(16.dp))
+            
             Button(
                 onClick = onGuardar,
                 modifier = Modifier.weight(1f),
-                enabled = isFormValid(uiState)
+                enabled = !uiState.isLoading &&
+                        uiState.nombre.isNotBlank() &&
+                        uiState.calle.isNotBlank() &&
+                        uiState.numero.isNotBlank() &&
+                        uiState.codigoPostal.isNotBlank() &&
+                        uiState.ciudad.isNotBlank() &&
+                        uiState.provincia.isNotBlank() &&
+                        (uiState.adminCentro.isEmpty() || uiState.adminCentro[0].email.isNotBlank())
             ) {
-                Text("Guardar Cambios")
+                Text("Guardar")
             }
         }
     }
