@@ -3,6 +3,8 @@ package com.tfg.umeegunero.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tfg.umeegunero.data.model.TipoUsuario
 
@@ -36,19 +38,22 @@ object NavigationStructure {
                     title = "Lista de Centros",
                     icon = Icons.Outlined.List,
                     route = AppScreens.GestionCentros.route,
-                    description = "Ver todos los centros registrados"
+                    description = "Ver todos los centros registrados",
+                    isImplemented = true
                 ),
                 NavItem(
                     title = "Añadir Centro",
                     icon = Icons.Outlined.Add,
                     route = AppScreens.AddCentro.route,
-                    description = "Registrar un nuevo centro"
+                    description = "Registrar un nuevo centro",
+                    isImplemented = true
                 ),
                 NavItem(
                     title = "Estadísticas",
                     icon = Icons.Outlined.BarChart,
                     route = AppScreens.Estadisticas.route,
-                    description = "Estadísticas de los centros"
+                    description = "Estadísticas de los centros",
+                    isImplemented = true
                 )
             )
         ),

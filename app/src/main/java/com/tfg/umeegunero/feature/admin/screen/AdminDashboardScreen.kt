@@ -692,6 +692,16 @@ private fun handleNavigation(
             navController.navigate(route)
             true
         }
+        AppScreens.DetalleCentro.route -> {
+            // Esta ruta incluye parámetros, por lo que no debe navegarse directamente
+            // Se manejará en sus respectivas llamadas
+            true
+        }
+        AppScreens.EditCentro.route -> {
+            // Esta ruta incluye parámetros, por lo que no debe navegarse directamente
+            // Se manejará en sus respectivas llamadas
+            true
+        }
         "logout" -> {
             viewModel.logout()
             true

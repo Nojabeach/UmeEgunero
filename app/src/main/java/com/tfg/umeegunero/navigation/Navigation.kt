@@ -32,6 +32,10 @@ import com.tfg.umeegunero.feature.admin.screen.EstadisticasScreen
 import com.tfg.umeegunero.feature.admin.screen.AdminNotificacionesScreen
 import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
 import com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen
+import com.tfg.umeegunero.feature.admin.screen.ListCentrosScreen
+import com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen
+import com.tfg.umeegunero.feature.admin.screen.EditCentroScreen
+import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
 
 /**
  * Navegación principal de la aplicación
@@ -227,9 +231,8 @@ fun Navigation(
 
             // Pantallas de gestión
             composable(route = AppScreens.GestionCentros.route) {
-                DummyScreen(
-                    title = "Gestión de Centros",
-                    onNavigateBack = { navController.popBackStack() }
+                ListCentrosScreen(
+                    navController = navController
                 )
             }
 
@@ -286,10 +289,35 @@ fun Navigation(
                 arguments = listOf(
                     navArgument("centroId") { type = NavType.StringType }
                 )
-            ) {
-                DummyScreen(
-                    title = "Detalle del Centro",
-                    onNavigateBack = { navController.popBackStack() }
+            ) { backStackEntry ->
+                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+                DetalleCentroScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onMenuClick = {},
+                    onEditCentro = { centroId ->
+                        navController.navigate(AppScreens.EditCentro.createRoute(centroId))
+                    }
+                )
+            }
+
+            // Pantalla para editar centro
+            composable(
+                route = AppScreens.EditCentro.route,
+                arguments = listOf(
+                    navArgument("centroId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+                EditCentroScreen(
+                    navController = navController,
+                    centroId = centroId
+                )
+            }
+
+            // Pantalla para añadir centro
+            composable(route = AppScreens.AddCentro.route) {
+                AddCentroScreen(
+                    navController = navController
                 )
             }
 
