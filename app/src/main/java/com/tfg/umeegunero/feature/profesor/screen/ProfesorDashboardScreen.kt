@@ -39,7 +39,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -390,13 +390,11 @@ fun ProfesorDashboardContent(
                 onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
                 onNavigateToChat = onNavigateToChat,
                 onRegistroDiario = { alumno ->
-                    // Obtén los datos necesarios como claseId y claseNombre
-                    // Si no están disponibles, podrías obtenerlos del viewModel
-                    val claseId = "claseIdDefault" // Reemplazar con el valor real
-                    val claseNombre = "Clase Default" // Reemplazar con el valor real
-                    val profesorId = "profesorIdDefault" // Reemplazar con el ID real del profesor
-
-                    // Navegar al registro diario
+                    // Obtener valores del viewModel
+                    val profesorId = viewModel.uiState.value.profesor?.documentId ?: ""
+                    val claseId = viewModel.uiState.value.claseActual?.id ?: ""
+                    val claseNombre = viewModel.uiState.value.claseActual?.nombre ?: "Sin clase"
+                    
                     viewModel.navegarARegistroDiario(
                         navController = navController,
                         alumno = alumno,
@@ -571,7 +569,7 @@ fun ProfesorHomeContent(
             item {
                 FuncionalidadCard(
                     title = "Tareas",
-                    icon = Icons.Default.Assignment,
+                    icon = Icons.AutoMirrored.Filled.Assignment,
                     color = Color(0xFF34C759),
                     onClick = { navController.navigate(AppScreens.ProfesorTareas.route) }
                 )
@@ -587,13 +585,13 @@ fun ProfesorHomeContent(
                 )
             }
             
-            // Función de Chat
+            // Función de Registro Diario
             item {
                 FuncionalidadCard(
-                    title = "Chat",
-                    icon = Icons.AutoMirrored.Filled.Chat,
-                    color = Color(0xFF34C759),
-                    onClick = { /* Navegación al chat */ }
+                    title = "Registro Diario",
+                    icon = Icons.Default.Add,
+                    color = Color(0xFF5856D6),
+                    onClick = { navController.navigate(AppScreens.AlumnoList.route) }
                 )
             }
         }
@@ -826,7 +824,7 @@ fun AlumnoItem(
                 // Botón de registro diario
                 IconButton(onClick = { onRegistroDiario(alumno) }) {
                     Icon(
-                        imageVector = Icons.Default.Assignment,
+                        imageVector = Icons.AutoMirrored.Filled.Assignment,
                         contentDescription = "Registro diario de ${alumno.nombre}",
                         tint = MaterialTheme.colorScheme.primary
                     )

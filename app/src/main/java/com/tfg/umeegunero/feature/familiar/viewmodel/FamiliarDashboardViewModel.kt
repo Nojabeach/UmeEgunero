@@ -435,7 +435,7 @@ class FamiliarDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Función para navegar a la pantalla de consulta de registros diarios de un alumno
+     * Función para navegar a la consulta de registros diarios de un alumno
      */
     fun navegarAConsultaRegistroDiario(navController: NavController, alumno: Alumno) {
         navController.navigate(

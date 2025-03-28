@@ -202,7 +202,7 @@ private fun handleNavigation(
             true
         }
         "admin_dashboard/profesores" -> {
-            navController.navigate(route)
+            navController.navigate(AppScreens.GestionProfesores.route)
             true
         }
         "admin_dashboard/alumnos" -> {

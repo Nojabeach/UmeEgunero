@@ -225,27 +225,28 @@ object NavigationStructure {
         ),
         NavItem(
             title = "Profesores",
-            icon = Icons.Filled.School,
-            route = "profesores",
-            description = "Administración del personal docente",
+            icon = Icons.Filled.Person,
+            route = "admin_dashboard/profesores",
+            description = "Gestión del personal docente",
             subItems = listOf(
                 NavItem(
                     title = "Lista de Profesores",
                     icon = Icons.Outlined.List,
-                    route = "profesores/lista",
-                    description = "Ver todos los profesores"
+                    route = AppScreens.GestionProfesores.route,
+                    description = "Ver y gestionar todos los profesores",
+                    isImplemented = true
                 ),
                 NavItem(
                     title = "Añadir Profesor",
                     icon = Icons.Outlined.PersonAdd,
-                    route = "profesores/añadir",
-                    description = "Registrar nuevo profesor"
+                    route = "admin_dashboard/profesores/add",
+                    description = "Registrar un nuevo profesor"
                 ),
                 NavItem(
                     title = "Asignar Clases",
-                    icon = Icons.Outlined.Assignment,
-                    route = "profesores/asignar",
-                    description = "Asignar clases a profesores"
+                    icon = Icons.Outlined.School,
+                    route = "admin_dashboard/profesores/clases",
+                    description = "Asignar profesores a clases"
                 )
             )
         ),

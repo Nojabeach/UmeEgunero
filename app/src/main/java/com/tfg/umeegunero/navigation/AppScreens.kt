@@ -156,4 +156,6 @@ sealed class AppScreens(val route: String) {
     object TareasFamilia : AppScreens("tareas_familia")
     object ChatFamilia : AppScreens("chat_familia")
     object NotificacionesFamilia : AppScreens("notificaciones_familia")
+
+    object GestionProfesores : AppScreens("gestion_profesores")
 } 

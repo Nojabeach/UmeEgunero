@@ -6,7 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,7 +75,7 @@ fun DetalleAlumnoFamiliaScreen(
                 actions = {
                     IconButton(onClick = { /* Contactar con profesor */ }) {
                         Icon(
-                            imageVector = Icons.Default.Chat,
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
                             contentDescription = "Contactar con profesor",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
@@ -206,7 +210,7 @@ fun DetalleAlumnoFamiliaScreen(
                         
                         IconButton(onClick = { /* Contactar con profesor */ }) {
                             Icon(
-                                imageVector = Icons.Default.Chat,
+                                imageVector = Icons.AutoMirrored.Filled.Chat,
                                 contentDescription = "Contactar",
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -283,50 +287,45 @@ fun DetalleAlumnoFamiliaScreen(
                 }
             }
             
-            // Acciones rápidas
+            // Opciones rápidas
             item {
                 Text(
-                    text = "Acciones Rápidas",
+                    text = "Opciones",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    AccionRapida(
-                        title = "Calendario",
-                        icon = Icons.Default.CalendarToday,
-                        onClick = { /* Ver calendario */ },
-                        modifier = Modifier.weight(1f)
+                    OpcionRapida(
+                        titulo = "Calendario",
+                        icono = Icons.Default.CalendarToday,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            // Navegar al calendario del alumno
+                            navController.navigate(AppScreens.CalendarioFamilia.route)
+                        }
                     )
                     
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    AccionRapida(
-                        title = "Tareas",
-                        icon = Icons.Default.Assignment,
-                        onClick = { /* Ver tareas */ },
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    AccionRapida(
-                        title = "Calificaciones",
-                        icon = Icons.Default.Grade,
-                        onClick = { /* Ver calificaciones */ },
-                        modifier = Modifier.weight(1f)
+                    OpcionRapida(
+                        titulo = "Mensajes",
+                        icono = Icons.AutoMirrored.Filled.Chat,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            // Navegar al chat con el profesor
+                            navController.navigate(AppScreens.ChatFamilia.route)
+                        }
                     )
                 }
-            }
-
-            // Botón para ver registros diarios
-            item {
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Botón para ver registros diarios
                 Button(
                     onClick = { 
                         navController.navigate(
@@ -334,21 +333,20 @@ fun DetalleAlumnoFamiliaScreen(
                                 alumnoId = alumnoId,
                                 alumnoNombre = "${alumno.nombre} ${alumno.apellidos}"
                             )
-                        ) 
+                        )
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Assignment,
-                            contentDescription = null
-                        )
-                        Text(text = "Ver registros diarios")
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Assignment,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Ver registros diarios")
                 }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -424,6 +422,42 @@ fun AccionRapida(
             
             Text(
                 text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun OpcionRapida(
+    titulo: String,
+    icono: ImageVector,
+    color: Color,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icono,
+                contentDescription = titulo,
+                tint = color
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = titulo,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center

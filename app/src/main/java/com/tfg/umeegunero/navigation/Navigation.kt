@@ -67,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
+import com.tfg.umeegunero.feature.centro.screen.GestionProfesoresScreen
 
 /**
  * Navegación principal de la aplicación
@@ -654,6 +655,13 @@ fun Navigation(
                     onNavigateBack = { navController.popBackStack() },
                     alumnoId = alumnoId,
                     alumnoNombre = alumnoNombre
+                )
+            }
+
+            // Dentro del NavHost, añadir la ruta para la pantalla de gestión de profesores
+            composable(route = AppScreens.GestionProfesores.route) {
+                GestionProfesoresScreen(
+                    navController = navController
                 )
             }
         }
