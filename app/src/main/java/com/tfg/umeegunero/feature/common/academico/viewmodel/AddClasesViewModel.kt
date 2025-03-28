@@ -9,7 +9,7 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

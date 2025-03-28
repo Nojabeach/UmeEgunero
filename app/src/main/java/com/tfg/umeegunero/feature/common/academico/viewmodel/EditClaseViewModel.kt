@@ -3,8 +3,8 @@ package com.tfg.umeegunero.feature.common.academico.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.ClaseRepository
-import com.tfg.umeegunero.data.repository.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

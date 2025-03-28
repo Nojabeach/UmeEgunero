@@ -1,8 +1,13 @@
 package com.tfg.umeegunero.data.repository
 
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.tfg.umeegunero.data.model.EstadoNotificacion
 import com.tfg.umeegunero.data.model.Notificacion
+import com.tfg.umeegunero.data.model.NotificacionForm
+import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.data.model.TipoDestino
 import com.tfg.umeegunero.data.model.TipoNotificacion
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,7 +17,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import com.google.firebase.Timestamp
 import java.util.Date
 
 /**

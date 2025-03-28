@@ -3,24 +3,57 @@ package com.tfg.umeegunero.data.repository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObject
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.Result
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar las clases en Firestore
+ * Repositorio para gestionar las clases
  */
-@Singleton
-class ClaseRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
-) {
-    private val clasesCollection = firestore.collection("clases")
+interface ClaseRepository {
+    /**
+     * Obtiene una clase por su ID
+     */
+    suspend fun getClaseById(claseId: String): Result<Clase>
+    
+    /**
+     * Obtiene las clases de un centro
+     */
+    suspend fun getClasesByCentro(centroId: String): Result<List<Clase>>
+    
+    /**
+     * Obtiene las clases de un profesor
+     */
+    suspend fun getClasesByProfesor(profesorId: String): Result<List<Clase>>
     
     /**
      * Obtiene todas las clases asociadas a un curso
      */
-    suspend fun getClasesByCursoId(cursoId: String): Result<List<Clase>> {
+    suspend fun getClasesByCursoId(cursoId: String): Result<List<Clase>>
+    
+    /**
+     * Guarda una clase en Firestore
+     */
+    suspend fun guardarClase(clase: Clase): Result<String>
+    
+    /**
+     * Elimina una clase de Firestore
+     */
+    suspend fun eliminarClase(claseId: String): Result<Boolean>
+}
+
+/**
+ * Implementación del repositorio de clases
+ */
+@Singleton
+class ClaseRepositoryImpl @Inject constructor(
+    private val firestore: FirebaseFirestore
+) : ClaseRepository {
+    private val clasesCollection = firestore.collection("clases")
+    
+    override suspend fun getClasesByCursoId(cursoId: String): Result<List<Clase>> {
         return try {
             Timber.d("Obteniendo clases para el curso: $cursoId")
             val snapshot = clasesCollection
@@ -41,10 +74,7 @@ class ClaseRepository @Inject constructor(
         }
     }
     
-    /**
-     * Guarda una clase en Firestore
-     */
-    suspend fun guardarClase(clase: Clase): Result<String> {
+    override suspend fun guardarClase(clase: Clase): Result<String> {
         return try {
             val docRef = if (clase.id.isBlank()) {
                 val newDocRef = clasesCollection.document()
@@ -64,10 +94,7 @@ class ClaseRepository @Inject constructor(
         }
     }
     
-    /**
-     * Elimina una clase de Firestore
-     */
-    suspend fun eliminarClase(claseId: String): Result<Boolean> {
+    override suspend fun eliminarClase(claseId: String): Result<Boolean> {
         return try {
             clasesCollection.document(claseId).delete().await()
             Timber.d("Clase eliminada con ID: $claseId")
@@ -78,29 +105,77 @@ class ClaseRepository @Inject constructor(
         }
     }
     
-    /**
-     * Obtiene una clase por su ID
-     */
-    suspend fun getClaseById(claseId: String): Result<Clase> {
+    override suspend fun getClaseById(claseId: String): Result<Clase> {
         return try {
-            val docSnapshot = clasesCollection.document(claseId).get().await()
-            if (docSnapshot.exists()) {
-                val clase = docSnapshot.toObject<Clase>()?.copy(id = docSnapshot.id)
+            val document = clasesCollection.document(claseId).get().await()
+            if (document.exists()) {
+                val clase = document.toObject<Clase>()?.copy(id = document.id)
                 if (clase != null) {
-                    Timber.d("Clase obtenida: $claseId")
                     Result.Success(clase)
                 } else {
-                    val error = Exception("La clase existe pero no se pudo convertir")
-                    Timber.e(error, "Error al obtener clase $claseId")
-                    Result.Error(error)
+                    Result.Error(Exception("No se pudo convertir la clase"))
                 }
             } else {
-                val error = Exception("No se encontró la clase con ID $claseId")
-                Timber.e(error)
-                Result.Error(error)
+                Result.Error(Exception("La clase con ID $claseId no existe"))
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener clase $claseId")
+            Timber.e(e, "Error al obtener clase con ID $claseId")
+            Result.Error(e)
+        }
+    }
+    
+    override suspend fun getClasesByCentro(centroId: String): Result<List<Clase>> {
+        return try {
+            val snapshot = clasesCollection
+                .whereEqualTo("centroId", centroId)
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+            
+            val clases = snapshot.documents.mapNotNull { doc ->
+                val clase = doc.toObject<Clase>()
+                clase?.copy(id = doc.id)
+            }
+            
+            Result.Success(clases)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener clases del centro $centroId")
+            Result.Error(e)
+        }
+    }
+    
+    override suspend fun getClasesByProfesor(profesorId: String): Result<List<Clase>> {
+        return try {
+            // Obtenemos clases donde el profesor es titular
+            val snapshotTitular = clasesCollection
+                .whereEqualTo("profesorTitularId", profesorId)
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+            
+            val clasesTitular = snapshotTitular.documents.mapNotNull { doc ->
+                val clase = doc.toObject<Clase>()
+                clase?.copy(id = doc.id)
+            }
+            
+            // Obtenemos clases donde el profesor es auxiliar
+            val snapshotAuxiliar = clasesCollection
+                .whereArrayContains("profesoresAuxiliaresIds", profesorId)
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+            
+            val clasesAuxiliar = snapshotAuxiliar.documents.mapNotNull { doc ->
+                val clase = doc.toObject<Clase>()
+                clase?.copy(id = doc.id)
+            }
+            
+            // Combinamos los resultados, eliminando duplicados
+            val todasLasClases = (clasesTitular + clasesAuxiliar).distinctBy { it.id }
+            
+            Result.Success(todasLasClases)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener clases del profesor $profesorId")
             Result.Error(e)
         }
     }

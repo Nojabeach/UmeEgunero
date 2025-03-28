@@ -154,17 +154,7 @@ data class Notificaciones(
     val email: Boolean = true
 )
 
-data class Centro(
-    @DocumentId val id: String = "",
-    val nombre: String = "",
-    val direccion: Direccion = Direccion(),
-    val contacto: Contacto = Contacto(),
-    val adminIds: List<String> = emptyList(),
-    val profesorIds: List<String> = emptyList(),
-    val activo: Boolean = true,
-    val latitud: Double = 0.0,
-    val longitud: Double = 0.0
-)
+// Centro ahora está definida en su propio archivo: Centro.kt
 
 data class Contacto(
     val telefono: String = "",

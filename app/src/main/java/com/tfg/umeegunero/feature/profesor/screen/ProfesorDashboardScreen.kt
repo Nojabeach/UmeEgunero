@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,6 +38,8 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -94,6 +99,35 @@ import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 import androidx.navigation.NavController
 import com.tfg.umeegunero.navigation.AppScreens
 import androidx.navigation.compose.rememberNavController
+import java.util.Date
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+/**
+ * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
+ */
+fun calcularEdad(fechaNacimiento: String?): Int {
+    if (fechaNacimiento.isNullOrEmpty()) return 0
+    
+    val formatoFecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    try {
+        val fechaNac = formatoFecha.parse(fechaNacimiento) ?: return 0
+        val hoy = Calendar.getInstance()
+        val fechaNacCal = Calendar.getInstance().apply { time = fechaNac }
+        
+        var edad = hoy.get(Calendar.YEAR) - fechaNacCal.get(Calendar.YEAR)
+        
+        // Ajustar si todavía no ha cumplido años este año
+        if (hoy.get(Calendar.DAY_OF_YEAR) < fechaNacCal.get(Calendar.DAY_OF_YEAR)) {
+            edad--
+        }
+        
+        return edad
+    } catch (e: Exception) {
+        return 0
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,7 +146,8 @@ fun ProfesorDashboardScreen(
     selectedTab: Int = 0,
     onTabSelected: (Int) -> Unit = {},
     onCrearRegistroActividad: (String) -> Unit = {},
-    onErrorDismissed: () -> Unit = {}
+    onErrorDismissed: () -> Unit = {},
+    viewModel: ProfesorDashboardViewModel = hiltViewModel()
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -318,7 +353,8 @@ fun ProfesorDashboardScreen(
                 onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
                 onNavigateToChat = onNavigateToChat,
                 onCrearRegistroActividad = onCrearRegistroActividad,
-                navController = navController
+                navController = navController,
+                viewModel = viewModel
             )
         }
     }
@@ -335,7 +371,8 @@ fun ProfesorDashboardContent(
     onNavigateToDetalleAlumno: (String) -> Unit = {},
     onNavigateToChat: (String, String) -> Unit = { _, _ -> },
     onCrearRegistroActividad: (String) -> Unit = {},
-    navController: NavController
+    navController: NavController,
+    viewModel: ProfesorDashboardViewModel
 ) {
     Box(
         modifier = Modifier
@@ -345,11 +382,30 @@ fun ProfesorDashboardContent(
         when (selectedTab) {
             0 -> ProfesorHomeContent(
                 alumnosPendientes = alumnosPendientes,
-                onCrearRegistroActividad = onCrearRegistroActividad
+                onCrearRegistroActividad = onCrearRegistroActividad,
+                navController = navController
             )
-            1 -> MisAlumnosContent(
+            1 -> AlumnosTab(
                 alumnos = alumnos,
-                onNavigateToDetalleAlumno = onNavigateToDetalleAlumno
+                onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
+                onNavigateToChat = onNavigateToChat,
+                onRegistroDiario = { alumno ->
+                    // Obtén los datos necesarios como claseId y claseNombre
+                    // Si no están disponibles, podrías obtenerlos del viewModel
+                    val claseId = "claseIdDefault" // Reemplazar con el valor real
+                    val claseNombre = "Clase Default" // Reemplazar con el valor real
+                    val profesorId = "profesorIdDefault" // Reemplazar con el ID real del profesor
+
+                    // Navegar al registro diario
+                    viewModel.navegarARegistroDiario(
+                        navController = navController,
+                        alumno = alumno,
+                        profesorId = profesorId,
+                        claseId = claseId,
+                        claseNombre = claseNombre
+                    )
+                },
+                isLoading = isLoading
             )
             2 -> HistorialContent()
             3 -> MensajesContent(
@@ -359,7 +415,8 @@ fun ProfesorDashboardContent(
             4 -> ConfiguracionProfesorContent()
             else -> ProfesorHomeContent(
                 alumnosPendientes = alumnosPendientes,
-                onCrearRegistroActividad = onCrearRegistroActividad
+                onCrearRegistroActividad = onCrearRegistroActividad,
+                navController = navController
             )
         }
         
@@ -379,7 +436,8 @@ fun ProfesorDashboardContent(
 @Composable
 fun ProfesorHomeContent(
     alumnosPendientes: List<Alumno> = emptyList(),
-    onCrearRegistroActividad: (String) -> Unit = {}
+    onCrearRegistroActividad: (String) -> Unit = {},
+    navController: NavController
 ) {
     // TODO: Mejoras pendientes para la pantalla principal del profesor
     // - Implementar sistema de gestión de actividades
@@ -480,6 +538,63 @@ fun ProfesorHomeContent(
                         icon = Icons.AutoMirrored.Filled.List
                     )
                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Sección de funcionalidades
+        Text(
+            text = "Funcionalidades",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.height(230.dp)
+        ) {
+            // Función de Asistencia
+            item {
+                FuncionalidadCard(
+                    title = "Asistencia",
+                    icon = Icons.Default.CheckCircle,
+                    color = Color(0xFF34C759),
+                    onClick = { navController.navigate(AppScreens.ProfesorAsistencia.route) }
+                )
+            }
+            
+            // Función de Tareas
+            item {
+                FuncionalidadCard(
+                    title = "Tareas",
+                    icon = Icons.Default.Assignment,
+                    color = Color(0xFF34C759),
+                    onClick = { navController.navigate(AppScreens.ProfesorTareas.route) }
+                )
+            }
+            
+            // Función de Calendario
+            item {
+                FuncionalidadCard(
+                    title = "Calendario",
+                    icon = Icons.Default.CalendarToday,
+                    color = Color(0xFF34C759),
+                    onClick = { navController.navigate(AppScreens.ProfesorCalendario.route) }
+                )
+            }
+            
+            // Función de Chat
+            item {
+                FuncionalidadCard(
+                    title = "Chat",
+                    icon = Icons.AutoMirrored.Filled.Chat,
+                    color = Color(0xFF34C759),
+                    onClick = { /* Navegación al chat */ }
+                )
             }
         }
 
@@ -587,106 +702,136 @@ fun AlumnoPendienteItem(
 }
 
 @Composable
-fun MisAlumnosContent(
-    alumnos: List<Alumno> = emptyList(),
-    onNavigateToDetalleAlumno: (String) -> Unit = {}
+fun AlumnosTab(
+    alumnos: List<Alumno>,
+    onNavigateToDetalleAlumno: (String) -> Unit,
+    onNavigateToChat: (String, String) -> Unit,
+    onRegistroDiario: (Alumno) -> Unit,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
 ) {
-    // TODO: Mejoras pendientes para la sección de alumnos
-    // - Implementar filtros de búsqueda avanzados
-    // - Añadir visualización por grupos/clases
-    // - Mejorar detalles de perfil de alumno
-    // - Implementar sistema de etiquetas personalizadas
-    // - Añadir indicadores de progreso académico
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Mis Alumnos",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+    if (isLoading) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
 
-        // Lista de alumnos
-        if (alumnos.isEmpty()) {
-            // Mostrar mensaje cuando no hay alumnos
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No hay alumnos asignados a tu clase",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            LazyColumn {
-                items(alumnos) { alumno ->
-                    AlumnoListItem(
-                        nombre = "${alumno.nombre} ${alumno.apellidos}",
-                        onClick = { onNavigateToDetalleAlumno(alumno.dni) }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
-            }
+    if (alumnos.isEmpty()) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "No tienes alumnos asignados",
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Contacta con el administrador del centro para asignar alumnos a tu clase",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 16.dp)
+    ) {
+        items(alumnos) { alumno ->
+            AlumnoItem(
+                alumno = alumno,
+                onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
+                onNavigateToChat = onNavigateToChat,
+                onRegistroDiario = onRegistroDiario
+            )
         }
     }
 }
 
 @Composable
-fun AlumnoListItem(
-    nombre: String,
-    onClick: () -> Unit = {}
+fun AlumnoItem(
+    alumno: Alumno,
+    onNavigateToDetalleAlumno: (String) -> Unit,
+    onNavigateToChat: (String, String) -> Unit,
+    onRegistroDiario: (Alumno) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = Modifier
+    Card(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable { onNavigateToDetalleAlumno(alumno.dni) },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        // Avatar
-        Box(
+        Row(
             modifier = Modifier
-                .size(50.dp)
-                .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = nombre.first().toString(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = nombre,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
+            // Imagen de perfil (reemplazar con la real cuando esté disponible)
+            Image(
+                painter = painterResource(id = R.drawable.app_icon),
+                contentDescription = "Foto de ${alumno.nombre}",
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
 
-            Text(
-                text = "Aula 2B - 3 años",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+            Spacer(modifier = Modifier.width(16.dp))
 
-        IconButton(onClick = onClick) {
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Ver detalles",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Información del alumno
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${alumno.nombre} ${alumno.apellidos}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Edad: ${calcularEdad(alumno.fechaNacimiento)} años",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Acciones
+            Row {
+                // Botón de chat
+                IconButton(onClick = { onNavigateToChat(alumno.dni, "${alumno.nombre} ${alumno.apellidos}") }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Chat,
+                        contentDescription = "Chat con la familia de ${alumno.nombre}",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                // Botón de registro diario
+                IconButton(onClick = { onRegistroDiario(alumno) }) {
+                    Icon(
+                        imageVector = Icons.Default.Assignment,
+                        contentDescription = "Registro diario de ${alumno.nombre}",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
 }
@@ -874,5 +1019,52 @@ fun ProfesorDashboardDarkPreview() {
             error = null,
             selectedTab = 0
         )
+    }
+}
+
+@Composable
+fun FuncionalidadCard(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .background(color.copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }

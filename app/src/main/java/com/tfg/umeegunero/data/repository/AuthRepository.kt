@@ -2,7 +2,7 @@ package com.tfg.umeegunero.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.model.Result
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseUser
 
 // TODO: Mejoras pendientes para el repositorio de autenticación
 // - Implementar autenticación biométrica (huella, FaceID)
@@ -26,6 +27,7 @@ interface AuthRepository {
     suspend fun getCurrentUser(): Usuario?
     suspend fun signOut()
     suspend fun sendPasswordResetEmail(email: String): Result<Boolean>
+    suspend fun getFirebaseUser(): FirebaseUser?
 }
 
 @Singleton
@@ -95,5 +97,12 @@ class AuthRepositoryImpl @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Obtiene el usuario de Firebase actual
+     */
+    override suspend fun getFirebaseUser(): FirebaseUser? {
+        return firebaseAuth.currentUser
     }
 } 

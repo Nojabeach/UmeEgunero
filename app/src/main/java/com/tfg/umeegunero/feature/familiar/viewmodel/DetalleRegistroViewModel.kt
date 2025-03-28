@@ -8,7 +8,7 @@ import com.tfg.umeegunero.data.model.CacaControl
 import com.tfg.umeegunero.data.model.Comida
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Siesta
-import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.feature.familiar.screen.RegistroModel
 import com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroUiState

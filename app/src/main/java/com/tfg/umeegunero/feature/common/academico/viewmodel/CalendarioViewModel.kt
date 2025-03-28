@@ -146,9 +146,13 @@ class CalendarioViewModel @Inject constructor(
             
             try {
                 val newEvent = Evento(
-                    tipo = currentState.selectedEventType,
+                    id = "", // Será generado por Firestore
+                    titulo = currentState.eventDescription.lines().firstOrNull() ?: "Evento",
                     descripcion = currentState.eventDescription,
-                    fecha = currentState.selectedDate.atStartOfDay()
+                    fecha = currentState.selectedDate.atStartOfDay(),
+                    tipo = currentState.selectedEventType,
+                    creadorId = calendarioRepository.obtenerUsuarioId(),
+                    centroId = calendarioRepository.obtenerCentroId()
                 )
 
                 val result = calendarioRepository.saveEvento(newEvent)

@@ -15,7 +15,7 @@ import com.tfg.umeegunero.data.model.Plato
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.data.model.TipoObservacion
-import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

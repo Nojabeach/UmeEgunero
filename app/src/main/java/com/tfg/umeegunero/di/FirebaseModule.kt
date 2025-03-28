@@ -8,6 +8,7 @@ import com.tfg.umeegunero.data.repository.AuthRepositoryImpl
 import com.tfg.umeegunero.data.repository.CiudadRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.data.repository.ClaseRepositoryImpl
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.DebugUtils
@@ -63,7 +64,7 @@ object FirebaseModule {
     fun provideClaseRepository(
         firestore: FirebaseFirestore
     ): ClaseRepository {
-        return ClaseRepository(firestore)
+        return ClaseRepositoryImpl(firestore)
     }
 
     @Provides

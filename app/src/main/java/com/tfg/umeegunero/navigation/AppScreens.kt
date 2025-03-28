@@ -112,4 +112,48 @@ sealed class AppScreens(val route: String) {
     object VinculacionFamiliar : AppScreens("vinculacion_familiar")
     object GestionCursosYClases : AppScreens("gestion_cursos_clases")
     object GestionNotificacionesCentro : AppScreens("gestion_notificaciones_centro")
+
+    // Pantallas para el profesor
+    object GestionAlumnos : AppScreens("gestion_alumnos_profesor")
+    object CalendarioProfesor : AppScreens("calendario_profesor")
+    object TareasProfesor : AppScreens("tareas_profesor")
+    object AsistenciaClase : AppScreens("asistencia_clase") // Nueva pantalla de asistencia
+
+    // Rutas del profesor
+    object ProfesorAsistencia : AppScreens("profesor_asistencia")
+    object ProfesorTareas : AppScreens("profesor_tareas")
+    object ProfesorCalendario : AppScreens("profesor_calendario")
+
+    // Pantallas del profesor
+    object AsistenciaProfesor : AppScreens("asistencia_profesor")
+    object ChatProfesor : AppScreens("chat_profesor")
+    object DetalleAlumnoProfesor : AppScreens("detalle_alumno_profesor/{alumnoId}") {
+        fun createRoute(alumnoId: String) = "detalle_alumno_profesor/$alumnoId"
+    }
+    
+    // Pantallas para los registros diarios
+    object RegistroDiario : AppScreens("registro_diario/{alumnoId}/{claseId}/{profesorId}/{alumnoNombre}/{claseNombre}") {
+        fun createRoute(
+            alumnoId: String, 
+            claseId: String, 
+            profesorId: String,
+            alumnoNombre: String,
+            claseNombre: String
+        ) = "registro_diario/$alumnoId/$claseId/$profesorId/$alumnoNombre/$claseNombre"
+    }
+    
+    object ConsultaRegistroDiario : AppScreens("consulta_registro_diario/{alumnoId}/{alumnoNombre}") {
+        fun createRoute(alumnoId: String, alumnoNombre: String) = 
+            "consulta_registro_diario/$alumnoId/$alumnoNombre"
+    }
+    
+    // Pantallas de la familia
+    object FamiliaDashboard : AppScreens("familia_dashboard")
+    object DetalleAlumnoFamilia : AppScreens("detalle_alumno_familia/{alumnoId}") {
+        fun createRoute(alumnoId: String) = "detalle_alumno_familia/$alumnoId"
+    }
+    object CalendarioFamilia : AppScreens("calendario_familia")
+    object TareasFamilia : AppScreens("tareas_familia")
+    object ChatFamilia : AppScreens("chat_familia")
+    object NotificacionesFamilia : AppScreens("notificaciones_familia")
 } 

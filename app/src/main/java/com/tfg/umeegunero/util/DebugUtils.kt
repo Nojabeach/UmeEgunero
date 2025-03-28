@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Perfil
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.UsuarioRepository
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
+import timber.log.Timber
 
 @Singleton
 class DebugUtils @Inject constructor(
@@ -58,7 +60,7 @@ class DebugUtils @Inject constructor(
                         // Plan B: comprobamos en Firestore directamente
                         try {
                             val adminDoc = usuarioRepository.getUsuarioPorDni(DEFAULT_ADMIN_DNI)
-                            if (adminDoc is com.tfg.umeegunero.data.repository.Result.Success) {
+                            if (adminDoc is Result.Success) {
                                 Log.d("DebugUtils", "Admin ya existe en Firestore")
                             } else {
                                 Log.d("DebugUtils", "No se pudo verificar admin en Firestore")
@@ -114,10 +116,10 @@ class DebugUtils @Inject constructor(
             val savedResult = usuarioRepository.guardarUsuario(admin)
 
             when (savedResult) {
-                is com.tfg.umeegunero.data.repository.Result.Success -> {
+                is Result.Success -> {
                     Log.d("DebugUtils", "Administrador creado correctamente en Firestore")
                 }
-                is com.tfg.umeegunero.data.repository.Result.Error -> {
+                is Result.Error -> {
                     Log.e("DebugUtils", "Error al guardar administrador en Firestore: ${savedResult.exception.message}")
                     // Intentar eliminar el usuario de Firebase Auth si falló en Firestore
                     try {

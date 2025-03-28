@@ -21,5 +21,17 @@ enum class TipoEvento(
     REUNION(
         nombre = "Reunión",
         color = Color(0xFFFFB74D) // Naranja claro
+    ),
+    CLASE(
+        nombre = "Clase",
+        color = Color(0xFF4CAF50) // Verde
+    ),
+    EXAMEN(
+        nombre = "Examen",
+        color = Color(0xFFE91E63) // Rosa
+    ),
+    OTRO(
+        nombre = "Otro",
+        color = Color(0xFF9C27B0) // Púrpura
     )
 } 

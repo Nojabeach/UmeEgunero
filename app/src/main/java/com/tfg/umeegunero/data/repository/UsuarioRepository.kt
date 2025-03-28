@@ -19,15 +19,10 @@ import timber.log.Timber
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.Query
-
-/**
- * Resultados posibles al realizar operaciones con repositorios
- */
-sealed class Result<out T> {
-    data class Success<T>(val data: T) : Result<T>()
-    data class Error(val exception: Exception) : Result<Nothing>()
-    object Loading : Result<Nothing>()
-}
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentSnapshot
+import java.io.IOException
 
 /**
  * Repositorio para gestionar usuarios y operaciones relacionadas

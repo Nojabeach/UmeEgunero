@@ -48,6 +48,25 @@ import com.tfg.umeegunero.feature.centro.screen.AddAlumnoScreen
 import com.tfg.umeegunero.feature.centro.screen.VinculacionFamiliarScreen
 import com.tfg.umeegunero.feature.centro.screen.GestionCursosYClasesScreen
 import com.tfg.umeegunero.feature.centro.screen.GestionNotificacionesCentroScreen
+import com.tfg.umeegunero.feature.profesor.screen.AsistenciaScreen
+import com.tfg.umeegunero.feature.profesor.screen.TareasScreen
+import com.tfg.umeegunero.feature.profesor.screen.CalendarioScreen
+import com.tfg.umeegunero.feature.familiar.screen.FamiliaDashboardScreen
+import com.tfg.umeegunero.feature.familiar.screen.DetalleAlumnoFamiliaScreen
+import com.tfg.umeegunero.feature.familiar.screen.CalendarioFamiliaScreen
+import com.tfg.umeegunero.feature.familiar.screen.TareasFamiliaScreen
+import com.tfg.umeegunero.feature.familiar.screen.ChatFamiliaScreen
+import com.tfg.umeegunero.feature.familiar.screen.NotificacionesFamiliaScreen
+import com.tfg.umeegunero.feature.profesor.registros.screen.HiltRegistroDiarioScreen
+import com.tfg.umeegunero.feature.familiar.registros.screen.HiltConsultaRegistroDiarioScreen
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Arrangement
 
 /**
  * Navegación principal de la aplicación
@@ -449,6 +468,192 @@ fun Navigation(
             composable(route = AppScreens.GestionNotificacionesCentro.route) {
                 GestionNotificacionesCentroScreen(
                     navController = navController
+                )
+            }
+
+            composable(
+                route = AppScreens.AsistenciaClase.route + "/{claseId}",
+                arguments = listOf(
+                    navArgument("claseId") { type = NavType.StringType }
+                )
+            ) {
+                AsistenciaScreen(navController = navController)
+            }
+
+            // Rutas para el profesor
+            composable(route = AppScreens.TareasProfesor.route) {
+                TareasScreen(navController = navController)
+            }
+
+            // Rutas del profesor
+            composable(AppScreens.ProfesorAsistencia.route) {
+                AsistenciaScreen(navController = navController)
+            }
+            
+            composable(AppScreens.ProfesorTareas.route) {
+                TareasScreen(navController = navController)
+            }
+            
+            composable(AppScreens.ProfesorCalendario.route) {
+                CalendarioScreen(navController = navController)
+            }
+
+            // Rutas del profesor
+            composable(route = AppScreens.AsistenciaProfesor.route) {
+                // AsistenciaProfesorScreen(navController = navController)
+                // Pantalla temporal mientras se implementa la definitiva
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Pantalla de asistencia en desarrollo", fontSize = 20.sp)
+                    Button(onClick = { navController.popBackStack() }) {
+                        Text("Volver")
+                    }
+                }
+            }
+
+            composable(route = AppScreens.ChatProfesor.route) {
+                // ChatProfesorScreen(navController = navController)
+                // Pantalla temporal mientras se implementa la definitiva
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Pantalla de chat en desarrollo", fontSize = 20.sp)
+                    Button(onClick = { navController.popBackStack() }) {
+                        Text("Volver")
+                    }
+                }
+            }
+
+            composable(
+                route = AppScreens.DetalleAlumnoProfesor.route,
+                arguments = listOf(
+                    navArgument("alumnoId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+                // DetalleAlumnoProfesorScreen(
+                //     navController = navController,
+                //     alumnoId = alumnoId
+                // )
+                // Pantalla temporal mientras se implementa la definitiva
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Pantalla de detalle de alumno ($alumnoId) en desarrollo", fontSize = 20.sp)
+                    Button(onClick = { navController.popBackStack() }) {
+                        Text("Volver")
+                    }
+                }
+            }
+
+            // Rutas de la familia
+            composable(route = AppScreens.FamiliaDashboard.route) {
+                FamiliaDashboardScreen(navController = navController)
+            }
+
+            composable(
+                route = AppScreens.DetalleAlumnoFamilia.route,
+                arguments = listOf(
+                    navArgument("alumnoId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+                DetalleAlumnoFamiliaScreen(
+                    navController = navController,
+                    alumnoId = alumnoId
+                )
+            }
+
+            composable(route = AppScreens.CalendarioFamilia.route) {
+                CalendarioFamiliaScreen(navController = navController)
+            }
+
+            composable(
+                route = AppScreens.ChatFamilia.route + "/{profesorId}",
+                arguments = listOf(
+                    navArgument("profesorId") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+                val profesorId = backStackEntry.arguments?.getString("profesorId") ?: ""
+                ChatFamiliaScreen(
+                    navController = navController,
+                    profesorId = profesorId
+                )
+            }
+
+            composable(
+                route = AppScreens.TareasFamilia.route + "/{alumnoId}",
+                arguments = listOf(
+                    navArgument("alumnoId") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    }
+                )
+            ) { backStackEntry ->
+                val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+                TareasFamiliaScreen(
+                    navController = navController,
+                    alumnoId = alumnoId
+                )
+            }
+
+            composable(route = AppScreens.NotificacionesFamilia.route) {
+                NotificacionesFamiliaScreen(navController = navController)
+            }
+
+            // Añadimos las rutas para los registros diarios
+            
+            // Pantalla para que el profesor registre actividades diarias
+            composable(
+                route = AppScreens.RegistroDiario.route,
+                arguments = listOf(
+                    navArgument("alumnoId") { type = NavType.StringType },
+                    navArgument("claseId") { type = NavType.StringType },
+                    navArgument("profesorId") { type = NavType.StringType },
+                    navArgument("alumnoNombre") { type = NavType.StringType },
+                    navArgument("claseNombre") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+                val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
+                val profesorId = backStackEntry.arguments?.getString("profesorId") ?: ""
+                val alumnoNombre = backStackEntry.arguments?.getString("alumnoNombre") ?: ""
+                val claseNombre = backStackEntry.arguments?.getString("claseNombre") ?: ""
+                
+                HiltRegistroDiarioScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    alumnoId = alumnoId,
+                    alumnoNombre = alumnoNombre,
+                    claseId = claseId,
+                    claseNombre = claseNombre,
+                    profesorId = profesorId
+                )
+            }
+            
+            // Pantalla para que la familia consulte los registros diarios
+            composable(
+                route = AppScreens.ConsultaRegistroDiario.route,
+                arguments = listOf(
+                    navArgument("alumnoId") { type = NavType.StringType },
+                    navArgument("alumnoNombre") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+                val alumnoNombre = backStackEntry.arguments?.getString("alumnoNombre") ?: ""
+                
+                HiltConsultaRegistroDiarioScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    alumnoId = alumnoId,
+                    alumnoNombre = alumnoNombre
                 )
             }
         }

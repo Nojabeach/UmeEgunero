@@ -402,101 +402,95 @@ object NavigationStructure {
             title = "Inicio",
             icon = Icons.Filled.Home,
             route = AppScreens.ProfesorDashboard.route,
-            description = "Panel principal con tareas pendientes"
+            description = "Dashboard principal del profesor"
         ),
         NavItem(
-            title = "Estudiantes",
-            icon = Icons.Filled.Face,
-            route = "estudiantes_profesor",
-            description = "Gestión de estudiantes asignados",
+            title = "Mis Clases",
+            icon = Icons.Filled.Class,
+            route = AppScreens.AsistenciaProfesor.route,
+            description = "Gestión de mis clases",
             subItems = listOf(
                 NavItem(
-                    title = "Lista de Estudiantes",
+                    title = "Lista de Clases",
                     icon = Icons.Outlined.List,
-                    route = "estudiantes_profesor/lista",
-                    description = "Ver mis estudiantes"
+                    route = AppScreens.AsistenciaProfesor.route,
+                    description = "Ver todas mis clases asignadas"
                 ),
                 NavItem(
-                    title = "Tomar Asistencia",
+                    title = "Asistencia",
                     icon = Icons.Outlined.CheckCircle,
-                    route = "estudiantes_profesor/asistencia",
-                    description = "Registrar asistencia diaria"
-                ),
-                NavItem(
-                    title = "Registrar Evaluaciones",
-                    icon = Icons.Outlined.Assignment,
-                    route = "estudiantes_profesor/evaluaciones",
-                    description = "Gestionar evaluaciones"
+                    route = AppScreens.AsistenciaProfesor.route,
+                    description = "Registrar asistencia"
                 )
             )
         ),
         NavItem(
-            title = "Clases",
-            icon = Icons.Filled.MenuBook,
-            route = "clases_profesor",
-            description = "Administración de clases asignadas",
+            title = "Alumnos",
+            icon = Icons.Filled.ChildCare,
+            route = "alumnos_profesor",
+            description = "Gestión de alumnos",
             subItems = listOf(
                 NavItem(
-                    title = "Mis Clases",
+                    title = "Lista de Alumnos",
                     icon = Icons.Outlined.List,
-                    route = "clases_profesor/lista",
-                    description = "Ver mis clases asignadas"
+                    route = "alumnos_profesor/lista",
+                    description = "Ver todos los alumnos"
                 ),
                 NavItem(
-                    title = "Horarios",
-                    icon = Icons.Outlined.Schedule,
-                    route = "clases_profesor/horarios",
-                    description = "Gestionar horarios"
+                    title = "Actividades",
+                    icon = Icons.Outlined.DirectionsRun,
+                    route = "alumnos_profesor/actividades",
+                    description = "Registro de actividades"
                 ),
                 NavItem(
-                    title = "Planificación",
-                    icon = Icons.Outlined.Event,
-                    route = "clases_profesor/planificacion",
-                    description = "Planificar actividades"
+                    title = "Evaluaciones",
+                    icon = Icons.Outlined.Grade,
+                    route = "alumnos_profesor/evaluaciones",
+                    description = "Gestión de evaluaciones"
                 )
             )
         ),
         NavItem(
-            title = "Registro Diario",
-            icon = Icons.Filled.Edit,
-            route = "registro_diario",
-            description = "Creación de registros diarios",
+            title = "Tareas",
+            icon = Icons.Filled.Assignment,
+            route = AppScreens.TareasProfesor.route,
+            description = "Gestión de tareas y deberes",
             subItems = listOf(
                 NavItem(
-                    title = "Nuevo Registro",
+                    title = "Ver Tareas",
+                    icon = Icons.Outlined.List,
+                    route = AppScreens.TareasProfesor.route,
+                    description = "Ver todas las tareas"
+                ),
+                NavItem(
+                    title = "Crear Tarea",
                     icon = Icons.Outlined.Add,
-                    route = "registro_diario/nuevo",
-                    description = "Crear nuevo registro"
+                    route = AppScreens.TareasProfesor.route,
+                    description = "Crear nueva tarea"
                 ),
                 NavItem(
-                    title = "Editar Registros",
-                    icon = Icons.Outlined.Edit,
-                    route = "registro_diario/editar",
-                    description = "Modificar registros existentes"
-                ),
-                NavItem(
-                    title = "Histórico",
-                    icon = Icons.Outlined.History,
-                    route = "registro_diario/historico",
-                    description = "Ver histórico de registros"
+                    title = "Tarea Recurrente",
+                    icon = Icons.Outlined.Repeat,
+                    route = "tareas_profesor/recurrente",
+                    description = "Crear tarea recurrente"
                 )
             )
         ),
         NavItem(
             title = "Comunicaciones",
             icon = Icons.Filled.Email,
-            route = "comunicaciones_profesor",
+            route = AppScreens.ChatProfesor.route,
             description = "Mensajería con familias",
             subItems = listOf(
                 NavItem(
                     title = "Bandeja de Entrada",
                     icon = Icons.Outlined.Inbox,
-                    route = "comunicaciones_profesor/bandeja",
+                    route = AppScreens.ChatProfesor.route,
                     description = "Ver mensajes recibidos"
                 ),
                 NavItem(
                     title = "Mensaje Individual",
-                    icon = Icons.Outlined.Send,
+                    icon = Icons.Outlined.Person,
                     route = "comunicaciones_profesor/individual",
                     description = "Enviar mensaje a una familia"
                 ),
@@ -511,29 +505,8 @@ object NavigationStructure {
         NavItem(
             title = "Calendario",
             icon = Icons.Filled.CalendarToday,
-            route = AppScreens.Calendario.route,
+            route = AppScreens.CalendarioProfesor.route,
             description = "Gestión de eventos y actividades"
-        ),
-        NavItem(
-            title = "Informes",
-            icon = Icons.Filled.Description,
-            route = "informes_profesor",
-            description = "Generación de informes académicos",
-            subItems = listOf(
-                NavItem(
-                    title = "Informe de Progreso",
-                    icon = Icons.Outlined.TrendingUp,
-                    route = "informes_profesor/progreso",
-                    description = "Generar informe de progreso"
-                ),
-                NavItem(
-                    title = "Boletín de Calificaciones",
-                    icon = Icons.Outlined.Grade,
-                    route = "informes_profesor/boletin",
-                    description = "Crear boletín de calificaciones"
-                )
-            ),
-            dividerAfter = true
         ),
         NavItem(
             title = "Perfil",
@@ -544,29 +517,14 @@ object NavigationStructure {
         NavItem(
             title = "Configuración",
             icon = Icons.Filled.Settings,
-            route = AppScreens.Configuracion.route,
-            description = "Ajustes de la aplicación",
-            subItems = listOf(
-                NavItem(
-                    title = "Parámetros",
-                    icon = Icons.Outlined.Tune,
-                    route = AppScreens.Configuracion.route,
-                    description = "Parámetros generales"
-                ),
-                NavItem(
-                    title = "Soporte Técnico",
-                    icon = Icons.Outlined.Help,
-                    route = AppScreens.SoporteTecnico.route,
-                    description = "Contactar con soporte técnico"
-                ),
-                NavItem(
-                    title = "FAQ",
-                    icon = Icons.Outlined.Info,
-                    route = AppScreens.FAQ.route, 
-                    description = "Preguntas frecuentes"
-                )
-            ),
-            dividerAfter = true
+            route = AppScreens.Config.route,
+            description = "Ajustes de la aplicación"
+        ),
+        NavItem(
+            title = "Cerrar Sesión",
+            icon = Icons.AutoMirrored.Filled.ExitToApp,
+            route = "logout",
+            description = "Cerrar sesión"
         )
     )
 
@@ -575,7 +533,7 @@ object NavigationStructure {
         NavItem(
             title = "Inicio",
             icon = Icons.Filled.Home,
-            route = AppScreens.FamiliarDashboard.route,
+            route = AppScreens.FamiliaDashboard.route,
             description = "Panel principal con resumen de actividad"
         ),
         NavItem(
@@ -587,7 +545,7 @@ object NavigationStructure {
                 NavItem(
                     title = "Perfiles",
                     icon = Icons.Outlined.Person,
-                    route = "estudiantes_familiar/perfiles",
+                    route = AppScreens.DetalleAlumnoFamilia.createRoute(""),
                     description = "Ver perfil de mis hijos"
                 ),
                 NavItem(
@@ -613,95 +571,26 @@ object NavigationStructure {
         NavItem(
             title = "Calendario",
             icon = Icons.Filled.CalendarToday,
-            route = AppScreens.Calendario.route,
-            description = "Calendario de eventos escolares",
-            subItems = listOf(
-                NavItem(
-                    title = "Eventos Próximos",
-                    icon = Icons.Outlined.Event,
-                    route = "calendario_familiar/proximos",
-                    description = "Ver próximos eventos"
-                ),
-                NavItem(
-                    title = "Filtrar por Tipo",
-                    icon = Icons.Outlined.FilterList,
-                    route = "calendario_familiar/filtrar",
-                    description = "Filtrar eventos por tipo"
-                )
-            )
+            route = AppScreens.CalendarioFamilia.route,
+            description = "Calendario de eventos escolares"
+        ),
+        NavItem(
+            title = "Tareas",
+            icon = Icons.Filled.Assignment,
+            route = AppScreens.TareasFamilia.route,
+            description = "Tareas y deberes"
         ),
         NavItem(
             title = "Comunicaciones",
             icon = Icons.Filled.Email,
-            route = "comunicaciones_familiar",
-            description = "Mensajería con profesores",
-            subItems = listOf(
-                NavItem(
-                    title = "Bandeja de Entrada",
-                    icon = Icons.Outlined.Inbox,
-                    route = "comunicaciones_familiar/bandeja",
-                    description = "Ver mensajes recibidos"
-                ),
-                NavItem(
-                    title = "Nuevo Mensaje",
-                    icon = Icons.Outlined.Send,
-                    route = "comunicaciones_familiar/nuevo",
-                    description = "Enviar nuevo mensaje"
-                ),
-                NavItem(
-                    title = "Mensajes Enviados",
-                    icon = Icons.Outlined.Mail,
-                    route = "comunicaciones_familiar/enviados",
-                    description = "Ver mensajes enviados"
-                )
-            )
+            route = AppScreens.ChatFamilia.route,
+            description = "Mensajería con profesores"
         ),
         NavItem(
-            title = "Registro Diario",
-            icon = Icons.Filled.Book,
-            route = "registro_diario_familiar",
-            description = "Información diaria sobre actividades",
-            subItems = listOf(
-                NavItem(
-                    title = "Ver Registro",
-                    icon = Icons.Outlined.Visibility,
-                    route = "registro_diario_familiar/ver",
-                    description = "Ver registro diario"
-                ),
-                NavItem(
-                    title = "Histórico",
-                    icon = Icons.Outlined.History,
-                    route = "registro_diario_familiar/historico",
-                    description = "Ver histórico de registros"
-                )
-            )
-        ),
-        NavItem(
-            title = "Informes",
-            icon = Icons.Filled.Description,
-            route = "informes_familiar",
-            description = "Acceso a informes y documentos",
-            subItems = listOf(
-                NavItem(
-                    title = "Boletines",
-                    icon = Icons.Outlined.Grade,
-                    route = "informes_familiar/boletines",
-                    description = "Boletines de calificaciones"
-                ),
-                NavItem(
-                    title = "Informes de Progreso",
-                    icon = Icons.Outlined.TrendingUp,
-                    route = "informes_familiar/progreso",
-                    description = "Informes de progreso"
-                ),
-                NavItem(
-                    title = "Documentos",
-                    icon = Icons.Outlined.InsertDriveFile,
-                    route = "informes_familiar/documentos",
-                    description = "Documentos del centro"
-                )
-            ),
-            dividerAfter = true
+            title = "Notificaciones",
+            icon = Icons.Filled.Notifications,
+            route = AppScreens.NotificacionesFamilia.route,
+            description = "Centro de notificaciones"
         ),
         NavItem(
             title = "Perfil",
@@ -712,29 +601,14 @@ object NavigationStructure {
         NavItem(
             title = "Configuración",
             icon = Icons.Filled.Settings,
-            route = AppScreens.Configuracion.route,
-            description = "Ajustes de la aplicación",
-            subItems = listOf(
-                NavItem(
-                    title = "Parámetros",
-                    icon = Icons.Outlined.Tune,
-                    route = AppScreens.Configuracion.route,
-                    description = "Parámetros generales"
-                ),
-                NavItem(
-                    title = "Soporte Técnico",
-                    icon = Icons.Outlined.Help,
-                    route = AppScreens.SoporteTecnico.route,
-                    description = "Contactar con soporte técnico"
-                ),
-                NavItem(
-                    title = "FAQ",
-                    icon = Icons.Outlined.Info,
-                    route = AppScreens.FAQ.route, 
-                    description = "Preguntas frecuentes"
-                )
-            ),
-            dividerAfter = true
+            route = AppScreens.Config.route,
+            description = "Ajustes de la aplicación"
+        ),
+        NavItem(
+            title = "Cerrar Sesión",
+            icon = Icons.AutoMirrored.Filled.ExitToApp,
+            route = "logout",
+            description = "Cerrar sesión"
         )
     )
 

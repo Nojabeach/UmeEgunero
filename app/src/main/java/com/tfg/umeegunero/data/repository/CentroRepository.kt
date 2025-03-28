@@ -19,6 +19,7 @@ import timber.log.Timber
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
+import com.tfg.umeegunero.data.model.Result
 
 @Singleton
 class CentroRepository @Inject constructor(

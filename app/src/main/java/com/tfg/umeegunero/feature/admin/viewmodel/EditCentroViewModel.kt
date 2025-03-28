@@ -8,7 +8,7 @@ import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.data.repository.CentroRepository
-import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

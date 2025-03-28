@@ -7,7 +7,7 @@ import com.tfg.umeegunero.data.model.Notificacion
 import com.tfg.umeegunero.data.model.PrioridadNotificacion
 import com.tfg.umeegunero.data.model.TipoNotificacion
 import com.tfg.umeegunero.data.repository.NotificacionRepository
-import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

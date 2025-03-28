@@ -8,7 +8,7 @@ import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.navigation.NavController
+import com.tfg.umeegunero.navigation.AppScreens
 
 /**
  * Estado UI para la pantalla de dashboard del familiar
@@ -430,5 +432,17 @@ class FamiliarDashboardViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * Función para navegar a la pantalla de consulta de registros diarios de un alumno
+     */
+    fun navegarAConsultaRegistroDiario(navController: NavController, alumno: Alumno) {
+        navController.navigate(
+            AppScreens.ConsultaRegistroDiario.createRoute(
+                alumnoId = alumno.dni,
+                alumnoNombre = "${alumno.nombre} ${alumno.apellidos}"
+            )
+        )
     }
 }

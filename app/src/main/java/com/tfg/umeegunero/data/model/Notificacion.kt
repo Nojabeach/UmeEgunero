@@ -27,17 +27,6 @@ data class Notificacion(
 )
 
 /**
- * Tipos de notificaciones disponibles en el sistema
- */
-enum class TipoNotificacion {
-    SISTEMA,      // Notificaciones del sistema (actualizaciones, mantenimiento, etc.)
-    EVENTO,       // Eventos del calendario, fechas importantes
-    MENSAJE,      // Mensajes personales
-    ACADEMICO,    // Relacionado con actividades académicas
-    ALERTA        // Alertas importantes
-}
-
-/**
  * Nivel de prioridad de la notificación
  */
 enum class PrioridadNotificacion {

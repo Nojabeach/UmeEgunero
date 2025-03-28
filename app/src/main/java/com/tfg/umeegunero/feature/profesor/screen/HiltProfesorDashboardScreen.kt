@@ -1,54 +1,34 @@
 package com.tfg.umeegunero.feature.profesor.screen
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.Badge
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
@@ -66,7 +46,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HiltProfesorDashboardScreen(
-    navController: NavController,
+    navController: NavHostController,
     viewModel: ProfesorDashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -148,7 +128,8 @@ fun HiltProfesorDashboardScreen(
                 } else {
                     ProfesorHomeContent(
                         alumnosPendientes = uiState.alumnosPendientes,
-                        onCrearRegistroActividad = viewModel::crearRegistroActividad
+                        onCrearRegistroActividad = viewModel::crearRegistroActividad,
+                        navController = navController
                     )
                 }
             }
@@ -161,7 +142,7 @@ fun HiltProfesorDashboardScreen(
  */
 private fun handleNavigation(
     route: String,
-    navController: NavController,
+    navController: NavHostController,
     viewModel: ProfesorDashboardViewModel,
     isImplemented: Boolean = true
 ): Boolean {
@@ -218,10 +199,205 @@ private fun getRouteTitleForDummy(route: String): String {
 }
 
 /**
+ * Contenido principal de la pantalla del profesor
+ */
+@Composable
+fun ProfesorHomeContent(
+    alumnosPendientes: Int,
+    onCrearRegistroActividad: () -> Unit,
+    navController: NavHostController
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Tarjetas de información
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            InfoCard(
+                title = "Alumnos Pendientes",
+                value = alumnosPendientes.toString(),
+                icon = Icons.Default.Person,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        navController.navigate(AppScreens.Dummy.createRoute("Alumnos Pendientes"))
+                    }
+            )
+            
+            InfoCard(
+                title = "Asistencia",
+                value = "Pendiente",
+                icon = Icons.Default.CheckCircle,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        navController.navigate(AppScreens.Dummy.createRoute("Registro de Asistencia"))
+                    }
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Segunda fila de tarjetas
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            InfoCard(
+                title = "Tareas",
+                value = "2 Pendientes",
+                icon = Icons.Default.Assignment,
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        navController.navigate(AppScreens.Dummy.createRoute("Tareas Pendientes"))
+                    }
+            )
+            
+            InfoCard(
+                title = "Eventos",
+                value = "Próximamente",
+                icon = Icons.Default.CalendarToday,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        navController.navigate(AppScreens.Dummy.createRoute("Calendario de Eventos"))
+                    }
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Acciones rápidas
+        Text(
+            text = "Acciones Rápidas",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ActionButton(
+                text = "Registrar Asistencia",
+                icon = Icons.Default.CheckCircle,
+                onClick = {
+                    navController.navigate(AppScreens.Dummy.createRoute("Registrar Asistencia"))
+                }
+            )
+            
+            ActionButton(
+                text = "Enviar Mensaje a Padres",
+                icon = Icons.AutoMirrored.Filled.Chat,
+                onClick = {
+                    navController.navigate(AppScreens.Dummy.createRoute("Mensajes a Padres"))
+                }
+            )
+            
+            ActionButton(
+                text = "Crear Actividad",
+                icon = Icons.Default.Add,
+                onClick = onCrearRegistroActividad
+            )
+        }
+    }
+}
+
+/**
+ * Tarjeta de información con título, valor e icono
+ */
+@Composable
+fun InfoCard(
+    title: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.height(120.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.15f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(32.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Botón de acción con texto e icono
+ */
+@Composable
+fun ActionButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    ElevatedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(vertical = 16.dp, horizontal = 24.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+/**
  * Contenido del drawer de navegación
  */
 @Composable
-private fun DrawerContent(
+fun DrawerContent(
     navItems: List<NavigationStructure.NavItem>,
     currentUser: Usuario?,
     onNavigate: (String, Boolean) -> Boolean,
@@ -230,154 +406,103 @@ private fun DrawerContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(vertical = 24.dp)
+            .padding(16.dp)
     ) {
-        // Cabecera con información del usuario
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = "Profesor",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = currentUser?.email ?: "Usuario",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        // Cabecera del drawer con información del usuario
+        DrawerHeader(currentUser)
         
-        Divider(
-            modifier = Modifier.padding(vertical = 12.dp),
-            color = MaterialTheme.colorScheme.outlineVariant
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Lista de opciones de navegación
+        DrawerBody(
+            items = navItems,
+            onNavigate = onNavigate
         )
         
-        // Lista de items de navegación
-        LazyColumn {
-            items(navItems) { item ->
-                DrawerNavItem(
-                    navItem = item,
-                    onItemClick = { route, isImplemented ->
-                        val handled = onNavigate(route, isImplemented)
-                        if (handled) {
-                            onCloseDrawer()
-                        }
-                    }
-                )
-            }
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Botón de cerrar drawer (opcional)
+        TextButton(
+            onClick = onCloseDrawer,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text("Cerrar menú")
         }
     }
 }
 
 /**
- * Item de navegación en el drawer
+ * Cabecera del drawer con información del usuario
  */
 @Composable
-private fun DrawerNavItem(
-    navItem: NavigationStructure.NavItem,
-    onItemClick: (String, Boolean) -> Unit
+fun DrawerHeader(
+    usuario: Usuario?
 ) {
-    val isExpanded = remember { mutableStateOf(false) }
-    
-    Column {
-        Surface(
-            onClick = {
-                if (navItem.subItems.isEmpty()) {
-                    onItemClick(navItem.route, true)
-                } else {
-                    isExpanded.value = !isExpanded.value
-                }
-            },
-            color = Color.Transparent
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = MaterialTheme.shapes.large
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = navItem.icon,
-                    contentDescription = navItem.title,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Text(
-                    text = navItem.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                if (navItem.badge != null) {
-                    Badge(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    ) {
-                        Text(text = navItem.badge.toString())
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                
-                if (navItem.subItems.isNotEmpty()) {
-                    Icon(
-                        imageVector = if (isExpanded.value) 
-                            Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (isExpanded.value) 
-                            "Colapsar" else "Expandir"
-                    )
-                }
-            }
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(40.dp)
+            )
         }
         
-        // Mostrar subitems si está expandido
-        if (isExpanded.value && navItem.subItems.isNotEmpty()) {
-            navItem.subItems.forEach { subItem ->
-                Surface(
-                    onClick = { onItemClick(subItem.route, true) },
-                    color = Color.Transparent
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 56.dp, end = 24.dp, top = 8.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = subItem.icon,
-                            contentDescription = subItem.title,
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Text(
-                            text = subItem.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        if (subItem.badge != null) {
-                            Badge(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            ) {
-                                Text(text = subItem.badge.toString())
-                            }
-                        }
-                    }
-                }
-            }
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = usuario?.nombre ?: "Usuario",
+            style = MaterialTheme.typography.titleLarge
+        )
+        
+        Text(
+            text = usuario?.email ?: "email@example.com",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Cuerpo del drawer con lista de opciones de navegación
+ */
+@Composable
+fun DrawerBody(
+    items: List<NavigationStructure.NavItem>,
+    onNavigate: (String, Boolean) -> Boolean
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items.forEach { item ->
+            NavigationDrawerItem(
+                label = { Text(item.title) },
+                selected = false,
+                onClick = { onNavigate(item.route, item.isImplemented) },
+                icon = {
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = null
+                    )
+                },
+                colors = NavigationDrawerItemDefaults.colors(
+                    unselectedContainerColor = Color.Transparent
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

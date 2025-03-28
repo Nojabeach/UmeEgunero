@@ -284,6 +284,10 @@ private fun NotificacionItem(
                             TipoNotificacion.MENSAJE -> Icons.Default.Email
                             TipoNotificacion.ACADEMICO -> Icons.Default.School
                             TipoNotificacion.ALERTA -> Icons.Default.Warning
+                            TipoNotificacion.GENERAL -> Icons.Default.Notifications
+                            TipoNotificacion.ANUNCIO -> Icons.Default.Campaign
+                            TipoNotificacion.TAREA -> Icons.Default.Assignment
+                            TipoNotificacion.URGENTE -> Icons.Default.PriorityHigh
                         },
                         contentDescription = null,
                         tint = Color.White,
@@ -444,7 +448,11 @@ private fun FilterDialog(
         TipoNotificacion.EVENTO to "Eventos",
         TipoNotificacion.MENSAJE to "Mensajes",
         TipoNotificacion.ACADEMICO to "Académicas",
-        TipoNotificacion.ALERTA to "Alertas"
+        TipoNotificacion.ALERTA to "Alertas",
+        TipoNotificacion.GENERAL to "Generales",
+        TipoNotificacion.ANUNCIO to "Anuncios",
+        TipoNotificacion.TAREA to "Tareas",
+        TipoNotificacion.URGENTE to "Urgentes"
     )
     
     AlertDialog(

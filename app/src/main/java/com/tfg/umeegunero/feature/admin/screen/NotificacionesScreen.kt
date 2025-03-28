@@ -41,6 +41,7 @@ import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.*
+import com.tfg.umeegunero.data.model.TipoNotificacion
 
 /**
  * Modelo de datos para las notificaciones
@@ -53,10 +54,6 @@ data class Notificacion(
     val leida: Boolean,
     val tipo: TipoNotificacion
 )
-
-enum class TipoNotificacion {
-    SISTEMA, EVENTO, MENSAJE
-}
 
 /**
  * Pantalla de notificaciones para administrador
@@ -194,6 +191,12 @@ private fun NotificacionItem(notificacion: Notificacion) {
                         TipoNotificacion.SISTEMA -> Icons.Default.Notifications
                         TipoNotificacion.EVENTO -> Icons.Default.NotificationsActive
                         TipoNotificacion.MENSAJE -> Icons.Default.Notifications
+                        TipoNotificacion.GENERAL -> Icons.Default.Notifications
+                        TipoNotificacion.ANUNCIO -> Icons.Default.Campaign
+                        TipoNotificacion.TAREA -> Icons.Default.Assignment
+                        TipoNotificacion.URGENTE -> Icons.Default.PriorityHigh
+                        TipoNotificacion.ACADEMICO -> Icons.Default.School
+                        TipoNotificacion.ALERTA -> Icons.Default.Warning
                     },
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer

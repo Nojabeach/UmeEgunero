@@ -8,7 +8,7 @@ import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.repository.Result
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDate
 import javax.inject.Inject
+import androidx.navigation.NavController
+import com.tfg.umeegunero.navigation.AppScreens
 
 /**
  * Estado UI para la pantalla de dashboard del profesor
@@ -420,5 +422,20 @@ class ProfesorDashboardViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * Función para navegar a la pantalla de registro diario de un alumno
+     */
+    fun navegarARegistroDiario(navController: NavController, alumno: Alumno, profesorId: String, claseId: String, claseNombre: String) {
+        navController.navigate(
+            AppScreens.RegistroDiario.createRoute(
+                alumnoId = alumno.dni,
+                claseId = claseId,
+                profesorId = profesorId,
+                alumnoNombre = "${alumno.nombre} ${alumno.apellidos}",
+                claseNombre = claseNombre
+            )
+        )
     }
 }

@@ -88,4 +88,24 @@ class CalendarioRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    /**
+     * Obtiene el ID del usuario actual
+     * @return ID del usuario autenticado
+     */
+    fun obtenerUsuarioId(): String {
+        // Por simplicidad, se utiliza un valor predeterminado
+        // En una implementación real, se obtendría del servicio de autenticación
+        return "profesor_1"
+    }
+
+    /**
+     * Obtiene el ID del centro al que pertenece el usuario actual
+     * @return ID del centro educativo
+     */
+    fun obtenerCentroId(): String {
+        // Por simplicidad, se utiliza un valor predeterminado
+        // En una implementación real, se obtendría de las propiedades del usuario
+        return "centro_1"
+    }
 } 
