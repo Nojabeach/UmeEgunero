@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -114,8 +115,21 @@ import androidx.navigation.PopUpToBuilder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
+import com.tfg.umeegunero.util.PaginationUtils
+import com.tfg.umeegunero.util.AccessibilityUtils.accessibleClickable
+import com.tfg.umeegunero.feature.admin.components.PaginatedCentrosList
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.tfg.umeegunero.feature.admin.components.StatsOverviewCard
+import com.tfg.umeegunero.feature.admin.components.StatsOverviewRow
+import com.tfg.umeegunero.feature.admin.components.StatItem
+import androidx.compose.material.icons.filled.Warning
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -132,6 +146,7 @@ fun AdminDashboardScreen(
     val currentUser = uiState.currentUser
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     
     if (uiState.navigateToWelcome) {
         LaunchedEffect(true) {
@@ -191,6 +206,9 @@ fun AdminDashboardScreen(
                         navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
+            },
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState)
             }
         ) { paddingValues ->
             Box(
@@ -205,6 +223,32 @@ fun AdminDashboardScreen(
             }
         }
     }
+
+    // Mostrar error si existe
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = it,
+                    withDismissAction = true
+                )
+                viewModel.clearError()
+            }
+        }
+    }
+
+    // Mostrar mensaje de éxito si existe
+    LaunchedEffect(uiState.mensajeExito) {
+        uiState.mensajeExito?.let {
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = it,
+                    withDismissAction = true
+                )
+                viewModel.clearMensajeExito()
+            }
+        }
+    }
 }
 
 @Composable
@@ -215,16 +259,194 @@ private fun AdminDashboardContent() {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Encabezado
         Text(
             text = "Bienvenido al Panel de Administración",
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.primary
         )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Tarjetas de acceso rápido
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            AccesoRapidoCard(
+                title = "Centros",
+                icon = Icons.Default.School,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                onClick = { /* Navegar a gestión de centros */ },
+                modifier = Modifier.weight(1f)
+            )
+            
+            AccesoRapidoCard(
+                title = "Usuarios",
+                icon = Icons.Default.Person,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                onClick = { /* Navegar a gestión de usuarios */ },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            AccesoRapidoCard(
+                title = "Config.",
+                icon = Icons.Default.Settings,
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                onClick = { /* Navegar a configuración */ },
+                modifier = Modifier.weight(1f)
+            )
+            
+            AccesoRapidoCard(
+                title = "Ayuda",
+                icon = Icons.Default.Info,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                onClick = { /* Mostrar ayuda */ },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
         Spacer(modifier = Modifier.height(32.dp))
         
+        // Resumen de estadísticas
         Text(
-            text = "Selecciona una opción del menú lateral para comenzar",
-            style = MaterialTheme.typography.bodyLarge
+            text = "Resumen del sistema",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        EstadisticasResumen(
+            totalCentros = 15,
+            totalUsuarios = 324,
+            nuevosRegistros = 8,
+            alertas = 2
+        )
+    }
+}
+
+@Composable
+fun AccesoRapidoCard(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .height(110.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = color
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(32.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+    }
+}
+
+@Composable
+fun EstadisticasResumen(
+    totalCentros: Int,
+    totalUsuarios: Int,
+    nuevosRegistros: Int,
+    alertas: Int
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Primera fila
+        StatsOverviewRow(
+            stats = listOf(
+                StatItem(
+                    title = "Centros",
+                    value = totalCentros.toString(),
+                    icon = Icons.Default.School,
+                    color = MaterialTheme.colorScheme.primary
+                ),
+                StatItem(
+                    title = "Usuarios",
+                    value = totalUsuarios.toString(),
+                    icon = Icons.Default.Person,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            )
+        )
+        
+        // Segunda fila
+        StatsOverviewRow(
+            stats = listOf(
+                StatItem(
+                    title = "Nuevos",
+                    value = nuevosRegistros.toString(),
+                    icon = Icons.Default.Add,
+                    color = MaterialTheme.colorScheme.tertiary
+                ),
+                StatItem(
+                    title = "Alertas",
+                    value = alertas.toString(),
+                    icon = Icons.Default.Warning,
+                    color = if (alertas > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
+                )
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AdminDashboardContentPreview() {
+    UmeEguneroTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            AdminDashboardContent()
+        }
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun AdminDashboardContentDarkPreview() {
+    UmeEguneroTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            AdminDashboardContent()
+        }
     }
 }
 
@@ -244,190 +466,32 @@ fun DummyScreen(title: String) {
     }
 }
 
+@Preview(showBackground = true)
 @Composable
-fun CentrosEducativosContent(
-    centros: List<Centro>,
-    isLoading: Boolean,
-    onEditCentro: (String) -> Unit,
-    onDeleteCentro: (String) -> Unit,
-    onRefresh: () -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Listado de Centros",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-
-                IconButton(onClick = onRefresh) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Recargar",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        if (isLoading) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-        } else if (centros.isNotEmpty()) {
-            items(centros) { centro ->
-                CentroEducativoItem(
-                    centro = centro,
-                    onEdit = { onEditCentro(centro.id) },
-                    onDelete = { onDeleteCentro(centro.id) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        } else {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "No hay centros educativos disponibles",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Agrega un nuevo centro usando el botón '+' de abajo",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CentroEducativoItem(
-    centro: Centro,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.School,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+fun CentrosEducativosContentPreview() {
+    UmeEguneroTheme {
+        val centros = List(10) { index ->
+            Centro(
+                id = "centro_$index",
+                nombre = "Centro Educativo ${index + 1}",
+                direccion = Direccion(
+                    calle = "Calle Principal $index",
+                    ciudad = "Madrid"
+                ),
+                contacto = Contacto(
+                    telefono = "91234567$index",
+                    email = "centro$index@educacion.es"
+                ),
+                activo = index % 3 != 0
             )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = centro.nombre,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Text(
-                    text = "${centro.direccion.ciudad}, ${centro.direccion.provincia}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            IconButton(onClick = onEdit) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Editar",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            IconButton(onClick = { showDeleteDialog = true }) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
         }
-    }
-    
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Eliminar centro") },
-            text = { 
-                Text(
-                    "¿Está seguro de que desea eliminar este centro? " +
-                    "Esta acción eliminará permanentemente el centro y todos sus datos asociados " +
-                    "(usuarios, alumnos, clases, cursos, etc.) y no puede deshacerse."
-                ) 
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDelete()
-                        showDeleteDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
-        )
+        
+        Surface(color = MaterialTheme.colorScheme.background) {
+            PaginatedCentrosList(
+                centros = centros,
+                isLoading = false
+            )
+        }
     }
 }
 
@@ -762,7 +826,10 @@ private fun DashboardContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp)
+                .semantics { 
+                    contentDescription = "Bienvenido al Panel de Administración. Selecciona una opción del menú lateral para comenzar." 
+                },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -771,7 +838,8 @@ private fun DashboardContent(
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clearAndSetSemantics {} // Ya incluido en el contenedor principal
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -779,29 +847,38 @@ private fun DashboardContent(
             Text(
                 text = "Selecciona una opción del menú lateral para comenzar",
                 style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.clearAndSetSemantics {} // Ya incluido en el contenedor principal
             )
         }
     } else {
         // Listado de centros
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics { 
+                    contentDescription = "Panel de administración de centros educativos" 
+                }
         ) {
             CentrosListContent(
                 navController = navController,
                 viewModel = viewModel
             )
             
-            // FAB para añadir nuevo centro
+            // FAB para añadir nuevo centro con soporte de accesibilidad
             ExtendedFloatingActionButton(
                 onClick = { navController.navigate(AppScreens.AddCentro.route) },
-                icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Añadir centro") },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
+                    .semantics { 
+                        contentDescription = "Añadir nuevo centro educativo" 
+                        role = Role.Button
+                    }
             )
         }
     }
@@ -814,170 +891,37 @@ private fun CentrosListContent(
 ) {
     val centros by viewModel.centros.collectAsState(initial = emptyList())
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
     
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            text = "Listado de centros",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (centros.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "No hay centros disponibles",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Button(
-                        onClick = { navController.navigate(AppScreens.AddCentro.route) }
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Añadir centro")
-                    }
-                }
-            }
-        } else {
-            LazyColumn {
-                items(centros) { centro ->
-                    CentroListItem(
-                        centro = centro,
-                        onEditClick = {
-                            navController.navigate(AppScreens.EditCentro.createRoute(centro.id))
-                        },
-                        onDeleteClick = {
-                            viewModel.deleteCentro(centro.id)
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CentroListItem(
-    centro: Centro,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
-) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Icono del centro educativo
-                Icon(
-                    imageVector = Icons.Default.School,
-                    contentDescription = "Centro educativo",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                Text(
-                    text = centro.nombre,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+        Column(modifier = Modifier.fillMaxSize()) {
             Text(
-                text = "Dirección: ${centro.direccion.ciudad}, ${centro.direccion.provincia}",
-                style = MaterialTheme.typography.bodyMedium
+                text = "Listado de centros",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
+                    .semantics { contentDescription = "Encabezado: Listado de centros" }
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                // Botón para editar
-                IconButton(onClick = onEditClick) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                
-                // Botón para eliminar
-                IconButton(onClick = { showDeleteDialog = true }) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
+            // Usamos el componente reutilizable para la lista paginada
+            PaginatedCentrosList(
+                centros = centros,
+                isLoading = uiState.isLoading,
+                onCentroClick = { centro ->
+                    navController.navigate(AppScreens.DetalleCentro.createRoute(centro.id))
+                },
+                onDeleteCentro = { centroId ->
+                    viewModel.deleteCentro(centroId)
+                },
+                modifier = Modifier.weight(1f)
+            )
         }
-    }
-    
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Eliminar centro") },
-            text = { 
-                Text(
-                    "¿Está seguro de que desea eliminar este centro? " +
-                    "Esta acción eliminará permanentemente el centro y todos sus datos asociados " +
-                    "(usuarios, alumnos, clases, cursos, etc.) y no puede deshacerse."
-                ) 
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDeleteClick()
-                        showDeleteDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
-        )
     }
 }
 

@@ -9,6 +9,7 @@ import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.ErrorHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,9 @@ import javax.inject.Inject
 import timber.log.Timber
 import kotlinx.coroutines.flow.map
 
+/**
+ * Estado UI para la pantalla de dashboard del administrador
+ */
 data class AdminDashboardUiState(
     val centros: List<Centro> = emptyList(),
     val usuarios: List<Usuario> = emptyList(),
@@ -27,14 +31,20 @@ data class AdminDashboardUiState(
     val error: String? = null,
     val currentUser: Usuario? = null,
     val navigateToWelcome: Boolean = false,
-    val showListadoCentros: Boolean = false
+    val showListadoCentros: Boolean = false,
+    val mensajeExito: String? = null
 )
 
+/**
+ * ViewModel para la pantalla de dashboard del administrador
+ * Gestiona todas las operaciones relacionadas con la administración de centros y usuarios
+ */
 @HiltViewModel
 class AdminDashboardViewModel @Inject constructor(
     private val centroRepository: CentroRepository,
     private val usuarioRepository: UsuarioRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val errorHandler: ErrorHandler
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AdminDashboardUiState())
@@ -49,6 +59,9 @@ class AdminDashboardViewModel @Inject constructor(
         loadCurrentUser()
     }
 
+    /**
+     * Carga todos los centros educativos
+     */
     fun loadCentros() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -66,28 +79,33 @@ class AdminDashboardViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
+                        val errorMsg = errorHandler.procesarError(result.exception)
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = result.exception.message ?: "Error al cargar los centros"
+                                error = errorMsg
                             )
                         }
-                        Timber.e(result.exception, "Error al cargar los centros")
+                        Timber.e(result.exception, "Error al cargar los centros: $errorMsg")
                     }
                     else -> {}
                 }
             } catch (e: Exception) {
+                val errorMsg = errorHandler.procesarError(e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Error inesperado al cargar los centros"
+                        error = errorMsg
                     )
                 }
-                Timber.e(e, "Error inesperado al cargar los centros")
+                Timber.e(e, "Error inesperado al cargar los centros: $errorMsg")
             }
         }
     }
     
+    /**
+     * Carga todos los usuarios del sistema por tipo
+     */
     fun loadUsuarios() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingUsuarios = true, error = null) }
@@ -109,13 +127,14 @@ class AdminDashboardViewModel @Inject constructor(
                             usuarios.addAll(result.data)
                         }
                         is Result.Error -> {
+                            val errorMsg = errorHandler.procesarError(result.exception)
                             _uiState.update {
                                 it.copy(
                                     isLoadingUsuarios = false,
-                                    error = result.exception.message ?: "Error al cargar los usuarios de tipo $tipo"
+                                    error = errorMsg
                                 )
                             }
-                            Timber.e(result.exception, "Error al cargar usuarios de tipo $tipo")
+                            Timber.e(result.exception, "Error al cargar usuarios de tipo $tipo: $errorMsg")
                             return@launch
                         }
                         else -> {}
@@ -130,19 +149,25 @@ class AdminDashboardViewModel @Inject constructor(
                 }
                 
             } catch (e: Exception) {
+                val errorMsg = errorHandler.procesarError(e)
                 _uiState.update {
                     it.copy(
                         isLoadingUsuarios = false,
-                        error = e.message ?: "Error inesperado al cargar los usuarios"
+                        error = errorMsg
                     )
                 }
-                Timber.e(e, "Error inesperado al cargar los usuarios")
+                Timber.e(e, "Error inesperado al cargar los usuarios: $errorMsg")
             }
         }
     }
 
+    /**
+     * Elimina un centro educativo
+     */
     fun deleteCentro(centroId: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
             try {
                 val result = centroRepository.deleteCentro(centroId)
 
@@ -150,63 +175,101 @@ class AdminDashboardViewModel @Inject constructor(
                     is Result.Success -> {
                         // Recargar la lista después de borrar
                         loadCentros()
+                        _uiState.update {
+                            it.copy(
+                                mensajeExito = "Centro eliminado correctamente",
+                                isLoading = false
+                            )
+                        }
                     }
                     is Result.Error -> {
+                        val errorMsg = errorHandler.procesarError(result.exception)
                         _uiState.update {
-                            it.copy(error = result.exception.message ?: "Error al eliminar el centro")
+                            it.copy(
+                                error = errorMsg,
+                                isLoading = false
+                            )
                         }
-                        Timber.e(result.exception, "Error al eliminar el centro")
+                        Timber.e(result.exception, "Error al eliminar el centro: $errorMsg")
                     }
                     else -> {}
                 }
             } catch (e: Exception) {
+                val errorMsg = errorHandler.procesarError(e)
                 _uiState.update {
-                    it.copy(error = e.message ?: "Error inesperado al eliminar el centro")
+                    it.copy(
+                        error = errorMsg,
+                        isLoading = false
+                    )
                 }
-                Timber.e(e, "Error inesperado al eliminar el centro")
+                Timber.e(e, "Error inesperado al eliminar el centro: $errorMsg")
             }
         }
     }
     
+    /**
+     * Elimina un usuario del sistema
+     */
     fun deleteUsuario(usuarioDni: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
             try {
-                _uiState.update { it.copy(isLoading = true) }
-                
                 val result = usuarioRepository.borrarUsuarioByDni(usuarioDni)
                 
                 when (result) {
                     is Result.Success -> {
                         // Recargar la lista después de borrar
                         loadUsuarios()
+                        _uiState.update {
+                            it.copy(
+                                mensajeExito = "Usuario eliminado correctamente",
+                                isLoading = false
+                            )
+                        }
                     }
                     is Result.Error -> {
+                        val errorMsg = errorHandler.procesarError(result.exception)
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = result.exception.message ?: "Error al eliminar el usuario"
+                                error = errorMsg
                             )
                         }
-                        Timber.e(result.exception, "Error al eliminar el usuario")
+                        Timber.e(result.exception, "Error al eliminar el usuario: $errorMsg")
                     }
                     else -> { /* Ignorar estado loading */ }
                 }
             } catch (e: Exception) {
+                val errorMsg = errorHandler.procesarError(e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Error inesperado al eliminar el usuario"
+                        error = errorMsg
                     )
                 }
-                Timber.e(e, "Error inesperado al eliminar el usuario")
+                Timber.e(e, "Error inesperado al eliminar el usuario: $errorMsg")
             }
         }
     }
 
+    /**
+     * Limpia el mensaje de error
+     */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
+    
+    /**
+     * Limpia el mensaje de éxito
+     */
+    fun clearMensajeExito() {
+        _uiState.update { it.copy(mensajeExito = null) }
+    }
 
+    /**
+     * Carga los datos del usuario actual
+     */
     private fun loadCurrentUser() {
         viewModelScope.launch {
             try {
@@ -215,40 +278,48 @@ class AdminDashboardViewModel @Inject constructor(
                 val currentFirebaseUser = authRepository.getCurrentUser()
                 
                 if (currentFirebaseUser != null) {
-                    // Aquí podríamos necesitar buscar el perfil completo del usuario
-                    // usando algún campo identificador como el email o ID
+                    // Buscar el perfil completo del usuario usando su email
                     when (val userResult = usuarioRepository.getUsuarioByEmail(currentFirebaseUser.email)) {
                         is Result.Success -> {
                             _uiState.update { it.copy(currentUser = userResult.data) }
                         }
                         is Result.Error -> {
-                            Timber.e(userResult.exception, "Error al cargar perfil de usuario")
+                            val errorMsg = errorHandler.procesarError(userResult.exception)
+                            Timber.e(userResult.exception, "Error al cargar perfil de usuario: $errorMsg")
                         }
                         else -> { /* Ignorar estado loading */ }
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar el usuario actual")
+                val errorMsg = errorHandler.procesarError(e)
+                Timber.e(e, "Error al cargar el usuario actual: $errorMsg")
             }
         }
     }
 
+    /**
+     * Cierra la sesión del usuario actual
+     */
     fun logout() {
         viewModelScope.launch {
             try {
                 authRepository.signOut()
                 _uiState.update { it.copy(navigateToWelcome = true, currentUser = null) }
             } catch (e: Exception) {
-                Timber.e(e, "Error al cerrar sesión")
+                val errorMsg = errorHandler.procesarError(e)
+                Timber.e(e, "Error al cerrar sesión: $errorMsg")
                 _uiState.update { 
-                    it.copy(error = e.message ?: "Error al cerrar sesión")
+                    it.copy(error = errorMsg)
                 }
             }
         }
     }
 
+    /**
+     * Controla la visibilidad del listado de centros
+     */
     fun setShowListadoCentros(show: Boolean) {
-        _uiState.value = _uiState.value.copy(showListadoCentros = show)
+        _uiState.update { it.copy(showListadoCentros = show) }
     }
 
     /**

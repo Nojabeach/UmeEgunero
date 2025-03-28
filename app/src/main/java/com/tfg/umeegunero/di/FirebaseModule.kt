@@ -12,6 +12,8 @@ import com.tfg.umeegunero.data.repository.ClaseRepositoryImpl
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.DebugUtils
+import com.tfg.umeegunero.util.FirestoreCache
+import com.tfg.umeegunero.util.ErrorHandler
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -79,14 +81,28 @@ object FirebaseModule {
     @Singleton
     fun provideCentroRepository(
         firestore: FirebaseFirestore,
-        auth: FirebaseAuth
+        auth: FirebaseAuth,
+        firestoreCache: FirestoreCache,
+        errorHandler: ErrorHandler
     ): CentroRepository {
-        return CentroRepository(firestore, auth)
+        return CentroRepository(firestore, auth, firestoreCache, errorHandler)
     }
     
     @Provides
     @Singleton
     fun provideCiudadRepository(@ApplicationContext context: Context): CiudadRepository {
         return CiudadRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirestoreCache(): FirestoreCache {
+        return FirestoreCache()
+    }
+
+    @Provides
+    @Singleton
+    fun provideErrorHandler(): ErrorHandler {
+        return ErrorHandler()
     }
 }

@@ -20,79 +20,156 @@ import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.FirestoreCache
+import com.tfg.umeegunero.util.ErrorHandler
 
 @Singleton
 class CentroRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val firestoreCache: FirestoreCache,
+    private val errorHandler: ErrorHandler
 ) {
     private val centrosCollection = firestore.collection("centros")
     private val functions = Firebase.functions
+    
+    // Constantes para las claves de caché
+    private object CacheKeys {
+        const val ALL_CENTROS = "all_centros"
+        const val ACTIVE_CENTROS = "active_centros"
+        const val CENTRO_BY_ID_PREFIX = "centro_id_"
+        const val CENTRO_BY_NOMBRE_PREFIX = "centro_nombre_"
+    }
 
     /**
-     * Obtiene todos los centros educativos
+     * Obtiene todos los centros educativos con soporte de caché
      */
     suspend fun getAllCentros(): Result<List<Centro>> = withContext(Dispatchers.IO) {
         try {
+            // Intentar obtener de la caché primero
+            val cachedCentros = firestoreCache.get<List<Centro>>(CacheKeys.ALL_CENTROS)
+            
+            if (cachedCentros != null) {
+                return@withContext Result.Success(cachedCentros)
+            }
+            
+            // Si no está en caché, obtener de Firestore
             val centrosSnapshot = centrosCollection.get().await()
             val centros = centrosSnapshot.toObjects(Centro::class.java)
+            
+            // Guardar en caché para futuras consultas
+            firestoreCache.put(CacheKeys.ALL_CENTROS, centros)
+            
             return@withContext Result.Success(centros)
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al obtener todos los centros: $errorMsg")
             return@withContext Result.Error(e)
         }
     }
 
     /**
-     * Obtiene los centros educativos activos
+     * Obtiene los centros educativos activos con soporte de caché
      */
     suspend fun getActiveCentros(): Result<List<Centro>> = withContext(Dispatchers.IO) {
         try {
+            // Intentar obtener de la caché primero
+            val cachedCentros = firestoreCache.get<List<Centro>>(CacheKeys.ACTIVE_CENTROS)
+            
+            if (cachedCentros != null) {
+                return@withContext Result.Success(cachedCentros)
+            }
+            
+            // Si no está en caché, obtener de Firestore
             val centrosSnapshot = centrosCollection.whereEqualTo("activo", true).get().await()
             val centros = centrosSnapshot.toObjects(Centro::class.java)
+            
+            // Guardar en caché para futuras consultas
+            firestoreCache.put(CacheKeys.ACTIVE_CENTROS, centros)
+            
             return@withContext Result.Success(centros)
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al obtener centros activos: $errorMsg")
             return@withContext Result.Error(e)
         }
     }
 
     /**
-     * Obtiene un centro por su nombre
+     * Obtiene un centro por su nombre con soporte de caché
      */
     suspend fun getCentroByNombre(nombre: String): Result<Centro?> = withContext(Dispatchers.IO) {
         try {
+            val cacheKey = "${CacheKeys.CENTRO_BY_NOMBRE_PREFIX}$nombre"
+            
+            // Intentar obtener de la caché primero
+            val cachedCentro = firestoreCache.get<Centro>(cacheKey)
+            
+            if (cachedCentro != null) {
+                return@withContext Result.Success(cachedCentro)
+            }
+            
+            // Si no está en caché, obtener de Firestore
             val centroQuery = centrosCollection
                 .whereEqualTo("nombre", nombre)
                 .get().await()
 
             if (!centroQuery.isEmpty) {
-                return@withContext Result.Success(centroQuery.documents[0].toObject(Centro::class.java))
+                val centro = centroQuery.documents[0].toObject(Centro::class.java)
+                
+                // Guardar en caché para futuras consultas
+                if (centro != null) {
+                    firestoreCache.put(cacheKey, centro)
+                }
+                
+                return@withContext Result.Success(centro)
             }
             return@withContext Result.Success(null)
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al obtener centro por nombre: $errorMsg")
             return@withContext Result.Error(e)
         }
     }
 
     /**
-     * Obtiene un centro por su ID
+     * Obtiene un centro por su ID con soporte de caché
      */
     suspend fun getCentroById(centroId: String): Result<Centro> = withContext(Dispatchers.IO) {
         try {
+            val cacheKey = "${CacheKeys.CENTRO_BY_ID_PREFIX}$centroId"
+            
+            // Intentar obtener de la caché primero
+            val cachedCentro = firestoreCache.get<Centro>(cacheKey)
+            
+            if (cachedCentro != null) {
+                return@withContext Result.Success(cachedCentro)
+            }
+            
+            // Si no está en caché, obtener de Firestore
             val centroDoc = centrosCollection.document(centroId).get().await()
 
             if (centroDoc.exists()) {
                 val centro = centroDoc.toObject(Centro::class.java)
+                
+                // Guardar en caché para futuras consultas
+                if (centro != null) {
+                    firestoreCache.put(cacheKey, centro)
+                }
+                
                 return@withContext Result.Success(centro!!)
             } else {
                 throw Exception("Centro no encontrado")
             }
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al obtener centro por ID: $errorMsg")
             return@withContext Result.Error(e)
         }
     }
 
     /**
-     * Añade un nuevo centro educativo
+     * Añade un nuevo centro educativo e invalida la caché relacionada
      */
     suspend fun addCentro(centro: Centro): Result<String> = withContext(Dispatchers.IO) {
         try {
@@ -113,15 +190,20 @@ class CentroRepository @Inject constructor(
 
             // Guardar el centro
             centrosCollection.document(centroId).set(centroWithId).await()
+            
+            // Invalidar cachés relacionadas
+            invalidarCaches()
 
             return@withContext Result.Success(centroId)
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al añadir centro: $errorMsg")
             return@withContext Result.Error(e)
         }
     }
 
     /**
-     * Actualiza un centro existente usando su ID
+     * Actualiza un centro existente usando su ID e invalida la caché relacionada
      */
     suspend fun updateCentro(centroId: String, centro: Centro): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -137,15 +219,22 @@ class CentroRepository @Inject constructor(
 
             // Actualizar el centro
             centrosCollection.document(centroId).set(centroConId).await()
+            
+            // Invalidar cachés relacionadas
+            invalidarCaches()
+            firestoreCache.invalidate("${CacheKeys.CENTRO_BY_ID_PREFIX}$centroId")
+            firestoreCache.invalidate("${CacheKeys.CENTRO_BY_NOMBRE_PREFIX}${centro.nombre}")
 
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al actualizar centro: $errorMsg")
             return@withContext Result.Error(e)
         }
     }
 
     /**
-     * Desactiva un centro
+     * Desactiva un centro e invalida la caché relacionada
      */
     suspend fun deactivateCentro(centroId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -158,25 +247,59 @@ class CentroRepository @Inject constructor(
 
             // Desactivar el centro
             centrosCollection.document(centroId).update("activo", false).await()
+            
+            // Invalidar cachés relacionadas
+            invalidarCaches()
+            firestoreCache.invalidate("${CacheKeys.CENTRO_BY_ID_PREFIX}$centroId")
+            
+            // Obtener el nombre para invalidar también la caché por nombre
+            val centro = centroDoc.toObject(Centro::class.java)
+            if (centro != null) {
+                firestoreCache.invalidate("${CacheKeys.CENTRO_BY_NOMBRE_PREFIX}${centro.nombre}")
+            }
 
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al desactivar centro: $errorMsg")
             return@withContext Result.Error(e)
         }
     }
 
     /**
-     * Elimina un centro
+     * Elimina un centro e invalida la caché relacionada
      */
     suspend fun deleteCentro(centroId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            // Obtener el centro para invalidar caché por nombre después
+            val centroDoc = centrosCollection.document(centroId).get().await()
+            val centro = centroDoc.toObject(Centro::class.java)
+            
             // Eliminar el centro
             centrosCollection.document(centroId).delete().await()
+            
+            // Invalidar cachés relacionadas
+            invalidarCaches()
+            firestoreCache.invalidate("${CacheKeys.CENTRO_BY_ID_PREFIX}$centroId")
+            
+            if (centro != null) {
+                firestoreCache.invalidate("${CacheKeys.CENTRO_BY_NOMBRE_PREFIX}${centro.nombre}")
+            }
 
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al eliminar centro: $errorMsg")
             return@withContext Result.Error(e)
         }
+    }
+    
+    /**
+     * Invalida todas las cachés relacionadas con centros
+     */
+    private suspend fun invalidarCaches() {
+        firestoreCache.invalidate(CacheKeys.ALL_CENTROS)
+        firestoreCache.invalidate(CacheKeys.ACTIVE_CENTROS)
     }
 
     /**
@@ -200,14 +323,18 @@ class CentroRepository @Inject constructor(
                 return@withContext Result.Error(Exception("El profesor ya está asignado a este centro"))
             }
 
-            // Añadir el profesor
+            // Añadir el profesor y actualizar
             profesores.add(profesorId)
-
-            // Actualizar el centro
             centrosCollection.document(centroId).update("profesorIds", profesores).await()
+            
+            // Invalidar cachés relacionadas
+            invalidarCaches()
+            firestoreCache.invalidate("${CacheKeys.CENTRO_BY_ID_PREFIX}$centroId")
 
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            val errorMsg = errorHandler.procesarError(e)
+            Timber.e(e, "Error al añadir profesor al centro: $errorMsg")
             return@withContext Result.Error(e)
         }
     }
