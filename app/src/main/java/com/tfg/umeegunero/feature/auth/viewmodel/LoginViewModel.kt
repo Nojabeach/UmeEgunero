@@ -17,7 +17,26 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Estado UI para la pantalla de login
+ * Estado UI para la pantalla de login.
+ * 
+ * Esta clase encapsula todos los estados posibles de la interfaz de usuario
+ * para la pantalla de inicio de sesión, siguiendo el patrón de State Hoisting
+ * recomendado para Jetpack Compose.
+ * 
+ * El state hoisting es un patrón de diseño en el que el estado se eleva (o "hoists")
+ * a un nivel superior en la jerarquía de componentes, de forma que podamos
+ * separar la lógica de negocio de la interfaz de usuario.
+ * 
+ * @property email Email introducido por el usuario
+ * @property password Contraseña introducida por el usuario
+ * @property emailError Error de validación del email (null si es válido)
+ * @property passwordError Error de validación de la contraseña (null si es válida)
+ * @property isLoading Indica si se está procesando la solicitud de inicio de sesión
+ * @property error Mensaje de error general (null si no hay error)
+ * @property success Indica si el inicio de sesión fue exitoso
+ * @property userType Tipo de usuario que ha iniciado sesión
+ * 
+ * @author Estudiante 2º DAM
  */
 data class LoginUiState(
     val email: String = "",
@@ -29,22 +48,49 @@ data class LoginUiState(
     val success: Boolean = false,
     val userType: UserType? = null
 ) {
+    /**
+     * Propiedad calculada que indica si el botón de login debe estar habilitado.
+     * 
+     * El botón de login estará habilitado solo si ambos campos tienen contenido
+     * y no hay errores de validación.
+     */
     val isLoginEnabled: Boolean
         get() = email.isNotBlank() && password.isNotBlank() &&
                 emailError == null && passwordError == null
 }
 
+/**
+ * ViewModel para la pantalla de inicio de sesión.
+ * 
+ * Este ViewModel gestiona la lógica de negocio para el proceso de inicio de sesión,
+ * incluyendo la validación de campos, la comunicación con el repositorio de usuarios
+ * para autenticar al usuario, y la gestión del estado de la UI.
+ * 
+ * Siguiendo la arquitectura MVVM (Model-View-ViewModel), este ViewModel actúa como
+ * intermediario entre la vista (Composables) y el modelo (Repositorios).
+ * 
+ * @param usuarioRepository Repositorio para la gestión de usuarios y autenticación
+ * @param sharedPreferences Preferencias compartidas para almacenar datos de sesión
+ * 
+ * @author Estudiante 2º DAM
+ */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
+    // Constantes para las preferencias
+    companion object {
+        private const val PREF_SAVED_EMAIL = "saved_email"
+    }
+
+    // Estado de la UI expuesto como StateFlow inmutable
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     init {
-        // Comprobar si hay credenciales guardadas
+        // Al inicializar el ViewModel, comprobamos si hay credenciales guardadas
         val savedEmail = sharedPreferences.getString(PREF_SAVED_EMAIL, "")
         if (!savedEmail.isNullOrEmpty()) {
             updateEmail(savedEmail)
@@ -52,7 +98,13 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Actualiza el email y valida su formato
+     * Actualiza el email y valida su formato.
+     * 
+     * Esta función se llama cada vez que el usuario modifica el campo de email
+     * en la interfaz. Realiza una validación en tiempo real para proporcionar
+     * feedback inmediato.
+     * 
+     * @param email Nuevo valor del email
      */
     fun updateEmail(email: String) {
         val emailError = if (email.isNotBlank() && !isValidEmail(email)) {
@@ -70,7 +122,13 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Actualiza la contraseña y valida su longitud
+     * Actualiza la contraseña y valida su longitud.
+     * 
+     * Esta función se llama cada vez que el usuario modifica el campo de contraseña
+     * en la interfaz. Realiza una validación en tiempo real para comprobar que
+     * la contraseña cumple con los requisitos mínimos.
+     * 
+     * @param password Nuevo valor de la contraseña
      */
     fun updatePassword(password: String) {
         val passwordError = if (password.isNotBlank() && password.length < 6) {
@@ -88,14 +146,50 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Valida el formato del email
+     * Valida el formato del email utilizando un patrón regex.
+     * 
+     * @param email Email a validar
+     * @return true si el email tiene un formato válido, false en caso contrario
      */
     private fun isValidEmail(email: String): Boolean {
         return Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
     /**
-     * Realiza el inicio de sesión
+     * Guarda las credenciales del usuario en las preferencias compartidas.
+     * 
+     * @param email Email del usuario a guardar
+     */
+    private fun saveUserCredentials(email: String) {
+        sharedPreferences.edit()
+            .putString(PREF_SAVED_EMAIL, email)
+            .apply()
+    }
+
+    /**
+     * Borra las credenciales guardadas en las preferencias compartidas.
+     */
+    private fun clearSavedCredentials() {
+        sharedPreferences.edit()
+            .remove(PREF_SAVED_EMAIL)
+            .apply()
+    }
+
+    /**
+     * Realiza el inicio de sesión con las credenciales proporcionadas.
+     * 
+     * Este método:
+     * 1. Valida los campos antes de enviar la solicitud
+     * 2. Actualiza el estado a "cargando"
+     * 3. Llama al repositorio para iniciar sesión
+     * 4. Verifica que el usuario tenga el perfil correcto
+     * 5. Actualiza el estado según el resultado
+     * 
+     * Utiliza corrutinas para realizar la operación de forma asíncrona sin
+     * bloquear el hilo principal.
+     * 
+     * @param userType Tipo de usuario que intenta iniciar sesión
+     * @param rememberUser Indica si se deben recordar las credenciales
      */
     fun login(userType: UserType, rememberUser: Boolean = false) {
         val email = _uiState.value.email.trim()
@@ -164,7 +258,7 @@ class LoginViewModel @Inject constructor(
                                 UserType.FAMILIAR -> com.tfg.umeegunero.data.model.TipoUsuario.FAMILIAR
                             }
 
-                            val perfiles = usuario.perfiles ?: emptyList()
+                            val perfiles = usuario.perfiles
                             Timber.d("Perfiles del usuario: ${perfiles.map { it.tipo }}")
                             
                             val tienePerfil = perfiles.any { it.tipo == tipoUsuarioFirebase }
@@ -250,26 +344,6 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Guarda las credenciales del usuario para recordarlas
-     */
-    private fun saveUserCredentials(email: String) {
-        sharedPreferences.edit()
-            .putString(PREF_SAVED_EMAIL, email)
-            .apply()
-        Timber.d("Credenciales guardadas para: $email")
-    }
-
-    /**
-     * Limpia las credenciales guardadas
-     */
-    private fun clearSavedCredentials() {
-        sharedPreferences.edit()
-            .remove(PREF_SAVED_EMAIL)
-            .apply()
-        Timber.d("Credenciales eliminadas")
-    }
-
-    /**
      * Limpia los errores
      */
     fun clearError() {
@@ -285,9 +359,5 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             LoginUiState()
         }
-    }
-    
-    companion object {
-        private const val PREF_SAVED_EMAIL = "savedEmail"
     }
 }

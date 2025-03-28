@@ -10,10 +10,33 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Módulo principal de inyección de dependencias para la aplicación UmeEgunero.
+ * 
+ * Este módulo se encarga de proporcionar las dependencias principales que no están
+ * directamente relacionadas con Firebase, como el repositorio de preferencias y
+ * el objeto SharedPreferences para el almacenamiento local.
+ * 
+ * Funcionalidades:
+ * - Proporciona el repositorio de preferencias para gestionar las configuraciones de usuario
+ * - Proporciona el objeto SharedPreferences para almacenamiento ligero de datos
+ * 
+ * @author Estudiante 2º DAM
+ * @see PreferenciasRepository
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
+    /**
+     * Proporciona una instancia del repositorio de preferencias de usuario.
+     * 
+     * Este repositorio gestiona las preferencias del usuario como el tema de la aplicación
+     * y otras configuraciones personales utilizando DataStore como almacenamiento.
+     * 
+     * @param context Contexto de la aplicación inyectado por Hilt
+     * @return Instancia única (singleton) de PreferenciasRepository
+     */
     @Provides
     @Singleton
     fun providePreferenciasRepository(
@@ -22,6 +45,15 @@ object AppModule {
         return PreferenciasRepository(context)
     }
     
+    /**
+     * Proporciona una instancia de SharedPreferences para almacenamiento ligero.
+     * 
+     * Se utiliza para guardar datos simples como credenciales, configuraciones básicas
+     * y estados temporales de la aplicación.
+     * 
+     * @param context Contexto de la aplicación inyectado por Hilt
+     * @return Instancia única (singleton) de SharedPreferences
+     */
     @Provides
     @Singleton
     fun provideSharedPreferences(

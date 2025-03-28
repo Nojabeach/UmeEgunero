@@ -138,22 +138,6 @@ fun DetalleRegistroScreen(
     onNavigateBack: () -> Unit,
     onNavigateToChat: (String, String?) -> Unit = { _, _ -> }
 ) {
-    // TODO: Mejoras pendientes para la pantalla de detalle de registro
-    // - Implementar interfaz más visual mediante gráficos para los consumos
-    // - Añadir comparativas con registros anteriores del alumno
-    // - Mostrar tendencias de comportamiento o actividad
-    // - Implementar respuestas rápidas al profesor desde el detalle
-    // - Añadir opción para valorar o agradecer el registro
-    // - Incluir sistema para guardar un registro como favorito
-    // - Implementar exportación de registros en diferentes formatos
-    // - Añadir opción para recibir notificaciones específicas de seguimiento
-    // - Habilitar visualización de fotos o documentos adjuntos
-    // - Permitir crear notas personales sobre el registro
-    // - Implementar sistema de alertas sobre patrones detectados
-    // - Añadir función de compartir registro con otros familiares autorizados
-    // - Mostrar recomendaciones personalizadas basadas en el registro
-    // - Implementar seguimiento de objetivos y progresos personalizados
-    
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()

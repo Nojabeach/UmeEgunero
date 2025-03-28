@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Subject
 import androidx.compose.material.icons.filled.Wc
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,16 +33,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,7 +49,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.EstadoComida
-import com.tfg.umeegunero.data.model.RegistroDiario
+import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.feature.familiar.registros.viewmodel.ConsultaRegistroDiarioViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
@@ -60,41 +60,45 @@ import java.util.Locale
 @Composable
 fun ConsultaRegistroDiarioScreen(
     viewModel: ConsultaRegistroDiarioViewModel,
-    onNavigateBack: () -> Unit,
+    alumnoId: String,
     alumnoNombre: String,
+    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
+    LaunchedEffect(alumnoId) {
+        viewModel.cargarRegistros(alumnoId)
+    }
+    
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(text = "Registros diarios")
-                        Text(
-                            text = alumnoNombre,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                },
+            CenterAlignedTopAppBar(
+                title = { Text("Registros de $alumnoNombre") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Volver"
-                        )
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             )
         }
     ) { paddingValues ->
-        if (uiState.isLoading) {
-            LoadingScreen()
-        } else if (uiState.error != null) {
-            ErrorScreen(message = uiState.error ?: "Error desconocido")
+        if (uiState.isLoading && uiState.registros.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (uiState.error != null && uiState.registros.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Error: ${uiState.error}")
+            }
         } else if (uiState.registros.isEmpty()) {
-            EmptyRegistrosScreen()
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "No hay registros disponibles")
+            }
         } else {
             LazyColumn(
                 modifier = modifier
@@ -120,7 +124,7 @@ fun ConsultaRegistroDiarioScreen(
 
 @Composable
 fun RegistroDiarioCard(
-    registro: RegistroDiario,
+    registro: RegistroActividad,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -301,18 +305,15 @@ fun InfoRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary
+            modifier = Modifier.padding(top = 3.dp)
         )
-        
         Spacer(modifier = Modifier.width(8.dp))
-        
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold
             )
-            
             if (content.isNotEmpty()) {
                 Text(
                     text = content,
@@ -323,158 +324,44 @@ fun InfoRow(
     }
 }
 
-fun obtenerResumenComidas(registro: RegistroDiario): String {
-    val primerPlato = when (registro.primerPlato) {
-        EstadoComida.COMPLETO -> "todo"
-        EstadoComida.PARCIAL -> "parte"
-        EstadoComida.RECHAZADO -> "nada"
-        else -> null
-    }
+fun obtenerResumenComidas(registro: RegistroActividad): String {
+    val elementos = mutableListOf<String>()
     
-    val segundoPlato = when (registro.segundoPlato) {
-        EstadoComida.COMPLETO -> "todo"
-        EstadoComida.PARCIAL -> "parte"
-        EstadoComida.RECHAZADO -> "nada"
-        else -> null
-    }
+    if (registro.primerPlato == EstadoComida.COMPLETO) elementos.add("Primer plato completo")
+    else if (registro.primerPlato == EstadoComida.PARCIAL) elementos.add("Primer plato parcial")
     
-    val postre = when (registro.postre) {
-        EstadoComida.COMPLETO -> "todo"
-        EstadoComida.PARCIAL -> "parte"
-        EstadoComida.RECHAZADO -> "nada"
-        else -> null
-    }
+    if (registro.segundoPlato == EstadoComida.COMPLETO) elementos.add("Segundo plato completo")
+    else if (registro.segundoPlato == EstadoComida.PARCIAL) elementos.add("Segundo plato parcial")
     
-    val merienda = when (registro.merienda) {
-        EstadoComida.COMPLETO -> "todo"
-        EstadoComida.PARCIAL -> "parte"
-        EstadoComida.RECHAZADO -> "nada"
-        else -> null
-    }
+    if (registro.postre == EstadoComida.COMPLETO) elementos.add("Postre completo")
+    else if (registro.postre == EstadoComida.PARCIAL) elementos.add("Postre parcial")
     
-    val comidas = mutableListOf<String>()
+    if (registro.merienda == EstadoComida.COMPLETO) elementos.add("Merienda completa")
+    else if (registro.merienda == EstadoComida.PARCIAL) elementos.add("Merienda parcial")
     
-    if (primerPlato != null && segundoPlato != null) {
-        comidas.add("1er plato: $primerPlato, 2º plato: $segundoPlato")
-    }
-    
-    if (postre != null) {
-        comidas.add("Postre: $postre")
-    }
-    
-    if (merienda != null) {
-        comidas.add("Merienda: $merienda")
-    }
-    
-    return if (comidas.isEmpty()) {
-        "No hay información de comidas"
+    return if (elementos.isEmpty()) {
+        "No hay registro de comidas"
     } else {
-        comidas.joinToString(". ")
-    }
-}
-
-@Composable
-fun LoadingScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator()
-    }
-}
-
-@Composable
-fun ErrorScreen(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(0.8f),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Error",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptyRegistrosScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = Icons.Default.DateRange,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "No hay registros disponibles",
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "Cuando el profesor registre actividades diarias, aparecerán aquí",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        elementos.joinToString(", ")
     }
 }
 
 @Composable
 fun HiltConsultaRegistroDiarioScreen(
     viewModel: ConsultaRegistroDiarioViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
     alumnoId: String,
-    alumnoNombre: String
+    alumnoNombre: String,
+    onNavigateBack: () -> Unit
 ) {
-    // Cargamos los datos al montar la pantalla
-    viewModel.cargarRegistros(alumnoId)
+    LaunchedEffect(alumnoId) {
+        viewModel.cargarRegistros(alumnoId)
+    }
     
     ConsultaRegistroDiarioScreen(
         viewModel = viewModel,
-        onNavigateBack = onNavigateBack,
-        alumnoNombre = alumnoNombre
+        alumnoId = alumnoId,
+        alumnoNombre = alumnoNombre,
+        onNavigateBack = onNavigateBack
     )
 }
 
@@ -484,8 +371,9 @@ fun ConsultaRegistroDiarioScreenPreview() {
     UmeEguneroTheme {
         ConsultaRegistroDiarioScreen(
             viewModel = hiltViewModel(),
-            onNavigateBack = {},
-            alumnoNombre = "Juan Pérez"
+            alumnoId = "1",
+            alumnoNombre = "Juan Pérez",
+            onNavigateBack = {}
         )
     }
 } 

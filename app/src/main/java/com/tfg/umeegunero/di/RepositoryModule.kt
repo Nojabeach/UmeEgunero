@@ -1,7 +1,9 @@
 package com.tfg.umeegunero.di
 
+import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
@@ -15,6 +17,7 @@ import com.tfg.umeegunero.data.repository.TareaRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -72,7 +75,11 @@ object RepositoryModule {
     
     @Provides
     @Singleton
-    fun provideRegistroDiarioRepository(firestore: FirebaseFirestore): RegistroDiarioRepository {
-        return RegistroDiarioRepository(firestore)
+    fun provideRegistroDiarioRepository(
+        firestore: FirebaseFirestore,
+        registroActividadDao: RegistroActividadDao,
+        @ApplicationContext context: Context
+    ): RegistroDiarioRepository {
+        return RegistroDiarioRepository(firestore, registroActividadDao, context)
     }
 } 

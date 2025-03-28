@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EstadoComida
-import com.tfg.umeegunero.data.model.RegistroDiario
+import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,13 +14,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Date
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.inject.Inject
 
 data class RegistroDiarioUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val success: Boolean = false,
-    val registro: RegistroDiario = RegistroDiario(),
+    val registro: RegistroActividad = RegistroActividad(),
     
     // UI state para las comidas
     val primerPlato: EstadoComida = EstadoComida.NO_SERVIDO,
@@ -89,8 +91,12 @@ class RegistroDiarioViewModel @Inject constructor(
                             merienda = registro.merienda,
                             observacionesComida = registro.observacionesComida,
                             haSiestaSiNo = registro.haSiestaSiNo,
-                            horaInicioSiesta = registro.horaInicioSiesta?.toDate()?.toString() ?: "",
-                            horaFinSiesta = registro.horaFinSiesta?.toDate()?.toString() ?: "",
+                            horaInicioSiesta = registro.horaInicioSiesta?.toDate()?.let { 
+                                SimpleDateFormat("HH:mm", Locale.getDefault()).format(it) 
+                            } ?: "",
+                            horaFinSiesta = registro.horaFinSiesta?.toDate()?.let { 
+                                SimpleDateFormat("HH:mm", Locale.getDefault()).format(it) 
+                            } ?: "",
                             observacionesSiesta = registro.observacionesSiesta,
                             haHechoCaca = registro.haHechoCaca,
                             numeroCacas = registro.numeroCacas,

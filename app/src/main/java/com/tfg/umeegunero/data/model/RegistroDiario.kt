@@ -4,8 +4,20 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 
 /**
- * Modelo para el registro diario de actividades de un alumno
+ * Modelo para el registro diario de actividades de un alumno.
+ * 
+ * @deprecated Esta clase está obsoleta. Por favor, utilice [RegistroActividad]
+ * para trabajar con registros de actividades diarias. La nueva clase unifica
+ * la funcionalidad y evita duplicidad.
+ * 
+ * @see RegistroActividad
+ * @author Estudiante 2º DAM
  */
+@Deprecated(
+    message = "Esta clase está obsoleta. Utilice RegistroActividad.",
+    replaceWith = ReplaceWith("RegistroActividad"),
+    level = DeprecationLevel.WARNING
+)
 data class RegistroDiario(
     @DocumentId val id: String = "",
     val alumnoId: String = "",
@@ -48,15 +60,4 @@ data class RegistroDiario(
     val ultimaModificacion: Timestamp = Timestamp.now(),
     val creadoPor: String = "",
     val modificadoPor: String = ""
-)
-
-/**
- * Estado posible para las comidas
- */
-enum class EstadoComida {
-    NO_SERVIDO,
-    COMPLETO,
-    PARCIAL,
-    RECHAZADO,
-    NO_APLICABLE
-} 
+) 

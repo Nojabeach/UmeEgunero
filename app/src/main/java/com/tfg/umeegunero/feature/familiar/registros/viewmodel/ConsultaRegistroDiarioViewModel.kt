@@ -2,7 +2,7 @@ package com.tfg.umeegunero.feature.familiar.registros.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.data.model.RegistroDiario
+import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,7 +17,7 @@ import javax.inject.Inject
 data class ConsultaRegistroDiarioUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val registros: List<RegistroDiario> = emptyList(),
+    val registros: List<RegistroActividad> = emptyList(),
     val alumnoId: String = ""
 )
 
@@ -88,7 +88,10 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                         state.copy(
                             registros = state.registros.map { registro ->
                                 if (registro.id == registroId) {
-                                    registro.copy(visualizadoPorFamiliar = true)
+                                    registro.copy(
+                                        vistoPorFamiliar = true,
+                                        visualizadoPorFamiliar = true
+                                    )
                                 } else {
                                     registro
                                 }

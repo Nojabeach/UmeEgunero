@@ -124,7 +124,7 @@ fun RegistroDiarioScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.guardarRegistro(uiState.registro.profesorId) },
+                onClick = { viewModel.guardarRegistro(uiState.registro.profesorId ?: "") },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(

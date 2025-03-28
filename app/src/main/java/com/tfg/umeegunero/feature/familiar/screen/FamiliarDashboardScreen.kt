@@ -422,17 +422,6 @@ fun FamiliarHomeContent(
     onNavigateToDetalleRegistro: (String) -> Unit,
     onMarcarRegistroComoVisto: (String) -> Unit
 ) {
-    // TODO: Mejoras pendientes para la pantalla principal del familiar
-    // - Implementar estadísticas y gráficos de progreso
-    // - Añadir calendario de actividades y eventos
-    // - Mejorar visualización de notificaciones
-    // - Implementar filtros avanzados de búsqueda
-    // - Añadir sincronización de datos offline
-    // - Mejorar interfaz con animaciones y transiciones
-    // - Implementar comunicación en tiempo real
-    // - Añadir compartir contenido con otros familiares
-    // - Implementar alertas personalizables
-    
     val today = LocalDate.now()
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
     val formattedDate = remember { today.format(formatter).replaceFirstChar { it.uppercase() } }

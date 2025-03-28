@@ -6,6 +6,7 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Comunicado
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.ComunicadoRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +34,8 @@ data class ComunicadosUiState(
  */
 @HiltViewModel
 class ComunicadosViewModel @Inject constructor(
-    private val comunicadoRepository: ComunicadoRepository
+    private val comunicadoRepository: ComunicadoRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ComunicadosUiState(isLoading = true))
@@ -108,7 +110,7 @@ class ComunicadosViewModel @Inject constructor(
                     mensaje = mensaje,
                     tiposDestinatarios = tiposDestinatarios,
                     fechaCreacion = Timestamp(Date()),
-                    creadoPor = "admin", // TODO: Obtener usuario actual
+                    creadoPor = authRepository.getFirebaseUser()?.uid ?: "desconocido",
                     activo = true
                 )
                 
