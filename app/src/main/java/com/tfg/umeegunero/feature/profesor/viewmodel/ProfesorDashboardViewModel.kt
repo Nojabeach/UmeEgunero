@@ -25,6 +25,27 @@ import com.tfg.umeegunero.navigation.AppScreens
 
 /**
  * Estado UI para la pantalla de dashboard del profesor
+ * 
+ * Esta clase data contiene todas las propiedades necesarias para representar
+ * el estado completo de la interfaz de usuario del dashboard del profesor.
+ * Siguiendo el patrón de State en Jetpack Compose, esta clase inmutable 
+ * permite una gestión eficiente y predecible del estado de la UI.
+ *
+ * @property isLoading Indica si hay alguna operación de carga en curso
+ * @property error Mensaje de error a mostrar, null si no hay errores
+ * @property profesor Datos del profesor logueado actualmente
+ * @property clases Lista de todas las clases asignadas al profesor
+ * @property claseActual Clase seleccionada actualmente para mostrar sus detalles
+ * @property alumnos Lista de alumnos de la clase actualmente seleccionada
+ * @property alumnosPendientes Alumnos que requieren atención o tienen tareas pendientes
+ * @property registrosActividad Registros de actividad relacionados con la clase actual
+ * @property mensajesNoLeidos Mensajes sin leer dirigidos al profesor
+ * @property totalMensajesNoLeidos Contador total de mensajes no leídos para mostrar badge
+ * @property selectedTab Pestaña seleccionada actualmente en el dashboard
+ * @property navigateToWelcome Flag para controlar la navegación a la pantalla de inicio tras logout
+ * 
+ * @author Maitane (Estudiante 2º DAM)
+ * @version 1.2
  */
 data class ProfesorDashboardUiState(
     val isLoading: Boolean = false,
@@ -44,8 +65,22 @@ data class ProfesorDashboardUiState(
 /**
  * ViewModel para la pantalla de dashboard del profesor
  *
- * Gestiona la lógica de negocio y el estado de la UI para la pantalla de dashboard del profesor,
- * incluyendo la carga de datos del profesor, sus clases, alumnos, registros de actividad y mensajes.
+ * Este ViewModel implementa el patrón MVVM (Model-View-ViewModel) y es responsable 
+ * de toda la lógica de negocio relacionada con el dashboard del profesor:
+ * - Gestión del estado de la UI mediante StateFlow
+ * - Carga de datos desde los repositorios
+ * - Procesamiento de eventos del usuario
+ * - Manejo de operaciones asíncronas mediante corrutinas
+ *
+ * El ViewModel actúa como intermediario entre la capa de datos (repositorios) 
+ * y la capa de presentación (Composables), manteniendo la separación de 
+ * responsabilidades y facilitando las pruebas unitarias.
+ *
+ * @property usuarioRepository Repositorio para acceder a datos de usuarios, alumnos y registros
+ * @property authRepository Repositorio para gestionar la autenticación
+ *
+ * @author Maitane (Estudiante 2º DAM)
+ * @version 1.2
  */
 @HiltViewModel
 class ProfesorDashboardViewModel @Inject constructor(
@@ -53,15 +88,38 @@ class ProfesorDashboardViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
+    // Estado mutable interno que solo el ViewModel puede modificar
     private val _uiState = MutableStateFlow(ProfesorDashboardUiState())
+    
+    // Estado inmutable expuesto a la UI, para seguir el principio de encapsulamiento
     val uiState: StateFlow<ProfesorDashboardUiState> = _uiState.asStateFlow()
 
+    /**
+     * Inicialización del ViewModel
+     * 
+     * Se ejecuta automáticamente al crear la instancia del ViewModel.
+     * Inicia la carga de datos del profesor para poblar el dashboard.
+     */
     init {
         cargarDatosProfesor()
     }
 
     /**
      * Carga los datos del profesor actual
+     * 
+     * Este método obtiene los datos completos del profesor logueado,
+     * incluyendo información personal y profesional. Es el punto de 
+     * partida para cargar todos los datos relacionados con el profesor.
+     *
+     * Secuencia de operaciones:
+     * 1. Actualiza el estado para mostrar indicador de carga
+     * 2. Obtiene el ID del usuario actual autenticado
+     * 3. Consulta los datos completos del profesor desde el repositorio
+     * 4. Actualiza el estado con los datos obtenidos
+     * 5. Inicia la carga de clases asignadas al profesor
+     *
+     * En caso de error, actualiza el estado con el mensaje apropiado
+     * y registra el error en el sistema de logging.
      */
     fun cargarDatosProfesor() {
         viewModelScope.launch {
@@ -122,6 +180,16 @@ class ProfesorDashboardViewModel @Inject constructor(
 
     /**
      * Carga las clases asignadas al profesor
+     * 
+     * Este método recupera todas las clases que el profesor tiene asignadas
+     * y selecciona la primera como clase actual para mostrar sus detalles.
+     * 
+     * La información de las clases es fundamental para el dashboard ya que:
+     * - Permite al profesor ver rápidamente sus grupos asignados
+     * - Sirve como filtro para cargar alumnos específicos
+     * - Estructura la información de asistencia y actividades
+     *
+     * @param profesorId Identificador único del profesor
      */
     private fun cargarClasesProfesor(profesorId: String) {
         viewModelScope.launch {
@@ -180,6 +248,17 @@ class ProfesorDashboardViewModel @Inject constructor(
 
     /**
      * Carga los alumnos de una clase específica
+     * 
+     * Este método obtiene la lista completa de alumnos pertenecientes
+     * a una clase específica y luego carga información adicional como
+     * registros de actividad pendientes.
+     * 
+     * Esta información es crítica para:
+     * - Mostrar la lista de alumnos en el dashboard
+     * - Identificar alumnos que requieren atención especial
+     * - Proporcionar acceso rápido a datos de cada alumno
+     *
+     * @param claseId Identificador único de la clase
      */
     fun cargarAlumnosClase(claseId: String) {
         viewModelScope.launch {
@@ -226,6 +305,16 @@ class ProfesorDashboardViewModel @Inject constructor(
 
     /**
      * Carga los registros de actividad pendientes para los alumnos
+     * 
+     * Este método identifica los alumnos que no tienen registros de actividad
+     * para el día actual, lo que permite al profesor priorizar acciones.
+     * 
+     * Es especialmente importante para:
+     * - Gestionar eficientemente el seguimiento de los alumnos
+     * - Garantizar que todos los alumnos tengan sus registros diarios
+     * - Proporcionar alertas visuales en el dashboard
+     *
+     * @param alumnosIds Lista de identificadores de alumnos a verificar
      */
     private fun cargarRegistrosPendientes(alumnosIds: List<String>) {
         viewModelScope.launch {
@@ -248,24 +337,16 @@ class ProfesorDashboardViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                error = "Error al cargar alumnos pendientes: ${alumnosPendientesResult.exception.message}",
-                                isLoading = false
-                            )
-                        }
+                        // No actualizamos el error en el estado porque este es un dato secundario
+                        // y no queremos interrumpir la experiencia del usuario si falla
                         Timber.e(alumnosPendientesResult.exception, "Error al cargar alumnos pendientes")
+                        _uiState.update { it.copy(isLoading = false) }
                     }
                     else -> { /* Ignorar estado Loading */ }
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        error = "Error inesperado: ${e.message}",
-                        isLoading = false
-                    )
-                }
                 Timber.e(e, "Error inesperado al cargar alumnos pendientes")
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }

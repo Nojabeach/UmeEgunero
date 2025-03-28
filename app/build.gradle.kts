@@ -5,6 +5,7 @@ plugins {
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
     id("kotlin-kapt")
+    id("org.jetbrains.dokka")
 }
 
 android {
@@ -71,6 +72,22 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/NOTICE.md"
             excludes += "/META-INF/LICENSE.md"
+        }
+    }
+}
+
+// Configuración de Dokka
+tasks.dokkaHtml {
+    outputDirectory.set(file("$buildDir/dokka"))
+    
+    dokkaSourceSets {
+        configureEach {
+            includeNonPublic.set(false)
+            skipEmptyPackages.set(true)
+            displayName.set("UmeEgunero")
+            reportUndocumented.set(true)
+            skipDeprecated.set(false)
+            jdkVersion.set(17)
         }
     }
 }

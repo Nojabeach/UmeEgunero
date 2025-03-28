@@ -1,3 +1,13 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.jetbrains.dokka:dokka-gradle-plugin:1.8.20")
+    }
+}
+
 plugins {
     id("com.android.application") version "8.9.0" apply false
     id("org.jetbrains.kotlin.android") version "1.9.22" apply false
