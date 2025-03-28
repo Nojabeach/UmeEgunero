@@ -66,7 +66,7 @@ object NavigationStructure {
                 NavItem(
                     title = "Administradores",
                     icon = Icons.Outlined.AdminPanelSettings,
-                    route = "usuarios/administradores",
+                    route = AppScreens.AdminList.route,
                     description = "Gestión de administradores"
                 ),
                 NavItem(
@@ -98,7 +98,7 @@ object NavigationStructure {
                 NavItem(
                     title = "Comunicados",
                     icon = Icons.Outlined.Announcement,
-                    route = "comunicaciones/comunicados",
+                    route = AppScreens.Comunicados.route,
                     description = "Enviar comunicados generales"
                 ),
                 NavItem(
@@ -124,13 +124,13 @@ object NavigationStructure {
                 NavItem(
                     title = "Uso de Plataforma",
                     icon = Icons.Outlined.Insights,
-                    route = "reportes/uso",
+                    route = AppScreens.ReporteUso.route,
                     description = "Estadísticas de uso"
                 ),
                 NavItem(
                     title = "Rendimiento",
                     icon = Icons.Outlined.TrendingUp,
-                    route = "reportes/rendimiento",
+                    route = AppScreens.ReporteRendimiento.route,
                     description = "Métricas de rendimiento"
                 ),
                 NavItem(
@@ -318,6 +318,13 @@ object NavigationStructure {
                     icon = Icons.Outlined.Announcement,
                     route = "comunicaciones/comunicados",
                     description = "Enviar comunicados generales"
+                ),
+                NavItem(
+                    title = "Notificaciones",
+                    icon = Icons.Outlined.Notifications,
+                    route = AppScreens.GestionNotificacionesCentro.route,
+                    description = "Gestionar notificaciones del centro",
+                    isImplemented = true
                 ),
                 NavItem(
                     title = "Mensajes Directos",

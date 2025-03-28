@@ -95,14 +95,13 @@ class EmailConfigViewModel @Inject constructor(
      * Valida los campos antes de guardar
      */
     private fun validarCampos(): Boolean {
-        val errores = mutableMapOf<String, String>()
-        val state = _uiState.value
+        var errores = mutableMapOf<String, String>()
         
-        // Validar email destino
-        if (state.emailDestino.isBlank()) {
-            errores["emailDestino"] = "El email de destino es obligatorio"
-        } else if (!state.emailDestino.matches(Regex("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"))) {
-            errores["emailDestino"] = "Ingresa un email válido"
+        // Validar email
+        if (uiState.value.emailDestino.isBlank()) {
+            errores["emailDestino"] = "El email no puede estar vacío"
+        } else if (!isValidEmail(uiState.value.emailDestino)) {
+            errores["emailDestino"] = "El formato del email no es válido"
         }
         
         _uiState.update { it.copy(errores = errores) }
@@ -110,49 +109,52 @@ class EmailConfigViewModel @Inject constructor(
     }
     
     /**
-     * Guarda la configuración de email
+     * Valida el formato de un email
+     */
+    private fun isValidEmail(email: String): Boolean {
+        val emailRegex = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+"
+        return email.matches(emailRegex.toRegex())
+    }
+    
+    /**
+     * Guarda la configuración actual
      */
     fun guardarConfiguracion() {
-        if (!validarCampos()) return
+        if (!validarCampos()) {
+            _uiState.update { 
+                it.copy(mensaje = "Por favor, corrige los errores antes de guardar") 
+            }
+            return
+        }
         
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isSaving = true) }
                 
-                val state = _uiState.value
                 val config = EmailSoporteConfig(
-                    emailDestino = state.emailDestino,
+                    emailDestino = uiState.value.emailDestino,
                     ultimaActualizacion = Timestamp.now()
                 )
                 
-                // Guardamos el estado del modelo en Firestore
-                val resultado = configRepository.saveEmailSoporteConfig(config)
+                configRepository.saveEmailSoporteConfig(config)
                 
-                if (resultado) {
-                    _uiState.update { 
-                        it.copy(
-                            isSaving = false,
-                            cambiosPendientes = false,
-                            mensaje = "Configuración guardada correctamente",
-                            ultimaActualizacion = config.ultimaActualizacion
-                        ) 
-                    }
-                    Timber.d("Configuración guardada correctamente")
-                } else {
-                    _uiState.update { 
-                        it.copy(
-                            isSaving = false,
-                            mensaje = "Error al guardar la configuración"
-                        ) 
-                    }
-                    Timber.e("Error al guardar configuración")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al guardar configuración de email")
                 _uiState.update { 
                     it.copy(
                         isSaving = false,
-                        mensaje = "Error: ${e.message}"
+                        cambiosPendientes = false,
+                        mensaje = "Configuración guardada correctamente",
+                        ultimaActualizacion = config.ultimaActualizacion
+                    ) 
+                }
+                
+                Timber.d("Configuración guardada: $config")
+                
+            } catch (e: Exception) {
+                Timber.e(e, "Error al guardar configuración")
+                _uiState.update { 
+                    it.copy(
+                        isSaving = false,
+                        mensaje = "Error al guardar: ${e.message}"
                     ) 
                 }
             }

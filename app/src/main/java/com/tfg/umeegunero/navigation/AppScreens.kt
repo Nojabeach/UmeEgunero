@@ -39,6 +39,7 @@ sealed class AppScreens(val route: String) {
     object ProfesorList : AppScreens("admin_dashboard/profesores")
     object AlumnoList : AppScreens("admin_dashboard/alumnos")
     object FamiliarList : AppScreens("admin_dashboard/familiares")
+    object AdminList : AppScreens("admin_dashboard/administradores")
 
     // Pantallas de gestión académica
     object GestionCursos : AppScreens("gestion_cursos/{centroId}") {
@@ -95,4 +96,20 @@ sealed class AppScreens(val route: String) {
     object DetalleFamiliar : AppScreens("detalle_familiar/{familiarId}/{alumnoId}") {
         fun createRoute(familiarId: String, alumnoId: String) = "detalle_familiar/$familiarId/$alumnoId"
     }
+
+    // Pantallas de comunicaciones
+    object Comunicados : AppScreens("comunicaciones/comunicados")
+    
+    // Pantallas de reportes
+    object ReporteUso : AppScreens("reportes/uso")
+    object ReporteRendimiento : AppScreens("reportes/rendimiento")
+    
+    // Nuevas pantallas para gestión de alumnos y vinculación familiar
+    object AddAlumno : AppScreens("add_alumno")
+    object EditAlumno : AppScreens("edit_alumno/{alumnoId}") {
+        fun createRoute(alumnoId: String) = "edit_alumno/$alumnoId"
+    }
+    object VinculacionFamiliar : AppScreens("vinculacion_familiar")
+    object GestionCursosYClases : AppScreens("gestion_cursos_clases")
+    object GestionNotificacionesCentro : AppScreens("gestion_notificaciones_centro")
 } 

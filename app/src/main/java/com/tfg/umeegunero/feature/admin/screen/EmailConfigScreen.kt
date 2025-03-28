@@ -79,88 +79,226 @@ fun EmailConfigScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Fecha de última actualización
-                uiState.ultimaActualizacion?.let { timestamp ->
-                    val date = timestamp.toDate()
-                    val formatter = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                    val fechaFormateada = formatter.format(date)
-                    
-                    Text(
-                        text = "Última actualización: $fechaFormateada",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-                
-                Card(
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Indicador de carga
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .size(50.dp)
+                        .align(Alignment.Center)
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
+                        // Título y descripción
                         Text(
-                            text = "Configuración de Soporte Técnico",
-                            style = MaterialTheme.typography.titleLarge,
+                            text = "Configuración de Email del Sistema",
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                         
-                        // Email de destino
-                        OutlinedTextField(
-                            value = uiState.emailDestino,
-                            onValueChange = { viewModel.updateEmailDestino(it) },
-                            label = { Text("Email de Soporte") },
-                            leadingIcon = {
+                        Text(
+                            text = "Configura las direcciones de correo electrónico utilizadas por el sistema para comunicarse con los usuarios y recibir solicitudes de soporte técnico.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 24.dp)
+                        )
+                        
+                        // Última actualización
+                        uiState.ultimaActualizacion?.let { timestamp ->
+                            val formatter = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
+                            val fechaFormateada = formatter.format(timestamp.toDate())
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 24.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Default.Email,
-                                    contentDescription = null
+                                    imageVector = Icons.Default.Update,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
                                 )
-                            },
-                            isError = uiState.errores["emailDestino"] != null,
-                            supportingText = {
-                                if (uiState.errores["emailDestino"] != null) {
-                                    Text(uiState.errores["emailDestino"]!!)
-                                } else {
-                                    Text("Los mensajes de soporte se enviarán a este email")
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Email,
-                                imeAction = ImeAction.Done
-                            ),
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Última actualización: $fechaFormateada",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                    
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                        )
-                        
-                        Text(
-                            text = "Nota: La contraseña para el envío de emails se configura desde Firebase Remote Config",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Configuración de Soporte Técnico",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                            
+                            // Email de destino
+                            OutlinedTextField(
+                                value = uiState.emailDestino,
+                                onValueChange = { viewModel.updateEmailDestino(it) },
+                                label = { Text("Email de Soporte") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Email,
+                                        contentDescription = null
+                                    )
+                                },
+                                isError = uiState.errores["emailDestino"] != null,
+                                supportingText = {
+                                    if (uiState.errores["emailDestino"] != null) {
+                                        Text(uiState.errores["emailDestino"]!!, color = MaterialTheme.colorScheme.error)
+                                    } else {
+                                        Text("Los mensajes de soporte se enviarán a este email")
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Email,
+                                    imeAction = ImeAction.Done
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                            
+                            // Botón de guardar
+                            Button(
+                                onClick = { viewModel.guardarConfiguracion() },
+                                enabled = uiState.cambiosPendientes && !uiState.isSaving,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                if (uiState.isSaving) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Save,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Text(if (uiState.isSaving) "Guardando..." else "Guardar configuración")
+                            }
+                            
+                            Text(
+                                text = "Nota: La contraseña para el envío de emails se configura desde Firebase Remote Config por razones de seguridad.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(top = 16.dp)
+                            )
+                        }
+                    }
+                    
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Guía de Configuración",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
+                            
+                            Text(
+                                text = "• El email de soporte debe ser una dirección válida y accesible por el equipo técnico.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                            
+                            Text(
+                                text = "• Se recomienda usar una dirección específica para soporte, no una personal.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                            
+                            Text(
+                                text = "• Las credenciales SMTP y contraseñas se gestionan de forma segura mediante Firebase Remote Config.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                            
+                            Text(
+                                text = "• Para cambiar la dirección de remitente, contacta con el equipo de desarrollo.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+                
+                // Mostrar indicador de guardado
+                if (uiState.isSaving) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        Surface(
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "Guardando configuración...",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
                     }
                 }
             }

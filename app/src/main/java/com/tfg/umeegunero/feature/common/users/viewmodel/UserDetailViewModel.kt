@@ -15,7 +15,7 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Estado de UI para la pantalla de detalles de usuario
+ * Estado de la UI para la pantalla de detalle de usuario
  */
 data class UserDetailUiState(
     val usuario: Usuario? = null,
@@ -25,7 +25,7 @@ data class UserDetailUiState(
 )
 
 /**
- * ViewModel para la gestión de detalles de usuario
+ * ViewModel para la gestión de la pantalla de detalle de usuario
  */
 @HiltViewModel
 class UserDetailViewModel @Inject constructor(
@@ -36,16 +36,14 @@ class UserDetailViewModel @Inject constructor(
     val uiState: StateFlow<UserDetailUiState> = _uiState.asStateFlow()
 
     /**
-     * Carga los datos del usuario por su DNI
+     * Carga los datos del usuario por su ID (DNI)
      */
-    fun loadUsuario(dni: String) {
+    fun loadUser(userId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                val result = usuarioRepository.getUsuarioPorDni(dni)
-                
-                when (result) {
+                when (val result = usuarioRepository.getUsuarioById(userId)) {
                     is Result.Success -> {
                         _uiState.update { 
                             it.copy(
@@ -53,29 +51,29 @@ class UserDetailViewModel @Inject constructor(
                                 isLoading = false
                             ) 
                         }
-                        Timber.d("Usuario cargado: ${result.data.nombre} ${result.data.apellidos}")
+                        Timber.d("Usuario cargado: ${result.data.dni}")
                     }
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                isLoading = false,
-                                error = result.exception.message ?: "Error al cargar el usuario"
+                                error = "Error al cargar usuario: ${result.exception.message}",
+                                isLoading = false
                             ) 
                         }
-                        Timber.e(result.exception, "Error al cargar el usuario")
+                        Timber.e(result.exception, "Error al cargar usuario")
                     }
                     is Result.Loading -> {
-                        // No hacemos nada aquí ya que hemos actualizado el estado de carga antes de la llamada
+                        // Este estado ya lo manejamos al inicio
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Error inesperado al cargar el usuario"
+                        error = "Error inesperado: ${e.message}",
+                        isLoading = false
                     ) 
                 }
-                Timber.e(e, "Error inesperado al cargar el usuario")
+                Timber.e(e, "Error inesperado al cargar usuario")
             }
         }
     }

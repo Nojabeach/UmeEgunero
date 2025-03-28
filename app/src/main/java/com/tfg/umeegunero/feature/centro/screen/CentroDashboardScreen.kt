@@ -213,6 +213,14 @@ private fun handleNavigation(
             navController.navigate(route)
             true
         }
+        AppScreens.GestionCursosYClases.route -> {
+            navController.navigate(route)
+            true
+        }
+        AppScreens.GestionNotificacionesCentro.route -> {
+            navController.navigate(route)
+            true
+        }
         AppScreens.Config.route -> {
             navController.navigate(route)
             true
@@ -270,7 +278,9 @@ private fun getRouteTitleForDummy(route: String): String {
         route.contains("gestionar_vinculaciones") -> "Gestionar Vinculaciones"
         route.contains("vinculaciones") -> "Gestión de Vinculaciones"
         route.contains("hijos") -> "Gestión de Mis Hijos"
-        route.contains("comunicaciones") -> "Comunicaciones"
+        route.contains("comunicaciones/bandeja") -> "Bandeja de Entrada"
+        route.contains("comunicaciones/comunicados") -> "Comunicados"
+        route.contains("comunicaciones/mensajes") -> "Mensajes Directos"
         route.contains("admins_centro") -> "Administradores del Centro"
         route.contains("config_centro") -> "Configuración del Centro"
         route.contains("permisos_roles") -> "Permisos y Roles"
@@ -296,6 +306,42 @@ private fun DashboardContent(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Sección de Acciones Rápidas
+        Text(
+            text = "Acciones Rápidas",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        // Botones de acciones rápidas
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ActionButton(
+                icon = Icons.Default.Group,
+                text = "Gestionar\nCursos y Clases",
+                onClick = {
+                    navController.navigate(AppScreens.GestionCursosYClases.route)
+                },
+                modifier = Modifier.weight(1f)
+            )
+            
+            ActionButton(
+                icon = Icons.Default.Notifications,
+                text = "Gestionar\nNotificaciones",
+                onClick = {
+                    navController.navigate(AppScreens.GestionNotificacionesCentro.route)
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
+        // Lista de Cursos
         Text(
             text = "Cursos del Centro",
             style = MaterialTheme.typography.headlineMedium,
@@ -323,6 +369,45 @@ private fun DashboardContent(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ActionButton(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        onClick = onClick,
+        modifier = modifier
+            .height(120.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

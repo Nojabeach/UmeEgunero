@@ -36,6 +36,18 @@ import com.tfg.umeegunero.feature.admin.screen.ListCentrosScreen
 import com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen
 import com.tfg.umeegunero.feature.admin.screen.EditCentroScreen
 import com.tfg.umeegunero.feature.admin.screen.AddCentroScreen
+import com.tfg.umeegunero.feature.common.users.screen.ListProfesoresScreen
+import com.tfg.umeegunero.feature.common.users.screen.ListAlumnosScreen
+import com.tfg.umeegunero.feature.common.users.screen.ListFamiliaresScreen
+import com.tfg.umeegunero.feature.common.users.screen.ListAdministradoresScreen
+import com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen
+import com.tfg.umeegunero.feature.admin.screen.ComunicadosScreen
+import com.tfg.umeegunero.feature.admin.screen.ReporteUsoScreen
+import com.tfg.umeegunero.feature.admin.screen.ReporteRendimientoScreen
+import com.tfg.umeegunero.feature.centro.screen.AddAlumnoScreen
+import com.tfg.umeegunero.feature.centro.screen.VinculacionFamiliarScreen
+import com.tfg.umeegunero.feature.centro.screen.GestionCursosYClasesScreen
+import com.tfg.umeegunero.feature.centro.screen.GestionNotificacionesCentroScreen
 
 /**
  * Navegación principal de la aplicación
@@ -179,23 +191,20 @@ fun Navigation(
             }
 
             composable(route = AppScreens.ProfesorList.route) {
-                DummyScreen(
-                    title = "Listado de Profesores",
-                    onNavigateBack = { navController.popBackStack() }
+                ListProfesoresScreen(
+                    navController = navController
                 )
             }
 
             composable(route = AppScreens.AlumnoList.route) {
-                DummyScreen(
-                    title = "Listado de Alumnos",
-                    onNavigateBack = { navController.popBackStack() }
+                ListAlumnosScreen(
+                    navController = navController
                 )
             }
 
             composable(route = AppScreens.FamiliarList.route) {
-                DummyScreen(
-                    title = "Listado de Familiares",
-                    onNavigateBack = { navController.popBackStack() }
+                ListFamiliaresScreen(
+                    navController = navController
                 )
             }
 
@@ -271,9 +280,7 @@ fun Navigation(
 
             composable(route = AppScreens.Perfil.route) {
                 PerfilScreen(
-                    title = "Mi Perfil",
-                    onNavigateBack = { navController.popBackStack() },
-                    onMenuClick = {}
+                    navController = navController
                 )
             }
 
@@ -329,14 +336,15 @@ fun Navigation(
             }
 
             composable(
-                route = AppScreens.DetalleUsuario.route,
+                route = AppScreens.UserDetail.route,
                 arguments = listOf(
-                    navArgument("userId") { type = NavType.StringType }
+                    navArgument("dni") { type = NavType.StringType }
                 )
-            ) {
-                DummyScreen(
-                    title = "Detalle del Usuario",
-                    onNavigateBack = { navController.popBackStack() }
+            ) { backStackEntry ->
+                val dni = backStackEntry.arguments?.getString("dni") ?: ""
+                UserDetailScreen(
+                    navController = navController,
+                    userId = dni
                 )
             }
 
@@ -376,6 +384,71 @@ fun Navigation(
                 DummyScreen(
                     title = title,
                     onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = AppScreens.AdminList.route) {
+                ListAdministradoresScreen(
+                    navController = navController
+                )
+            }
+
+            composable(route = AppScreens.Comunicados.route) {
+                ComunicadosScreen(
+                    navController = navController
+                )
+            }
+            
+            composable(route = AppScreens.ReporteUso.route) {
+                ReporteUsoScreen(
+                    navController = navController
+                )
+            }
+            
+            composable(route = AppScreens.ReporteRendimiento.route) {
+                ReporteRendimientoScreen(
+                    navController = navController
+                )
+            }
+            
+            // Nuevas rutas para gestión de alumnos y vinculación familiar
+            composable(route = AppScreens.AddAlumno.route) {
+                AddAlumnoScreen(
+                    navController = navController
+                )
+            }
+            
+            composable(
+                route = AppScreens.EditAlumno.route,
+                arguments = listOf(
+                    navArgument("alumnoId") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+                val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+                // Por ahora usamos la misma pantalla para editar que para añadir
+                AddAlumnoScreen(
+                    navController = navController,
+                    viewModel = hiltViewModel()
+                )
+            }
+            
+            composable(route = AppScreens.VinculacionFamiliar.route) {
+                VinculacionFamiliarScreen(
+                    navController = navController
+                )
+            }
+            
+            composable(route = AppScreens.GestionCursosYClases.route) {
+                GestionCursosYClasesScreen(
+                    navController = navController
+                )
+            }
+            
+            composable(route = AppScreens.GestionNotificacionesCentro.route) {
+                GestionNotificacionesCentroScreen(
+                    navController = navController
                 )
             }
         }

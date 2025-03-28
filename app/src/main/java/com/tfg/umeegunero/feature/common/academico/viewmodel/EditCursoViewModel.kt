@@ -127,8 +127,8 @@ class EditCursoViewModel @Inject constructor(
                     activo = _uiState.value.activo
                 )
 
-                when (val result = cursoRepository.updateCurso(curso)) {
-                    is Result.Success -> {
+                when (val result = cursoRepository.modificarCurso(curso)) {
+                    is Result.Success<*> -> {
                         _uiState.update { state ->
                             state.copy(
                                 success = "Curso actualizado correctamente",

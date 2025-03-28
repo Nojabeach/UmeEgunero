@@ -729,16 +729,16 @@ open class UsuarioRepository @Inject constructor(
     /**
      * Obtiene un usuario por su correo electrónico
      */
-    suspend fun getUsuarioByEmail(email: String): Result<Usuario?> = withContext(Dispatchers.IO) {
+    suspend fun getUsuarioByEmail(email: String): Result<Usuario> = withContext(Dispatchers.IO) {
         try {
-            val usuarioQuery = usuariosCollection
-                .whereEqualTo("email", email)
-                .get().await()
+            val userQuery = usuariosCollection.whereEqualTo("email", email).get().await()
 
-            if (!usuarioQuery.isEmpty) {
-                return@withContext Result.Success(usuarioQuery.documents[0].toObject(Usuario::class.java))
+            if (!userQuery.isEmpty) {
+                val usuario = userQuery.documents.first().toObject(Usuario::class.java)
+                return@withContext Result.Success(usuario!!)
+            } else {
+                throw Exception("Usuario no encontrado")
             }
-            return@withContext Result.Success(null)
         } catch (e: Exception) {
             return@withContext Result.Error(e)
         }
@@ -955,6 +955,254 @@ open class UsuarioRepository @Inject constructor(
             } else {
                 throw Exception("Alumno no encontrado")
             }
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    // Métodos requeridos por los ViewModels
+    
+    /**
+     * Registra un nuevo alumno
+     */
+    suspend fun registrarAlumno(alumno: Alumno): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Guardar alumno en la colección de alumnos
+            alumnosCollection.document(alumno.dni).set(alumno).await()
+            
+            // Crear un usuario básico para el alumno
+            val perfiles = mutableListOf<Perfil>()
+            perfiles.add(
+                Perfil(
+                    tipo = TipoUsuario.ALUMNO,
+                    centroId = alumno.centroId
+                )
+            )
+            
+            val usuario = Usuario(
+                dni = alumno.dni,
+                nombre = alumno.nombre,
+                apellidos = alumno.apellidos,
+                email = "", // No se crea cuenta de correo para alumnos
+                perfiles = perfiles,
+                activo = true,
+                fechaRegistro = Timestamp.now()
+            )
+            
+            // Guardar usuario en la colección de usuarios
+            usuariosCollection.document(alumno.dni).set(usuario).await()
+            
+            return@withContext Result.Success(alumno.dni)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene todos los alumnos de un centro
+     */
+    suspend fun obtenerAlumnosPorCentro(centroId: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            val alumnosQuery = alumnosCollection
+                .whereEqualTo("centroId", centroId)
+                .get().await()
+                
+            val alumnos = alumnosQuery.documents.mapNotNull { doc ->
+                // Obtenemos el DNI de cada alumno
+                val alumno = doc.toObject(Alumno::class.java)
+                
+                // Para cada alumno, buscamos su información de usuario
+                val usuarioDoc = usuariosCollection.document(alumno?.dni ?: "").get().await()
+                if (usuarioDoc.exists()) {
+                    usuarioDoc.toObject(Usuario::class.java)
+                } else {
+                    null
+                }
+            }
+            
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene todos los familiares de un centro
+     */
+    suspend fun obtenerFamiliaresPorCentro(centroId: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            // Buscamos usuarios que tengan un perfil de tipo FAMILIAR asociado al centro
+            val familiares = usuariosCollection.get().await().documents
+                .mapNotNull { doc -> doc.toObject(Usuario::class.java) }
+                .filter { usuario -> 
+                    usuario.perfiles.any { 
+                        it.tipo == TipoUsuario.FAMILIAR && it.centroId == centroId 
+                    }
+                }
+                
+            return@withContext Result.Success(familiares)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene todos los familiares vinculados a un alumno
+     */
+    suspend fun obtenerFamiliaresPorAlumno(alumnoDni: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            // Buscamos el alumno
+            val alumnoDoc = alumnosCollection.document(alumnoDni).get().await()
+            
+            if (!alumnoDoc.exists()) {
+                return@withContext Result.Error(Exception("Alumno no encontrado"))
+            }
+            
+            val alumno = alumnoDoc.toObject(Alumno::class.java)
+            val familiaresDnis = alumno?.familiarIds ?: emptyList<String>()
+            
+            // Si no tiene familiares vinculados, devolvemos lista vacía
+            if (familiaresDnis.isEmpty()) {
+                return@withContext Result.Success(emptyList())
+            }
+            
+            // Buscamos los usuarios correspondientes a cada DNI de familiar
+            val familiares = familiaresDnis.mapNotNull { dni ->
+                val usuarioDoc = usuariosCollection.document(dni).get().await()
+                if (usuarioDoc.exists()) {
+                    usuarioDoc.toObject(Usuario::class.java)
+                } else {
+                    null
+                }
+            }
+            
+            return@withContext Result.Success(familiares)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene todos los alumnos vinculados a un familiar
+     */
+    suspend fun obtenerAlumnosPorFamiliar(familiarDni: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            // Buscamos alumnos que tengan este familiar en su lista
+            val alumnosQuery = alumnosCollection.get().await()
+            
+            val alumnosIds = alumnosQuery.documents
+                .mapNotNull { it.toObject(Alumno::class.java) }
+                .filter { it.familiarIds.contains(familiarDni) }
+                .map { it.dni }
+                
+            // Si no hay alumnos vinculados, devolvemos lista vacía
+            if (alumnosIds.isEmpty()) {
+                return@withContext Result.Success(emptyList())
+            }
+            
+            // Buscamos los usuarios correspondientes a cada DNI de alumno
+            val alumnos = alumnosIds.mapNotNull { dni ->
+                val usuarioDoc = usuariosCollection.document(dni).get().await()
+                if (usuarioDoc.exists()) {
+                    usuarioDoc.toObject(Usuario::class.java)
+                } else {
+                    null
+                }
+            }
+            
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Vincula un familiar con un alumno
+     */
+    suspend fun vincularFamiliarAlumno(alumnoDni: String, familiarDni: String, parentesco: SubtipoFamiliar): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Verificar que ambos existen
+            val alumnoDoc = alumnosCollection.document(alumnoDni).get().await()
+            if (!alumnoDoc.exists()) {
+                return@withContext Result.Error(Exception("Alumno no encontrado"))
+            }
+            
+            val familiarDoc = usuariosCollection.document(familiarDni).get().await()
+            if (!familiarDoc.exists()) {
+                return@withContext Result.Error(Exception("Familiar no encontrado"))
+            }
+            
+            // Obtenemos el alumno actual
+            val alumno = alumnoDoc.toObject(Alumno::class.java)
+            
+            // Actualizamos su lista de familiares si no está ya
+            val familiares = alumno?.familiarIds?.toMutableList() ?: mutableListOf<String>()
+            if (!familiares.contains(familiarDni)) {
+                familiares.add(familiarDni)
+            }
+            
+            // Guardamos la relación en el documento del alumno
+            alumnosCollection.document(alumnoDni).update("familiarIds", familiares).await()
+            
+            // También actualizamos el familiar para añadir el subtipo de familiar
+            val familiar = familiarDoc.toObject(Usuario::class.java)
+            val perfiles = familiar?.perfiles?.toMutableList() ?: mutableListOf()
+            
+            // Buscamos si ya tiene un perfil de FAMILIAR para este alumno
+            val perfilExistente = perfiles.find { 
+                it.tipo == TipoUsuario.FAMILIAR
+            }
+            
+            if (perfilExistente != null) {
+                // Ya existe un perfil, no necesitamos hacer nada más
+            } else {
+                // Creamos un nuevo perfil
+                perfiles.add(
+                    Perfil(
+                        tipo = TipoUsuario.FAMILIAR,
+                        centroId = alumno?.centroId ?: ""
+                    )
+                )
+            }
+            
+            // Guardamos los cambios en el familiar
+            usuariosCollection.document(familiarDni).update("perfiles", perfiles).await()
+            
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Desvincula un familiar de un alumno
+     */
+    suspend fun desvincularFamiliarAlumno(alumnoDni: String, familiarDni: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Verificar que ambos existen
+            val alumnoDoc = alumnosCollection.document(alumnoDni).get().await()
+            if (!alumnoDoc.exists()) {
+                return@withContext Result.Error(Exception("Alumno no encontrado"))
+            }
+            
+            val familiarDoc = usuariosCollection.document(familiarDni).get().await()
+            if (!familiarDoc.exists()) {
+                return@withContext Result.Error(Exception("Familiar no encontrado"))
+            }
+            
+            // Obtenemos el alumno actual
+            val alumno = alumnoDoc.toObject(Alumno::class.java)
+            
+            // Eliminamos al familiar de la lista
+            val familiares = alumno?.familiarIds?.toMutableList() ?: mutableListOf<String>()
+            familiares.remove(familiarDni)
+            
+            // Guardamos la nueva lista en el documento del alumno
+            alumnosCollection.document(alumnoDni).update("familiarIds", familiares).await()
+            
+            // No modificamos los perfiles del familiar, ya que podría estar vinculado a otros alumnos
+            
+            return@withContext Result.Success(Unit)
         } catch (e: Exception) {
             return@withContext Result.Error(e)
         }
