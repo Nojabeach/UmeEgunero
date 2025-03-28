@@ -16,16 +16,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
-// TODO: Mejoras pendientes para la implementación del ChatViewModel
-// - Implementar caché local para mensajes para funcionamiento offline
-// - Añadir soporte para detección del estado "escribiendo..." y su propagación
-// - Implementar lógica para manejo de archivos adjuntos y multimedia
-// - Añadir sistema de notificaciones para mensajes nuevos
-// - Implementar guardado de mensajes favoritos/importantes
-// - Desarrollar lógica para búsqueda de mensajes
-// - Añadir soporte para recibos de lectura (marcar como leído)
-// - Implementar sistema de paginación para cargar chats largos
-
 /**
  * Estado UI para la pantalla de chat
  */
@@ -150,7 +140,7 @@ class ChatViewModel @Inject constructor(
     private fun cargarMensajes(profesorId: String, familiarId: String, alumnoId: String?) {
         viewModelScope.launch {
             try {
-                // Suponemos que existe un método para obtener los mensajes entre dos usuarios
+                // Obtener los mensajes basados en el alumno o directamente entre usuarios
                 val mensajesResult = if (alumnoId != null) {
                     usuarioRepository.getMensajesByAlumno(profesorId, familiarId, alumnoId)
                 } else {

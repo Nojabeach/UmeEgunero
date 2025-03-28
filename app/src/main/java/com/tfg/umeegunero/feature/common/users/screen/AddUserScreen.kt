@@ -242,17 +242,6 @@ fun AddUserScreen(
     onClearError: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    // TODO: Mejoras pendientes para la pantalla de añadir usuario
-    // - Implementar verificación de identidad mediante documento oficial
-    // - Añadir sistema de carga de foto de perfil con recorte integrado
-    // - Mostrar sugerencias de contraseñas seguras personalizadas
-    // - Implementar activación de cuenta mediante enlace/código
-    // - Añadir integración con sistemas de autenticación biométrica
-    // - Permitir asignación de roles múltiples para personal variado
-    // - Mostrar política de tratamiento de datos personalizada
-    // - Implementar gestión de permisos específicos por tipo de usuario
-    // - Añadir sistema de recomendación de roles según perfil
-    
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current

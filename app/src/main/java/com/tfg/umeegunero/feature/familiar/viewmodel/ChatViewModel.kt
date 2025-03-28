@@ -152,7 +152,7 @@ class ChatViewModel @Inject constructor(
     private fun cargarMensajes(familiarId: String, profesorId: String, alumnoId: String?) {
         viewModelScope.launch {
             try {
-                // Suponemos que existe un método para obtener los mensajes entre dos usuarios
+                // Obtener los mensajes basados en el alumno o directamente entre usuarios
                 val mensajesResult = if (alumnoId != null) {
                     usuarioRepository.getMensajesByAlumno(familiarId, profesorId, alumnoId)
                 } else {

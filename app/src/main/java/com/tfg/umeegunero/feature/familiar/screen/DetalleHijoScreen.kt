@@ -101,22 +101,6 @@ fun DetalleHijoScreen(
     onNavigateToChat: (String, String?) -> Unit = { _, _ -> },
     onNavigateToRegistros: (String) -> Unit = {}
 ) {
-    // TODO: Mejoras pendientes para la pantalla de detalle del alumno
-    // - Implementar vista de progreso académico con gráficos
-    // - Añadir calendario de actividades y eventos escolares
-    // - Mostrar historial médico completo con opciones de filtrado
-    // - Implementar gestión de autorizaciones y permisos
-    // - Añadir gestión de documentación escolar (boletines, informes)
-    // - Incluir sección de comunicaciones con todos los profesores
-    // - Implementar galería de fotos/videos de actividades
-    // - Añadir acceso a evaluaciones y comentarios del profesorado
-    // - Mostrar información sobre gastos escolares y pagos pendientes
-    // - Permitir solicitud de tutorías y seguimiento de las mismas
-    // - Implementar sistema de alertas personalizadas para este alumno
-    // - Añadir visualización de horario semanal detallado
-    // - Incluir registro de asistencia con justificación de ausencias
-    // - Mostrar evolución del alumno mediante indicadores clave
-    
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()

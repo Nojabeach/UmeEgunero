@@ -33,7 +33,7 @@ interface AuthRepository {
     /**
      * Cierra la sesión del usuario actual.
      */
-    suspend fun signOut()
+    suspend fun signOut(): Boolean
     
     /**
      * Envía un correo de recuperación de contraseña al email proporcionado.
@@ -110,15 +110,16 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Cierra la sesión del usuario actual.
-     * 
-     * Utiliza el método signOut de Firebase Auth para cerrar la sesión.
+     * Cierra la sesión del usuario actual
+     * @return True si se ha cerrado la sesión correctamente, False si ha ocurrido un error
      */
-    override suspend fun signOut() {
+    override suspend fun signOut(): Boolean = withContext(Dispatchers.IO) {
         try {
             firebaseAuth.signOut()
+            return@withContext true
         } catch (e: Exception) {
             Timber.e(e, "Error al cerrar sesión")
+            return@withContext false
         }
     }
 

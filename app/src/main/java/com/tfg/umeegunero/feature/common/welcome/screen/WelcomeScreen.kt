@@ -73,18 +73,6 @@ fun WelcomeScreen(
     onNavigateToTechnicalSupport: () -> Unit = {},
     onNavigateToFAQ: () -> Unit = {}
 ) {
-    // TODO: Mejoras pendientes para la pantalla de Bienvenida
-    // - Implementar un vídeo de fondo o animaciones más atractivas
-    // - Mejorar el onboarding con más pasos e información detallada
-    // - Implementar detección de tipo de usuario por QR/NFC
-    // - Implementar geolocalización para centros cercanos
-    // - Añadir estadísticas de uso
-    // - Implementar soporte técnico (IMPLEMENTADO)
-    // - Añadir modo demo de la aplicación (IMPLEMENTADO)
-    // - Mejorar transiciones y animaciones
-    // - Añadir soporte para autenticación biométrica (UI IMPLEMENTADA)
-    // - Añadir el poder mandar email a soporte local
-    
     val isLight = MaterialTheme.colorScheme.isLight()
     
     // Colores de fondo mejorados con gradientes más vibrantes

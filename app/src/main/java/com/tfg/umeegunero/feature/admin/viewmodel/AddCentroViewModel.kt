@@ -467,7 +467,7 @@ class AddCentroViewModel @Inject constructor(
                     centroRepository.addCentro(nuevoCentro)
                 }
 
-                // Si todo ha ido bien, actualizamos el estado
+                // Actualizar estado tras operación exitosa
                 if (resultId != null) {
                     _uiState.update {
                         it.copy(
@@ -503,7 +503,7 @@ class AddCentroViewModel @Inject constructor(
             try {
                 Timber.d("Iniciando eliminación del centro: $centroId")
                 
-                // Usamos el nuevo método que elimina todo en un proceso transaccional
+                // Usar método transaccional para eliminación completa
                 val deleteResult = centroRepository.deleteCentroCompleto(centroId)
                 
                 if (deleteResult is Result.Success) {

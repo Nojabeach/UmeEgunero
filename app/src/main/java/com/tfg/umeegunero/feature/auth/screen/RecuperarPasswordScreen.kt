@@ -51,16 +51,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import android.content.res.Configuration
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
-// TODO: Mejoras pendientes para la pantalla de recuperación de contraseña
-// - Implementar verificación en dos pasos con código SMS
-// - Añadir opción para recuperación mediante preguntas de seguridad
-// - Mejorar el feedback visual durante el proceso de envío
-// - Implementar sistema de bloqueo temporal tras varios intentos
-// - Añadir instrucciones más detalladas sobre el proceso
-// - Integrar con sistemas de autenticación de terceros
-// - Implementar historial de solicitudes de recuperación
-// - Mejorar la seguridad con validación de dispositivo
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecuperarPasswordScreen(

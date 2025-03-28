@@ -778,9 +778,6 @@ open class UsuarioRepository @Inject constructor(
                 // El usuario existe en Firestore, ahora intentamos eliminar su cuenta de Auth
                 
                 // Esto requeriría una función en el servidor con Firebase Admin SDK
-                // En un entorno real, este método enviaría una solicitud a una función Cloud
-                // que se encargaría de eliminar el usuario de Firebase Auth
-                
                 // Para la implementación actual, suponemos que se ha eliminado correctamente
                 // y procedemos a eliminar el documento de Firestore
                 

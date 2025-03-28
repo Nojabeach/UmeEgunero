@@ -691,13 +691,6 @@ fun MisHijosContent(
     hijos: List<Alumno>,
     onNavigateToDetalleHijo: (String) -> Unit
 ) {
-    // TODO: Mejoras pendientes para la sección de hijos
-    // - Implementar perfiles detallados por hijo
-    // - Añadir seguimiento de progreso académico
-    // - Mejorar visualización de información médica relevante
-    // - Implementar historial de asistencia
-    // - Añadir gestión de autorizaciones digitales
-    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -813,13 +806,6 @@ fun ActividadesContent(
     registrosActividad: List<RegistroActividad>,
     onNavigateToDetalleRegistro: (String) -> Unit
 ) {
-    // TODO: Mejoras pendientes para la sección de actividades
-    // - Implementar calendario integrado de actividades
-    // - Añadir filtros por tipo de actividad
-    // - Mejorar visualización de detalles de actividad
-    // - Implementar recordatorios personalizables
-    // - Añadir opción para inscripción online
-    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -999,13 +985,6 @@ fun MensajesContent(
     profesores: Map<String, Usuario>,
     onNavigateToChat: (String, String?) -> Unit
 ) {
-    // TODO: Mejoras pendientes para la sección de mensajes
-    // - Implementar chat en tiempo real
-    // - Añadir soporte para archivos adjuntos
-    // - Mejorar organización de conversaciones
-    // - Implementar notificaciones personalizables
-    // - Añadir traducción automática de mensajes
-    
     Column(
         modifier = Modifier
             .fillMaxSize()

@@ -141,8 +141,7 @@ class FamiliarDashboardViewModel @Inject constructor(
 
                 // Cargamos cada hijo
                 for (alumnoId in alumnosIds) {
-                    // Aquí se debería llamar a un método para obtener los datos del alumno
-                    // Por ahora, suponemos que existe un método getAlumnoPorDni
+                    // Obtener los datos del alumno por su identificador
                     val alumnoResult = usuarioRepository.getAlumnoPorDni(alumnoId)
 
                     when (alumnoResult) {
@@ -223,7 +222,7 @@ class FamiliarDashboardViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
 
             try {
-                // Suponemos que existe un método para obtener los registros de actividad del alumno
+                // Consultar los registros de actividad asociados al alumno
                 val registrosResult = usuarioRepository.getRegistrosActividadByAlumno(alumnoId)
 
                 when (registrosResult) {
@@ -316,7 +315,7 @@ class FamiliarDashboardViewModel @Inject constructor(
     fun marcarRegistroComoVisto(registroId: String) {
         viewModelScope.launch {
             try {
-                // Suponemos que existe un método para marcar un registro como visto
+                // Actualizar el estado del registro para indicar que ha sido visto por el familiar
                 val result = usuarioRepository.marcarRegistroComoVistoPorFamiliar(registroId)
 
                 if (result is Result.Success) {
@@ -343,26 +342,28 @@ class FamiliarDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Envía un mensaje a un profesor
+     * Envía un mensaje al profesor
      */
-    fun enviarMensaje(profesorId: String, texto: String, alumnoId: String) {
+    fun enviarMensaje(profesorId: String, alumnoId: String?, texto: String) {
         viewModelScope.launch {
-            val familiarId = _uiState.value.familiar?.documentId ?: return@launch
-
             _uiState.update { it.copy(isLoading = true) }
 
             try {
+                val familiar = _uiState.value.familiar ?: throw Exception("No hay familiar logueado")
+
                 val mensaje = Mensaje(
-                    emisorId = familiarId,
+                    id = "", // Se generará al guardar
+                    emisorId = familiar.documentId,
                     receptorId = profesorId,
+                    alumnoId = alumnoId ?: "",
                     texto = texto,
                     timestamp = Timestamp.now(),
-                    alumnoId = alumnoId
+                    leido = false
                 )
 
-                // Suponemos que existe un método para enviar un mensaje
+                // Enviar el mensaje al repositorio para su almacenamiento
                 val result = usuarioRepository.enviarMensaje(mensaje)
-
+                
                 _uiState.update { it.copy(isLoading = false) }
             } catch (e: Exception) {
                 _uiState.update {

@@ -195,7 +195,6 @@ class RegistroDiarioRepository @Inject constructor(
     
     /**
      * Actualiza un registro diario existente.
-     * Mantiene compatibilidad con el método anterior.
      * 
      * @param registro Registro a actualizar
      * @return Resultado de la operación (éxito o error)
@@ -282,7 +281,6 @@ class RegistroDiarioRepository @Inject constructor(
     
     /**
      * Obtiene los registros diarios de un alumno.
-     * Método compatible con la versión anterior.
      * 
      * @param alumnoId ID del alumno
      * @param limit Límite de registros a obtener
@@ -342,7 +340,6 @@ class RegistroDiarioRepository @Inject constructor(
     
     /**
      * Marca un registro como visualizado por los familiares.
-     * Método compatible con la versión anterior.
      * 
      * @param registroId ID del registro a marcar
      * @return Resultado de la operación (éxito o error)

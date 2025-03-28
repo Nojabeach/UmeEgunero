@@ -88,12 +88,6 @@ import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de detalle de un centro educativo
- *
- * TODO: Mejoras pendientes:
- * - Implementar fuentes de datos reales para las estadísticas del centro
- * - Mejorar la visualización del mapa con datos más precisos
- * - Añadir indicadores de rendimiento académico
- * - Implementar gráficos de asistencia y rendimiento
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

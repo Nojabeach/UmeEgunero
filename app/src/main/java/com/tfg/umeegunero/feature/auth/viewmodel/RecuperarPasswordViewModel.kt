@@ -15,16 +15,6 @@ import java.util.regex.Pattern
 import javax.inject.Inject
 import android.util.Patterns
 
-// TODO: Mejoras pendientes para el ViewModel de recuperación de contraseña
-// - Implementar sistema de caché para evitar múltiples peticiones
-// - Añadir soporte para diferentes métodos de recuperación (SMS, preguntas)
-// - Implementar registro de intentos para limitar peticiones
-// - Mejorar la gestión de estados durante el proceso de recuperación
-// - Añadir analíticas de uso para detectar patrones sospechosos
-// - Implementar validación adicional del dispositivo
-// - Añadir soporte para notificaciones push sobre el estado del proceso
-// - Desarrollar sistema de seguimiento del proceso de recuperación
-
 /**
  * Estado UI para la pantalla de recuperación de contraseña
  */

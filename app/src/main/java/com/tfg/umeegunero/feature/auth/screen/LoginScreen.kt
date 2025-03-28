@@ -90,17 +90,6 @@ fun LoginScreen(
     onLoginSuccess: (UserType) -> Unit,
     onForgotPassword: () -> Unit = {}
 ) {
-    // TODO: Mejoras pendientes para la pantalla de Login
-    // - Implementar recuperación de contraseña olvidada (IMPLEMENTADO)
-    // - Añadir opción para recordar usuario en este dispositivo (IMPLEMENTADO)
-    // - Agregar validación en tiempo real de campos (IMPLEMENTADO)
-    // - Implementar autenticación con huella digital o FaceID (UI IMPLEMENTADA)
-    // - Mejorar animaciones de transición
-    // - Implementar detección automática de centro educativo
-    // - Añadir autenticación con redes sociales
-    // - Mejorar información de errores y ayuda contextual
-    // - Implementar modo demo para usuarios nuevos
-    
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()

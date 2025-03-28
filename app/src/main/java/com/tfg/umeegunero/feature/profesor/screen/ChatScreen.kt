@@ -64,16 +64,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// TODO: Mejoras pendientes para el chat de profesores
-// - Implementar indicador de "escribiendo..." cuando el familiar está redactando un mensaje
-// - Añadir soporte para envío de archivos y multimedia (fotos, documentos PDF, etc.)
-// - Implementar búsqueda de mensajes dentro de la conversación
-// - Añadir opción para marcar mensajes importantes
-// - Implementar notificaciones push cuando hay mensajes nuevos
-// - Mejorar la interfaz con animaciones de transición entre mensajes
-// - Añadir opción para programar videollamadas desde el chat
-// - Implementar reconocimiento de texto para enlazar con calendario o tareas
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(

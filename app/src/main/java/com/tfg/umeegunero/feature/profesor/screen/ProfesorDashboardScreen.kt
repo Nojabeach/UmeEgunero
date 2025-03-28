@@ -437,17 +437,6 @@ fun ProfesorHomeContent(
     onCrearRegistroActividad: (String) -> Unit = {},
     navController: NavController
 ) {
-    // TODO: Mejoras pendientes para la pantalla principal del profesor
-    // - Implementar sistema de gestión de actividades
-    // - Añadir calendario de eventos y planificación
-    // - Mejorar sistema de chat y comunicaciones
-    // - Implementar herramientas de evaluación
-    // - Añadir reportes y estadísticas avanzadas
-    // - Mejorar gestión de grupos y alumnos
-    // - Implementar biblioteca de recursos educativos
-    // - Añadir integración con otras plataformas educativas
-    // - Mejorar la experiencia de usuario con animaciones fluidas
-    
     val today = LocalDate.now()
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
     val formattedDate = remember { today.format(formatter).replaceFirstChar { it.uppercase() } }
@@ -836,13 +825,6 @@ fun AlumnoItem(
 
 @Composable
 fun HistorialContent() {
-    // TODO: Mejoras pendientes para la sección de historial
-    // - Implementar filtros por fechas y tipos de actividad
-    // - Añadir exportación de datos a diferentes formatos
-    // - Mejorar visualización de estadísticas temporales
-    // - Implementar búsqueda en el historial
-    // - Añadir categorización de registros históricos
-    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -859,13 +841,6 @@ fun MensajesContent(
     mensajes: List<Triple<String, String, Boolean>> = emptyList(),
     onNavigateToChat: (String, String) -> Unit = { _, _ -> }
 ) {
-    // TODO: Mejoras pendientes para la sección de mensajes
-    // - Implementar notificaciones en tiempo real
-    // - Añadir soporte para mensajes multimedia
-    // - Mejorar organización por conversaciones
-    // - Implementar búsqueda en mensajes
-    // - Añadir plantillas de mensajes predefinidos
-    
     Column(
         modifier = Modifier
             .fillMaxSize()

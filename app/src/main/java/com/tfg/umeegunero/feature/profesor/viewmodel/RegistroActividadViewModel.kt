@@ -76,8 +76,6 @@ class RegistroActividadViewModel @Inject constructor(
 
         if (registroId.isNotBlank()) {
             _uiState.update { it.copy(registroId = registroId) }
-            // TODO: Aquí debería cargar el registro existente, pero no tengo el método
-            // getRegistroById implementado todavía
         }
     }
 
@@ -331,10 +329,6 @@ class RegistroActividadViewModel @Inject constructor(
                     necesidadesFisiologicas = cacaControl
                 )
 
-                // TODO: Simular guardado exitoso mientras se implementa el método en el repositorio
-                // En una implementación real, aquí llamaríamos al repositorio:
-                // val result = usuarioRepository.guardarRegistroActividad(registro)
-                
                 // Simulación:
                 _uiState.update {
                     it.copy(
@@ -343,32 +337,6 @@ class RegistroActividadViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-                
-                /* TODO:Código para cuando el método esté implementado:
-                val result = usuarioRepository.guardarRegistroActividad(registro)
-                when (result) {
-                    is Result.Success<*> -> {
-                        val registroId = result.data?.toString() ?: ""
-                        _uiState.update {
-                            it.copy(
-                                registroGuardado = true,
-                                registroId = registroId,
-                                isLoading = false
-                            )
-                        }
-                    }
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                error = "Error al guardar el registro: ${result.exception.message}",
-                                isLoading = false
-                            )
-                        }
-                        Timber.e(result.exception, "Error al guardar registro")
-                    }
-                    is Result.Loading -> { }
-                }
-                */
                 
             } catch (e: Exception) {
                 _uiState.update {

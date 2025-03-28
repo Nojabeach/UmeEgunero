@@ -64,7 +64,7 @@ class AuthRepositoryTest {
         assertEquals("Test User", result?.nombre)
         assertEquals("test@example.com", result?.email)
         
-        // Verify: Se llamó al método getUsuarioByEmail
+        // Verificación: Se llamó al método getUsuarioByEmail
         coVerify { usuarioRepository.getUsuarioByEmail("test@example.com") }
     }
     
@@ -79,7 +79,7 @@ class AuthRepositoryTest {
         // Then: Debería devolver null
         assertNull(result)
         
-        // Verify: No se llamó al método getUsuarioByEmail
+        // Verificación: No se llamó al método getUsuarioByEmail
         coVerify(exactly = 0) { usuarioRepository.getUsuarioByEmail(any()) }
     }
     
@@ -96,7 +96,7 @@ class AuthRepositoryTest {
         // Then: Debería devolver null por el error
         assertNull(result)
         
-        // Verify: Se llamó al método getUsuarioByEmail
+        // Verificación: Se llamó al método getUsuarioByEmail
         coVerify { usuarioRepository.getUsuarioByEmail("test@example.com") }
     }
     
@@ -105,7 +105,7 @@ class AuthRepositoryTest {
         // When: Cerramos sesión
         authRepository.signOut()
         
-        // Then: Debería llamar al método signOut de Firebase Auth
+        // Verificación: Se llama al método signOut de Firebase Auth
         verify { firebaseAuth.signOut() }
     }
     
@@ -124,7 +124,7 @@ class AuthRepositoryTest {
         assertTrue(result is Result.Success)
         assertTrue((result as Result.Success).data)
         
-        // Verify: Se llamó al método sendPasswordResetEmail
+        // Verificación: Se llamó al método sendPasswordResetEmail
         verify { firebaseAuth.sendPasswordResetEmail("test@example.com") }
     }
 } 
