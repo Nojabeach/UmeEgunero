@@ -41,17 +41,6 @@ open class UsuarioRepository @Inject constructor(
     val mensajesCollection = firestore.collection("mensajes")
     private val functions = Firebase.functions
 
-    // TODO: Mejoras pendientes para el repositorio de usuarios
-    // - Implementar caché local con Room para funcionamiento offline
-    // - Añadir sincronización periódica en segundo plano
-    // - Mejorar la seguridad con cifrado de datos sensibles
-    // - Implementar sistema de permisos granular por tipo de usuario
-    // - Desarrollar sistema de perfiles extendidos con información adicional
-    // - Añadir soporte para múltiples roles por usuario
-    // - Implementar registro de actividad del usuario
-    // - Desarrollar sistema de notificaciones basado en acciones del usuario
-    // - Añadir soporte para gestión de preferencias personalizadas
-
     // AUTENTICACIÓN Y USUARIOS
 
     // Registra un nuevo usuario en Firebase Auth y Firestore

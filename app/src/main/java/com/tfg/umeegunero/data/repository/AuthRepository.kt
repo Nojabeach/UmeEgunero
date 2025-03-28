@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.Result
 import kotlinx.coroutines.tasks.await
@@ -11,16 +12,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseUser
-
-// TODO: Mejoras pendientes para el repositorio de autenticación
-// - Implementar autenticación biométrica (huella, FaceID)
-// - Añadir soporte para autenticación con redes sociales (Google, Facebook)
-// - Implementar sistema de tokens para mejorar seguridad
-// - Desarrollar sistema de detección de intentos sospechosos
-// - Añadir autenticación en dos factores
-// - Implementar registro de sesiones activas
-// - Desarrollar sistema de bloqueo temporal de cuentas
 // - Mejorar el manejo de errores con respuestas más detalladas
 
 interface AuthRepository {

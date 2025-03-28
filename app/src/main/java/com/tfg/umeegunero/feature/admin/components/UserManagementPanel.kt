@@ -61,6 +61,11 @@ fun UserManagementPanel(
     var showFilters by remember { mutableStateOf(false) }
     var showInactivos by remember { mutableStateOf(false) }
     
+    // Estado para selección múltiple
+    var selectedUserIds by remember { mutableStateOf(setOf<String>()) }
+    var showResetPasswordBatchDialog by remember { mutableStateOf(false) }
+    var newBatchPassword by remember { mutableStateOf("") }
+    
     // Estado para diálogos
     var showResetPasswordDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -85,6 +90,40 @@ fun UserManagementPanel(
     }.sortedWith(compareBy({ !it.activo }, { it.nombre }))
 
     Column(modifier = modifier.fillMaxSize()) {
+        // Componente de selección y acciones por lotes
+        BatchSelectionComponent(
+            usuarios = filteredUsuarios,
+            selectedUserIds = selectedUserIds,
+            onSelectionChange = { selectedUserIds = it },
+            onBatchResetPassword = { userIds ->
+                // Mostrar diálogo para resetear contraseñas masivamente
+                showResetPasswordBatchDialog = true
+            },
+            onBatchActivate = { userIds, activo ->
+                // Activar/desactivar usuarios masivamente
+                userIds.forEach { userId ->
+                    filteredUsuarios.find { it.dni == userId }?.let { usuario ->
+                        onToggleActive(usuario, activo)
+                    }
+                }
+                // Limpiar selección
+                selectedUserIds = emptySet()
+            },
+            onBatchDelete = { userIds ->
+                // Eliminar usuarios masivamente
+                userIds.forEach { userId ->
+                    filteredUsuarios.find { it.dni == userId }?.let { usuario ->
+                        onDelete(usuario)
+                    }
+                }
+                // Limpiar selección
+                selectedUserIds = emptySet()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        )
+        
         // Cabecera con buscador y filtros
         Card(
             modifier = Modifier
@@ -224,6 +263,25 @@ fun UserManagementPanel(
             }
         }
         
+        // Componente de exportación de datos
+        ExportDataComponent(
+            usuarios = filteredUsuarios,
+            onExportCSV = { usuariosToExport ->
+                // Aquí se implementaría la lógica para exportar a CSV
+                // Por ejemplo, guardar el archivo en el almacenamiento
+                val csvContent = ExportUtils.generateCSVContent(usuariosToExport)
+                // En una implementación real, aquí se guardaría el archivo
+            },
+            onExportPDF = { usuariosToExport ->
+                // Aquí se implementaría la lógica para exportar a PDF
+                val pdfContent = ExportUtils.generatePDFContent(usuariosToExport)
+                // En una implementación real, aquí se guardaría el archivo
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        )
+        
         // Estado de carga
         if (isLoading) {
             Box(
@@ -255,7 +313,15 @@ fun UserManagementPanel(
                             usuarioSeleccionado = usuario
                             showResetPasswordDialog = true
                         },
-                        onToggleActive = { onToggleActive(usuario, !usuario.activo) }
+                        onToggleActive = { onToggleActive(usuario, !usuario.activo) },
+                        isSelected = usuario.dni in selectedUserIds,
+                        onToggleSelection = { isSelected ->
+                            selectedUserIds = if (isSelected) {
+                                selectedUserIds + usuario.dni
+                            } else {
+                                selectedUserIds - usuario.dni
+                            }
+                        }
                     )
                 }
             }
@@ -331,19 +397,37 @@ fun UserManagementPanel(
             },
             title = { Text("Resetear contraseña") },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
-                        "Introduce la nueva contraseña para ${usuarioSeleccionado?.nombre}",
-                        style = MaterialTheme.typography.bodyMedium
+                        "Nueva contraseña para ${usuarioSeleccionado?.nombre}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
                     )
+                    
                     Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Generador de contraseñas
+                    PasswordGenerator(
+                        onPasswordGenerated = { 
+                            newPassword = it
+                            passwordIsValid = it.length >= 6
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Campo para visualizar/editar la contraseña
                     OutlinedTextField(
                         value = newPassword,
                         onValueChange = { 
                             newPassword = it
                             passwordIsValid = it.length >= 6
                         },
-                        label = { Text("Nueva contraseña") },
+                        label = { Text("Contraseña") },
                         visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         trailingIcon = {
@@ -359,7 +443,8 @@ fun UserManagementPanel(
                                 Text("La contraseña debe tener al menos 6 caracteres")
                             }
                         },
-                        isError = newPassword.isNotEmpty() && !passwordIsValid
+                        isError = newPassword.isNotEmpty() && !passwordIsValid,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
@@ -420,6 +505,99 @@ fun UserManagementPanel(
             }
         )
     }
+    
+    // Diálogo para resetear contraseñas en lote
+    if (showResetPasswordBatchDialog) {
+        var showPassword by remember { mutableStateOf(false) }
+        var passwordIsValid by remember { mutableStateOf(false) }
+        
+        AlertDialog(
+            onDismissRequest = { 
+                showResetPasswordBatchDialog = false
+                newBatchPassword = ""
+            },
+            title = { Text("Resetear contraseñas en lote") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Nueva contraseña para ${selectedUserIds.size} usuarios",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Generador de contraseñas
+                    PasswordGenerator(
+                        onPasswordGenerated = { 
+                            newBatchPassword = it
+                            passwordIsValid = it.length >= 6
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Campo para visualizar/editar la contraseña
+                    OutlinedTextField(
+                        value = newBatchPassword,
+                        onValueChange = { 
+                            newBatchPassword = it
+                            passwordIsValid = it.length >= 6
+                        },
+                        label = { Text("Contraseña") },
+                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        trailingIcon = {
+                            IconButton(onClick = { showPassword = !showPassword }) {
+                                Icon(
+                                    imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (showPassword) "Ocultar contraseña" else "Mostrar contraseña"
+                                )
+                            }
+                        },
+                        supportingText = { 
+                            if (newBatchPassword.isNotEmpty() && !passwordIsValid) {
+                                Text("La contraseña debe tener al menos 6 caracteres")
+                            }
+                        },
+                        isError = newBatchPassword.isNotEmpty() && !passwordIsValid,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Aplicar la misma contraseña a todos los usuarios seleccionados
+                        selectedUserIds.forEach { dni ->
+                            onResetPassword(dni, newBatchPassword)
+                        }
+                        showResetPasswordBatchDialog = false
+                        newBatchPassword = ""
+                        // Limpiar selección
+                        selectedUserIds = emptySet()
+                    },
+                    enabled = passwordIsValid
+                ) {
+                    Text("Aplicar a todos")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { 
+                        showResetPasswordBatchDialog = false
+                        newBatchPassword = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -429,7 +607,9 @@ fun UserCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onResetPassword: () -> Unit,
-    onToggleActive: () -> Unit
+    onToggleActive: () -> Unit,
+    isSelected: Boolean,
+    onToggleSelection: (Boolean) -> Unit
 ) {
     val isActive = usuario.activo
     val tipoUsuario = usuario.perfiles.firstOrNull()?.tipo ?: TipoUsuario.ALUMNO
