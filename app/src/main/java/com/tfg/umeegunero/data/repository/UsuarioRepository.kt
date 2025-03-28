@@ -1203,6 +1203,61 @@ open class UsuarioRepository @Inject constructor(
         }
     }
 
+    /**
+     * Resetea la contraseña del usuario con el DNI especificado
+     */
+    suspend fun resetearPassword(dni: String, newPassword: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            // Obtenemos el usuario por su DNI
+            val usuarioResult = getUsuarioPorDni(dni)
+            if (usuarioResult !is Result.Success) {
+                return@withContext Result.Error(Exception("Usuario no encontrado"))
+            }
+            
+            val usuario = usuarioResult.data
+            
+            // Buscamos el usuario en Firebase Auth por su email
+            val userQuery = auth.fetchSignInMethodsForEmail(usuario.email).await()
+            
+            if (userQuery.signInMethods?.isNotEmpty() == true) {
+                // Generamos un código de reautenticación
+                val customToken = functions
+                    .getHttpsCallable("generateCustomToken")
+                    .call(hashMapOf("email" to usuario.email))
+                    .await()
+                    .data as String
+                    
+                // Iniciamos sesión con el token personalizado
+                val authResult = auth.signInWithCustomToken(customToken).await()
+                
+                // Actualizamos la contraseña
+                authResult.user?.updatePassword(newPassword)?.await()
+                
+                // Volvemos a iniciar sesión con el usuario administrador original si es necesario
+                // Aquí podrías añadir código para volver al usuario admin si lo necesitas
+                
+                return@withContext Result.Success(true)
+            } else {
+                return@withContext Result.Error(Exception("No se pudo encontrar el usuario en Firebase Auth"))
+            }
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Actualiza los datos de un usuario
+     */
+    suspend fun actualizarUsuario(usuario: Usuario): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            // Actualizar en Firestore
+            usuariosCollection.document(usuario.dni).set(usuario).await()
+            return@withContext Result.Success(true)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
+
     companion object {
         /**
          * Crea un mock del repositorio para pruebas y vistas previas

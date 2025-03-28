@@ -130,6 +130,7 @@ import com.tfg.umeegunero.feature.admin.components.StatsOverviewCard
 import com.tfg.umeegunero.feature.admin.components.StatsOverviewRow
 import com.tfg.umeegunero.feature.admin.components.StatItem
 import androidx.compose.material.icons.filled.Warning
+import com.tfg.umeegunero.feature.admin.components.UserManagementPanel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -497,107 +498,20 @@ fun CentrosEducativosContentPreview() {
 
 @Composable
 fun UsuariosContent(
+    viewModel: AdminDashboardViewModel,
     usuarios: List<Usuario>,
-    isLoading: Boolean,
-    onEditUsuario: (String) -> Unit,
-    onDeleteUsuario: (String) -> Unit,
-    onRefresh: () -> Unit
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false
 ) {
-    // TODO: Mejorar la gestión de usuarios
-    // - Implementar filtrado por tipo de usuario (admin, profesor, familiar)
-    // - Añadir búsqueda por nombre o email
-    // - Permitir gestión masiva de usuarios
-    // - Implementar reseteo de contraseñas
-    // - Añadir función para desactivar temporalmente usuarios
-    
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Listado de Usuarios",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // Botón de recargar
-                IconButton(onClick = onRefresh) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Recargar",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Mostrar indicador de carga
-        if (isLoading) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-        }
-        // Mostrar lista de usuarios
-        else if (usuarios.isNotEmpty()) {
-            items(usuarios) { usuario ->
-                UsuarioItem(
-                    usuario = usuario,
-                    onEdit = { onEditUsuario(usuario.dni) },
-                    onDelete = { onDeleteUsuario(usuario.dni) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-        // Mostrar mensaje cuando no hay usuarios
-        else {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "No hay usuarios disponibles",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Agrega un nuevo usuario usando el botón '+' de abajo",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-        }
-    }
+    UserManagementPanel(
+        usuarios = usuarios,
+        isLoading = isLoading,
+        onDelete = { usuario -> viewModel.deleteUsuario(usuario.dni) },
+        onEdit = { /* Navegación a pantalla de edición */ },
+        onResetPassword = { dni, password -> viewModel.resetPassword(dni, password) },
+        onToggleActive = { usuario, activo -> viewModel.toggleUsuarioActivo(usuario, activo) },
+        modifier = modifier
+    )
 }
 
 @Composable

@@ -347,4 +347,65 @@ class AdminDashboardViewModel @Inject constructor(
         // de un curso real consultando a Firestore
         return "curso_primero_a" // ID demo para pruebas
     }
+
+    /**
+     * Resetea la contraseña de un usuario
+     */
+    fun resetPassword(dni: String, nuevaPassword: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            when (val result = usuarioRepository.resetearPassword(dni, nuevaPassword)) {
+                is Result.Success -> {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        mensajeExito = "Contraseña restablecida correctamente"
+                    ) }
+                    loadUsuarios()
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "Error al resetear contraseña")
+                    _uiState.update { it.copy(
+                        isLoading = false, 
+                        error = "Error al resetear contraseña: ${result.exception.message}"
+                    ) }
+                }
+                is Result.Loading -> {
+                    // Ignorar estado loading
+                }
+            }
+        }
+    }
+
+    /**
+     * Activa o desactiva un usuario
+     */
+    fun toggleUsuarioActivo(usuario: Usuario, activo: Boolean) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            val usuarioActualizado = usuario.copy(activo = activo)
+            
+            when (val result = usuarioRepository.actualizarUsuario(usuarioActualizado)) {
+                is Result.Success -> {
+                    val mensaje = if (activo) "Usuario activado correctamente" else "Usuario desactivado correctamente"
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        mensajeExito = mensaje
+                    ) }
+                    loadUsuarios()
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "Error al actualizar estado de usuario")
+                    _uiState.update { it.copy(
+                        isLoading = false, 
+                        error = "Error al actualizar estado de usuario: ${result.exception.message}"
+                    ) }
+                }
+                is Result.Loading -> {
+                    // Ignorar estado loading
+                }
+            }
+        }
+    }
 }
