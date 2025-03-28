@@ -4,7 +4,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.automirrored.outlined.Announcement
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.automirrored.outlined.Help
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
+import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tfg.umeegunero.data.model.TipoUsuario
 
@@ -36,7 +44,7 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Lista de Centros",
-                    icon = Icons.Outlined.List,
+                    icon = Icons.AutoMirrored.Outlined.List,
                     route = AppScreens.GestionCentros.route,
                     description = "Ver todos los centros registrados",
                     isImplemented = true
@@ -97,7 +105,7 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Comunicados",
-                    icon = Icons.Outlined.Announcement,
+                    icon = Icons.AutoMirrored.Outlined.Announcement,
                     route = AppScreens.Comunicados.route,
                     description = "Enviar comunicados generales"
                 ),
@@ -129,7 +137,7 @@ object NavigationStructure {
                 ),
                 NavItem(
                     title = "Rendimiento",
-                    icon = Icons.Outlined.TrendingUp,
+                    icon = Icons.AutoMirrored.Outlined.TrendingUp,
                     route = AppScreens.ReporteRendimiento.route,
                     description = "Métricas de rendimiento"
                 ),
@@ -174,7 +182,7 @@ object NavigationStructure {
                 ),
                 NavItem(
                     title = "Soporte Técnico",
-                    icon = Icons.Outlined.Help,
+                    icon = Icons.AutoMirrored.Outlined.Help,
                     route = AppScreens.SoporteTecnico.route,
                     description = "Contactar con soporte técnico"
                 ),
@@ -211,7 +219,7 @@ object NavigationStructure {
                 ),
                 NavItem(
                     title = "Cursos y Clases",
-                    icon = Icons.Outlined.MenuBook,
+                    icon = Icons.AutoMirrored.Outlined.MenuBook,
                     route = "centro/cursos",
                     description = "Configuración de cursos y clases"
                 ),
@@ -231,7 +239,7 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Lista de Profesores",
-                    icon = Icons.Outlined.List,
+                    icon = Icons.AutoMirrored.Outlined.List,
                     route = AppScreens.GestionProfesores.route,
                     description = "Ver y gestionar todos los profesores",
                     isImplemented = true
@@ -258,7 +266,7 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Lista de Estudiantes",
-                    icon = Icons.Outlined.List,
+                    icon = Icons.AutoMirrored.Outlined.List,
                     route = "estudiantes/lista",
                     description = "Ver todos los estudiantes"
                 ),
@@ -270,7 +278,7 @@ object NavigationStructure {
                 ),
                 NavItem(
                     title = "Asignar a Clases",
-                    icon = Icons.Outlined.Assignment,
+                    icon = Icons.AutoMirrored.Outlined.Assignment,
                     route = "estudiantes/asignar",
                     description = "Asignar estudiantes a clases"
                 )
@@ -284,7 +292,7 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Lista de Familias",
-                    icon = Icons.Outlined.List,
+                    icon = Icons.AutoMirrored.Outlined.List,
                     route = "familias/lista",
                     description = "Ver todas las familias"
                 ),
@@ -310,13 +318,13 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Bandeja de Entrada",
-                    icon = Icons.Outlined.Inbox,
+                    icon = Icons.Outlined.Mail,
                     route = "comunicaciones/bandeja",
                     description = "Ver mensajes recibidos"
                 ),
                 NavItem(
                     title = "Comunicados",
-                    icon = Icons.Outlined.Announcement,
+                    icon = Icons.AutoMirrored.Outlined.Announcement,
                     route = "comunicaciones/comunicados",
                     description = "Enviar comunicados generales"
                 ),
@@ -329,7 +337,7 @@ object NavigationStructure {
                 ),
                 NavItem(
                     title = "Mensajes Directos",
-                    icon = Icons.Outlined.Send,
+                    icon = Icons.AutoMirrored.Outlined.Send,
                     route = "comunicaciones/mensajes",
                     description = "Enviar mensajes a profesores o familias"
                 )
@@ -382,7 +390,7 @@ object NavigationStructure {
                 ),
                 NavItem(
                     title = "Soporte Técnico",
-                    icon = Icons.Outlined.Help,
+                    icon = Icons.AutoMirrored.Outlined.Help,
                     route = AppScreens.SoporteTecnico.route,
                     description = "Contactar con soporte técnico"
                 ),
@@ -413,7 +421,7 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Lista de Clases",
-                    icon = Icons.Outlined.List,
+                    icon = Icons.AutoMirrored.Outlined.List,
                     route = AppScreens.AsistenciaProfesor.route,
                     description = "Ver todas mis clases asignadas"
                 ),
@@ -433,13 +441,13 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Lista de Alumnos",
-                    icon = Icons.Outlined.List,
+                    icon = Icons.AutoMirrored.Outlined.List,
                     route = "alumnos_profesor/lista",
                     description = "Ver todos los alumnos"
                 ),
                 NavItem(
                     title = "Actividades",
-                    icon = Icons.Outlined.DirectionsRun,
+                    icon = Icons.AutoMirrored.Outlined.DirectionsRun,
                     route = "alumnos_profesor/actividades",
                     description = "Registro de actividades"
                 ),
@@ -453,13 +461,13 @@ object NavigationStructure {
         ),
         NavItem(
             title = "Tareas",
-            icon = Icons.Filled.Assignment,
+            icon = Icons.AutoMirrored.Filled.Assignment,
             route = AppScreens.TareasProfesor.route,
             description = "Gestión de tareas y deberes",
             subItems = listOf(
                 NavItem(
                     title = "Ver Tareas",
-                    icon = Icons.Outlined.List,
+                    icon = Icons.AutoMirrored.Outlined.List,
                     route = AppScreens.TareasProfesor.route,
                     description = "Ver todas las tareas"
                 ),
@@ -485,7 +493,7 @@ object NavigationStructure {
             subItems = listOf(
                 NavItem(
                     title = "Bandeja de Entrada",
-                    icon = Icons.Outlined.Inbox,
+                    icon = Icons.Outlined.Mail,
                     route = AppScreens.ChatProfesor.route,
                     description = "Ver mensajes recibidos"
                 ),
@@ -577,7 +585,7 @@ object NavigationStructure {
         ),
         NavItem(
             title = "Tareas",
-            icon = Icons.Filled.Assignment,
+            icon = Icons.AutoMirrored.Filled.Assignment,
             route = AppScreens.TareasFamilia.route,
             description = "Tareas y deberes"
         ),

@@ -1,96 +1,121 @@
 package com.tfg.umeegunero.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.tfg.umeegunero.data.local.entity.RegistroActividadEntity
 import kotlinx.coroutines.flow.Flow
+import java.util.Date
 
 /**
- * DAO (Data Access Object) para la entidad RegistroActividadEntity.
- * 
- * Proporciona métodos para acceder a la base de datos local y realizar
- * operaciones CRUD sobre los registros de actividad.
- * 
- * @author Estudiante 2º DAM
+ * DAO para acceder a los registros de actividad almacenados localmente.
+ * Proporciona métodos para realizar operaciones CRUD en la tabla de registros.
  */
 @Dao
 interface RegistroActividadDao {
     
     /**
-     * Inserta un nuevo registro de actividad en la base de datos.
-     * En caso de conflicto (mismo ID), reemplaza el registro existente.
+     * Inserta un nuevo registro de actividad.
+     * Si ya existe uno con el mismo ID, lo reemplaza.
+     * 
+     * @param registro El registro a insertar
+     * @return El ID del registro insertado
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertRegistroActividad(registro: RegistroActividadEntity)
+    suspend fun insertRegistroActividad(registro: RegistroActividadEntity): Long
     
     /**
-     * Inserta múltiples registros de actividad en la base de datos.
-     * En caso de conflicto (mismo ID), reemplaza los registros existentes.
+     * Inserta múltiples registros de actividad.
+     * Si ya existen con el mismo ID, los reemplaza.
+     * 
+     * @param registros Lista de registros a insertar
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRegistrosActividad(registros: List<RegistroActividadEntity>)
     
     /**
-     * Actualiza un registro de actividad existente en la base de datos.
+     * Actualiza un registro de actividad existente.
+     * 
+     * @param registro El registro a actualizar
+     * @return Número de filas afectadas
      */
     @Update
-    suspend fun updateRegistroActividad(registro: RegistroActividadEntity)
+    suspend fun updateRegistroActividad(registro: RegistroActividadEntity): Int
     
     /**
      * Obtiene un registro de actividad por su ID.
+     * 
+     * @param id ID del registro
+     * @return El registro encontrado o null si no existe
      */
-    @Query("SELECT * FROM registros_actividad WHERE id = :id")
+    @Query("SELECT * FROM registros_actividad WHERE id = :id LIMIT 1")
     suspend fun getRegistroActividadById(id: String): RegistroActividadEntity?
     
     /**
-     * Obtiene todos los registros de actividad de un alumno.
-     * Los resultados se ordenan por fecha en orden descendente (más recientes primero).
+     * Obtiene todos los registros de actividad para un alumno específico.
+     * 
+     * @param alumnoId ID del alumno
+     * @return Flow con la lista de registros
      */
     @Query("SELECT * FROM registros_actividad WHERE alumnoId = :alumnoId ORDER BY fechaTimestamp DESC")
     fun getRegistrosActividadByAlumno(alumnoId: String): Flow<List<RegistroActividadEntity>>
     
     /**
-     * Obtiene todos los registros de actividad de una clase en una fecha específica.
+     * Obtiene los registros de actividad de un alumno en una fecha específica.
+     * 
+     * @param alumnoId ID del alumno
+     * @param startTime Timestamp de inicio del día
+     * @param endTime Timestamp de fin del día
+     * @return Lista de registros encontrados
      */
-    @Query("SELECT * FROM registros_actividad WHERE claseId = :claseId AND fechaTimestamp BETWEEN :startTimestamp AND :endTimestamp")
-    suspend fun getRegistrosActividadByClaseAndFecha(claseId: String, startTimestamp: Long, endTimestamp: Long): List<RegistroActividadEntity>
+    @Query("SELECT * FROM registros_actividad WHERE alumnoId = :alumnoId AND fechaTimestamp BETWEEN :startTime AND :endTime ORDER BY fechaTimestamp DESC")
+    suspend fun getRegistrosActividadByAlumnoAndFecha(alumnoId: String, startTime: Long, endTime: Long): List<RegistroActividadEntity>
     
     /**
-     * Obtiene los registros de actividad no vistos por el familiar de un alumno.
+     * Obtiene todos los registros de actividad para una clase en una fecha específica.
+     * 
+     * @param claseId ID de la clase
+     * @param startTime Timestamp de inicio del día
+     * @param endTime Timestamp de fin del día
+     * @return Lista de registros encontrados
      */
-    @Query("SELECT * FROM registros_actividad WHERE alumnoId IN (:alumnosIds) AND vistoPorFamiliar = 0 ORDER BY fechaTimestamp DESC")
-    suspend fun getRegistrosActividadNoVistos(alumnosIds: List<String>): List<RegistroActividadEntity>
+    @Query("SELECT * FROM registros_actividad WHERE claseId = :claseId AND fechaTimestamp BETWEEN :startTime AND :endTime ORDER BY fechaTimestamp DESC")
+    suspend fun getRegistrosActividadByClaseAndFecha(claseId: String, startTime: Long, endTime: Long): List<RegistroActividadEntity>
     
     /**
-     * Marca un registro de actividad como visto por el familiar.
+     * Obtiene todos los registros no sincronizados con el servidor.
+     * 
+     * @return Lista de registros no sincronizados
      */
-    @Query("UPDATE registros_actividad SET vistoPorFamiliar = 1, visualizadoPorFamiliar = 1, fechaVistoTimestamp = :timestamp, fechaVisualizacionTimestamp = :timestamp, sincronizado = 0 WHERE id = :id")
-    suspend fun marcarRegistroComoVisto(id: String, timestamp: Long)
-    
-    /**
-     * Obtiene todos los registros que no están sincronizados con el servidor.
-     */
-    @Query("SELECT * FROM registros_actividad WHERE sincronizado = 0")
-    suspend fun getRegistrosNoSincronizados(): List<RegistroActividadEntity>
+    @Query("SELECT * FROM registros_actividad WHERE isSynced = 0")
+    suspend fun getUnsyncedRegistros(): List<RegistroActividadEntity>
     
     /**
      * Marca un registro como sincronizado con el servidor.
+     * 
+     * @param id ID del registro
+     * @return Número de filas afectadas
      */
-    @Query("UPDATE registros_actividad SET sincronizado = 1 WHERE id = :id")
-    suspend fun marcarRegistroComoSincronizado(id: String)
+    @Query("UPDATE registros_actividad SET isSynced = 1 WHERE id = :id")
+    suspend fun markAsSynced(id: String): Int
     
     /**
-     * Elimina un registro de actividad por su ID.
+     * Elimina un registro por su ID.
+     * 
+     * @param id ID del registro a eliminar
+     * @return Número de filas afectadas
      */
     @Query("DELETE FROM registros_actividad WHERE id = :id")
-    suspend fun deleteRegistroActividad(id: String)
+    suspend fun deleteRegistroById(id: String): Int
     
     /**
-     * Elimina todos los registros de actividad de un alumno.
+     * Elimina todos los registros de la tabla.
+     * 
+     * @return Número de filas afectadas
      */
-    @Query("DELETE FROM registros_actividad WHERE alumnoId = :alumnoId")
-    suspend fun deleteRegistrosActividadByAlumno(alumnoId: String)
+    @Query("DELETE FROM registros_actividad")
+    suspend fun deleteAllRegistros(): Int
 } 

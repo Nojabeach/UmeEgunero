@@ -1,0 +1,256 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "7247b03290917ec24043f55f835d742b",
+    "entities": [
+      {
+        "tableName": "registros_actividad",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `alumnoId` TEXT NOT NULL, `alumnoNombre` TEXT NOT NULL, `claseId` TEXT NOT NULL, `fechaTimestamp` INTEGER NOT NULL, `profesorId` TEXT, `profesorNombre` TEXT, `haDesayunado` INTEGER NOT NULL, `comidaPrincipal` TEXT NOT NULL, `primerPlato` TEXT NOT NULL, `segundoPlato` TEXT NOT NULL, `postre` TEXT NOT NULL, `merienda` TEXT NOT NULL, `observacionesComida` TEXT NOT NULL, `haSiestaSiNo` INTEGER NOT NULL, `horaInicioSiestaTimestamp` INTEGER, `horaFinSiestaTimestamp` INTEGER, `observacionesSiesta` TEXT NOT NULL, `haHechoCaca` INTEGER NOT NULL, `numeroCacas` INTEGER NOT NULL, `observacionesCaca` TEXT NOT NULL, `necesitaPanales` INTEGER NOT NULL, `necesitaToallitas` INTEGER NOT NULL, `necesitaRopaCambio` INTEGER NOT NULL, `otroMaterialNecesario` TEXT NOT NULL, `observaciones` TEXT, `observacionesGenerales` TEXT NOT NULL, `vistoPorFamiliar` INTEGER NOT NULL, `familiarId` TEXT, `fechaVistoTimestamp` INTEGER, `visualizadoPorFamiliar` INTEGER NOT NULL, `fechaVisualizacionTimestamp` INTEGER, `creadoEnTimestamp` INTEGER NOT NULL, `modificadoEnTimestamp` INTEGER NOT NULL, `ultimaModificacionTimestamp` INTEGER NOT NULL, `creadoPor` TEXT NOT NULL, `modificadoPor` TEXT NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alumnoId",
+            "columnName": "alumnoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alumnoNombre",
+            "columnName": "alumnoNombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "claseId",
+            "columnName": "claseId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaTimestamp",
+            "columnName": "fechaTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profesorId",
+            "columnName": "profesorId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "profesorNombre",
+            "columnName": "profesorNombre",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "haDesayunado",
+            "columnName": "haDesayunado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comidaPrincipal",
+            "columnName": "comidaPrincipal",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "primerPlato",
+            "columnName": "primerPlato",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "segundoPlato",
+            "columnName": "segundoPlato",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "postre",
+            "columnName": "postre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "merienda",
+            "columnName": "merienda",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observacionesComida",
+            "columnName": "observacionesComida",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "haSiestaSiNo",
+            "columnName": "haSiestaSiNo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "horaInicioSiestaTimestamp",
+            "columnName": "horaInicioSiestaTimestamp",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "horaFinSiestaTimestamp",
+            "columnName": "horaFinSiestaTimestamp",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "observacionesSiesta",
+            "columnName": "observacionesSiesta",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "haHechoCaca",
+            "columnName": "haHechoCaca",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numeroCacas",
+            "columnName": "numeroCacas",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observacionesCaca",
+            "columnName": "observacionesCaca",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "necesitaPanales",
+            "columnName": "necesitaPanales",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "necesitaToallitas",
+            "columnName": "necesitaToallitas",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "necesitaRopaCambio",
+            "columnName": "necesitaRopaCambio",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "otroMaterialNecesario",
+            "columnName": "otroMaterialNecesario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observaciones",
+            "columnName": "observaciones",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "observacionesGenerales",
+            "columnName": "observacionesGenerales",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vistoPorFamiliar",
+            "columnName": "vistoPorFamiliar",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "familiarId",
+            "columnName": "familiarId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "fechaVistoTimestamp",
+            "columnName": "fechaVistoTimestamp",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "visualizadoPorFamiliar",
+            "columnName": "visualizadoPorFamiliar",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaVisualizacionTimestamp",
+            "columnName": "fechaVisualizacionTimestamp",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "creadoEnTimestamp",
+            "columnName": "creadoEnTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modificadoEnTimestamp",
+            "columnName": "modificadoEnTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ultimaModificacionTimestamp",
+            "columnName": "ultimaModificacionTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "creadoPor",
+            "columnName": "creadoPor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modificadoPor",
+            "columnName": "modificadoPor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7247b03290917ec24043f55f835d742b')"
+    ]
+  }
+}

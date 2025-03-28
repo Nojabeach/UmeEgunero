@@ -7,14 +7,12 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
-import com.tfg.umeegunero.data.local.entity.RegistroActividadEntity
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -29,17 +27,17 @@ import javax.inject.Singleton
  * 
  * Esta clase maneja las operaciones CRUD para los registros de actividades,
  * así como consultas específicas por alumno, clase, fecha, etc.
- * Soporta almacenamiento offline mediante Room.
+ * Soporta almacenamiento offline mediante el repositorio local.
  * 
  * @param firestore Instancia de FirebaseFirestore inyectada por Hilt
- * @param registroActividadDao DAO para acceso a la base de datos local
+ * @param localRegistroRepository Repositorio local para acceso a la base de datos local
  * @param context Contexto de la aplicación para verificar conectividad
  * @author Estudiante 2º DAM
  */
 @Singleton
 class RegistroDiarioRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val registroActividadDao: RegistroActividadDao,
+    private val localRegistroRepository: LocalRegistroActividadRepository,
     private val context: Context
 ) {
     private val registrosCollection = firestore.collection("registrosActividad")
@@ -69,22 +67,21 @@ class RegistroDiarioRepository @Inject constructor(
         
         withContext(Dispatchers.IO) {
             try {
-                val registrosNoSincronizados = registroActividadDao.getRegistrosNoSincronizados()
+                val registrosNoSincronizados = localRegistroRepository.getUnsyncedRegistros()
                 Timber.d("Sincronizando ${registrosNoSincronizados.size} registros pendientes")
                 
-                registrosNoSincronizados.forEach { entidad ->
+                registrosNoSincronizados.forEach { registro ->
                     launch {
                         try {
-                            val registro = entidad.toRegistroActividad()
                             registrosCollection.document(registro.id)
                                 .set(registro)
                                 .await()
                             
                             // Marcar como sincronizado en la BD local
-                            registroActividadDao.marcarRegistroComoSincronizado(entidad.id)
-                            Timber.d("Registro ${entidad.id} sincronizado con éxito")
+                            localRegistroRepository.markAsSynced(registro.id)
+                            Timber.d("Registro ${registro.id} sincronizado con éxito")
                         } catch (e: Exception) {
-                            Timber.e(e, "Error al sincronizar registro ${entidad.id}")
+                            Timber.e(e, "Error al sincronizar registro ${registro.id}")
                         }
                     }
                 }
@@ -139,9 +136,7 @@ class RegistroDiarioRepository @Inject constructor(
                         // Si existe, guardar en local y devolver
                         val registroExistente = query.documents[0].toObject(RegistroActividad::class.java)!!
                         // Guardar en caché local
-                        registroActividadDao.insertRegistroActividad(
-                            RegistroActividadEntity.fromRegistroActividad(registroExistente)
-                        )
+                        localRegistroRepository.saveRegistroActividad(registroExistente, true)
                         return@withContext Result.Success(registroExistente)
                     } else {
                         // Si no existe, crear uno nuevo
@@ -159,9 +154,7 @@ class RegistroDiarioRepository @Inject constructor(
                         documentRef.set(registroConId).await()
                         
                         // Guardar en caché local
-                        registroActividadDao.insertRegistroActividad(
-                            RegistroActividadEntity.fromRegistroActividad(registroConId)
-                        )
+                        localRegistroRepository.saveRegistroActividad(registroConId, true)
                         
                         return@withContext Result.Success(registroConId)
                     }
@@ -172,17 +165,11 @@ class RegistroDiarioRepository @Inject constructor(
             }
             
             // Si no hay conexión o falló la operación en Firestore, intentamos con local
-            val startTimestamp = inicioDia.time
-            val endTimestamp = finDia.time
-            
-            // Buscamos en la base de datos local
-            val registrosLocales = registroActividadDao.getRegistrosActividadByClaseAndFecha(
-                claseId, startTimestamp, endTimestamp
-            ).filter { it.alumnoId == alumnoId }
+            val registrosLocales = localRegistroRepository.getRegistrosActividadByAlumnoAndFecha(alumnoId, fecha)
             
             if (registrosLocales.isNotEmpty()) {
                 // Si hay registros locales, devolvemos el primero
-                return@withContext Result.Success(registrosLocales.first().toRegistroActividad())
+                return@withContext Result.Success(registrosLocales.first())
             } else {
                 // Si no hay registros locales, creamos uno nuevo
                 val nuevoRegistro = RegistroActividad(
@@ -196,151 +183,190 @@ class RegistroDiarioRepository @Inject constructor(
                 )
                 
                 // Guardamos en local con marca de "no sincronizado"
-                registroActividadDao.insertRegistroActividad(
-                    RegistroActividadEntity.fromRegistroActividad(nuevoRegistro, sincronizado = false)
-                )
+                localRegistroRepository.saveRegistroActividad(nuevoRegistro, false)
                 
                 return@withContext Result.Success(nuevoRegistro)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener/crear registro diario para alumno $alumnoId")
-            return@withContext Result.Error(e)
+            Timber.e(e, "Error al obtener/crear registro diario")
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
         }
     }
     
     /**
-     * Genera un ID local temporal para registros creados sin conexión
-     */
-    private fun generateLocalId(): String {
-        return "local_${System.currentTimeMillis()}_${(1000..9999).random()}"
-    }
-    
-    /**
      * Actualiza un registro diario existente.
+     * Mantiene compatibilidad con el método anterior.
      * 
      * @param registro Registro a actualizar
      * @return Resultado de la operación (éxito o error)
      */
     suspend fun actualizarRegistroDiario(registro: RegistroActividad): Result<Unit> = withContext(Dispatchers.IO) {
+        return@withContext guardarRegistroDiario(registro)
+    }
+    
+    /**
+     * Guarda un registro diario en Firestore y localmente
+     * 
+     * @param registro El registro a guardar
+     * @return Resultado de la operación
+     */
+    suspend fun guardarRegistroDiario(registro: RegistroActividad): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            // Actualizar el registro con la última modificación
             val registroActualizado = registro.copy(
-                ultimaModificacion = Timestamp.now(),
-                modificadoPor = registro.modificadoPor
+                ultimaModificacion = Timestamp(Date())
             )
             
-            // Si hay conexión, actualizamos en Firestore
-            val sincronizado = if (isNetworkAvailable()) {
+            // Si hay conexión, guardamos en Firestore
+            if (isNetworkAvailable()) {
                 try {
-                    registrosCollection.document(registro.id)
+                    registrosCollection.document(registroActualizado.id)
                         .set(registroActualizado)
                         .await()
-                    true
+                    
+                    // Guardar en local sincronizado
+                    localRegistroRepository.saveRegistroActividad(registroActualizado, true)
+                    return@withContext Result.Success(Unit)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al actualizar en Firestore, guardando solo en local")
-                    false
+                    Timber.e(e, "Error al guardar en Firestore, guardando solo en local")
                 }
-            } else {
-                false
             }
             
-            // Siempre actualizamos en la base de datos local
-            registroActividadDao.insertRegistroActividad(
-                RegistroActividadEntity.fromRegistroActividad(registroActualizado, sincronizado)
-            )
-                
+            // Si no hay conexión o falló Firestore, guardamos solo localmente
+            localRegistroRepository.saveRegistroActividad(registroActualizado, false)
             return@withContext Result.Success(Unit)
+            
         } catch (e: Exception) {
-            Timber.e(e, "Error al actualizar registro diario ${registro.id}")
-            return@withContext Result.Error(e)
+            Timber.e(e, "Error al guardar registro diario")
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
         }
     }
     
     /**
+     * Obtiene un registro diario por su ID
+     * 
+     * @param registroId ID del registro
+     * @return Resultado con el registro si existe
+     */
+    suspend fun obtenerRegistroDiarioPorId(registroId: String): Result<RegistroActividad> = withContext(Dispatchers.IO) {
+        try {
+            // Primero intentamos obtenerlo de la caché local
+            val registroLocal = localRegistroRepository.getRegistroActividadById(registroId)
+            
+            if (registroLocal != null) {
+                return@withContext Result.Success(registroLocal)
+            }
+            
+            // Si no está en caché y hay conexión, lo buscamos en Firestore
+            if (isNetworkAvailable()) {
+                try {
+                    val documentSnapshot = registrosCollection.document(registroId).get().await()
+                    
+                    if (documentSnapshot.exists()) {
+                        val registro = documentSnapshot.toObject(RegistroActividad::class.java)!!
+                        // Guardamos en caché local
+                        localRegistroRepository.saveRegistroActividad(registro, true)
+                        return@withContext Result.Success(registro)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener registro de Firestore")
+                }
+            }
+            
+            return@withContext Result.Error(Exception("No se encontró el registro con ID $registroId"))
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registro por ID")
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
+        }
+    }
+    
+    /**
+     * Obtiene los registros diarios de un alumno.
+     * Método compatible con la versión anterior.
+     * 
+     * @param alumnoId ID del alumno
+     * @param limit Límite de registros a obtener
+     * @return Flow de resultado con la lista de registros
+     */
+    fun obtenerRegistrosAlumno(alumnoId: String, limit: Long = 30): Flow<Result<List<RegistroActividad>>> {
+        return obtenerRegistrosDiariosPorAlumno(alumnoId)
+    }
+    
+    /**
+     * Obtiene los registros diarios de un alumno
+     * 
+     * @param alumnoId ID del alumno
+     * @return Flow de resultado con la lista de registros
+     */
+    fun obtenerRegistrosDiariosPorAlumno(alumnoId: String): Flow<Result<List<RegistroActividad>>> = flow {
+        emit(Result.Loading)
+        
+        try {
+            // Si hay conexión, intentamos obtener desde Firestore
+            if (isNetworkAvailable()) {
+                try {
+                    val registros = registrosCollection
+                        .whereEqualTo("alumnoId", alumnoId)
+                        .orderBy("fecha", Query.Direction.DESCENDING)
+                        .get()
+                        .await()
+                        .toObjects(RegistroActividad::class.java)
+                    
+                    // Guardamos los resultados en la caché local
+                    localRegistroRepository.saveRegistrosActividad(registros, true)
+                    
+                    emit(Result.Success(registros))
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener registros de Firestore, usando local")
+                    // Si falla Firestore, emitimos los datos locales
+                    localRegistroRepository.getRegistrosActividadByAlumno(alumnoId)
+                        .collect { registros ->
+                            emit(Result.Success(registros))
+                        }
+                }
+            } else {
+                // Si no hay conexión, usamos los datos locales
+                localRegistroRepository.getRegistrosActividadByAlumno(alumnoId)
+                    .collect { registros ->
+                        emit(Result.Success(registros))
+                    }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros del alumno")
+            emit(Result.Error(Exception(e.message ?: "Error desconocido")))
+        }
+    }.catch { e ->
+        Timber.e(e, "Error en el flujo de registros por alumno")
+        emit(Result.Error(Exception(e.message ?: "Error desconocido")))
+    }
+    
+    /**
      * Marca un registro como visualizado por los familiares.
+     * Método compatible con la versión anterior.
      * 
      * @param registroId ID del registro a marcar
      * @return Resultado de la operación (éxito o error)
      */
     suspend fun marcarComoVisualizado(registroId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val timestamp = Date().time
+            val registroResult = obtenerRegistroDiarioPorId(registroId)
             
-            // Actualizamos en la base de datos local
-            registroActividadDao.marcarRegistroComoVisto(registroId, timestamp)
-            
-            // Si hay conexión, también actualizamos en Firestore
-            if (isNetworkAvailable()) {
-                try {
-                    registrosCollection.document(registroId)
-                        .update(
-                            mapOf(
-                                "visualizadoPorFamiliar" to true,
-                                "fechaVisualizacion" to Timestamp.now(),
-                                "vistoPorFamiliar" to true,
-                                "fechaVisto" to Timestamp.now()
-                            )
-                        )
-                        .await()
-                    
-                    // Si la actualización en Firestore fue exitosa, marcamos como sincronizado
-                    registroActividadDao.marcarRegistroComoSincronizado(registroId)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al marcar como visto en Firestore, se sincronizará más tarde")
-                    // No propagamos la excepción, ya que la actualización local fue exitosa
-                }
+            if (registroResult is Result.Error) {
+                return@withContext registroResult
             }
-                
-            return@withContext Result.Success(Unit)
+            
+            val registro = (registroResult as Result.Success).data
+            val registroActualizado = registro.copy(
+                vistoPorFamiliar = true,
+                visualizadoPorFamiliar = true,
+                fechaVisto = Timestamp(Date()),
+                fechaVisualizacion = Timestamp(Date())
+            )
+            
+            return@withContext guardarRegistroDiario(registroActualizado)
         } catch (e: Exception) {
             Timber.e(e, "Error al marcar registro como visualizado: $registroId")
-            return@withContext Result.Error(e)
-        }
-    }
-    
-    /**
-     * Obtiene todos los registros diarios de un alumno.
-     * 
-     * @param alumnoId ID del alumno
-     * @param limit Límite de registros a obtener
-     * @return Flow de resultado con la lista de registros
-     */
-    fun obtenerRegistrosAlumno(alumnoId: String, limit: Long = 30): Flow<Result<List<RegistroActividad>>> = flow {
-        emit(Result.Loading)
-        
-        // Primero intentamos obtener los datos desde Room
-        val localFlow = registroActividadDao.getRegistrosActividadByAlumno(alumnoId)
-            .map { entidades -> entidades.map { it.toRegistroActividad() } }
-            .catch { e ->
-                Timber.e(e, "Error al obtener registros locales para alumno $alumnoId")
-                emit(Result.Error(Exception(e)))
-            }
-        
-        // Emitimos primero los datos locales
-        localFlow.collect { registrosLocales ->
-            emit(Result.Success(registrosLocales))
-        }
-        
-        // Si hay conexión, obtenemos los datos actualizados de Firestore
-        if (isNetworkAvailable()) {
-            try {
-                val query = registrosCollection
-                    .whereEqualTo("alumnoId", alumnoId)
-                    .orderBy("fecha", Query.Direction.DESCENDING)
-                    .limit(limit)
-                    .get()
-                    .await()
-                    
-                val registros = query.toObjects(RegistroActividad::class.java)
-                
-                // Guardamos en la base de datos local para futuras consultas
-                val entidades = registros.map { RegistroActividadEntity.fromRegistroActividad(it) }
-                registroActividadDao.insertRegistrosActividad(entidades)
-                
-                emit(Result.Success(registros))
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener registros del alumno $alumnoId desde Firestore")
-                // No emitimos error si ya teníamos datos locales
-            }
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
         }
     }
     
@@ -369,21 +395,6 @@ class RegistroDiarioRepository @Inject constructor(
             calendar.set(Calendar.SECOND, 59)
             val finDia = calendar.time
             
-            val startTimestamp = inicioDia.time
-            val endTimestamp = finDia.time
-            
-            // Primero intentamos obtener desde la base de datos local
-            val entidadesLocales = registroActividadDao.getRegistrosActividadByClaseAndFecha(
-                claseId, startTimestamp, endTimestamp
-            )
-            
-            // Si hay registros locales y no hay conexión, los devolvemos
-            if (entidadesLocales.isNotEmpty() && !isNetworkAvailable()) {
-                return@withContext Result.Success(
-                    entidadesLocales.map { it.toRegistroActividad() }
-                )
-            }
-            
             // Si hay conexión, intentamos obtener datos actualizados de Firestore
             if (isNetworkAvailable()) {
                 try {
@@ -397,33 +408,32 @@ class RegistroDiarioRepository @Inject constructor(
                     val registros = query.toObjects(RegistroActividad::class.java)
                     
                     // Guardamos en la base de datos local para futuras consultas
-                    val entidades = registros.map { RegistroActividadEntity.fromRegistroActividad(it) }
-                    registroActividadDao.insertRegistrosActividad(entidades)
+                    localRegistroRepository.saveRegistrosActividad(registros, true)
                     
                     return@withContext Result.Success(registros)
                 } catch (e: Exception) {
                     Timber.e(e, "Error al obtener registros de Firestore para clase $claseId")
-                    // Si hay registros locales, los devolvemos como fallback
-                    if (entidadesLocales.isNotEmpty()) {
-                        return@withContext Result.Success(
-                            entidadesLocales.map { it.toRegistroActividad() }
-                        )
-                    }
-                    return@withContext Result.Error(e)
+                    // Intentamos con los datos locales como fallback
                 }
             }
             
-            // Si no hay conexión y no teníamos datos locales
-            if (entidadesLocales.isEmpty()) {
-                return@withContext Result.Success(emptyList())
+            // Si no hay conexión o falló Firestore, usamos datos locales
+            // Transformamos las fechas para la consulta local
+            val registrosLocales = mutableListOf<RegistroActividad>()
+            localRegistroRepository.getRegistrosActividadByAlumno("").collect { registros ->
+                registrosLocales.addAll(
+                    registros.filter { 
+                        it.claseId == claseId && 
+                        it.fecha.toDate().time >= inicioDia.time && 
+                        it.fecha.toDate().time <= finDia.time 
+                    }
+                )
             }
             
-            return@withContext Result.Success(
-                entidadesLocales.map { it.toRegistroActividad() }
-            )
+            return@withContext Result.Success(registrosLocales)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener registros para la clase $claseId en fecha específica")
-            return@withContext Result.Error(e)
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
         }
     }
     
@@ -441,22 +451,11 @@ class RegistroDiarioRepository @Inject constructor(
                 return@withContext Result.Success(emptyList())
             }
             
-            // Primero intentamos obtener desde la base de datos local
-            val entidadesLocales = registroActividadDao.getRegistrosActividadNoVistos(alumnosIds)
-            
-            // Si hay registros locales y no hay conexión, los devolvemos
-            if (entidadesLocales.isNotEmpty() && !isNetworkAvailable()) {
-                return@withContext Result.Success(
-                    entidadesLocales.map { it.toRegistroActividad() }
-                )
-            }
+            val registrosNoVistos = mutableListOf<RegistroActividad>()
             
             // Si hay conexión, intentamos obtener datos actualizados de Firestore
             if (isNetworkAvailable()) {
                 try {
-                    val resultados = mutableListOf<RegistroActividad>()
-                    
-                    // Consultamos por cada alumno (no se puede usar whereIn con otro filtro complejo)
                     for (alumnoId in alumnosIds) {
                         val query = registrosCollection
                             .whereEqualTo("alumnoId", alumnoId)
@@ -464,38 +463,99 @@ class RegistroDiarioRepository @Inject constructor(
                             .orderBy("fecha", Query.Direction.DESCENDING)
                             .get()
                             .await()
-                            
-                        resultados.addAll(query.toObjects(RegistroActividad::class.java))
+                        
+                        val registros = query.toObjects(RegistroActividad::class.java)
+                        registrosNoVistos.addAll(registros)
                     }
                     
                     // Guardamos en la base de datos local para futuras consultas
-                    val entidades = resultados.map { RegistroActividadEntity.fromRegistroActividad(it) }
-                    registroActividadDao.insertRegistrosActividad(entidades)
+                    if (registrosNoVistos.isNotEmpty()) {
+                        localRegistroRepository.saveRegistrosActividad(registrosNoVistos, true)
+                    }
                     
-                    return@withContext Result.Success(resultados)
+                    return@withContext Result.Success(registrosNoVistos)
                 } catch (e: Exception) {
                     Timber.e(e, "Error al obtener registros no visualizados de Firestore")
-                    // Si hay registros locales, los devolvemos como fallback
-                    if (entidadesLocales.isNotEmpty()) {
-                        return@withContext Result.Success(
-                            entidadesLocales.map { it.toRegistroActividad() }
-                        )
-                    }
-                    return@withContext Result.Error(e)
+                    // Intentamos con datos locales como fallback
                 }
             }
             
-            // Si no hay conexión y no teníamos datos locales
-            if (entidadesLocales.isEmpty()) {
-                return@withContext Result.Success(emptyList())
+            // Si no hay conexión o falló Firestore, usamos datos locales
+            for (alumnoId in alumnosIds) {
+                localRegistroRepository.getRegistrosActividadByAlumno(alumnoId).collect { registros ->
+                    registrosNoVistos.addAll(registros.filter { !it.vistoPorFamiliar })
+                }
             }
             
-            return@withContext Result.Success(
-                entidadesLocales.map { it.toRegistroActividad() }
-            )
+            return@withContext Result.Success(registrosNoVistos)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener registros no visualizados")
-            return@withContext Result.Error(e)
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
         }
+    }
+    
+    /**
+     * Marca un registro como visto por el familiar
+     * 
+     * @param registroId ID del registro a marcar
+     * @param familiarId ID del familiar que visualiza
+     * @return Resultado de la operación
+     */
+    suspend fun marcarRegistroComoVisto(registroId: String, familiarId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val timestamp = Timestamp(Date())
+            
+            // Primero obtenemos el registro
+            val registroResult = obtenerRegistroDiarioPorId(registroId)
+            
+            if (registroResult is Result.Error) {
+                return@withContext registroResult
+            }
+            
+            val registro = (registroResult as Result.Success).data
+            val registroActualizado = registro.copy(
+                vistoPorFamiliar = true,
+                visualizadoPorFamiliar = true,
+                fechaVisto = timestamp,
+                fechaVisualizacion = timestamp
+            )
+            
+            // Si hay conexión, actualizamos en Firestore
+            if (isNetworkAvailable()) {
+                try {
+                    registrosCollection.document(registroId)
+                        .update(
+                            mapOf(
+                                "vistoPorFamiliar" to true,
+                                "visualizadoPorFamiliar" to true,
+                                "fechaVisto" to timestamp,
+                                "fechaVisualizacion" to timestamp
+                            )
+                        )
+                        .await()
+                    
+                    // Actualizamos en local
+                    localRegistroRepository.updateRegistroActividad(registroActualizado, true)
+                    return@withContext Result.Success(Unit)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al marcar como visto en Firestore, guardando solo en local")
+                }
+            }
+            
+            // Si no hay conexión o falló Firestore, actualizamos solo localmente
+            localRegistroRepository.updateRegistroActividad(registroActualizado, false)
+            return@withContext Result.Success(Unit)
+            
+        } catch (e: Exception) {
+            Timber.e(e, "Error al marcar registro como visto")
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
+        }
+    }
+    
+    /**
+     * Genera un ID local temporal para registros creados sin conexión
+     */
+    private fun generateLocalId(): String {
+        return "local_${System.currentTimeMillis()}_${(0..999).random()}"
     }
 } 

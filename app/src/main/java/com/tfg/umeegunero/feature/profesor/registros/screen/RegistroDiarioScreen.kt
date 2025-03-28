@@ -67,6 +67,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material3.HorizontalDivider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -186,7 +187,7 @@ fun RegistroDiarioScreen(
                         onEstadoChange = { viewModel.actualizarEstadoComida("primerPlato", it) }
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     
                     // Segundo plato
                     ComidaRow(
@@ -195,7 +196,7 @@ fun RegistroDiarioScreen(
                         onEstadoChange = { viewModel.actualizarEstadoComida("segundoPlato", it) }
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     
                     // Postre
                     ComidaRow(
@@ -204,7 +205,7 @@ fun RegistroDiarioScreen(
                         onEstadoChange = { viewModel.actualizarEstadoComida("postre", it) }
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     
                     // Merienda
                     ComidaRow(

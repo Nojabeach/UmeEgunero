@@ -23,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -248,9 +249,12 @@ private fun DrawerContent(
             )
         }
         
-        Divider(
-            modifier = Modifier.padding(vertical = 12.dp),
-            color = MaterialTheme.colorScheme.outlineVariant
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(top = 16.dp, bottom = 8.dp)
         )
         
         // Lista de items de navegación

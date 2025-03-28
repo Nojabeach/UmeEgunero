@@ -11,6 +11,7 @@ import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepositoryImpl
 import com.tfg.umeegunero.data.repository.AlumnoRepositoryImpl
 import com.tfg.umeegunero.data.repository.ComunicadoRepository
+import com.tfg.umeegunero.data.repository.LocalRegistroActividadRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
@@ -21,6 +22,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Módulo Dagger/Hilt que proporciona las implementaciones de los repositorios.
+ * Este módulo se encarga de crear y configurar todas las instancias de repositorios
+ * que se utilizarán en la aplicación.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
@@ -77,9 +83,24 @@ object RepositoryModule {
     @Singleton
     fun provideRegistroDiarioRepository(
         firestore: FirebaseFirestore,
-        registroActividadDao: RegistroActividadDao,
+        localRegistroRepository: LocalRegistroActividadRepository,
         @ApplicationContext context: Context
     ): RegistroDiarioRepository {
-        return RegistroDiarioRepository(firestore, registroActividadDao, context)
+        return RegistroDiarioRepository(firestore, localRegistroRepository, context)
+    }
+    
+    /**
+     * Proporciona una instancia del repositorio local para los registros de actividad.
+     * Este repositorio maneja la persistencia local con Room.
+     *
+     * @param registroActividadDao DAO para acceder a los registros de actividad
+     * @return Instancia de LocalRegistroActividadRepository
+     */
+    @Provides
+    @Singleton
+    fun provideLocalRegistroActividadRepository(
+        registroActividadDao: RegistroActividadDao
+    ): LocalRegistroActividadRepository {
+        return LocalRegistroActividadRepository(registroActividadDao)
     }
 } 

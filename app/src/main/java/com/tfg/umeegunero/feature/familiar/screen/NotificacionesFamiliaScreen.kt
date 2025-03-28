@@ -1,14 +1,16 @@
 package com.tfg.umeegunero.feature.familiar.screen
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -306,10 +308,16 @@ fun NotificacionItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = notificacion.tipo.icon,
-                    contentDescription = null,
-                    tint = notificacion.tipo.color,
-                    modifier = Modifier.size(24.dp)
+                    imageVector = Icons.Default.Message,
+                    contentDescription = "Mensaje",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Icon(
+                    imageVector = Icons.Default.Assignment,
+                    contentDescription = "Tarea",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
                 )
             }
             

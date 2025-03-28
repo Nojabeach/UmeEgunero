@@ -2,12 +2,11 @@ package com.tfg.umeegunero.navigation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -33,7 +32,7 @@ fun NavigationDrawerContent(
             modifier = Modifier.padding(top = 16.dp, bottom = 32.dp)
         )
         
-        Divider()
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -63,27 +62,23 @@ fun NavigationDrawerContent(
             )
             
             if (item.dividerAfter) {
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
         }
         
         Spacer(modifier = Modifier.weight(1f))
         
-        Divider()
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         
         NavigationDrawerItem(
-            label = { Text("Cerrar sesión") },
+            label = { Text(text = "Cerrar sesión") },
             selected = false,
-            onClick = {
+            onClick = { 
                 onLogout()
                 onCloseDrawer()
             },
-            icon = { Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar sesión") },
-            modifier = Modifier.padding(vertical = 8.dp),
-            colors = NavigationDrawerItemDefaults.colors(
-                unselectedIconColor = Color.Red,
-                unselectedTextColor = Color.Red
-            )
+            icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Cerrar sesión") },
+            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
         )
     }
 } 

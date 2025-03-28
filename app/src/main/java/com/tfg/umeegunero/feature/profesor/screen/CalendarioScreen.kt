@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.feature.profesor.screen
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,10 +13,15 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -134,8 +140,9 @@ fun CalendarioScreen(
                 ) {
                     IconButton(onClick = { viewModel.mesAnterior() }) {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowLeft,
-                            contentDescription = "Mes anterior"
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Mes anterior",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     
@@ -149,8 +156,9 @@ fun CalendarioScreen(
                     
                     IconButton(onClick = { viewModel.mesSiguiente() }) {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowRight,
-                            contentDescription = "Mes siguiente"
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Mes siguiente",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -263,7 +271,7 @@ fun CalendarioScreen(
                                             onDelete = { viewModel.eliminarEvento(evento) }
                                         )
                                         
-                                        Divider(
+                                        HorizontalDivider(
                                             modifier = Modifier.padding(vertical = 8.dp)
                                         )
                                     }
@@ -354,10 +362,10 @@ fun EventoItem(
         val (color, icon) = when (evento.tipo) {
             TipoEvento.CLASE -> evento.tipo.color to Icons.Default.School
             TipoEvento.REUNION -> evento.tipo.color to Icons.Default.Group
-            TipoEvento.EXAMEN -> evento.tipo.color to Icons.Default.Assignment
+            TipoEvento.EXAMEN -> evento.tipo.color to Icons.AutoMirrored.Filled.Assignment
             TipoEvento.EXCURSION -> evento.tipo.color to Icons.Default.DirectionsBus
             TipoEvento.FESTIVO -> evento.tipo.color to Icons.Default.Event
-            TipoEvento.ESCOLAR -> evento.tipo.color to Icons.Default.MenuBook
+            TipoEvento.ESCOLAR -> evento.tipo.color to Icons.AutoMirrored.Filled.MenuBook
             TipoEvento.OTRO -> evento.tipo.color to Icons.Default.Event
         }
         
@@ -521,10 +529,10 @@ fun TipoEventoChip(
     val (color, icon) = when (tipo) {
         TipoEvento.CLASE -> tipo.color to Icons.Default.School
         TipoEvento.REUNION -> tipo.color to Icons.Default.Group
-        TipoEvento.EXAMEN -> tipo.color to Icons.Default.Assignment
+        TipoEvento.EXAMEN -> tipo.color to Icons.AutoMirrored.Filled.Assignment
         TipoEvento.EXCURSION -> tipo.color to Icons.Default.DirectionsBus
         TipoEvento.FESTIVO -> tipo.color to Icons.Default.Event
-        TipoEvento.ESCOLAR -> tipo.color to Icons.Default.MenuBook
+        TipoEvento.ESCOLAR -> tipo.color to Icons.AutoMirrored.Filled.MenuBook
         TipoEvento.OTRO -> tipo.color to Icons.Default.Event
     }
     

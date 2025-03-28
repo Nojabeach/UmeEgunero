@@ -161,7 +161,9 @@ fun FamiliaDashboardScreen(
                             icon = Icons.Default.Chat,
                             color = MaterialTheme.colorScheme.secondary,
                             onClick = {
-                                navController.navigate(AppScreens.ChatFamilia.route)
+                                navController.navigate(AppScreens.ChatFamilia.route) {
+                                    launchSingleTop = true
+                                }
                             }
                         )
                     }
@@ -172,7 +174,9 @@ fun FamiliaDashboardScreen(
                             icon = Icons.Default.Assignment,
                             color = MaterialTheme.colorScheme.tertiary,
                             onClick = {
-                                navController.navigate(AppScreens.TareasFamilia.route)
+                                navController.navigate(AppScreens.TareasFamilia.route) {
+                                    launchSingleTop = true
+                                }
                             }
                         )
                     }

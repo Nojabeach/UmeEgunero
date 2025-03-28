@@ -101,9 +101,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     // Room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
     
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")

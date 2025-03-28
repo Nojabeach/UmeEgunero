@@ -55,6 +55,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material3.HorizontalDivider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -178,7 +179,7 @@ fun RegistroDiarioCard(
                 content = obtenerResumenComidas(registro)
             )
             
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             
             // Siesta
             InfoRow(
@@ -207,7 +208,7 @@ fun RegistroDiarioCard(
                 )
             }
             
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             
             // Deposiciones
             InfoRow(
@@ -232,7 +233,7 @@ fun RegistroDiarioCard(
             if (registro.necesitaPanales || registro.necesitaToallitas || 
                 registro.necesitaRopaCambio || registro.otroMaterialNecesario.isNotEmpty()) {
                 
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 
                 Text(
                     text = "Material necesario:",
@@ -273,7 +274,7 @@ fun RegistroDiarioCard(
             
             // Observaciones generales
             if (registro.observacionesGenerales.isNotEmpty()) {
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 
                 InfoRow(
                     icon = Icons.Default.Subject,

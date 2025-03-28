@@ -141,8 +141,12 @@ fun ChatProfesorScreen(
                             onClick = { /* Navegar al detalle del chat */ }
                         )
                         
-                        Divider(
-                            modifier = Modifier.padding(vertical = 8.dp)
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
                     }
                 }

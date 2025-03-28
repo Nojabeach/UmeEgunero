@@ -15,6 +15,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/**
+ * Clase que representa la información básica de un chat
+ */
+data class ChatInfo(
+    val id: String = "",
+    val participantes: List<String> = emptyList(),
+    val ultimoMensaje: String? = null,
+    val ultimaFecha: Timestamp? = null
+)
 
 /**
  * Estado UI para la pantalla de chat
@@ -301,5 +313,22 @@ class ChatViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Verifica si ya existe un chat entre los participantes
+     */
+    private suspend fun buscarChatPorParticipantes(
+        _familiarId: String,
+        _profesorId: String,
+        _alumnoId: String
+    ): Result<ChatInfo?> = withContext(Dispatchers.IO) {
+        try {
+            // Implementación actual...
+            return@withContext Result.Success(null)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar chat por participantes")
+            return@withContext Result.Error(e)
+        }
     }
 }

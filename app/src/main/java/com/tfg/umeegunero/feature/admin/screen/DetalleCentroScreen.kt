@@ -84,6 +84,7 @@ import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de detalle de un centro educativo
@@ -284,8 +285,9 @@ fun DetalleCentroContent(
                         UsuarioItem(usuario = admin)
                         
                         if (index < administradores.size - 1) {
-                            Divider(
-                                modifier = Modifier.padding(vertical = 8.dp),
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 16.dp),
+                                thickness = 1.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
                         }
@@ -320,8 +322,9 @@ fun DetalleCentroContent(
                         UsuarioItem(usuario = profesor)
                         
                         if (index < profesores.take(5).size - 1) {
-                            Divider(
-                                modifier = Modifier.padding(vertical = 8.dp),
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 16.dp),
+                                thickness = 1.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
                         }

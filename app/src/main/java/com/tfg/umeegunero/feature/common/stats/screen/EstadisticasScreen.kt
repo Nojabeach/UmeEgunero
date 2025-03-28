@@ -397,7 +397,7 @@ fun EstadisticasScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             
                             LinearProgressIndicator(
-                                progress = metrica.value / 100f,
+                                progress = { metrica.value / 100f },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(8.dp)
@@ -466,7 +466,7 @@ fun EstadisticasScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             
                             LinearProgressIndicator(
-                                progress = plataforma.value / 100f,
+                                progress = { plataforma.value / 100f },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(8.dp)
