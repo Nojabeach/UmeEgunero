@@ -36,62 +36,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import android.content.res.Configuration
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tfg.umeegunero.feature.admin.viewmodel.EstadisticasViewModel
 
 /**
- * Pantalla que muestra estadísticas del sistema
+ * Pantalla de estadísticas para el administrador
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EstadisticasScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: EstadisticasViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     
-    // Datos simulados para las estadísticas (en una implementación real vendrían del ViewModel)
-    val centrosCount = 12
-    val profesoresCount = 86
-    val alumnosCount = 548
-    val familiaresCount = 623
-    
-    // Datos para gráficos
-    val datosMensuales = remember { 
-        val meses = (1..6).map { 
-            LocalDate.now().minusMonths(it.toLong()).month.getDisplayName(TextStyle.SHORT, Locale("es", "ES")).capitalize() 
-        }.reversed()
-        
-        // Centros por mes (simulado)
-        val centrosPorMes = (1..6).map { Random.nextInt(8, 15) }.reversed()
-        
-        // Alumnos por mes (simulado)
-        val alumnosPorMes = (1..6).map { Random.nextInt(400, 600) }.reversed()
-        
-        StatisticsData(
-            meses = meses,
-            centrosPorMes = centrosPorMes,
-            alumnosPorMes = alumnosPorMes
-        )
-    }
-    
-    // Distribución de tipos de usuarios (simulado)
-    val distribucionUsuarios = remember {
-        listOf(
-            PieChartData("Alumnos", alumnosCount.toFloat(), Color(0xFF2196F3)), // Azul
-            PieChartData("Familiares", familiaresCount.toFloat(), Color(0xFF4CAF50)), // Verde
-            PieChartData("Profesores", profesoresCount.toFloat(), Color(0xFFFF9800)), // Naranja
-            PieChartData("Administradores", 24f, Color(0xFFF44336))  // Rojo
-        )
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Estadísticas") },
+                title = { Text("Estadísticas del Sistema") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            contentDescription = "Volver"
                         )
                     }
                 },
@@ -103,260 +72,340 @@ fun EstadisticasScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(scrollState)
-        ) {
-            // Tarjetas con contadores
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
             ) {
-                StatisticCard(
-                    icon = Icons.Default.Business,
-                    value = centrosCount.toString(),
-                    label = "Centros",
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // Sección de resumen
+                Text(
+                    text = "Resumen General",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
                 )
                 
-                StatisticCard(
-                    icon = Icons.Default.Group,
-                    value = profesoresCount.toString(),
-                    label = "Profesores",
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                StatisticCard(
-                    icon = Icons.Default.School,
-                    value = alumnosCount.toString(),
-                    label = "Alumnos",
-                    color = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                StatisticCard(
-                    icon = Icons.Default.People,
-                    value = familiaresCount.toString(),
-                    label = "Familiares",
-                    color = Color(0xFF009688), // Teal
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Gráfica de distribución de usuarios
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+                // Mostrar tarjetas de resumen
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "Distribución de Usuarios",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                    StatCard(
+                        title = "Centros",
+                        value = uiState.totalCentros.toString(),
+                        icon = Icons.Default.Business,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f)
                     )
                     
-                    Spacer(modifier = Modifier.height(16.dp))
+                    StatCard(
+                        title = "Usuarios",
+                        value = uiState.totalUsuarios.toString(),
+                        icon = Icons.Default.Group,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatCard(
+                        title = "Profesores",
+                        value = uiState.totalProfesores.toString(),
+                        icon = Icons.Default.School,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.weight(1f)
+                    )
                     
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
+                    StatCard(
+                        title = "Alumnos",
+                        value = uiState.totalAlumnos.toString(),
+                        icon = Icons.Default.Person,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                // Sección de actividad
+                Text(
+                    text = "Actividad Reciente",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        PieChart(
-                            data = distribucionUsuarios,
-                            modifier = Modifier
-                                .size(180.dp)
-                                .align(Alignment.Center)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Nuevos registros (últimos 7 días)",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Actualizar",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        ActivityItem(
+                            title = "Nuevos centros",
+                            value = uiState.nuevosCentros,
+                            trend = if (uiState.nuevosCentros > 0) "↑" else "→",
+                            trendColor = if (uiState.nuevosCentros > 0) Color.Green else Color.Gray
+                        )
+                        
+                        ActivityItem(
+                            title = "Nuevos profesores",
+                            value = uiState.nuevosProfesores,
+                            trend = if (uiState.nuevosProfesores > 0) "↑" else "→",
+                            trendColor = if (uiState.nuevosProfesores > 0) Color.Green else Color.Gray
+                        )
+                        
+                        ActivityItem(
+                            title = "Nuevos alumnos",
+                            value = uiState.nuevosAlumnos,
+                            trend = if (uiState.nuevosAlumnos > 0) "↑" else "→",
+                            trendColor = if (uiState.nuevosAlumnos > 0) Color.Green else Color.Gray
+                        )
+                        
+                        ActivityItem(
+                            title = "Nuevos familiares",
+                            value = uiState.nuevosFamiliares,
+                            trend = if (uiState.nuevosFamiliares > 0) "↑" else "→",
+                            trendColor = if (uiState.nuevosFamiliares > 0) Color.Green else Color.Gray
                         )
                     }
+                }
+                
+                // Sección de acciones
+                Text(
+                    text = "Acciones Rápidas",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    ActionButton(
+                        text = "Informe Detallado",
+                        icon = Icons.Default.Assessment,
+                        onClick = { viewModel.generarInforme() },
+                        modifier = Modifier.weight(1f)
+                    )
                     
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Leyenda
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
+                    ActionButton(
+                        text = "Exportar Datos",
+                        icon = Icons.Default.Download,
+                        onClick = { viewModel.exportarDatos() },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                if (uiState.informeGenerado) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
-                        distribucionUsuarios.forEach { item ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Informe Generado",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "El informe ha sido generado correctamente y está disponible para su descarga.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Button(
+                                onClick = { viewModel.descargarInforme() },
+                                modifier = Modifier.align(Alignment.End)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .background(item.color, RoundedCornerShape(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.FileDownload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                
                                 Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Text(
-                                    text = item.label,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                
-                                Spacer(modifier = Modifier.weight(1f))
-                                
-                                Text(
-                                    text = item.value.toInt().toString(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                // Porcentaje
-                                val total = distribucionUsuarios.sumOf { it.value.toDouble() }
-                                val percentage = (item.value / total * 100).toInt()
-                                
-                                Text(
-                                    text = "$percentage%",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
+                                Text("Descargar")
                             }
                         }
                     }
                 }
+                
+                // Espacio adicional al final
+                Spacer(modifier = Modifier.height(32.dp))
             }
+        }
+    }
+}
+
+/**
+ * Tarjeta de estadística con título, valor e icono
+ */
+@Composable
+fun StatCard(
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.height(120.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.15f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(32.dp)
+            )
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
-            // Gráfica de tendencia de centros
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Tendencia de Centros",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Gráfica de línea para centros
-                    LineChart(
-                        data = datosMensuales.centrosPorMes,
-                        labels = datosMensuales.meses,
-                        maxValue = datosMensuales.centrosPorMes.maxOrNull()?.toFloat() ?: 0f,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        lineColor = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Item de actividad reciente
+ */
+@Composable
+fun ActivityItem(
+    title: String,
+    value: Int,
+    trend: String,
+    trendColor: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = value.toString(),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             
-            // Gráfica de tendencia de alumnos
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Tendencia de Alumnos",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Gráfica de barras para alumnos
-                    BarChart(
-                        data = datosMensuales.alumnosPorMes,
-                        labels = datosMensuales.meses,
-                        maxValue = datosMensuales.alumnosPorMes.maxOrNull()?.toFloat() ?: 0f,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        barColor = MaterialTheme.colorScheme.tertiary
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.width(4.dp))
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = trend,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = trendColor
+            )
+        }
+    }
+}
+
+/**
+ * Botón de acción con texto e icono
+ */
+@Composable
+fun ActionButton(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedButton(
+        onClick = onClick,
+        modifier = modifier.height(60.dp),
+        contentPadding = PaddingValues(vertical = 16.dp, horizontal = 16.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            )
             
-            // Tarjeta de indicadores adicionales
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Indicadores adicionales",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        ProgressIndicator(
-                            label = "Uso del sistema",
-                            value = 0.78f,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        ProgressIndicator(
-                            label = "Actividad diaria",
-                            value = 0.65f,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        ProgressIndicator(
-                            label = "Registros completados",
-                            value = 0.92f,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        ProgressIndicator(
-                            label = "Satisfacción",
-                            value = 0.89f,
-                            color = Color(0xFF4CAF50), // Verde
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }

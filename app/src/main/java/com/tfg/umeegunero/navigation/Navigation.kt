@@ -90,6 +90,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.tfg.umeegunero.feature.common.academico.screen.GestionCursosScreen
 import com.tfg.umeegunero.feature.common.academico.screen.GestionClasesScreen
 import com.tfg.umeegunero.feature.common.academico.screen.AddCursoScreen
+import com.tfg.umeegunero.feature.admin.screen.SeguridadScreen
 
 /**
  * Componente principal de navegación de la aplicación UmeEgunero.
@@ -328,10 +329,9 @@ fun Navigation(
                 )
             }
 
+            // Ruta para la pantalla de estadísticas
             composable(route = AppScreens.Estadisticas.route) {
-                EstadisticasScreen(
-                    navController = navController
-                )
+                EstadisticasScreen(navController = navController)
             }
 
             composable(route = AppScreens.Notificaciones.route) {
@@ -525,9 +525,7 @@ fun Navigation(
             }
             
             composable(route = AppScreens.ReporteUso.route) {
-                ReporteUsoScreen(
-                    navController = navController
-                )
+                ReporteUsoScreen(navController)
             }
             
             composable(route = AppScreens.ReporteRendimiento.route) {
@@ -821,6 +819,11 @@ fun Navigation(
                     description = "Pantalla para añadir una nueva clase al curso con ID: $cursoId",
                     onNavigateBack = { navController.popBackStack() }
                 )
+            }
+
+            // Pantalla de configuración de seguridad
+            composable(route = "configuracion/seguridad") {
+                SeguridadScreen(navController)
             }
         }
     }

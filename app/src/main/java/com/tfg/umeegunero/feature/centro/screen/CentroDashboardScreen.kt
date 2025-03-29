@@ -234,7 +234,7 @@ private fun handleNavigation(
             true
         }
         AppScreens.Estadisticas.route -> {
-            navController.navigate(route)
+            navController.navigate(AppScreens.Estadisticas.route)
             true
         }
         AppScreens.Notificaciones.route -> {

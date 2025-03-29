@@ -5,9 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Comunicado
 import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.data.repository.ComunicadoRepository
-import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.feature.admin.model.ComunicadosUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,193 +16,240 @@ import timber.log.Timber
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /**
- * Estado de la UI para la pantalla de comunicados
- */
-data class ComunicadosUiState(
-    val comunicados: List<Comunicado> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val success: String? = null
-)
-
-/**
- * ViewModel para la gestión de comunicados generales
+ * ViewModel para la pantalla de comunicados del sistema
  */
 @HiltViewModel
 class ComunicadosViewModel @Inject constructor(
-    private val comunicadoRepository: ComunicadoRepository,
-    private val authRepository: AuthRepository
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ComunicadosUiState(isLoading = true))
+    private val _uiState = MutableStateFlow(ComunicadosUiState())
     val uiState: StateFlow<ComunicadosUiState> = _uiState.asStateFlow()
 
+    init {
+        cargarComunicados()
+    }
+
     /**
-     * Carga la lista de comunicados
+     * Carga los comunicados desde Firestore
      */
     fun cargarComunicados() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
             try {
-                when (val result = comunicadoRepository.getComunicados()) {
-                    is Result.Success -> {
-                        val comunicadosOrdenados = result.data.sortedByDescending { it.fechaCreacion }
-                        _uiState.update { 
-                            it.copy(
-                                comunicados = comunicadosOrdenados,
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.d("Comunicados cargados: ${result.data.size}")
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al cargar comunicados: ${result.exception.message}",
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.e(result.exception, "Error al cargar comunicados")
-                    }
-                    is Result.Loading -> {
-                        // Este estado ya lo manejamos al inicio
-                    }
+                _uiState.update { it.copy(isLoading = true) }
+
+                val comunicadosSnapshot = firestore.collection("comunicados")
+                    .orderBy("fechaCreacion")
+                    .get()
+                    .await()
+
+                val comunicados = comunicadosSnapshot.documents.mapNotNull { document ->
+                    val comunicado = document.toObject(Comunicado::class.java)
+                    comunicado?.copy(id = document.id)
                 }
+
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    comunicados = comunicados
+                ) }
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error inesperado: ${e.message}",
-                        isLoading = false
-                    ) 
-                }
-                Timber.e(e, "Error inesperado al cargar comunicados")
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = e.message ?: "Error al cargar comunicados"
+                ) }
             }
         }
     }
 
     /**
-     * Crea un nuevo comunicado
-     */
-    fun crearComunicado(
-        titulo: String, 
-        mensaje: String, 
-        tiposDestinatarios: List<TipoUsuario>
-    ) {
-        if (titulo.isBlank() || mensaje.isBlank() || tiposDestinatarios.isEmpty()) {
-            _uiState.update { 
-                it.copy(error = "Todos los campos son obligatorios") 
-            }
-            return
-        }
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            try {
-                val nuevoComunicado = Comunicado(
-                    id = UUID.randomUUID().toString(),
-                    titulo = titulo,
-                    mensaje = mensaje,
-                    tiposDestinatarios = tiposDestinatarios,
-                    fechaCreacion = Timestamp(Date()),
-                    creadoPor = authRepository.getFirebaseUser()?.uid ?: "desconocido",
-                    activo = true
-                )
-                
-                when (val result = comunicadoRepository.crearComunicado(nuevoComunicado)) {
-                    is Result.Success -> {
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                success = "Comunicado creado correctamente"
-                            ) 
-                        }
-                        cargarComunicados() // Recargamos la lista
-                        Timber.d("Comunicado creado con ID: ${nuevoComunicado.id}")
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al crear comunicado: ${result.exception.message}",
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.e(result.exception, "Error al crear comunicado")
-                    }
-                    is Result.Loading -> {
-                        // Este estado ya lo manejamos al inicio
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error inesperado: ${e.message}",
-                        isLoading = false
-                    ) 
-                }
-                Timber.e(e, "Error inesperado al crear comunicado")
-            }
-        }
-    }
-
-    /**
-     * Elimina un comunicado por su ID
-     */
-    fun eliminarComunicado(comunicadoId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            try {
-                when (val result = comunicadoRepository.eliminarComunicado(comunicadoId)) {
-                    is Result.Success -> {
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                success = "Comunicado eliminado correctamente"
-                            ) 
-                        }
-                        cargarComunicados() // Recargamos la lista
-                        Timber.d("Comunicado eliminado con ID: $comunicadoId")
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al eliminar comunicado: ${result.exception.message}",
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.e(result.exception, "Error al eliminar comunicado")
-                    }
-                    is Result.Loading -> {
-                        // Este estado ya lo manejamos al inicio
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error inesperado: ${e.message}",
-                        isLoading = false
-                    ) 
-                }
-                Timber.e(e, "Error inesperado al eliminar comunicado")
-            }
-        }
-    }
-
-    /**
-     * Limpia el mensaje de error
+     * Limpia los mensajes de error
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
 
     /**
-     * Limpia el mensaje de éxito
+     * Limpia los mensajes de éxito
      */
     fun clearSuccess() {
         _uiState.update { it.copy(success = null) }
+    }
+
+    /**
+     * Muestra/oculta el formulario de nuevo comunicado
+     */
+    fun toggleNuevoComunicado() {
+        _uiState.update { it.copy(
+            mostrarFormulario = !it.mostrarFormulario,
+            titulo = "",
+            mensaje = "",
+            tituloError = "",
+            mensajeError = "",
+            enviarATodos = false,
+            enviarACentros = false,
+            enviarAProfesores = false,
+            enviarAFamiliares = false,
+            enviado = false
+        ) }
+    }
+
+    /**
+     * Actualiza el título del comunicado
+     */
+    fun updateTitulo(titulo: String) {
+        _uiState.update { it.copy(
+            titulo = titulo,
+            tituloError = if (titulo.isEmpty()) "El título es obligatorio" else ""
+        ) }
+    }
+
+    /**
+     * Actualiza el mensaje del comunicado
+     */
+    fun updateMensaje(mensaje: String) {
+        _uiState.update { it.copy(
+            mensaje = mensaje,
+            mensajeError = if (mensaje.isEmpty()) "El mensaje es obligatorio" else ""
+        ) }
+    }
+
+    /**
+     * Activar/desactivar envío a todos los usuarios
+     */
+    fun toggleEnviarATodos(checked: Boolean) {
+        _uiState.update { it.copy(
+            enviarATodos = checked,
+            enviarACentros = if (checked) false else it.enviarACentros,
+            enviarAProfesores = if (checked) false else it.enviarAProfesores,
+            enviarAFamiliares = if (checked) false else it.enviarAFamiliares
+        ) }
+    }
+
+    /**
+     * Activar/desactivar envío a centros
+     */
+    fun toggleEnviarACentros(checked: Boolean) {
+        _uiState.update { it.copy(enviarACentros = checked) }
+    }
+
+    /**
+     * Activar/desactivar envío a profesores
+     */
+    fun toggleEnviarAProfesores(checked: Boolean) {
+        _uiState.update { it.copy(enviarAProfesores = checked) }
+    }
+
+    /**
+     * Activar/desactivar envío a familiares
+     */
+    fun toggleEnviarAFamiliares(checked: Boolean) {
+        _uiState.update { it.copy(enviarAFamiliares = checked) }
+    }
+
+    /**
+     * Envía el comunicado a los destinatarios seleccionados
+     */
+    fun enviarComunicado() {
+        viewModelScope.launch {
+            // Validar datos
+            val titulo = _uiState.value.titulo
+            val mensaje = _uiState.value.mensaje
+            
+            var tituloError = ""
+            var mensajeError = ""
+            
+            if (titulo.isEmpty()) {
+                tituloError = "El título es obligatorio"
+            }
+            
+            if (mensaje.isEmpty()) {
+                mensajeError = "El mensaje es obligatorio"
+            }
+            
+            val destinatariosSeleccionados = _uiState.value.enviarATodos || 
+                    _uiState.value.enviarACentros || 
+                    _uiState.value.enviarAProfesores ||
+                    _uiState.value.enviarAFamiliares
+            
+            if (!destinatariosSeleccionados) {
+                _uiState.update { it.copy(
+                    error = "Debe seleccionar al menos un tipo de destinatario"
+                ) }
+                return@launch
+            }
+            
+            if (tituloError.isNotEmpty() || mensajeError.isNotEmpty()) {
+                _uiState.update { it.copy(
+                    tituloError = tituloError,
+                    mensajeError = mensajeError
+                ) }
+                return@launch
+            }
+            
+            try {
+                _uiState.update { it.copy(isEnviando = true) }
+                
+                // Determinar destinatarios
+                val tiposDestinatarios = mutableListOf<String>()
+                
+                if (_uiState.value.enviarATodos) {
+                    tiposDestinatarios.add("TODOS")
+                } else {
+                    if (_uiState.value.enviarACentros) tiposDestinatarios.add("ADMIN_CENTRO")
+                    if (_uiState.value.enviarAProfesores) tiposDestinatarios.add("PROFESOR")
+                    if (_uiState.value.enviarAFamiliares) tiposDestinatarios.add("FAMILIAR")
+                }
+                
+                // Crear objeto comunicado
+                val now = Date()
+                val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
+                val fechaFormateada = dateFormat.format(now)
+                
+                val comunicado = Comunicado(
+                    id = UUID.randomUUID().toString(),
+                    titulo = titulo,
+                    mensaje = mensaje,
+                    fechaCreacion = Timestamp(now),
+                    fecha = fechaFormateada,
+                    remitente = "Administrador del Sistema",
+                    destinatarios = if (_uiState.value.enviarATodos) "Todos los usuarios" 
+                                   else tiposDestinatarios.joinToString(", "),
+                    tiposDestinatarios = tiposDestinatarios
+                )
+                
+                // Guardar en Firestore
+                firestore.collection("comunicados")
+                    .document(comunicado.id)
+                    .set(comunicado)
+                    .await()
+                
+                // Simular tiempo de respuesta del servidor
+                delay(1000)
+                
+                // Actualizar estado y mostrar mensaje de éxito
+                _uiState.update { it.copy(
+                    isEnviando = false,
+                    enviado = true
+                ) }
+                
+                // Recargar lista después de un breve retraso
+                delay(2000)
+                cargarComunicados()
+                toggleNuevoComunicado()
+                
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    isEnviando = false,
+                    error = e.message ?: "Error al enviar el comunicado"
+                ) }
+            }
+        }
     }
 } 

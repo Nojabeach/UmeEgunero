@@ -22,20 +22,30 @@ data class Comunicado(
     val mensaje: String = "",
     
     /**
-     * Identificadores de usuario destinatarios específicos (opcional)
+     * Destinatarios en formato texto para mostrar en la UI
      */
-    val destinatarios: List<String> = emptyList(),
+    val destinatarios: String = "",
     
     /**
      * Tipos de usuario a los que va dirigido el comunicado
      */
-    val tiposDestinatarios: List<TipoUsuario> = emptyList(),
+    val tiposDestinatarios: List<String> = emptyList(),
     
     /**
      * Fecha de creación del comunicado
      */
     @ServerTimestamp
     val fechaCreacion: Timestamp = Timestamp.now(),
+    
+    /**
+     * Fecha formateada para mostrar en la UI
+     */
+    val fecha: String = "",
+    
+    /**
+     * Nombre de quien creó el comunicado
+     */
+    val remitente: String = "",
     
     /**
      * Identificador de quien creó el comunicado
