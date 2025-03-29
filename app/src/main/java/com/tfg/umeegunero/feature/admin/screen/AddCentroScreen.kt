@@ -134,6 +134,7 @@ import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.model.Centro as ModelCentro
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.SnackbarResult
 
 // Datos para provincias con soporte multilingüe
 data class Provincia(
@@ -269,7 +270,6 @@ fun AddCentroScreen(
         isLoading = true
         
         val centro = ModelCentro(
-            id = "", // El ID será asignado por Firebase
             nombre = nombre,
             direccion = direccion,
             telefono = telefono.takeIf { it.isNotEmpty() },
@@ -282,16 +282,26 @@ fun AddCentroScreen(
             onSuccess = {
                 isLoading = false
                 scope.launch {
-                    snackbarHostState.showSnackbar("Centro añadido correctamente")
-                }
-                navController.navigate(AppScreens.GestionCentros.route) {
-                    popUpTo(AppScreens.GestionCentros.route) { inclusive = true }
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Centro añadido correctamente",
+                        actionLabel = "Gestionar Cursos",
+                        duration = SnackbarDuration.Long
+                    )
+                    
+                    when (result) {
+                        SnackbarResult.ActionPerformed -> {
+                            navController.navigate(AppScreens.GestionCursos.createRoute(centro.id))
+                        }
+                        SnackbarResult.Dismissed -> {
+                            navController.popBackStack()
+                        }
+                    }
                 }
             },
-            onError = { errorMsg ->
+            onError = { error ->
                 isLoading = false
                 scope.launch {
-                    snackbarHostState.showSnackbar("Error: $errorMsg")
+                    snackbarHostState.showSnackbar(error)
                 }
             }
         )
@@ -318,15 +328,16 @@ fun AddCentroScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    if (validateForm()) {
-                        guardarCentro()
-                    }
-                },
-                icon = { Icon(Icons.Default.Save, contentDescription = "Guardar") },
-                text = { Text("Guardar Centro") }
-            )
+            if (currentStep == totalSteps) {
+                ExtendedFloatingActionButton(
+                    onClick = { guardarCentro() },
+                    icon = { Icon(Icons.Default.Save, contentDescription = "Guardar") },
+                    text = { Text("Guardar Centro") },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    expanded = true
+                )
+            }
         }
     ) { paddingValues ->
         Box(

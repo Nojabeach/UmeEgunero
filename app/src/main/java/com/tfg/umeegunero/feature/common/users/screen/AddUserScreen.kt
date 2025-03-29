@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -290,38 +291,66 @@ fun AddUserScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Añadir $tipoUsuarioText") },
+                title = { 
+                    Text(
+                        text = "Añadir ${tipoUsuarioText}",
+                        color = MaterialTheme.colorScheme.onPrimary
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Cancelar"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            keyboardController?.hide()
-                            onSaveUser()
-                        },
-                        enabled = !uiState.isLoading && uiState.isFormValid
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = "Guardar"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = tipoColor,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            Button(
+                onClick = {
+                    keyboardController?.hide()
+                    onSaveUser()
+                },
+                enabled = !uiState.isLoading && uiState.isFormValid,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = tipoColor,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = null
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = "Guardar ${tipoUsuarioText}",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -762,44 +791,6 @@ fun AddUserScreen(
                         singleLine = true
                     )
                 }
-            }
-
-            // Botón de guardar
-            Button(
-                onClick = {
-                    keyboardController?.hide()
-                    onSaveUser()
-                },
-                enabled = !uiState.isLoading && uiState.isFormValid,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = tipoColor,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = null
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Guardar Usuario",
-                    style = MaterialTheme.typography.titleMedium
-                )
             }
 
             // Mensaje informativo sobre el tipo de usuario

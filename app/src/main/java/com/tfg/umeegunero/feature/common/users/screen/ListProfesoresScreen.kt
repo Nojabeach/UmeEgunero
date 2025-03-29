@@ -86,17 +86,6 @@ fun ListProfesoresScreen(
                             contentDescription = "Filtrar"
                         )
                     }
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.AddUser.createRoute(
-                            isAdminApp = false, 
-                            tipoUsuario = TipoUsuario.PROFESOR.toString()
-                        ))
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Añadir profesor"
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,

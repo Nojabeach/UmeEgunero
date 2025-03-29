@@ -86,17 +86,6 @@ fun ListAlumnosScreen(
                             contentDescription = "Filtrar"
                         )
                     }
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.AddUser.createRoute(
-                            isAdminApp = false, 
-                            tipoUsuario = TipoUsuario.ALUMNO.toString()
-                        ))
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Añadir alumno"
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,

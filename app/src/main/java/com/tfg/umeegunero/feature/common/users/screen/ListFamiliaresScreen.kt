@@ -86,17 +86,6 @@ fun ListFamiliaresScreen(
                             contentDescription = "Filtrar"
                         )
                     }
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.AddUser.createRoute(
-                            isAdminApp = false, 
-                            tipoUsuario = TipoUsuario.FAMILIAR.toString()
-                        ))
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Añadir familiar"
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,

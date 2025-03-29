@@ -86,17 +86,6 @@ fun ListAdministradoresScreen(
                             contentDescription = "Filtrar"
                         )
                     }
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.AddUser.createRoute(
-                            isAdminApp = true, 
-                            tipoUsuario = TipoUsuario.ADMIN_APP.toString()
-                        ))
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Añadir administrador"
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
