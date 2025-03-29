@@ -36,8 +36,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.TemaPref
-import com.tfg.umeegunero.feature.common.config.components.TemaActual
-import com.tfg.umeegunero.feature.common.config.components.TemaSelector
+import com.tfg.umeegunero.ui.components.TemaActual
+import com.tfg.umeegunero.ui.components.TemaSelector
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModelBase
 import com.tfg.umeegunero.feature.common.config.viewmodel.IPreferenciasRepository

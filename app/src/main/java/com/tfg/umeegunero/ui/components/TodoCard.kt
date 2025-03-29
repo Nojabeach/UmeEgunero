@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.admin.components
+package com.tfg.umeegunero.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement

@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -87,45 +88,44 @@ fun EditCursoScreen(
                             value = uiState.nombre,
                             onValueChange = { viewModel.updateNombre(it) },
                             label = "Nombre del curso",
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = false,
-                            errorText = ""
+                            errorMessage = uiState.validationErrors["nombre"] ?: "",
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextFieldWithError(
                             value = uiState.descripcion,
                             onValueChange = { viewModel.updateDescripcion(it) },
                             label = "Descripción",
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = false,
-                            errorText = ""
+                            errorMessage = uiState.validationErrors["descripcion"] ?: "",
+                            singleLine = false,
+                            maxLines = 3,
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextFieldWithError(
                             value = uiState.edadMinima.toString(),
                             onValueChange = { viewModel.updateEdadMinima(it.toIntOrNull() ?: 0) },
                             label = "Edad mínima",
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = false,
-                            errorText = ""
+                            errorMessage = uiState.validationErrors["edadMinima"] ?: "",
+                            keyboardType = KeyboardType.Number,
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextFieldWithError(
                             value = uiState.edadMaxima.toString(),
                             onValueChange = { viewModel.updateEdadMaxima(it.toIntOrNull() ?: 0) },
                             label = "Edad máxima",
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = false,
-                            errorText = ""
+                            errorMessage = uiState.validationErrors["edadMaxima"] ?: "",
+                            keyboardType = KeyboardType.Number,
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextFieldWithError(
                             value = uiState.anioAcademico,
                             onValueChange = { viewModel.updateAnioAcademico(it) },
                             label = "Año académico",
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = false,
-                            errorText = ""
+                            errorMessage = uiState.validationErrors["anioAcademico"] ?: "",
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         Row(

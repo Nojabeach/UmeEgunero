@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.admin.components
+package com.tfg.umeegunero.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,12 +12,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
@@ -200,38 +203,43 @@ fun PaginatedCentrosList(
 }
 
 /**
- * Componente para mostrar un centro educativo
+ * Elemento individual que muestra información de un centro educativo
  */
 @Composable
 fun CentroItem(
     centro: Centro,
     onClick: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier
+    onDelete: () -> Unit
 ) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    // Crear la dirección completa para compartir
+    val direccionCompleta = "${centro.getDireccionCalle()}, ${centro.getDireccionNumero()}, ${centro.getDireccionCodigoPostal()}, ${centro.getDireccionCiudad()}"
     
-    // Crear una descripción accesible completa para el centro
-    val centroDescription = StringBuilder().apply {
+    val contactoCompleto = "${centro.obtenerTelefono()}\n${centro.obtenerEmail()}"
+    
+    val accessibilityDescription = buildString {
         append("Centro educativo ${centro.nombre}. ")
-        append("Estado: ${if (centro.activo) "Activo" else "Inactivo"}. ")
-        append("Ubicación: ${centro.direccion.calle}, ${centro.direccion.ciudad}. ")
-        append("Contacto: ${centro.contacto.telefono}, ${centro.contacto.email}")
-    }.toString()
+        append("Dirección: $direccionCompleta. ")
+        append("Teléfono: $contactoCompleto. ")
+        if (centro.numProfesores > 0) {
+            append("Tiene ${centro.numProfesores} profesores. ")
+        } else {
+            append("No tiene profesores asignados. ")
+        }
+        if (centro.numClases > 0) {
+            append("Tiene ${centro.numClases} clases.")
+        } else {
+            append("No tiene clases creadas.")
+        }
+    }
     
     Card(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .accessibleClickable(
-                description = centroDescription,
+                description = accessibilityDescription,
                 onClick = onClick
             ),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
@@ -239,54 +247,34 @@ fun CentroItem(
                 .padding(16.dp)
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.School,
-                    contentDescription = null, // Contenida en la descripción principal
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                Text(
-                    text = centro.nombre,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                if (centro.activo) {
-                    Badge(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.clearAndSetSemantics {} // Incluido en la descripción principal
-                    ) {
-                        Text(
-                            text = "Activo",
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
-                    }
-                } else {
-                    Badge(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.clearAndSetSemantics {} // Incluido en la descripción principal
-                    ) {
-                        Text(
-                            text = "Inactivo",
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
-                    }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.School,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clearAndSetSemantics {}
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = centro.nombre,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clearAndSetSemantics {}
+                    )
                 }
                 
                 IconButton(
                     onClick = onDelete,
                     modifier = Modifier.semantics {
                         contentDescription = "Eliminar centro ${centro.nombre}"
-                        role = Role.Button
                     }
                 ) {
                     Icon(
@@ -299,75 +287,110 @@ fun CentroItem(
             
             Spacer(modifier = Modifier.height(8.dp))
             
+            // Dirección
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = 32.dp)
+                modifier = Modifier.padding(vertical = 2.dp)
             ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = centro.direccion.calle + ", " + centro.direccion.ciudad,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clearAndSetSemantics {} // Incluido en la descripción principal
+                    text = direccionCompleta,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            Spacer(modifier = Modifier.height(4.dp))
-            
+            // Teléfono
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = 32.dp)
+                modifier = Modifier.padding(vertical = 2.dp)
             ) {
-                Text(
-                    text = centro.contacto.telefono + " · " + centro.contacto.email,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clearAndSetSemantics {} // Incluido en la descripción principal
+                Icon(
+                    imageVector = Icons.Default.Phone,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
                 )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = contactoCompleto,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Badge(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.clearAndSetSemantics {}
+                ) {
+                    Text(
+                        text = "${centro.numProfesores} profesores",
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+                
+                Badge(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.clearAndSetSemantics {}
+                ) {
+                    Text(
+                        text = "${centro.numClases} clases",
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * Componente para mostrar un mensaje cuando no hay centros
+ * Mensaje que se muestra cuando no hay centros para mostrar
  */
 @Composable
 fun EmptyStateMessage() {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp)
-            .semantics {
-                contentDescription = "No hay centros educativos. Añade un centro educativo para empezar a gestionar tu plataforma."
-            },
+            .padding(16.dp)
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = Icons.Default.School,
-            contentDescription = null, // Contenido en la descripción del contenedor
-            modifier = Modifier.height(80.dp),
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            contentDescription = null,
+            modifier = Modifier
+                .padding(16.dp)
+                .height(48.dp)
+                .width(48.dp),
+            tint = MaterialTheme.colorScheme.primary
         )
-        
-        Spacer(modifier = Modifier.height(16.dp))
         
         Text(
             text = "No hay centros educativos",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
-            modifier = Modifier.clearAndSetSemantics {} // Contenido en la descripción del contenedor
+            modifier = Modifier.padding(vertical = 8.dp)
         )
         
-        Spacer(modifier = Modifier.height(8.dp))
-        
         Text(
-            text = "Añade un centro educativo para empezar a gestionar tu plataforma",
+            text = "Usa el botón + para añadir un nuevo centro educativo",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.clearAndSetSemantics {} // Contenido en la descripción del contenedor
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -376,25 +399,23 @@ fun EmptyStateMessage() {
 @Composable
 fun PaginatedCentrosListPreview() {
     UmeEguneroTheme {
-        val centros = List(10) { index ->
+        val mockCentros = List(10) { index ->
             Centro(
-                id = "centro_$index",
-                nombre = "Centro Educativo ${index + 1}",
-                direccion = Direccion(
-                    calle = "Calle Principal $index",
-                    ciudad = "Madrid"
-                ),
-                contacto = Contacto(
-                    telefono = "91234567$index",
-                    email = "centro$index@educacion.es"
-                ),
-                activo = index % 3 != 0
+                id = "centro$index",
+                nombre = "Centro Educativo $index",
+                direccion = "Calle Principal $index, 28001, Madrid",
+                telefono = "91${index}000000",
+                email = "centro$index@example.com",
+                numProfesores = index + 1,
+                numClases = index * 2
             )
         }
         
         PaginatedCentrosList(
-            centros = centros,
-            isLoading = false
+            centros = mockCentros,
+            isLoading = false,
+            onCentroClick = {},
+            onDeleteCentro = {}
         )
     }
 } 

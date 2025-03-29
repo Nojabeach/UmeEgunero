@@ -91,8 +91,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.SnackbarHostState
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
-import com.tfg.umeegunero.feature.common.config.components.TemaSelector
-import com.tfg.umeegunero.feature.common.config.components.TemaActual
+import com.tfg.umeegunero.ui.components.TemaSelector
+import com.tfg.umeegunero.ui.components.TemaActual
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion

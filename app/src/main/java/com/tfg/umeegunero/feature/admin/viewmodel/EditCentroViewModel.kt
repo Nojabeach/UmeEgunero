@@ -26,7 +26,9 @@ class EditCentroViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
-    private val _uiState = MutableStateFlow(AddCentroUiState())
+    private val _uiState = MutableStateFlow(AddCentroUiState(
+        centroId = savedStateHandle.get<String>("centroId") ?: ""
+    ))
     val uiState: StateFlow<AddCentroUiState> = _uiState.asStateFlow()
     
     private val centroId: String = savedStateHandle.get<String>("centroId") ?: ""
@@ -57,29 +59,21 @@ class EditCentroViewModel @Inject constructor(
             when (val result = centroRepository.getCentroById(centroId)) {
                 is Result.Success -> {
                     val centro = result.data
-                    _uiState.update { state ->
-                        state.copy(
-                            id = centro.id,
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            centroId = centro.id,
                             nombre = centro.nombre,
-                            calle = centro.direccion.calle,
-                            numero = centro.direccion.numero,
-                            codigoPostal = centro.direccion.codigoPostal,
-                            ciudad = centro.direccion.ciudad,
-                            provincia = centro.direccion.provincia,
-                            telefono = centro.contacto.telefono,
+                            calle = centro.getDireccionCalle(),
+                            numero = centro.getDireccionNumero(),
+                            codigoPostal = centro.getDireccionCodigoPostal(),
+                            ciudad = centro.getDireccionCiudad(),
+                            provincia = centro.getDireccionProvincia(),
+                            telefono = centro.obtenerTelefono(),
                             latitud = centro.latitud,
                             longitud = centro.longitud,
-                            adminCentro = listOf(
-                                com.tfg.umeegunero.feature.admin.viewmodel.AdminCentro(
-                                    email = centro.contacto.email,
-                                    password = "",
-                                    emailError = null,
-                                    passwordError = null
-                                )
-                            ),
+                            email = centro.obtenerEmail(),
                             isLoading = false,
-                            error = null,
-                            success = false
+                            centroLoaded = true
                         )
                     }
                     Timber.d("Centro cargado correctamente: ${centro.nombre}")
@@ -113,19 +107,23 @@ class EditCentroViewModel @Inject constructor(
             val centro = Centro(
                 id = centroId,
                 nombre = currentState.nombre,
-                direccion = Direccion(
+                direccion = "${currentState.calle}, ${currentState.numero}, ${currentState.codigoPostal}, ${currentState.ciudad}, ${currentState.provincia}",
+                contacto = "${currentState.telefono}, ${currentState.adminCentro.firstOrNull()?.email ?: ""}",
+                telefono = currentState.telefono,
+                email = currentState.adminCentro.firstOrNull()?.email ?: "",
+                latitud = currentState.latitud ?: 0.0,
+                longitud = currentState.longitud ?: 0.0,
+                direccionObj = Direccion(
                     calle = currentState.calle,
                     numero = currentState.numero,
                     codigoPostal = currentState.codigoPostal,
                     ciudad = currentState.ciudad,
                     provincia = currentState.provincia
                 ),
-                contacto = Contacto(
+                contactoObj = Contacto(
                     telefono = currentState.telefono,
                     email = currentState.adminCentro.firstOrNull()?.email ?: ""
-                ),
-                latitud = currentState.latitud ?: 0.0,
-                longitud = currentState.longitud ?: 0.0
+                )
             )
             
             when (val result = centroRepository.updateCentro(centroId, centro)) {

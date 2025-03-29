@@ -229,17 +229,17 @@ fun DetalleCentroContent(
                 InfoItem(
                     icon = Icons.Default.LocationOn,
                     title = "Dirección",
-                    content = "${centro.direccion.calle}, ${centro.direccion.numero}\n${centro.direccion.codigoPostal} ${centro.direccion.ciudad}, ${centro.direccion.provincia}"
+                    content = "${centro.getDireccionCalle()}, ${centro.getDireccionNumero()}, ${centro.getDireccionCodigoPostal()}, ${centro.getDireccionCiudad()}, ${centro.getDireccionProvincia()}"
                 ),
                 InfoItem(
                     icon = Icons.Default.Call,
                     title = "Teléfono",
-                    content = centro.contacto.telefono
+                    content = centro.obtenerTelefono()
                 ),
                 InfoItem(
                     icon = Icons.Default.Email,
                     title = "Email",
-                    content = centro.contacto.email
+                    content = centro.obtenerEmail()
                 )
             )
         )
@@ -613,7 +613,7 @@ private fun MapaCard(centro: Centro) {
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable {
-                        val direccion = "${centro.direccion.calle}, ${centro.direccion.numero}, ${centro.direccion.ciudad}"
+                        val direccion = "${centro.getDireccionCalle()}, ${centro.getDireccionNumero()}, ${centro.getDireccionCiudad()}"
                         val gmmIntentUri = Uri.parse("geo:${centro.latitud},${centro.longitud}?q=${Uri.encode(direccion)}")
                         val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                         mapIntent.setPackage("com.google.android.apps.maps")
@@ -656,7 +656,7 @@ private fun MapaCard(centro: Centro) {
                     )
                     
                     Text(
-                        text = "${centro.direccion.calle}, ${centro.direccion.numero}, ${centro.direccion.ciudad}",
+                        text = "${centro.getDireccionCalle()}, ${centro.getDireccionNumero()}, ${centro.getDireccionCiudad()}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
@@ -664,7 +664,7 @@ private fun MapaCard(centro: Centro) {
                     
                     Button(
                         onClick = {
-                            val direccion = "${centro.direccion.calle}, ${centro.direccion.numero}, ${centro.direccion.ciudad}"
+                            val direccion = "${centro.getDireccionCalle()}, ${centro.getDireccionNumero()}, ${centro.getDireccionCiudad()}"
                             val gmmIntentUri = Uri.parse("geo:${centro.latitud},${centro.longitud}?q=${Uri.encode(direccion)}")
                             val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                             mapIntent.setPackage("com.google.android.apps.maps")

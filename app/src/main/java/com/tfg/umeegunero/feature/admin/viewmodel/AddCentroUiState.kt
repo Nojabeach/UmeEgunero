@@ -4,6 +4,7 @@ import com.tfg.umeegunero.data.model.Ciudad
 
 data class AddCentroUiState(
     val id: String = "",
+    val centroId: String = "",
     // Información del centro
     val nombre: String = "",
     val nombreError: String? = null,
@@ -24,6 +25,9 @@ data class AddCentroUiState(
     val telefono: String = "",
     val telefonoError: String? = null,
     
+    // Email del centro
+    val email: String = "",
+    
     // Administradores del centro
     val adminCentro: List<AdminCentro> = listOf(AdminCentro()),
     val adminCentroError: String? = null,
@@ -32,6 +36,7 @@ data class AddCentroUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val success: Boolean = false,
+    val centroLoaded: Boolean = false,
     
     // Ciudades sugeridas por código postal
     val ciudadesSugeridas: List<Ciudad> = emptyList(),

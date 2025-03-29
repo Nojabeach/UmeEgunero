@@ -95,8 +95,8 @@ import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.ui.theme.getNombreTema
-import com.tfg.umeegunero.feature.common.config.components.TemaSelector
-import com.tfg.umeegunero.feature.common.config.components.TemaActual
+import com.tfg.umeegunero.ui.components.TemaSelector
+import com.tfg.umeegunero.ui.components.TemaActual
 import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 import kotlinx.coroutines.launch
@@ -118,7 +118,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.shape.CircleShape
 import com.tfg.umeegunero.util.PaginationUtils
 import com.tfg.umeegunero.util.AccessibilityUtils.accessibleClickable
-import com.tfg.umeegunero.feature.admin.components.PaginatedCentrosList
+import com.tfg.umeegunero.ui.components.PaginatedCentrosList
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -126,11 +126,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.tfg.umeegunero.feature.admin.components.StatsOverviewCard
-import com.tfg.umeegunero.feature.admin.components.StatsOverviewRow
-import com.tfg.umeegunero.feature.admin.components.StatItem
+import com.tfg.umeegunero.ui.components.StatsOverviewCard
+import com.tfg.umeegunero.ui.components.StatsOverviewRow
+import com.tfg.umeegunero.ui.components.StatItem
 import androidx.compose.material.icons.filled.Warning
-import com.tfg.umeegunero.feature.admin.components.UserManagementPanel
 
 /**
  * Dashboard principal para administradores del sistema UmeEgunero.
@@ -496,14 +495,9 @@ fun CentrosEducativosContentPreview() {
             Centro(
                 id = "centro_$index",
                 nombre = "Centro Educativo ${index + 1}",
-                direccion = Direccion(
-                    calle = "Calle Principal $index",
-                    ciudad = "Madrid"
-                ),
-                contacto = Contacto(
-                    telefono = "91234567$index",
-                    email = "centro$index@educacion.es"
-                ),
+                direccion = "Calle Principal $index, Madrid",
+                telefono = "91234567$index",
+                email = "centro$index@educacion.es",
                 activo = index % 3 != 0
             )
         }
@@ -524,28 +518,69 @@ fun UsuariosContent(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false
 ) {
-    UserManagementPanel(
-        usuarios = usuarios,
-        isLoading = isLoading,
-        onDelete = { usuario -> viewModel.deleteUsuario(usuario.dni) },
-        onEdit = { /* Navegación a pantalla de edición */ },
-        onResetPassword = { dni, password -> viewModel.resetPassword(dni, password) },
-        onToggleActive = { usuario, activo -> viewModel.toggleUsuarioActivo(usuario, activo) },
-        modifier = modifier
-    )
+    // Componente temporalmente comentado hasta resolver las dependencias
+    // UserManagementPanel(
+    //     usuarios = usuarios,
+    //     isLoading = isLoading,
+    //     onDelete = { usuario -> viewModel.deleteUsuario(usuario.dni) },
+    //     onEdit = { /* Navegación a pantalla de edición */ },
+    //     onResetPassword = { dni, password -> viewModel.resetPassword(dni, password) },
+    //     onToggleActive = { usuario, activo -> viewModel.toggleUsuarioActivo(usuario, activo) },
+    //     modifier = modifier
+    // )
+    
+    // Implementación temporal
+    Column(modifier = modifier.fillMaxSize()) {
+        Text(
+            text = "Gestión de Usuarios",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(16.dp)
+        )
+        
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (usuarios.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No hay usuarios para mostrar")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(usuarios) { usuario ->
+                    UsuarioItem(
+                        usuario = usuario,
+                        onEdit = { /* Navegación a pantalla de edición */ },
+                        onDelete = { viewModel.deleteUsuario(usuario.dni) }
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
 fun UsuarioItem(
     usuario: Usuario,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(8.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -553,54 +588,72 @@ fun UsuarioItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+            // Icono de perfil
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Información del usuario
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = "${usuario.nombre} ${usuario.apellidos}",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                // Obtener el tipo de usuario primario
-                val tipoUsuario = usuario.perfiles.firstOrNull()?.tipo ?: TipoUsuario.FAMILIAR
-                val tipoText = when (tipoUsuario) {
-                    TipoUsuario.ADMIN_APP -> "Administrador App"
-                    TipoUsuario.ADMIN_CENTRO -> "Administrador Centro"
-                    TipoUsuario.PROFESOR -> "Profesor"
-                    TipoUsuario.FAMILIAR -> "Familiar"
-                    else -> "Alumno"
-                }
-
+                
                 Text(
-                    text = "$tipoText • ${usuario.email}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = usuario.email,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                
+                Badge(
+                    containerColor = when (usuario.perfiles.firstOrNull()?.tipo) {
+                        TipoUsuario.ADMIN_APP -> MaterialTheme.colorScheme.primary
+                        TipoUsuario.ADMIN_CENTRO -> MaterialTheme.colorScheme.tertiary
+                        TipoUsuario.PROFESOR -> MaterialTheme.colorScheme.secondary
+                        TipoUsuario.FAMILIAR -> MaterialTheme.colorScheme.error
+                        TipoUsuario.ALUMNO -> MaterialTheme.colorScheme.surface
+                        null -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+                ) {
+                    Text(
+                        text = usuario.perfiles.firstOrNull()?.tipo?.toString() ?: "Sin tipo",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
             }
-
+            
             // Botones de acción
             IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Default.Edit,
-                    contentDescription = "Editar",
-                    tint = MaterialTheme.colorScheme.primary
+                    contentDescription = "Editar usuario"
                 )
             }
-
+            
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
+                    contentDescription = "Eliminar usuario"
                 )
             }
         }

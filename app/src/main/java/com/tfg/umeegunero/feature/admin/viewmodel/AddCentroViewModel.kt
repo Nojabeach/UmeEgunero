@@ -304,16 +304,16 @@ class AddCentroViewModel @Inject constructor(
                             currentState.copy(
                                 id = centro.id,
                                 nombre = centro.nombre,
-                                calle = centro.direccion.calle,
-                                numero = centro.direccion.numero,
-                                codigoPostal = centro.direccion.codigoPostal,
-                                ciudad = centro.direccion.ciudad,
-                                provincia = centro.direccion.provincia,
-                                telefono = centro.contacto.telefono,
+                                calle = centro.direccionObj.calle,
+                                numero = centro.direccionObj.numero,
+                                codigoPostal = centro.direccionObj.codigoPostal,
+                                ciudad = centro.direccionObj.ciudad,
+                                provincia = centro.direccionObj.provincia,
+                                telefono = centro.contactoObj.telefono,
                                 // Obtener latitud y longitud si existen
                                 latitud = centro.latitud.takeIf { it != 0.0 },
                                 longitud = centro.longitud.takeIf { it != 0.0 },
-                                direccionCompleta = "${centro.direccion.calle}, ${centro.direccion.numero}, ${centro.direccion.codigoPostal} ${centro.direccion.ciudad}, ${centro.direccion.provincia}",
+                                direccionCompleta = "${centro.direccionObj.calle}, ${centro.direccionObj.numero}, ${centro.direccionObj.codigoPostal} ${centro.direccionObj.ciudad}, ${centro.direccionObj.provincia}",
                                 isLoading = false
                             )
                         }
@@ -384,110 +384,64 @@ class AddCentroViewModel @Inject constructor(
         }
     }
 
-    fun saveCentro(centro: Centro) {
+    // Guardar el centro en la base de datos
+    fun guardarCentro() {
         if (!validateForm()) return
-
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-
+            
             try {
-                // Verificar que tenemos al menos un administrador
-                if (_uiState.value.adminCentro.isEmpty()) {
-                    throw Exception("Debe existir al menos un administrador de centro")
-                }
+                // Crear los objetos complejos
+                val direccion = Direccion(
+                    calle = _uiState.value.calle,
+                    numero = _uiState.value.numero,
+                    codigoPostal = _uiState.value.codigoPostal,
+                    ciudad = _uiState.value.ciudad,
+                    provincia = _uiState.value.provincia
+                )
                 
-                // Obtener el administrador principal (el primero)
-                val adminPrincipal = _uiState.value.adminCentro.first()
+                val contacto = Contacto(
+                    telefono = _uiState.value.telefono,
+                    email = _uiState.value.adminCentro.firstOrNull()?.email ?: ""
+                )
                 
-                // Verificar si el centro ya existe por nombre (solo para nuevos centros)
-                if (centro.id.isBlank()) {
-                    val centroExistente = centroRepository.getCentroByNombre(centro.nombre)
-                    if (centroExistente is Result.Success && centroExistente.data != null) {
-                        throw Exception("Ya existe un centro con este nombre. Por favor, utilice otro nombre.")
-                    }
-                }
+                // Combinar los datos de dirección en un string por compatibilidad
+                val direccionString = "${direccion.calle}, ${direccion.numero}, ${direccion.codigoPostal}, ${direccion.ciudad}, ${direccion.provincia}"
                 
-                // Verificar si el administrador ya existe por DNI o correo electrónico
-                for (admin in _uiState.value.adminCentro) {
-                    // Verificar si existe en Firestore por email
-                    val usuarioExistente = usuarioRepository.getUsuarioByEmail(admin.email)
-                    if (usuarioExistente is Result.Success && usuarioExistente.data != null) {
-                        throw Exception("Ya existe un usuario con el correo electrónico ${admin.email}. Por favor, utilice otro correo.")
-                    }
-                    
-                    // Verificar si existe por DNI
-                    val usuarioExistenteDni = usuarioRepository.getUsuarioByDni(admin.dni)
-                    if (usuarioExistenteDni is Result.Success && usuarioExistenteDni.data != null) {
-                        throw Exception("Ya existe un usuario con el DNI ${admin.dni}. Por favor, utilice otro DNI.")
-                    }
-                }
+                val centro = Centro(
+                    id = if (_uiState.value.isEdit) _uiState.value.id else UUID.randomUUID().toString(),
+                    nombre = _uiState.value.nombre,
+                    direccion = direccionString,
+                    telefono = contacto.telefono,
+                    email = contacto.email,
+                    latitud = _uiState.value.latitud ?: 0.0,
+                    longitud = _uiState.value.longitud ?: 0.0,
+                    logo = _uiState.value.imageUrl,
+                    activo = true,
+                    direccionObj = direccion,
+                    contactoObj = contacto
+                )
                 
-                var resultId: String? = null
-
-                // Obtener el objeto Centro completo
-                if (centro.id.isNotBlank()) {
-                    // Si ya tiene un ID, estamos actualizando un centro existente
-                    val centroToUpdate = Centro(
-                        id = centro.id,
-                        nombre = centro.nombre,
-                        direccion = Direccion(
-                            calle = centro.direccion.calle,
-                            numero = centro.direccion.numero,
-                            codigoPostal = centro.direccion.codigoPostal,
-                            ciudad = centro.direccion.ciudad,
-                            provincia = centro.direccion.provincia
-                        ),
-                        latitud = centro.latitud,
-                        longitud = centro.longitud,
-                        contacto = Contacto(
-                            telefono = centro.contacto.telefono,
-                            email = centro.contacto.email
-                        )
-                    )
-                    centroRepository.updateCentro(centroToUpdate.id, centroToUpdate)
+                if (_uiState.value.isEdit) {
+                    centroRepository.updateCentro(centro.id, centro)
                 } else {
-                    // Si no tiene ID, estamos creando un nuevo centro
-                    val nuevoCentro = Centro(
-                        id = "",
-                        nombre = centro.nombre,
-                        direccion = Direccion(
-                            calle = centro.direccion.calle,
-                            numero = centro.direccion.numero,
-                            codigoPostal = centro.direccion.codigoPostal,
-                            ciudad = centro.direccion.ciudad,
-                            provincia = centro.direccion.provincia
-                        ),
-                        latitud = centro.latitud,
-                        longitud = centro.longitud,
-                        contacto = Contacto(
-                            telefono = centro.contacto.telefono,
-                            email = centro.contacto.email
-                        )
-                    )
-                    centroRepository.addCentro(nuevoCentro)
+                    centroRepository.addCentro(centro)
                 }
-
-                // Actualizar estado tras operación exitosa
-                if (resultId != null) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            success = true
-                        )
-                    }
-                    
-                    Timber.d("Centro guardado correctamente con ID: $resultId")
-                } else {
-                    throw Exception("No se ha obtenido un ID para el centro")
+                
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        success = true
+                    )
                 }
             } catch (e: Exception) {
-                _uiState.update {
+                _uiState.update { 
                     it.copy(
                         isLoading = false,
                         error = "Error al guardar el centro: ${e.message}"
                     )
                 }
-                
                 Timber.e(e, "Error al guardar centro")
             }
         }
@@ -749,7 +703,9 @@ class AddCentroViewModel @Inject constructor(
         val adminCentroError: String? = null,
         val isLoading: Boolean = false,
         val error: String? = null,
-        val success: Boolean = false
+        val success: Boolean = false,
+        val isEdit: Boolean = false,
+        val imageUrl: String = ""
     ) {
         val tieneUbicacionValida: Boolean
             get() = latitud != null && longitud != null
@@ -772,8 +728,8 @@ class AddCentroViewModel @Inject constructor(
         return Centro(
             id = state.id.ifBlank { UUID.randomUUID().toString() },
             nombre = state.nombre,
-            direccion = direccion,
-            contacto = contacto,
+            direccionObj = direccion,
+            contactoObj = contacto,
             latitud = state.latitud ?: 0.0,
             longitud = state.longitud ?: 0.0,
             adminIds = emptyList() // Se llenará después de crear los administradores

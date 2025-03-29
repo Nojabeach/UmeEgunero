@@ -84,8 +84,8 @@ import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.TemaPref
 import com.tfg.umeegunero.feature.centro.viewmodel.CentroDashboardViewModel
-import com.tfg.umeegunero.feature.common.config.components.TemaSelector
-import com.tfg.umeegunero.feature.common.config.components.TemaActual
+import com.tfg.umeegunero.ui.components.TemaSelector
+import com.tfg.umeegunero.ui.components.TemaActual
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion

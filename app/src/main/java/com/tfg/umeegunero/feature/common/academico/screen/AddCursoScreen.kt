@@ -12,7 +12,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.tfg.umeegunero.feature.common.academico.viewmodel.AddCursoViewModel
 import com.tfg.umeegunero.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.components.LoadingIndicator
@@ -22,13 +21,19 @@ import androidx.compose.ui.text.input.KeyboardType
 
 /**
  * Pantalla para la adición de nuevos cursos académicos
+ * 
+ * @param viewModel ViewModel que gestiona la lógica de la pantalla
+ * @param centroId ID del centro al que pertenecerá el curso
+ * @param onNavigateBack Callback para navegar hacia atrás
+ * @param onCursoAdded Callback que se ejecuta cuando se añade un curso correctamente
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCursoScreen(
-    navController: NavController,
     centroId: String,
-    viewModel: AddCursoViewModel = hiltViewModel()
+    viewModel: AddCursoViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit,
+    onCursoAdded: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -56,7 +61,7 @@ fun AddCursoScreen(
                 message = "Curso académico creado con éxito",
                 duration = SnackbarDuration.Short
             )
-            navController.popBackStack()
+            onCursoAdded()
         }
     }
     
@@ -72,7 +77,7 @@ fun AddCursoScreen(
                     ) 
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -116,7 +121,7 @@ fun AddCursoScreen(
                     onValueChange = { viewModel.updateNombre(it) },
                     label = "Nombre del curso",
                     isError = uiState.nombreError != null,
-                    errorText = uiState.nombreError,
+                    errorMessage = uiState.nombreError ?: "",
                     modifier = Modifier.fillMaxWidth()
                 )
                 
@@ -125,7 +130,7 @@ fun AddCursoScreen(
                     onValueChange = { viewModel.updateDescripcion(it) },
                     label = "Descripción",
                     isError = uiState.descripcionError != null,
-                    errorText = uiState.descripcionError,
+                    errorMessage = uiState.descripcionError ?: "",
                     singleLine = false,
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
@@ -140,7 +145,7 @@ fun AddCursoScreen(
                         onValueChange = { viewModel.updateEdadMinima(it) },
                         label = "Edad mínima",
                         isError = uiState.edadMinimaError != null,
-                        errorText = uiState.edadMinimaError,
+                        errorMessage = uiState.edadMinimaError ?: "",
                         keyboardType = KeyboardType.Number,
                         modifier = Modifier.weight(1f)
                     )
@@ -150,7 +155,7 @@ fun AddCursoScreen(
                         onValueChange = { viewModel.updateEdadMaxima(it) },
                         label = "Edad máxima",
                         isError = uiState.edadMaximaError != null,
-                        errorText = uiState.edadMaximaError,
+                        errorMessage = uiState.edadMaximaError ?: "",
                         keyboardType = KeyboardType.Number,
                         modifier = Modifier.weight(1f)
                     )
@@ -161,7 +166,7 @@ fun AddCursoScreen(
                     onValueChange = { viewModel.updateAnioAcademico(it) },
                     label = "Año académico",
                     isError = uiState.anioAcademicoError != null,
-                    errorText = uiState.anioAcademicoError,
+                    errorMessage = uiState.anioAcademicoError ?: "",
                     placeholder = { Text("Ejemplo: 2023-2024") },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -204,9 +209,29 @@ fun AddCursoScreen(
             if (uiState.isLoading) {
                 LoadingIndicator(
                     isLoading = true,
-                    message = "Guardando curso académico..."
+                    message = "Guardando curso académico...",
+                    fullScreen = true
                 )
             }
         }
     }
+}
+
+/**
+ * Versión del componente que utiliza Hilt para la inyección de dependencias,
+ * diseñada para ser llamada desde Navigation.
+ */
+@Composable
+fun HiltAddCursoScreen(
+    centroId: String,
+    viewModel: AddCursoViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit,
+    onCursoAdded: () -> Unit
+) {
+    AddCursoScreen(
+        centroId = centroId,
+        viewModel = viewModel,
+        onNavigateBack = onNavigateBack,
+        onCursoAdded = onCursoAdded
+    )
 } 

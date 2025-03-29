@@ -1,10 +1,11 @@
-package com.tfg.umeegunero.feature.admin.components
+package com.tfg.umeegunero.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,64 +36,50 @@ fun ExportDataComponent(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Título y botón para mostrar/ocultar opciones
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Exportar datos",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                IconButton(onClick = { showExportOptions = !showExportOptions }) {
-                    Icon(
-                        imageVector = Icons.Default.CloudDownload,
-                        contentDescription = "Mostrar opciones de exportación",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
+            Text(
+                text = "Exportar datos (${usuarios.size} usuarios)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
             
-            // Opciones de exportación (expandibles)
-            if (showExportOptions) {
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Número de usuarios a exportar
-                Text(
-                    text = "Se exportarán ${selectedUsers.size} usuarios",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Opciones de formato
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+            Row {
+                // Botón para exportar a CSV
+                OutlinedButton(
+                    onClick = { onExportCSV(usuarios) },
+                    enabled = usuarios.isNotEmpty()
                 ) {
-                    ExportFormatButton(
-                        icon = Icons.Default.Description,
-                        label = "CSV",
-                        onClick = { onExportCSV(selectedUsers) }
+                    Icon(
+                        imageVector = Icons.Default.FileDownload,
+                        contentDescription = null
                     )
-                    
-                    ExportFormatButton(
-                        icon = Icons.Default.PictureAsPdf,
-                        label = "PDF",
-                        onClick = { onExportPDF(selectedUsers) }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("CSV")
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Botón para exportar a PDF
+                OutlinedButton(
+                    onClick = { onExportPDF(usuarios) },
+                    enabled = usuarios.isNotEmpty()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PictureAsPdf,
+                        contentDescription = null
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("PDF")
                 }
             }
         }

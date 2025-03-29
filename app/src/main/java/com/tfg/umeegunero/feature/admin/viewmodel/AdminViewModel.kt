@@ -3,13 +3,15 @@ package com.tfg.umeegunero.feature.admin.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
-import com.tfg.umeegunero.model.Centro
+import com.tfg.umeegunero.data.model.Centro
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -17,61 +19,72 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AdminViewModel @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val db: FirebaseFirestore
 ) : ViewModel() {
 
-    // Estado de la UI
-    private val _uiState = MutableStateFlow(AdminUiState())
-    val uiState: StateFlow<AdminUiState> = _uiState.asStateFlow()
+    private val _centros = MutableStateFlow<List<Centro>>(emptyList())
+    val centros: StateFlow<List<Centro>> = _centros.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
     /**
      * Agrega un nuevo centro a la base de datos.
      * 
      * @param centro Centro a agregar
-     * @param onSuccess Callback para cuando la operación es exitosa
-     * @param onError Callback para cuando ocurre un error, con el mensaje del error
+     * @param onComplete Callback para cuando la operación es exitosa o falla
      */
-    fun agregarCentro(
-        centro: Centro,
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
-    ) {
+    fun agregarCentro(centro: Centro, onComplete: (Boolean) -> Unit) {
+        _isLoading.value = true
+        _error.value = null
+        
         viewModelScope.launch {
             try {
-                // Inicio de la operación
-                _uiState.update { it.copy(isLoading = true) }
+                // Crear nuevo documento con ID autogenerado
+                val docRef = db.collection("centros").document()
                 
-                // Guardar el centro en Firestore
-                val centroRef = firestore.collection("centros").document()
-                val centroConId = centro.copy(id = centroRef.id)
+                // Asignar ID generado al modelo antes de guardarlo
+                val centroConId = centro.copy(id = docRef.id)
                 
-                centroRef.set(centroConId)
-                    .addOnSuccessListener {
-                        _uiState.update { it.copy(isLoading = false) }
-                        onSuccess()
-                    }
-                    .addOnFailureListener { e ->
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false, 
-                                error = e.message ?: "Error al guardar el centro"
-                            ) 
-                        }
-                        onError(e.message ?: "Error al guardar el centro")
-                    }
+                // Guardar centro en Firestore
+                docRef.set(centroConId).await()
+                
+                // Éxito, notificar al caller
+                onComplete(true)
+                
+                // Actualizar la lista de centros si es necesario
+                getCentros()
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false, 
-                        error = e.message ?: "Error inesperado"
-                    ) 
-                }
-                onError(e.message ?: "Error inesperado")
+                Timber.e(e, "Error al agregar centro")
+                _error.value = "Error al agregar centro: ${e.message}"
+                onComplete(false)
+            } finally {
+                _isLoading.value = false
             }
         }
     }
     
-    // Otras funciones del ViewModel...
+    fun getCentros() {
+        _isLoading.value = true
+        
+        viewModelScope.launch {
+            try {
+                val snapshot = db.collection("centros").get().await()
+                val centrosList = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Centro::class.java)
+                }
+                _centros.value = centrosList
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener centros")
+                _error.value = "Error al obtener centros: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
 }
 
 /**

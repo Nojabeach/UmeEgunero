@@ -114,6 +114,10 @@ class EditCursoViewModel @Inject constructor(
 
     fun saveCurso() {
         viewModelScope.launch {
+            if (!validarFormulario()) {
+                return@launch
+            }
+            
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val curso = Curso(
@@ -163,6 +167,53 @@ class EditCursoViewModel @Inject constructor(
             }
         }
     }
+
+    private fun validarFormulario(): Boolean {
+        val errores = mutableMapOf<String, String?>()
+        var isValid = true
+        
+        if (_uiState.value.nombre.isBlank()) {
+            errores["nombre"] = "El nombre del curso es obligatorio"
+            isValid = false
+        } else {
+            errores["nombre"] = null
+        }
+        
+        if (_uiState.value.descripcion.isBlank()) {
+            errores["descripcion"] = "La descripción es obligatoria"
+            isValid = false
+        } else {
+            errores["descripcion"] = null
+        }
+        
+        if (_uiState.value.edadMinima < 0 || _uiState.value.edadMinima > 99) {
+            errores["edadMinima"] = "La edad mínima debe estar entre 0 y 99"
+            isValid = false
+        } else {
+            errores["edadMinima"] = null
+        }
+        
+        if (_uiState.value.edadMaxima < 0 || _uiState.value.edadMaxima > 99) {
+            errores["edadMaxima"] = "La edad máxima debe estar entre 0 y 99"
+            isValid = false
+        } else if (_uiState.value.edadMaxima < _uiState.value.edadMinima) {
+            errores["edadMaxima"] = "La edad máxima debe ser mayor o igual que la edad mínima"
+            isValid = false
+        } else {
+            errores["edadMaxima"] = null
+        }
+        
+        if (_uiState.value.anioAcademico.isBlank()) {
+            errores["anioAcademico"] = "El año académico es obligatorio"
+            isValid = false
+        } else {
+            errores["anioAcademico"] = null
+        }
+        
+        _uiState.update { it.copy(validationErrors = errores) }
+        
+        return isValid
+    }
 }
 
 data class EditCursoUiState(
@@ -174,5 +225,12 @@ data class EditCursoUiState(
     val activo: Boolean = true,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val success: String? = null
+    val success: String? = null,
+    val validationErrors: Map<String, String?> = mapOf(
+        "nombre" to null,
+        "descripcion" to null,
+        "edadMinima" to null,
+        "edadMaxima" to null,
+        "anioAcademico" to null
+    )
 ) 
