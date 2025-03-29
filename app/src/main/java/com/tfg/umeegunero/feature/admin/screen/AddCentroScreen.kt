@@ -356,221 +356,196 @@ fun AddCentroScreen(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         
-                        // Barra de progreso lineal simplificada
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .padding(vertical = 2.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(currentStep.toFloat() / totalSteps)
-                                    .height(8.dp)
-                                    .background(MaterialTheme.colorScheme.primary)
-                            )
-                        }
+                        FormProgressIndicator(
+                            currentStep = currentStep,
+                            totalSteps = totalSteps,
+                            showLabel = false
+                        )
                     }
                 }
                 
-                // Formulario
+                // Formulario utilizando tarjetas para cada sección
                 when (currentStep) {
                     1 -> {
-                        // Paso 1: Información básica
+                        // Paso 1: Información básica utilizando SectionCard
                         item {
-                            Text(
-                                text = "Información Básica",
-                                style = MaterialTheme.typography.headlineSmall,
+                            SectionCard(
+                                title = "Información Básica",
+                                icon = Icons.Default.School,
                                 modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                        }
-                        
-                        item {
-                            OutlinedTextField(
-                                value = nombre,
-                                onValueChange = { 
-                                    nombre = it
-                                    nombreError = if (it.isEmpty()) "El nombre es obligatorio" else null
-                                },
-                                label = { Text("Nombre del Centro") },
-                                isError = nombreError != null,
-                                supportingText = nombreError?.let { { Text(it) } },
-                                leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                            )
-                        }
-                        
-                        item {
-                            OutlinedTextField(
-                                value = telefono,
-                                onValueChange = { 
-                                    telefono = it
-                                    telefonoError = if (!it.matches(Regex("^[0-9]{9}$")) && it.isNotEmpty()) 
-                                        "El teléfono debe tener 9 dígitos" else null
-                                },
-                                label = { Text("Teléfono") },
-                                isError = telefonoError != null,
-                                supportingText = telefonoError?.let { { Text(it) } },
-                                leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                            )
-                        }
-                        
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                        
-                        item {
-                            Button(
-                                onClick = { 
-                                    if (nombre.isNotEmpty() && (telefono.isEmpty() || telefono.matches(Regex("^[0-9]{9}$")))) {
-                                        currentStep = 2
-                                    } else {
-                                        nombreError = if (nombre.isEmpty()) "El nombre es obligatorio" else null
-                                        telefonoError = if (!telefono.matches(Regex("^[0-9]{9}$")) && telefono.isNotEmpty()) 
-                                            "El teléfono debe tener 9 dígitos" else null
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Siguiente")
+                                EnhancedFormTextField(
+                                    value = nombre,
+                                    onValueChange = { 
+                                        nombre = it
+                                        nombreError = if (it.isEmpty()) "El nombre es obligatorio" else null
+                                    },
+                                    label = "Nombre del Centro",
+                                    error = nombreError,
+                                    icon = Icons.Default.School,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp)
+                                )
+                                
+                                EnhancedFormTextField(
+                                    value = telefono,
+                                    onValueChange = { 
+                                        telefono = it
+                                        telefonoError = if (!it.matches(Regex("^[0-9]{9}$")) && it.isNotEmpty()) 
+                                            "El teléfono debe tener 9 dígitos" else null
+                                    },
+                                    label = "Teléfono",
+                                    error = telefonoError,
+                                    icon = Icons.Default.Phone,
+                                    keyboardType = KeyboardType.Phone,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                Button(
+                                    onClick = { 
+                                        if (nombre.isNotEmpty() && (telefono.isEmpty() || telefono.matches(Regex("^[0-9]{9}$")))) {
+                                            currentStep = 2
+                                        } else {
+                                            nombreError = if (nombre.isEmpty()) "El nombre es obligatorio" else null
+                                            telefonoError = if (!telefono.matches(Regex("^[0-9]{9}$")) && telefono.isNotEmpty()) 
+                                                "El teléfono debe tener 9 dígitos" else null
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Siguiente")
+                                }
                             }
                         }
                     }
                     2 -> {
-                        // Paso 2: Dirección
+                        // Paso 2: Dirección utilizando SectionCard
                         item {
-                            Text(
-                                text = "Dirección",
-                                style = MaterialTheme.typography.headlineSmall,
+                            SectionCard(
+                                title = "Dirección",
+                                icon = Icons.Default.LocationOn,
                                 modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                        }
-                        
-                        item {
-                            OutlinedTextField(
-                                value = direccion,
-                                onValueChange = { 
-                                    direccion = it
-                                    direccionError = if (it.isEmpty()) "La dirección es obligatoria" else null
-                                },
-                                label = { Text("Dirección Completa") },
-                                isError = direccionError != null,
-                                supportingText = direccionError?.let { { Text(it) } },
-                                leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp),
-                                maxLines = 3
-                            )
-                        }
-                        
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                        
-                        item {
-                            Button(
-                                onClick = { 
-                                    if (direccion.isNotEmpty()) {
-                                        currentStep = 3
-                                    } else {
-                                        direccionError = "La dirección es obligatoria"
+                            ) {
+                                EnhancedFormTextField(
+                                    value = direccion,
+                                    onValueChange = { 
+                                        direccion = it
+                                        direccionError = if (it.isEmpty()) "La dirección es obligatoria" else null
+                                    },
+                                    label = "Dirección Completa",
+                                    error = direccionError,
+                                    icon = Icons.Default.LocationOn,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp),
+                                    maxLength = 200,
+                                    placeholder = "Calle, número, ciudad, código postal"
+                                )
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { currentStep = 1 },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Anterior")
                                     }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Siguiente")
-                            }
-                        }
-                        
-                        item {
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                        
-                        item {
-                            OutlinedButton(
-                                onClick = { currentStep = 1 },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Anterior")
+                                    
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    Button(
+                                        onClick = { 
+                                            if (direccion.isNotEmpty()) {
+                                                currentStep = 3
+                                            } else {
+                                                direccionError = "La dirección es obligatoria"
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Siguiente")
+                                    }
+                                }
                             }
                         }
                     }
                     3 -> {
-                        // Paso 3: Coordenadas
+                        // Paso 3: Coordenadas utilizando SectionCard
                         item {
-                            Text(
-                                text = "Coordenadas Geográficas",
-                                style = MaterialTheme.typography.headlineSmall,
+                            SectionCard(
+                                title = "Coordenadas Geográficas",
+                                icon = Icons.Default.Place,
+                                subtitle = "Añade las coordenadas para mostrar el centro en el mapa",
                                 modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                        }
-                        
-                        item {
-                            Text(
-                                text = "Añade las coordenadas para mostrar el centro en el mapa",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                        }
-                        
-                        item {
-                            OutlinedTextField(
-                                value = latitud,
-                                onValueChange = { 
-                                    latitud = it
-                                    latitudError = validateCoordinate(it, true)
-                                },
-                                label = { Text("Latitud") },
-                                isError = latitudError != null,
-                                supportingText = latitudError?.let { { Text(it) } },
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Decimal,
-                                    imeAction = ImeAction.Next
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                            )
-                        }
-                        
-                        item {
-                            OutlinedTextField(
-                                value = longitud,
-                                onValueChange = { 
-                                    longitud = it
-                                    longitudError = validateCoordinate(it, false)
-                                },
-                                label = { Text("Longitud") },
-                                isError = longitudError != null,
-                                supportingText = longitudError?.let { { Text(it) } },
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Decimal,
-                                    imeAction = ImeAction.Done
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                            )
-                        }
-                        
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                        
-                        item {
-                            OutlinedButton(
-                                onClick = { currentStep = 2 },
-                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Anterior")
+                                EnhancedFormTextField(
+                                    value = latitud,
+                                    onValueChange = { 
+                                        latitud = it
+                                        latitudError = validateCoordinate(it, true)
+                                    },
+                                    label = "Latitud",
+                                    error = latitudError,
+                                    icon = Icons.Default.Place,
+                                    keyboardType = KeyboardType.Decimal,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp),
+                                    placeholder = "Ej: 43.2629"
+                                )
+                                
+                                EnhancedFormTextField(
+                                    value = longitud,
+                                    onValueChange = { 
+                                        longitud = it
+                                        longitudError = validateCoordinate(it, false)
+                                    },
+                                    label = "Longitud",
+                                    error = longitudError,
+                                    icon = Icons.Default.Place,
+                                    keyboardType = KeyboardType.Decimal,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp),
+                                    placeholder = "Ej: -2.9350"
+                                )
+                                
+                                // Vista previa del mapa si se proporcionaron coordenadas
+                                if (latitud.isNotEmpty() && longitud.isNotEmpty() && 
+                                    latitudError == null && longitudError == null) {
+                                    val lat = latitud.toDoubleOrNull()
+                                    val lng = longitud.toDoubleOrNull()
+                                    
+                                    if (lat != null && lng != null) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        MapaUbicacion(
+                                            latitud = lat,
+                                            longitud = lng,
+                                            direccionCompleta = direccion,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(150.dp)
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                OutlinedButton(
+                                    onClick = { currentStep = 2 },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Anterior")
+                                }
                             }
                         }
                     }
