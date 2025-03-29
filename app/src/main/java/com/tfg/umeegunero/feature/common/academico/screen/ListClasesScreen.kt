@@ -56,7 +56,7 @@ fun ListClasesScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { 
-                    navController.navigate(Screens.AddClase.createRoute(uiState.cursoId))
+                    navController.navigate(Screens.AddClase.createRoute(uiState.cursoId, ""))
                 },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -83,7 +83,7 @@ fun ListClasesScreen(
                     icon = Icons.Default.Class,
                     buttonText = "Añadir clase",
                     onButtonClick = { 
-                        navController.navigate(Screens.AddClase.createRoute(uiState.cursoId))
+                        navController.navigate(Screens.AddClase.createRoute(uiState.cursoId, ""))
                     }
                 )
             } else {

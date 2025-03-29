@@ -1322,6 +1322,40 @@ open class UsuarioRepository @Inject constructor(
         }
     }
 
+    /**
+     * Obtiene todos los mensajes donde participa un usuario
+     * 
+     * Este método recupera todos los mensajes donde el usuario es
+     * emisor o receptor para mostrarlos en la pantalla de conversaciones
+     */
+    suspend fun getMensajesUsuario(usuarioId: String): Result<List<Mensaje>> = withContext(Dispatchers.IO) {
+        try {
+            // Obtener mensajes donde el usuario es emisor
+            val queryEmisor = mensajesCollection
+                .whereEqualTo("emisorId", usuarioId)
+                .get()
+                .await()
+
+            val mensajesEmisor = queryEmisor.toObjects(Mensaje::class.java)
+
+            // Obtener mensajes donde el usuario es receptor
+            val queryReceptor = mensajesCollection
+                .whereEqualTo("receptorId", usuarioId)
+                .get()
+                .await()
+
+            val mensajesReceptor = queryReceptor.toObjects(Mensaje::class.java)
+
+            // Combinar los resultados
+            val todosMensajes = (mensajesEmisor + mensajesReceptor).distinctBy { it.id }
+
+            return@withContext Result.Success(todosMensajes)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener mensajes del usuario")
+            return@withContext Result.Error(e)
+        }
+    }
+
     companion object {
         /**
          * Crea un mock del repositorio para pruebas y vistas previas

@@ -412,7 +412,7 @@ object NavigationStructure {
                 NavItem(
                     title = "Cursos",
                     icon = Icons.Outlined.List,
-                    route = Screens.ListCursos.route,
+                    route = Screens.CursosScreen.route,
                     isImplemented = true
                 ),
                 NavItem(

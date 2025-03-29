@@ -16,6 +16,7 @@ import com.tfg.umeegunero.data.repository.PreferenciasRepository
 import com.tfg.umeegunero.feature.common.splash.screen.SplashScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
 import com.tfg.umeegunero.navigation.Navigation
+import com.tfg.umeegunero.navigation.Screens
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.ui.theme.rememberDarkThemeState
 import dagger.hilt.android.AndroidEntryPoint
@@ -82,7 +83,7 @@ class MainActivity : ComponentActivity() {
                         val navController = rememberNavController()
                         Navigation(
                             navController = navController,
-                            onCloseApp = { finish() }
+                            startDestination = Screens.Login.route
                         )
                     }
                 }

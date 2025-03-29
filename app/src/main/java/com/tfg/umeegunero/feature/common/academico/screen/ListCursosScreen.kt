@@ -102,7 +102,7 @@ fun ListCursosScreen(
                                 showConfirmDialog = true
                             },
                             onVerClasesClick = {
-                                navController.navigate(Screens.ListClases.createRoute(curso.id))
+                                navController.navigate(Screens.ClasesScreen.route)
                             }
                         )
                     }
