@@ -6,6 +6,9 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.tfg.umeegunero.feature.common.mensajeria.ConversacionesScreen
+import com.tfg.umeegunero.feature.profesor.screen.ChatScreen as ProfesorChatScreen
+import com.tfg.umeegunero.feature.familiar.screen.ChatScreen as FamiliarChatScreen
 
 @Composable
 fun Navigation(navController: NavHostController, startDestination: String) {
@@ -56,17 +59,17 @@ fun Navigation(navController: NavHostController, startDestination: String) {
             )
         ) { backStackEntry ->
             val esFamiliar = backStackEntry.arguments?.getBoolean("esFamiliar") ?: false
-            // ConversacionesScreen(
-            //     esFamiliar = esFamiliar,
-            //     onNavigateToChat = { conversacionId, usuarioDestino ->
-            //         if (esFamiliar) {
-            //             navController.navigate("chat_profesor/$usuarioDestino")
-            //         } else {
-            //             navController.navigate("chat_familiar/$usuarioDestino")
-            //         }
-            //     },
-            //     onNavigateBack = { navController.popBackStack() }
-            // )
+            ConversacionesScreen(
+                esFamiliar = esFamiliar,
+                onNavigateToChat = { conversacionId, usuarioDestino ->
+                    if (esFamiliar) {
+                        navController.navigate("chat_profesor/$usuarioDestino")
+                    } else {
+                        navController.navigate("chat_familiar/$usuarioDestino")
+                    }
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
         
         // Chat para profesor
@@ -77,9 +80,9 @@ fun Navigation(navController: NavHostController, startDestination: String) {
             )
         ) { backStackEntry ->
             val familiarId = backStackEntry.arguments?.getString("familiarId") ?: ""
-            // ProfesorChatScreen(
-            //     onNavigateBack = { navController.popBackStack() }
-            // )
+            ProfesorChatScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
         
         // Chat para familiar
@@ -90,9 +93,9 @@ fun Navigation(navController: NavHostController, startDestination: String) {
             )
         ) { backStackEntry ->
             val profesorId = backStackEntry.arguments?.getString("profesorId") ?: ""
-            // FamiliarChatScreen(
-            //     onNavigateBack = { navController.popBackStack() }
-            // )
+            FamiliarChatScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 } 
