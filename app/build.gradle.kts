@@ -89,13 +89,28 @@ tasks.dokkaHtml {
             skipDeprecated.set(false)
             jdkVersion.set(17)
             
-            // Simplificamos la configuración para evitar errores
+            // Configuración de paquetes
             perPackageOption {
                 matchingRegex.set("com.tfg.umeegunero.*")
                 suppress.set(false)
             }
             
-            // Personalización con CSS
+            // Personalización con CSS y plantillas
+            includes.from("src/main/resources/dokka/package.md")
+            
+            // Archivos de recursos personalizados
+            pluginsMapConfiguration.set(
+                mapOf(
+                    "org.jetbrains.dokka.base.DokkaBase" to """
+                        {
+                          "customStyleSheets": ["${project.projectDir}/src/main/resources/dokka/styles/custom-style.css"],
+                          "customAssets": [],
+                          "templatesDir": "${project.projectDir}/src/main/resources/dokka/custom-dokka-templates"
+                        }
+                    """.trimIndent()
+                )
+            )
+            
             noStdlibLink.set(false)
             noJdkLink.set(false)
             noAndroidSdkLink.set(false)

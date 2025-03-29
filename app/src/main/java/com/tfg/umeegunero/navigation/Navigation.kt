@@ -2,14 +2,19 @@ package com.tfg.umeegunero.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 import com.tfg.umeegunero.feature.common.mensajeria.ConversacionesScreen
 import com.tfg.umeegunero.feature.profesor.screen.ChatScreen as ProfesorChatScreen
 import com.tfg.umeegunero.feature.familiar.screen.ChatScreen as FamiliarChatScreen
 
+/**
+ * Componente principal de navegación para la aplicación UmeEgunero.
+ * Configura el NavHost con todas las rutas disponibles.
+ *
+ * @param navController Controlador de navegación que gestionará las transiciones entre pantallas
+ * @param startDestination Ruta inicial donde comenzará la navegación
+ */
 @Composable
 fun Navigation(navController: NavHostController, startDestination: String) {
     NavHost(
@@ -17,33 +22,59 @@ fun Navigation(navController: NavHostController, startDestination: String) {
         startDestination = startDestination
     ) {
         // Pantallas de autenticación
-        composable(Screens.Login.route) {
+        composable(
+            route = Screens.Login.route,
+            arguments = Screens.Login.arguments
+        ) {
             // Placeholder para LoginScreen
             // Se implementará con el componente correcto cuando esté disponible
         }
         
-        composable(Screens.Registro.route) {
+        composable(
+            route = Screens.Registro.route,
+            arguments = Screens.Registro.arguments
+        ) {
             // Placeholder para RegistroScreen
             // Se implementará con el componente correcto cuando esté disponible
         }
         
+        composable(
+            route = Screens.RecuperarPassword.route,
+            arguments = Screens.RecuperarPassword.arguments
+        ) {
+            // Placeholder para RecuperarPasswordScreen
+            // Se implementará con el componente correcto cuando esté disponible
+        }
+        
         // Dashboards
-        composable(Screens.AdminDashboard.route) {
+        composable(
+            route = Screens.AdminDashboard.route,
+            arguments = Screens.AdminDashboard.arguments
+        ) {
             // Placeholder para AdminDashboardScreen
             // Se implementará con el componente correcto cuando esté disponible
         }
         
-        composable(Screens.CentroDashboard.route) {
+        composable(
+            route = Screens.CentroDashboard.route,
+            arguments = Screens.CentroDashboard.arguments
+        ) {
             // Placeholder para CentroDashboardScreen
             // Se implementará con el componente correcto cuando esté disponible
         }
         
-        composable(Screens.ProfesorDashboard.route) {
+        composable(
+            route = Screens.ProfesorDashboard.route,
+            arguments = Screens.ProfesorDashboard.arguments
+        ) {
             // Placeholder para ProfesorDashboardScreen
             // Se implementará con el componente correcto cuando esté disponible
         }
         
-        composable(Screens.FamiliarDashboard.route) {
+        composable(
+            route = Screens.FamiliarDashboard.route,
+            arguments = Screens.FamiliarDashboard.arguments
+        ) {
             // Placeholder para FamiliarDashboardScreen
             // Se implementará con el componente correcto cuando esté disponible
         }
@@ -51,21 +82,16 @@ fun Navigation(navController: NavHostController, startDestination: String) {
         // Pantallas de mensajería
         composable(
             route = Screens.Conversaciones.route,
-            arguments = listOf(
-                navArgument("esFamiliar") { 
-                    type = NavType.BoolType
-                    defaultValue = false 
-                }
-            )
+            arguments = Screens.Conversaciones.arguments
         ) { backStackEntry ->
             val esFamiliar = backStackEntry.arguments?.getBoolean("esFamiliar") ?: false
             ConversacionesScreen(
                 esFamiliar = esFamiliar,
                 onNavigateToChat = { conversacionId, usuarioDestino ->
                     if (esFamiliar) {
-                        navController.navigate("chat_profesor/$usuarioDestino")
+                        navController.navigate(Screens.ChatFamiliar.createRoute(usuarioDestino))
                     } else {
-                        navController.navigate("chat_familiar/$usuarioDestino")
+                        navController.navigate(Screens.ChatProfesor.createRoute(usuarioDestino))
                     }
                 },
                 onNavigateBack = { navController.popBackStack() }
@@ -74,10 +100,8 @@ fun Navigation(navController: NavHostController, startDestination: String) {
         
         // Chat para profesor
         composable(
-            route = "chat_familiar/{familiarId}",
-            arguments = listOf(
-                navArgument("familiarId") { type = NavType.StringType }
-            )
+            route = Screens.ChatProfesor.route,
+            arguments = Screens.ChatProfesor.arguments
         ) { backStackEntry ->
             val familiarId = backStackEntry.arguments?.getString("familiarId") ?: ""
             ProfesorChatScreen(
@@ -87,15 +111,38 @@ fun Navigation(navController: NavHostController, startDestination: String) {
         
         // Chat para familiar
         composable(
-            route = "chat_profesor/{profesorId}",
-            arguments = listOf(
-                navArgument("profesorId") { type = NavType.StringType }
-            )
+            route = Screens.ChatFamiliar.route,
+            arguments = Screens.ChatFamiliar.arguments
         ) { backStackEntry ->
             val profesorId = backStackEntry.arguments?.getString("profesorId") ?: ""
             FamiliarChatScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+    }
+}
+
+/**
+ * Extensión para facilitar la navegación tipo-seguro.
+ * Proporciona métodos para navegar usando directamente las clases Screens.
+ * 
+ * @param route La pantalla destino como objeto Screens
+ * @param popUpToRoute Opcional. Ruta hasta la que hacer pop en la pila de navegación
+ * @param inclusive Si true, la ruta popUpToRoute también será eliminada de la pila
+ * @param singleTop Si true, evita múltiples copias de la misma ruta en la pila
+ */
+fun NavHostController.navigateTo(
+    route: String,
+    popUpToRoute: String? = null,
+    inclusive: Boolean = false,
+    singleTop: Boolean = false
+) {
+    navigate(route) {
+        if (popUpToRoute != null) {
+            popUpTo(popUpToRoute) {
+                this.inclusive = inclusive
+            }
+        }
+        this.launchSingleTop = singleTop
     }
 } 

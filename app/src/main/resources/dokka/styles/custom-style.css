@@ -1,0 +1,189 @@
+/* 
+ * custom-style.css para Dokka 
+ * Desarrollado por Maitane Ibañez Irazabal
+ */
+
+:root {
+    /* Colores principales de UmeEgunero */
+    --primary-color: #3F51B5;       /* Azul índigo */
+    --primary-dark: #303F9F;        /* Azul índigo oscuro */
+    --primary-light: #C5CAE9;       /* Azul índigo claro */
+    --accent-color: #FF5722;        /* Naranja profundo */
+    --text-primary: #212121;        /* Texto principal negro */
+    --text-secondary: #757575;      /* Texto secundario gris */
+    --divider-color: #BDBDBD;       /* Divisor gris claro */
+    
+    /* Colores básicos */
+    --background-color: #F5F5F5;
+    --content-background: #FFFFFF;
+    --header-background: var(--primary-color);
+    --header-text: #FFFFFF;
+    --link-color: var(--accent-color);
+    --link-hover: var(--primary-dark);
+    --pre-background: #F1F1F1;
+    --code-background: #EEEEEE;
+    --border-color: var(--divider-color);
+}
+
+body {
+    font-family: 'Roboto', 'Segoe UI', 'Arial', sans-serif;
+    color: var(--text-primary);
+    background-color: var(--background-color);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+/* Encabezado de página */
+.navigation-wrapper {
+    background-color: var(--header-background);
+    color: var(--header-text);
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.library-name {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* Enlaces */
+a {
+    color: var(--link-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--link-hover);
+}
+
+/* Navegación principal */
+.main-nav {
+    background-color: var(--primary-dark);
+    padding: 10px 20px;
+}
+
+.main-nav a {
+    color: white;
+    margin-right: 20px;
+}
+
+/* Contenedores de contenido */
+.content-container {
+    background-color: var(--content-background);
+    padding: 20px;
+    margin: 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Encabezados */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--primary-color);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+h1 {
+    font-size: 2.2em;
+    border-bottom: 2px solid var(--primary-light);
+    padding-bottom: 0.3em;
+}
+
+h2 {
+    font-size: 1.8em;
+    border-bottom: 1px solid var(--divider-color);
+    padding-bottom: 0.3em;
+}
+
+h3 {
+    font-size: 1.5em;
+}
+
+/* Tablas */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+th {
+    background-color: var(--primary-light);
+    color: var(--primary-dark);
+    padding: 12px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid var(--divider-color);
+}
+
+tr:nth-child(even) {
+    background-color: #f7f7f7;
+}
+
+/* Bloques de código */
+pre {
+    background-color: var(--pre-background);
+    border-left: 4px solid var(--accent-color);
+    padding: 15px;
+    overflow-x: auto;
+    margin: 1em 0;
+    border-radius: 0 4px 4px 0;
+}
+
+code {
+    font-family: 'Fira Code', 'Roboto Mono', 'Courier New', monospace;
+    background-color: var(--code-background);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* Información de KDoc */
+.kdoc-tag {
+    margin-top: 0.8em;
+    font-style: italic;
+}
+
+.kdoc-tag .identifier {
+    font-weight: bold;
+    color: var(--primary-dark);
+}
+
+/* Firma del desarrollador */
+.footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 40px;
+    border-top: 1px solid var(--divider-color);
+    color: var(--text-secondary);
+}
+
+.developer-signature {
+    font-style: italic;
+    margin-top: 10px;
+}
+
+/* Adaptación para dispositivos móviles */
+@media (max-width: 768px) {
+    .content-container {
+        margin: 10px;
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 1.8em;
+    }
+    
+    h2 {
+        font-size: 1.5em;
+    }
+    
+    .library-name {
+        font-size: 20px;
+    }
+} 

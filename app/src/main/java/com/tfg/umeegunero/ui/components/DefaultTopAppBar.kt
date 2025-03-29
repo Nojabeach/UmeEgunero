@@ -1,9 +1,9 @@
 package com.tfg.umeegunero.ui.components
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 /**
  * Barra superior predeterminada para la mayoría de las pantallas de la aplicación.
  * Proporciona una interfaz simplificada para crear un TopAppBar con opciones comunes.
+ * Utiliza la API estable de Material 3.
  *
  * @param title Título que se mostrará en la barra
  * @param showBackButton Si se debe mostrar el botón de retroceso
@@ -28,7 +29,6 @@ import androidx.compose.ui.text.style.TextOverflow
  * @param containerColor Color de fondo de la barra
  * @param contentColor Color del contenido (título y botones)
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DefaultTopAppBar(
     title: String,
@@ -36,7 +36,7 @@ fun DefaultTopAppBar(
     onBackClick: () -> Unit = {},
     showMenuButton: Boolean = false,
     onMenuClick: () -> Unit = {},
-    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
     containerColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onPrimary
 ) {
