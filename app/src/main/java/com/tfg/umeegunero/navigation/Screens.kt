@@ -40,21 +40,49 @@ sealed class Screens(val route: String) {
         fun createRoute(centroId: String) = "edit_centro/$centroId"
     }
     
-    object GestionCursos : Screens("gestion_cursos/{centroId}") {
-        fun createRoute(centroId: String) = "gestion_cursos/$centroId"
-    }
-    object GestionClases : Screens("gestion_clases/{cursoId}") {
-        fun createRoute(cursoId: String) = "gestion_clases/$cursoId"
-    }
-    object AddCurso : Screens("add_curso/{centroId}") {
-        fun createRoute(centroId: String) = "add_curso/$centroId"
-    }
+    /**
+     * Pantalla para gestionar cursos académicos.
+     */
+    object GestionCursos : Screens("gestion_cursos")
+
+    /**
+     * Pantalla para listar los cursos de un centro.
+     */
+    object ListCursos : Screens("list_cursos")
+
+    /**
+     * Pantalla para añadir un nuevo curso.
+     */
+    object AddCurso : Screens("add_curso")
+
+    /**
+     * Pantalla para editar un curso existente.
+     * @param cursoId Identificador del curso a editar.
+     */
     object EditCurso : Screens("edit_curso/{cursoId}") {
         fun createRoute(cursoId: String) = "edit_curso/$cursoId"
     }
+
+    /**
+     * Pantalla para gestionar las clases de un curso.
+     * @param cursoId Identificador del curso.
+     */
+    object ListClases : Screens("list_clases/{cursoId}") {
+        fun createRoute(cursoId: String) = "list_clases/$cursoId"
+    }
+
+    /**
+     * Pantalla para añadir una nueva clase a un curso.
+     * @param cursoId Identificador del curso al que pertenecerá la clase.
+     */
     object AddClase : Screens("add_clase/{cursoId}") {
         fun createRoute(cursoId: String) = "add_clase/$cursoId"
     }
+
+    /**
+     * Pantalla para editar una clase existente.
+     * @param claseId Identificador de la clase a editar.
+     */
     object EditClase : Screens("edit_clase/{claseId}") {
         fun createRoute(claseId: String) = "edit_clase/$claseId"
     }

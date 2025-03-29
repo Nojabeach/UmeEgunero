@@ -1,217 +1,178 @@
 package com.tfg.umeegunero.feature.common.academico.screen
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.tfg.umeegunero.feature.common.academico.viewmodel.AddCursoViewModel
-import com.tfg.umeegunero.ui.components.FormProgressIndicator
+import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError
-import com.tfg.umeegunero.ui.theme.AcademicoColor
-import androidx.compose.ui.text.input.KeyboardType
+import kotlinx.coroutines.launch
 
 /**
- * Pantalla para la adición de nuevos cursos académicos
+ * Pantalla para añadir un nuevo curso al sistema
  * 
- * @param viewModel ViewModel que gestiona la lógica de la pantalla
- * @param centroId ID del centro al que pertenecerá el curso
- * @param onNavigateBack Callback para navegar hacia atrás
- * @param onCursoAdded Callback que se ejecuta cuando se añade un curso correctamente
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel para la gestión de cursos
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCursoScreen(
-    centroId: String,
-    viewModel: AddCursoViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
-    onCursoAdded: () -> Unit
+    navController: NavController,
+    viewModel: AddCursoViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Inicializar con el ID del centro cuando se monta el componente
-    LaunchedEffect(centroId) {
-        viewModel.setCentroId(centroId)
-    }
-    
-    // Efecto para mostrar Snackbar cuando hay un error
-    LaunchedEffect(uiState.error) {
-        if (uiState.error != null) {
-            snackbarHostState.showSnackbar(
-                message = uiState.error ?: "Error desconocido",
-                duration = SnackbarDuration.Short
-            )
-            viewModel.clearError()
-        }
-    }
-    
-    // Efecto para navegar hacia atrás cuando se completa con éxito
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+
+    // Efecto para manejar la navegación después de un guardado exitoso
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
-            snackbarHostState.showSnackbar(
-                message = "Curso académico creado con éxito",
-                duration = SnackbarDuration.Short
-            )
-            onCursoAdded()
+            navController.popBackStack()
         }
     }
-    
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        "Añadir Curso Académico",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    ) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AcademicoColor,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            DefaultTopAppBar(
+                title = if (uiState.isEditMode) "Editar Curso" else "Nuevo Curso",
+                showBackButton = true,
+                onBackClick = { navController.popBackStack() }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { viewModel.guardarCurso() },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Guardar curso"
+                )
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Contenido principal
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Indicador de progreso del formulario
-                FormProgressIndicator(
-                    currentStep = 1,
-                    totalSteps = 1,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                )
-                
-                // Formulario
+                // Nombre del curso
                 OutlinedTextFieldWithError(
                     value = uiState.nombre,
-                    onValueChange = { viewModel.updateNombre(it) },
+                    onValueChange = viewModel::updateNombre,
                     label = "Nombre del curso",
-                    isError = uiState.nombreError != null,
-                    errorMessage = uiState.nombreError ?: "",
+                    placeholder = "Ej: Infantil 3 años",
+                    errorMessage = uiState.errorNombre ?: "",
+                    isError = uiState.errorNombre != null,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
+                // Descripción
                 OutlinedTextFieldWithError(
                     value = uiState.descripcion,
-                    onValueChange = { viewModel.updateDescripcion(it) },
+                    onValueChange = viewModel::updateDescripcion,
                     label = "Descripción",
-                    isError = uiState.descripcionError != null,
-                    errorMessage = uiState.descripcionError ?: "",
-                    singleLine = false,
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Row(
+                    placeholder = "Descripción del curso, objetivos, etc.",
+                    errorMessage = uiState.errorDescripcion ?: "",
+                    isError = uiState.errorDescripcion != null,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    OutlinedTextFieldWithError(
-                        value = uiState.edadMinima,
-                        onValueChange = { viewModel.updateEdadMinima(it) },
-                        label = "Edad mínima",
-                        isError = uiState.edadMinimaError != null,
-                        errorMessage = uiState.edadMinimaError ?: "",
-                        keyboardType = KeyboardType.Number,
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    OutlinedTextFieldWithError(
-                        value = uiState.edadMaxima,
-                        onValueChange = { viewModel.updateEdadMaxima(it) },
-                        label = "Edad máxima",
-                        isError = uiState.edadMaximaError != null,
-                        errorMessage = uiState.edadMaximaError ?: "",
-                        keyboardType = KeyboardType.Number,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                
+                    maxLines = 3
+                )
+
+                // Edad mínima
+                OutlinedTextFieldWithError(
+                    value = uiState.edadMinima,
+                    onValueChange = viewModel::updateEdadMinima,
+                    label = "Edad mínima",
+                    placeholder = "Ej: 3",
+                    errorMessage = uiState.errorEdadMinima ?: "",
+                    isError = uiState.errorEdadMinima != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                // Edad máxima
+                OutlinedTextFieldWithError(
+                    value = uiState.edadMaxima,
+                    onValueChange = viewModel::updateEdadMaxima,
+                    label = "Edad máxima",
+                    placeholder = "Ej: 4",
+                    errorMessage = uiState.errorEdadMaxima ?: "",
+                    isError = uiState.errorEdadMaxima != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                // Año académico
                 OutlinedTextFieldWithError(
                     value = uiState.anioAcademico,
-                    onValueChange = { viewModel.updateAnioAcademico(it) },
+                    onValueChange = viewModel::updateAnioAcademico,
                     label = "Año académico",
-                    isError = uiState.anioAcademicoError != null,
-                    errorMessage = uiState.anioAcademicoError ?: "",
-                    placeholder = { Text("Ejemplo: 2023-2024") },
+                    placeholder = "Ej: 2023-2024",
+                    errorMessage = uiState.errorAnioAcademico ?: "",
+                    isError = uiState.errorAnioAcademico != null,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                // Botón de guardar
-                Button(
-                    onClick = { viewModel.guardarCurso() },
+
+                // Estado activo
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AcademicoColor
-                    ),
-                    enabled = !uiState.isLoading
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (!uiState.isLoading) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = null
-                            )
-                            Text("Guardar Curso")
-                        }
-                    } else {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
+                    Checkbox(
+                        checked = uiState.activo,
+                        onCheckedChange = viewModel::updateActivo
+                    )
+                    Text(
+                        text = "Curso activo",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-            
+
             // Indicador de carga
             if (uiState.isLoading) {
-                LoadingIndicator(
-                    isLoading = true,
-                    message = "Guardando curso académico...",
-                    fullScreen = true
-                )
+                LoadingIndicator(fullScreen = true)
+            }
+
+            // Mostrar errores generales mediante Snackbar
+            LaunchedEffect(uiState.error) {
+                uiState.error?.let { error ->
+                    scope.launch {
+                        snackbarHostState.showSnackbar(message = error)
+                        viewModel.clearError()
+                    }
+                }
             }
         }
     }
@@ -223,15 +184,11 @@ fun AddCursoScreen(
  */
 @Composable
 fun HiltAddCursoScreen(
-    centroId: String,
-    viewModel: AddCursoViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
-    onCursoAdded: () -> Unit
+    navController: NavController,
+    viewModel: AddCursoViewModel = hiltViewModel()
 ) {
     AddCursoScreen(
-        centroId = centroId,
-        viewModel = viewModel,
-        onNavigateBack = onNavigateBack,
-        onCursoAdded = onCursoAdded
+        navController = navController,
+        viewModel = viewModel
     )
 } 

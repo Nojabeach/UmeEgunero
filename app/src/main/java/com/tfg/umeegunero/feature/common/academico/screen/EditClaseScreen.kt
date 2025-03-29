@@ -19,7 +19,27 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.feature.common.academico.viewmodel.GestionClasesViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.AddClaseViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
+
+/**
+ * Pantalla para editar una clase existente
+ * Reutiliza el componente AddClaseScreen pero en modo edición
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel para la gestión de clases
+ */
+@Composable
+fun EditClaseScreen(
+    navController: NavController,
+    viewModel: AddClaseViewModel = hiltViewModel()
+) {
+    // Reutilizamos la pantalla de añadir clase pero con el viewModel en modo edición
+    AddClaseScreen(
+        navController = navController,
+        viewModel = viewModel
+    )
+}
 
 /**
  * Pantalla para editar o crear una clase
@@ -181,7 +201,7 @@ fun EditClaseScreen(
             
             // Mostrar el indicador de carga si está cargando
             LoadingIndicator(
-                isLoading = true,
+                isLoading = uiState.isLoading,
                 message = "Cargando datos de la clase..."
             )
             

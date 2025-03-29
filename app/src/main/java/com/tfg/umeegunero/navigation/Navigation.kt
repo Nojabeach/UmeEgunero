@@ -93,6 +93,10 @@ import com.tfg.umeegunero.feature.common.academico.screen.AddCursoScreen
 import com.tfg.umeegunero.feature.admin.screen.SeguridadScreen
 import com.tfg.umeegunero.navigation.Screens
 import com.tfg.umeegunero.feature.common.academico.screen.HiltAddCursoScreen
+import com.tfg.umeegunero.feature.common.academico.screen.ListCursosScreen
+import com.tfg.umeegunero.feature.common.academico.screen.ListClasesScreen
+import com.tfg.umeegunero.feature.common.academico.screen.AddClaseScreen
+import com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen
 
 /**
  * Componente principal de navegación de la aplicación UmeEgunero.
@@ -870,11 +874,50 @@ fun Navigation(
                 )
             ) { backStackEntry ->
                 val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
-                HiltAddCursoScreen(
-                    centroId = centroId,
-                    onNavigateBack = { navController.popBackStack() },
-                    onCursoAdded = { navController.popBackStack() }
+                AddCursoScreen(
+                    navController = navController
                 )
+            }
+
+            // Pantallas para gestión de cursos
+            composable(route = Screens.ListCursos.route) {
+                ListCursosScreen(navController = navController)
+            }
+            
+            composable(
+                route = Screens.EditCurso.route,
+                arguments = listOf(
+                    navArgument("cursoId") { type = NavType.StringType }
+                )
+            ) {
+                AddCursoScreen(navController = navController)
+            }
+            
+            composable(
+                route = Screens.ListClases.route,
+                arguments = listOf(
+                    navArgument("cursoId") { type = NavType.StringType }
+                )
+            ) {
+                ListClasesScreen(navController = navController)
+            }
+            
+            composable(
+                route = Screens.AddClase.route,
+                arguments = listOf(
+                    navArgument("cursoId") { type = NavType.StringType }
+                )
+            ) {
+                AddClaseScreen(navController = navController)
+            }
+            
+            composable(
+                route = Screens.EditClase.route,
+                arguments = listOf(
+                    navArgument("claseId") { type = NavType.StringType }
+                )
+            ) {
+                EditClaseScreen(navController = navController)
             }
         }
     }

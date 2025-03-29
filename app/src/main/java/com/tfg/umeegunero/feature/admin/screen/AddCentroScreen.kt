@@ -335,10 +335,8 @@ fun AddCentroScreen(
                                         contentDescription = null
                                     )
                                 },
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Decimal,
-                                    imeAction = ImeAction.Next
-                                ),
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Next,
                                 modifier = Modifier.fillMaxWidth()
                             )
                             
@@ -355,10 +353,8 @@ fun AddCentroScreen(
                                         contentDescription = null
                                     )
                                 },
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Decimal,
-                                    imeAction = ImeAction.Done
-                                ),
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Done,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

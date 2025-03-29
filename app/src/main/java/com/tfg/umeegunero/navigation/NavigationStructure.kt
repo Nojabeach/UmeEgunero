@@ -402,6 +402,26 @@ object NavigationStructure {
                 )
             ),
             dividerAfter = true
+        ),
+        NavItem(
+            title = "Gestión Académica",
+            icon = Icons.Outlined.School,
+            route = "admin_dashboard/academico",
+            isImplemented = true,
+            subItems = listOf(
+                NavItem(
+                    title = "Cursos",
+                    icon = Icons.Outlined.List,
+                    route = Screens.ListCursos.route,
+                    isImplemented = true
+                ),
+                NavItem(
+                    title = "Clases",
+                    icon = Icons.Outlined.Group,
+                    route = "admin_dashboard/clases",
+                    isImplemented = true
+                )
+            )
         )
     )
 
