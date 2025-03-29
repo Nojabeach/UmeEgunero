@@ -251,22 +251,15 @@ fun AddCentroScreen(
             }
         }
         
-        // Validar que si hay una coordenada, debe haber la otra
-        if ((latitud.isNotEmpty() && longitud.isEmpty()) || (latitud.isEmpty() && longitud.isNotEmpty())) {
-            Toast.makeText(
-                context, 
-                "Si proporciona una coordenada, debe proporcionar ambas", 
-                Toast.LENGTH_SHORT
-            ).show()
-            currentStep = 3
-            return false
-        }
-        
         return true
     }
     
     // Función para guardar un centro
     fun guardarCentro() {
+        if (!validateForm()) {
+            return
+        }
+        
         isLoading = true
         
         val centro = ModelCentro(
@@ -345,38 +338,39 @@ fun AddCentroScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
                 // Indicador de progreso simple
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 24.dp)
-                ) {
-                    Text(
-                        text = "Paso $currentStep de $totalSteps",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    // Barra de progreso lineal simplificada
-                    Box(
+                item {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(8.dp)
-                            .padding(vertical = 2.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(bottom = 24.dp)
                     ) {
+                        Text(
+                            text = "Paso $currentStep de $totalSteps",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        // Barra de progreso lineal simplificada
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(currentStep.toFloat() / totalSteps)
+                                .fillMaxWidth()
                                 .height(8.dp)
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
+                                .padding(vertical = 2.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(currentStep.toFloat() / totalSteps)
+                                    .height(8.dp)
+                                    .background(MaterialTheme.colorScheme.primary)
+                            )
+                        }
                     }
                 }
                 
@@ -384,166 +378,200 @@ fun AddCentroScreen(
                 when (currentStep) {
                     1 -> {
                         // Paso 1: Información básica
-                        Text(
-                            text = "Información Básica",
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
+                        item {
+                            Text(
+                                text = "Información Básica",
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                        }
                         
-                        OutlinedTextField(
-                            value = nombre,
-                            onValueChange = { 
-                                nombre = it
-                                nombreError = if (it.isEmpty()) "El nombre es obligatorio" else null
-                            },
-                            label = { Text("Nombre del Centro") },
-                            isError = nombreError != null,
-                            supportingText = nombreError?.let { { Text(it) } },
-                            leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                        )
+                        item {
+                            OutlinedTextField(
+                                value = nombre,
+                                onValueChange = { 
+                                    nombre = it
+                                    nombreError = if (it.isEmpty()) "El nombre es obligatorio" else null
+                                },
+                                label = { Text("Nombre del Centro") },
+                                isError = nombreError != null,
+                                supportingText = nombreError?.let { { Text(it) } },
+                                leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                        }
                         
-                        OutlinedTextField(
-                            value = telefono,
-                            onValueChange = { 
-                                telefono = it
-                                telefonoError = if (!it.matches(Regex("^[0-9]{9}$")) && it.isNotEmpty()) 
-                                    "El teléfono debe tener 9 dígitos" else null
-                            },
-                            label = { Text("Teléfono") },
-                            isError = telefonoError != null,
-                            supportingText = telefonoError?.let { { Text(it) } },
-                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Button(
-                            onClick = { 
-                                if (nombre.isNotEmpty() && (telefono.isEmpty() || telefono.matches(Regex("^[0-9]{9}$")))) {
-                                    currentStep = 2
-                                } else {
-                                    nombreError = if (nombre.isEmpty()) "El nombre es obligatorio" else null
-                                    telefonoError = if (!telefono.matches(Regex("^[0-9]{9}$")) && telefono.isNotEmpty()) 
+                        item {
+                            OutlinedTextField(
+                                value = telefono,
+                                onValueChange = { 
+                                    telefono = it
+                                    telefonoError = if (!it.matches(Regex("^[0-9]{9}$")) && it.isNotEmpty()) 
                                         "El teléfono debe tener 9 dígitos" else null
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Siguiente")
+                                },
+                                label = { Text("Teléfono") },
+                                isError = telefonoError != null,
+                                supportingText = telefonoError?.let { { Text(it) } },
+                                leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                        }
+                        
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        
+                        item {
+                            Button(
+                                onClick = { 
+                                    if (nombre.isNotEmpty() && (telefono.isEmpty() || telefono.matches(Regex("^[0-9]{9}$")))) {
+                                        currentStep = 2
+                                    } else {
+                                        nombreError = if (nombre.isEmpty()) "El nombre es obligatorio" else null
+                                        telefonoError = if (!telefono.matches(Regex("^[0-9]{9}$")) && telefono.isNotEmpty()) 
+                                            "El teléfono debe tener 9 dígitos" else null
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Siguiente")
+                            }
                         }
                     }
                     2 -> {
                         // Paso 2: Dirección
-                        Text(
-                            text = "Dirección",
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        
-                        OutlinedTextField(
-                            value = direccion,
-                            onValueChange = { 
-                                direccion = it
-                                direccionError = if (it.isEmpty()) "La dirección es obligatoria" else null
-                            },
-                            label = { Text("Dirección Completa") },
-                            isError = direccionError != null,
-                            supportingText = direccionError?.let { { Text(it) } },
-                            leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            maxLines = 3
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Button(
-                            onClick = { 
-                                if (direccion.isNotEmpty()) {
-                                    currentStep = 3
-                                } else {
-                                    direccionError = "La dirección es obligatoria"
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Siguiente")
+                        item {
+                            Text(
+                                text = "Dirección",
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
                         }
                         
-                        Spacer(modifier = Modifier.height(8.dp))
+                        item {
+                            OutlinedTextField(
+                                value = direccion,
+                                onValueChange = { 
+                                    direccion = it
+                                    direccionError = if (it.isEmpty()) "La dirección es obligatoria" else null
+                                },
+                                label = { Text("Dirección Completa") },
+                                isError = direccionError != null,
+                                supportingText = direccionError?.let { { Text(it) } },
+                                leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                                maxLines = 3
+                            )
+                        }
                         
-                        OutlinedButton(
-                            onClick = { currentStep = 1 },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Anterior")
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        
+                        item {
+                            Button(
+                                onClick = { 
+                                    if (direccion.isNotEmpty()) {
+                                        currentStep = 3
+                                    } else {
+                                        direccionError = "La dirección es obligatoria"
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Siguiente")
+                            }
+                        }
+                        
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        
+                        item {
+                            OutlinedButton(
+                                onClick = { currentStep = 1 },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Anterior")
+                            }
                         }
                     }
                     3 -> {
                         // Paso 3: Coordenadas
-                        Text(
-                            text = "Coordenadas Geográficas",
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
+                        item {
+                            Text(
+                                text = "Coordenadas Geográficas",
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                        }
                         
-                        Text(
-                            text = "Añade las coordenadas para mostrar el centro en el mapa",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
+                        item {
+                            Text(
+                                text = "Añade las coordenadas para mostrar el centro en el mapa",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                        }
                         
-                        OutlinedTextField(
-                            value = latitud,
-                            onValueChange = { 
-                                latitud = it
-                                latitudError = validateCoordinate(it, true)
-                            },
-                            label = { Text("Latitud") },
-                            isError = latitudError != null,
-                            supportingText = latitudError?.let { { Text(it) } },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Next
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                        )
+                        item {
+                            OutlinedTextField(
+                                value = latitud,
+                                onValueChange = { 
+                                    latitud = it
+                                    latitudError = validateCoordinate(it, true)
+                                },
+                                label = { Text("Latitud") },
+                                isError = latitudError != null,
+                                supportingText = latitudError?.let { { Text(it) } },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal,
+                                    imeAction = ImeAction.Next
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                        }
                         
-                        OutlinedTextField(
-                            value = longitud,
-                            onValueChange = { 
-                                longitud = it
-                                longitudError = validateCoordinate(it, false)
-                            },
-                            label = { Text("Longitud") },
-                            isError = longitudError != null,
-                            supportingText = longitudError?.let { { Text(it) } },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Done
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                        )
+                        item {
+                            OutlinedTextField(
+                                value = longitud,
+                                onValueChange = { 
+                                    longitud = it
+                                    longitudError = validateCoordinate(it, false)
+                                },
+                                label = { Text("Longitud") },
+                                isError = longitudError != null,
+                                supportingText = longitudError?.let { { Text(it) } },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal,
+                                    imeAction = ImeAction.Done
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                        }
                         
-                        Spacer(modifier = Modifier.height(16.dp))
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                         
-                        OutlinedButton(
-                            onClick = { currentStep = 2 },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Anterior")
+                        item {
+                            OutlinedButton(
+                                onClick = { currentStep = 2 },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Anterior")
+                            }
                         }
                     }
                 }
@@ -1414,56 +1442,122 @@ private fun detectarCambios(estadoOriginal: AddCentroViewModel.AddCentroState, e
 @Preview(showBackground = true)
 @Composable
 fun AddCentroScreenPreview() {
-    // Estado para el preview con campos vacíos para mostrar los placeholders
+    // Estado para el preview con datos de ejemplo para mostrar correctamente los componentes
     val previewState = AddCentroViewModel.AddCentroState(
-        nombre = "",
-        calle = "",
-        numero = "",
-        codigoPostal = "",
-        ciudad = "",
-        provincia = "",
-        telefono = "",
+        nombre = "Colegio San Ignacio",
+        calle = "Avenida Universidad",
+        numero = "15",
+        codigoPostal = "48007",
+        ciudad = "Bilbao",
+        provincia = "Vizcaya / Bizkaia",
+        telefono = "944123456",
         adminCentro = listOf(
             AdminCentroUsuario(
-                dni = "",
-                nombre = "",
-                apellidos = "",
-                email = "",
-                telefono = "",
-                password = ""
+                dni = "12345678A",
+                nombre = "María",
+                apellidos = "García López",
+                email = "maria.garcia@ejemplo.com",
+                telefono = "666777888",
+                password = "contraseña123"
             )
         ),
-        latitud = null,
-        longitud = null
+        latitud = 43.262985,
+        longitud = -2.935013,
+        mostrarMapa = true
     )
 
     UmeEguneroTheme {
-        Surface {
-            AddCentroScreenContent(
-                uiState = previewState,
-                provincias = listOf("Vizcaya / Bizkaia", "Guipúzcoa / Gipuzkoa", "Álava / Araba"),
-                snackbarHostState = remember { SnackbarHostState() },
-                onNombreChange = {},
-                onCalleChange = {},
-                onNumeroChange = {},
-                onCodigoPostalChange = {},
-                onCiudadChange = {},
-                onProvinciaChange = {},
-                onTelefonoChange = {},
-                onCiudadSelected = {},
-                onToggleMapa = {},
-                onGuardarClick = { _, _ -> },
-                onCancelarClick = {},
-                onErrorDismiss = {},
-                onAddAdminCentro = {},
-                onRemoveAdminCentro = { _ -> },
-                onUpdateAdminCentroDni = { _, _ -> },
-                onUpdateAdminCentroNombre = { _, _ -> },
-                onUpdateAdminCentroApellidos = { _, _ -> },
-                onUpdateAdminCentroEmail = { _, _ -> },
-                onUpdateAdminCentroTelefono = { _, _ -> },
-                onUpdateAdminCentroPassword = { _, _ -> }
-            )
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Título para identificar el preview
+                Text(
+                    text = "Preview: Añadir Centro Educativo", 
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                
+                // Componentes de la pantalla real
+                SectionCard(
+                    title = "Datos Básicos",
+                    icon = Icons.Default.School,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    EnhancedFormTextField(
+                        value = previewState.nombre,
+                        onValueChange = {},
+                        label = "Nombre del Centro",
+                        icon = Icons.Default.School,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                    
+                    EnhancedFormTextField(
+                        value = previewState.telefono,
+                        onValueChange = {},
+                        label = "Teléfono",
+                        icon = Icons.Default.Phone,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        keyboardType = KeyboardType.Phone
+                    )
+                }
+                
+                // Sección Dirección
+                SectionCard(
+                    title = "Ubicación del Centro",
+                    icon = Icons.Default.LocationCity,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    EnhancedFormTextField(
+                        value = previewState.calle,
+                        onValueChange = {},
+                        label = "Vía / Calle",
+                        icon = Icons.Default.Home,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                    
+                    EnhancedFormTextField(
+                        value = previewState.ciudad,
+                        onValueChange = {},
+                        label = "Ciudad/Municipio",
+                        icon = Icons.Default.LocationCity,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                    
+                    // Ejemplo de mapa
+                    if (previewState.latitud != null && previewState.longitud != null) {
+                        MapaUbicacionSection(
+                            mostrarMapa = previewState.mostrarMapa,
+                            onToggleMapa = {},
+                            latitud = previewState.latitud,
+                            longitud = previewState.longitud,
+                            direccionCompleta = "${previewState.calle}, ${previewState.numero}, ${previewState.ciudad}"
+                        )
+                    }
+                }
+                
+                // Sección Administrador
+                Spacer(modifier = Modifier.height(16.dp))
+                AdminCentroCard(
+                    admin = previewState.adminCentro.first(),
+                    index = 0,
+                    canDelete = false,
+                    onDniChange = {},
+                    onNombreChange = {},
+                    onApellidosChange = {},
+                    onEmailChange = {},
+                    onTelefonoChange = {},
+                    onPasswordChange = {},
+                    onRemove = {},
+                    isPrimary = true
+                )
+            }
         }
     }
 }
@@ -1471,56 +1565,122 @@ fun AddCentroScreenPreview() {
 @Composable
 @Preview(name = "Modo oscuro", uiMode = Configuration.UI_MODE_NIGHT_YES)
 fun AddCentroScreenDarkPreview() {
-    // Estado para el preview con campos vacíos para mostrar los placeholders
+    // Estado para el preview con datos de ejemplo para mostrar correctamente los componentes
     val previewState = AddCentroViewModel.AddCentroState(
-        nombre = "",
-        calle = "",
-        numero = "",
-        codigoPostal = "",
-        ciudad = "",
-        provincia = "",
-        telefono = "",
+        nombre = "Colegio San Ignacio",
+        calle = "Avenida Universidad",
+        numero = "15",
+        codigoPostal = "48007",
+        ciudad = "Bilbao",
+        provincia = "Vizcaya / Bizkaia",
+        telefono = "944123456",
         adminCentro = listOf(
             AdminCentroUsuario(
-                dni = "",
-                nombre = "",
-                apellidos = "",
-                email = "",
-                telefono = "",
-                password = ""
+                dni = "12345678A",
+                nombre = "María",
+                apellidos = "García López",
+                email = "maria.garcia@ejemplo.com",
+                telefono = "666777888",
+                password = "contraseña123"
             )
         ),
-        latitud = null,
-        longitud = null
+        latitud = 43.262985,
+        longitud = -2.935013,
+        mostrarMapa = true
     )
 
     UmeEguneroTheme(darkTheme = true) {
-        Surface {
-            AddCentroScreenContent(
-                uiState = previewState,
-                provincias = listOf("Vizcaya / Bizkaia", "Guipúzcoa / Gipuzkoa", "Álava / Araba"),
-                snackbarHostState = remember { SnackbarHostState() },
-                onNombreChange = {},
-                onCalleChange = {},
-                onNumeroChange = {},
-                onCodigoPostalChange = {},
-                onCiudadChange = {},
-                onProvinciaChange = {},
-                onTelefonoChange = {},
-                onCiudadSelected = {},
-                onToggleMapa = {},
-                onGuardarClick = { _, _ -> },
-                onCancelarClick = {},
-                onErrorDismiss = {},
-                onAddAdminCentro = {},
-                onRemoveAdminCentro = { _ -> },
-                onUpdateAdminCentroDni = { _, _ -> },
-                onUpdateAdminCentroNombre = { _, _ -> },
-                onUpdateAdminCentroApellidos = { _, _ -> },
-                onUpdateAdminCentroEmail = { _, _ -> },
-                onUpdateAdminCentroTelefono = { _, _ -> },
-                onUpdateAdminCentroPassword = { _, _ -> }
-            )
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Título para identificar el preview
+                Text(
+                    text = "Preview: Añadir Centro Educativo", 
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                
+                // Componentes de la pantalla real
+                SectionCard(
+                    title = "Datos Básicos",
+                    icon = Icons.Default.School,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    EnhancedFormTextField(
+                        value = previewState.nombre,
+                        onValueChange = {},
+                        label = "Nombre del Centro",
+                        icon = Icons.Default.School,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                    
+                    EnhancedFormTextField(
+                        value = previewState.telefono,
+                        onValueChange = {},
+                        label = "Teléfono",
+                        icon = Icons.Default.Phone,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        keyboardType = KeyboardType.Phone
+                    )
+                }
+                
+                // Sección Dirección
+                SectionCard(
+                    title = "Ubicación del Centro",
+                    icon = Icons.Default.LocationCity,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    EnhancedFormTextField(
+                        value = previewState.calle,
+                        onValueChange = {},
+                        label = "Vía / Calle",
+                        icon = Icons.Default.Home,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                    
+                    EnhancedFormTextField(
+                        value = previewState.ciudad,
+                        onValueChange = {},
+                        label = "Ciudad/Municipio",
+                        icon = Icons.Default.LocationCity,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                    
+                    // Ejemplo de mapa
+                    if (previewState.latitud != null && previewState.longitud != null) {
+                        MapaUbicacionSection(
+                            mostrarMapa = previewState.mostrarMapa,
+                            onToggleMapa = {},
+                            latitud = previewState.latitud,
+                            longitud = previewState.longitud,
+                            direccionCompleta = "${previewState.calle}, ${previewState.numero}, ${previewState.ciudad}"
+                        )
+                    }
+                }
+                
+                // Sección Administrador
+                Spacer(modifier = Modifier.height(16.dp))
+                AdminCentroCard(
+                    admin = previewState.adminCentro.first(),
+                    index = 0,
+                    canDelete = false,
+                    onDniChange = {},
+                    onNombreChange = {},
+                    onApellidosChange = {},
+                    onEmailChange = {},
+                    onTelefonoChange = {},
+                    onPasswordChange = {},
+                    onRemove = {},
+                    isPrimary = true
+                )
+            }
         }
     }
 }
