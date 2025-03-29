@@ -62,7 +62,7 @@ android {
     buildFeatures {
         compose = true
     }
-
+    
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
     }
@@ -84,12 +84,26 @@ tasks.dokkaHtml {
         configureEach {
             includeNonPublic.set(false)
             skipEmptyPackages.set(true)
-            displayName.set("UmeEgunero")
+            displayName.set("UmeEgunero - Aplicación de Gestión Escolar")
             reportUndocumented.set(true)
             skipDeprecated.set(false)
             jdkVersion.set(17)
+            
+            // Simplificamos la configuración para evitar errores
+            perPackageOption {
+                matchingRegex.set("com.tfg.umeegunero.*")
+                suppress.set(false)
+            }
+            
+            // Personalización con CSS
+            noStdlibLink.set(false)
+            noJdkLink.set(false)
+            noAndroidSdkLink.set(false)
         }
     }
+    
+    // Personalizar el título y metadata
+    moduleName.set("UmeEgunero")
 }
 
 dependencies {

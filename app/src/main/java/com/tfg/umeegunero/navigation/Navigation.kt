@@ -70,8 +70,26 @@ import androidx.compose.foundation.layout.Arrangement
 import com.tfg.umeegunero.feature.centro.screen.GestionProfesoresScreen
 
 /**
- * Navegación principal de la aplicación
- * Esta implementación es una versión extendida de SimpleNavigation
+ * Componente principal de navegación de la aplicación UmeEgunero.
+ * 
+ * Este componente implementa toda la estructura de navegación de la aplicación utilizando
+ * Navigation Compose. Se encarga de definir:
+ * 
+ * - El grafo de navegación completo con todas las rutas posibles
+ * - La configuración del cajón de navegación lateral (Navigation Drawer)
+ * - Las transiciones entre pantallas
+ * - La lógica de paso de parámetros entre destinos
+ * 
+ * La navegación está organizada por roles de usuario (administrador, centro, profesor, familiar)
+ * y cada rol tiene su propio flujo de pantallas específicas con permisos adecuados.
+ * 
+ * @param navController Controlador de navegación que gestiona el gráfico de navegación.
+ *                      Por defecto se crea uno nuevo con [rememberNavController].
+ * @param onCloseApp Callback que se ejecuta cuando el usuario solicita cerrar la aplicación.
+ *                   Por defecto es una función vacía.
+ *
+ * @see AppScreens Para la definición de todas las rutas disponibles
+ * @see NavigationDrawerContent Para el contenido del cajón de navegación
  */
 @Composable
 fun Navigation(
@@ -81,6 +99,7 @@ fun Navigation(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    // Configuración del cajón de navegación lateral (drawer)
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -96,6 +115,7 @@ fun Navigation(
             }
         }
     ) {
+        // Definición del gráfico de navegación principal
         NavHost(
             navController = navController,
             startDestination = AppScreens.Welcome.route

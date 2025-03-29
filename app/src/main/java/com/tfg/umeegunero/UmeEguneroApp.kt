@@ -15,12 +15,42 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
+/**
+ * Clase principal de la aplicación que extiende de [Application].
+ * 
+ * Esta clase es responsable de inicializar los componentes globales de la aplicación:
+ * - Configuración de Hilt para la inyección de dependencias
+ * - Inicialización de Timber para el registro de logs
+ * - Configuración de Firebase Remote Config
+ * - Configuración de tareas periódicas en segundo plano con WorkManager
+ * - Inicialización de recursos críticos de la aplicación
+ *
+ * Al utilizar la anotación [HiltAndroidApp], esta clase sirve como punto de entrada
+ * para el contenedor de dependencias de Hilt a nivel de aplicación.
+ *
+ * @see SincronizacionWorker Para la implementación de tareas en segundo plano
+ * @see RemoteConfigManager Para la gestión de configuraciones remotas
+ * @see DebugUtils Utilidades para entornos de desarrollo
+ */
 @HiltAndroidApp
 class UmeEguneroApp : Application() {
 
+    /**
+     * Utilidades de depuración inyectadas por Hilt.
+     * Se utilizan para realizar operaciones específicas en entornos de desarrollo.
+     */
     @Inject
     lateinit var debugUtils: DebugUtils
 
+    /**
+     * Método llamado cuando se crea la aplicación.
+     *
+     * Inicializa los componentes fundamentales de la aplicación:
+     * 1. Timber para registro de logs en modo debug
+     * 2. Firebase Remote Config para configuraciones remotas
+     * 3. Comprueba y crea un administrador en caso de que no exista
+     * 4. Configura trabajos periódicos para la sincronización de datos
+     */
     override fun onCreate() {
         super.onCreate()
         
@@ -42,7 +72,18 @@ class UmeEguneroApp : Application() {
     /**
      * Configura un trabajo periódico para sincronizar registros pendientes.
      * 
-     * El trabajo se ejecutará cada 15 minutos cuando haya conexión a Internet.
+     * Este método utiliza WorkManager para crear una tarea programada que se ejecutará
+     * cada 15 minutos cuando el dispositivo tenga conexión a Internet. La tarea
+     * es responsable de sincronizar datos locales con el servidor para mantener
+     * la coherencia entre el dispositivo y el backend.
+     *
+     * Restricciones:
+     * - Requiere conexión a Internet para ejecutarse
+     * - Se programa cada 15 minutos
+     * - Reemplaza cualquier trabajo anterior con el mismo nombre
+     *
+     * @see SincronizacionWorker Implementación del trabajo de sincronización
+     * @see WorkManager API de Android para la programación de tareas en segundo plano
      */
     private fun configurarSincronizacionPeriodica() {
         Timber.d("Configurando sincronización periódica")

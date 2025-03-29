@@ -55,7 +55,17 @@ fun ColorScheme.isLight(): Boolean {
     return luminance > 0.5
 }
 
-// Tipo de usuario para la navegación desde la pantalla de bienvenida
+/**
+ * Tipos de usuario disponibles para la selección en la pantalla de bienvenida.
+ * 
+ * Esta enumeración define los diferentes perfiles de usuario que pueden acceder
+ * al sistema, cada uno con sus propias funcionalidades y permisos.
+ * 
+ * @property ADMIN Administrador del sistema con acceso completo a todas las funcionalidades
+ * @property CENTRO Personal administrativo de un centro educativo
+ * @property PROFESOR Profesorado del centro educativo
+ * @property FAMILIAR Padres, madres o tutores legales de los alumnos
+ */
 enum class WelcomeUserType {
     ADMIN,
     CENTRO,
@@ -63,6 +73,32 @@ enum class WelcomeUserType {
     FAMILIAR
 }
 
+/**
+ * Pantalla de bienvenida y punto de entrada principal de la aplicación UmeEgunero.
+ * 
+ * Esta pantalla es la primera que ven los usuarios al abrir la aplicación. Proporciona
+ * opciones para iniciar sesión según el tipo de usuario (administrador, centro, profesor
+ * o familiar), registrarse como nuevo usuario, acceder a soporte técnico o cerrar la app.
+ * 
+ * Características visuales:
+ * - Diseño atractivo con animaciones y efectos visuales
+ * - Interfaz adaptativa para temas claro/oscuro
+ * - Elementos decorativos dinámicos en el fondo
+ * - Selección intuitiva del tipo de usuario
+ * - Logo y branding distintivo de la aplicación
+ * 
+ * La pantalla implementa una navegación clara y directa hacia las principales funciones
+ * de acceso al sistema, con un diseño que comunica la identidad de la aplicación como
+ * herramienta educativa moderna y profesional.
+ *
+ * @param onNavigateToLogin Callback para navegar a la pantalla de login, con el tipo de usuario seleccionado
+ * @param onNavigateToRegister Callback para navegar a la pantalla de registro
+ * @param onCloseApp Callback para cerrar la aplicación
+ * @param onDemoRequested Callback para solicitar una demostración (opcional)
+ * @param onNavigateToSupport Callback para navegar al soporte general (opcional)
+ * @param onNavigateToTechnicalSupport Callback para navegar al soporte técnico (opcional)
+ * @param onNavigateToFAQ Callback para navegar a las preguntas frecuentes (opcional)
+ */
 @Composable
 fun WelcomeScreen(
     onNavigateToLogin: (WelcomeUserType) -> Unit,

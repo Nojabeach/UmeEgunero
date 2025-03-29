@@ -32,7 +32,31 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.School
 
 /**
- * Componente para mostrar estadísticas en una tarjeta
+ * Componente reutilizable que muestra una tarjeta con información estadística.
+ * 
+ * Este componente presenta una estadística individual en forma de tarjeta visualmente
+ * atractiva y accesible. Está diseñado para mostrar métricas clave de forma clara y
+ * concisa, con un diseño consistente en toda la aplicación.
+ * 
+ * Características:
+ * - Diseño elevado con sombra para destacar visualmente
+ * - Icono personalizable para representar el tipo de estadística
+ * - Color temático configurable para codificar visualmente diferentes categorías
+ * - Soporte completo de accesibilidad con descripciones semánticas
+ * - Interactividad opcional para navegar a vistas detalladas
+ * 
+ * Este componente se utiliza principalmente en dashboards administrativos y paneles
+ * de control para mostrar KPIs (Key Performance Indicators) y métricas importantes.
+ * 
+ * @param title Título descriptivo de la estadística
+ * @param value Valor numérico o textual de la estadística
+ * @param icon Icono vectorial que representa visualmente la categoría de la estadística
+ * @param color Color temático para el icono y el valor (debe contrastar con el fondo)
+ * @param onClick Callback opcional que se ejecuta cuando el usuario pulsa la tarjeta
+ * @param modifier Modificador de Compose para personalizar el layout
+ * 
+ * @see StatsOverviewRow Para mostrar múltiples estadísticas en fila
+ * @see StatItem Para el modelo de datos que representa una estadística
  */
 @Composable
 fun StatsOverviewCard(
@@ -97,7 +121,27 @@ fun StatsOverviewCard(
 }
 
 /**
- * Componente para mostrar un conjunto de estadísticas
+ * Componente contenedor que muestra una fila de tarjetas de estadísticas.
+ * 
+ * Este componente organiza múltiples [StatsOverviewCard] en una fila horizontal
+ * con espaciado uniforme, adaptándose automáticamente al ancho disponible.
+ * Facilita la visualización de múltiples métricas relacionadas en un formato
+ * compacto y visualmente coherente.
+ * 
+ * El componente distribuye el espacio equitativamente entre todas las tarjetas,
+ * asegurando un diseño equilibrado independientemente del número de estadísticas.
+ * 
+ * Casos de uso típicos:
+ * - Dashboards administrativos
+ * - Paneles de control de usuarios
+ * - Resúmenes de actividad y rendimiento
+ * - Headers de secciones con métricas clave
+ *
+ * @param stats Lista de [StatItem] que definen las estadísticas a mostrar
+ * @param modifier Modificador de Compose para personalizar el layout
+ * 
+ * @see StatsOverviewCard Para la visualización individual de cada estadística
+ * @see StatItem Para el modelo de datos que representa una estadística
  */
 @Composable
 fun StatsOverviewRow(
@@ -122,7 +166,26 @@ fun StatsOverviewRow(
 }
 
 /**
- * Modelo para un elemento de estadística
+ * Modelo de datos para representar un elemento de estadística individual.
+ * 
+ * Esta clase de datos encapsula toda la información necesaria para representar
+ * visualmente una estadística en la interfaz de usuario. Define tanto los aspectos
+ * visuales (título, valor, icono, color) como el comportamiento interactivo (onClick).
+ * 
+ * Al separar los datos de la presentación, este modelo permite:
+ * - Mayor flexibilidad en la fuente de datos
+ * - Facilidad para transformar datos del backend en representaciones visuales
+ * - Testabilidad mejorada de la lógica de presentación
+ * - Reutilización en diferentes contextos de UI
+ *
+ * @property title Título descriptivo corto de la estadística
+ * @property value Valor formateado como texto (puede incluir unidades o formato específico)
+ * @property icon Icono vectorial que representa visualmente la categoría
+ * @property color Color temático para destacar visualmente (debe seguir la paleta de la app)
+ * @property onClick Callback que se ejecuta cuando el usuario interactúa con la estadística
+ * 
+ * @see StatsOverviewCard Para la representación visual de este modelo
+ * @see StatsOverviewRow Para mostrar colecciones de estas estadísticas
  */
 data class StatItem(
     val title: String,

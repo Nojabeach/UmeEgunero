@@ -103,6 +103,37 @@ import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 
+/**
+ * Dashboard principal para familiares y tutores en el sistema UmeEgunero.
+ * 
+ * Este componente proporciona una interfaz centralizada para que los familiares
+ * puedan monitorear y gestionar toda la información relacionada con sus hijos
+ * o tutelados. Las principales funcionalidades incluyen:
+ * 
+ * - Vista general del estado y actividades recientes de cada hijo
+ * - Acceso a los registros diarios de actividades creados por los profesores
+ * - Sistema de comunicación con el personal docente
+ * - Calendario de eventos y actividades escolares
+ * - Notificaciones importantes del centro
+ * 
+ * La interfaz está adaptada para ser intuitiva y accesible, con un diseño que 
+ * destaca la información más relevante para los padres. Incluye un cajón de 
+ * navegación lateral y pestañas para organizar el contenido según la función.
+ * 
+ * Toda la información se actualiza en tiempo real mediante observación de los 
+ * cambios en la base de datos.
+ *
+ * @param viewModel ViewModel que gestiona el estado y la lógica del dashboard familiar
+ * @param onLogout Callback ejecutado cuando el familiar cierra sesión
+ * @param onNavigateToDetalleRegistro Callback para navegar al detalle de un registro diario
+ * @param onNavigateToDetalleHijo Callback para navegar al detalle de un hijo
+ * @param onNavigateToChat Callback para navegar al chat con un profesor
+ *
+ * @see FamiliarDashboardViewModel Para la lógica de negocio
+ * @see DetalleRegistroScreen Para la visualización detallada de registros
+ * @see DetalleHijoScreen Para la información completa de un alumno
+ * @see ChatScreen Para la comunicación con profesores
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FamiliarDashboardScreen(

@@ -21,12 +21,44 @@ import com.tfg.umeegunero.ui.theme.rememberDarkThemeState
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+/**
+ * Actividad principal de la aplicación UmeEgunero.
+ * 
+ * Esta actividad funciona como punto de entrada de la aplicación y se encarga de:
+ * - Inicializar la pantalla de splash mediante la API SplashScreen de Android
+ * - Configurar el tema de la aplicación (claro/oscuro) según las preferencias del usuario
+ * - Establecer el sistema de navegación de la aplicación
+ * - Administrar el flujo inicial de la aplicación (splash → navegación principal)
+ *
+ * La actividad utiliza Jetpack Compose para la construcción de su interfaz y
+ * Hilt para la inyección de dependencias.
+ *
+ * @see SplashScreen Para la implementación de la pantalla de splash
+ * @see Navigation Para la implementación del sistema de navegación
+ * @see UmeEguneroTheme Para la configuración del tema de la aplicación
+ */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     
+    /**
+     * Repositorio de preferencias inyectado por Hilt.
+     * Se utiliza para obtener y almacenar las preferencias del usuario,
+     * como el modo oscuro/claro.
+     */
     @Inject
     lateinit var preferenciasRepository: PreferenciasRepository
     
+    /**
+     * Método de inicialización de la actividad.
+     * 
+     * Configura:
+     * 1. La pantalla de splash
+     * 2. El tema de la aplicación
+     * 3. El sistema de navegación
+     * 4. Habilita edge-to-edge para una experiencia inmersiva
+     *
+     * @param savedInstanceState Estado guardado de la actividad
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)

@@ -62,17 +62,29 @@ data class LoginUiState(
 /**
  * ViewModel para la pantalla de inicio de sesión.
  * 
- * Este ViewModel gestiona la lógica de negocio para el proceso de inicio de sesión,
- * incluyendo la validación de campos, la comunicación con el repositorio de usuarios
- * para autenticar al usuario, y la gestión del estado de la UI.
+ * Este ViewModel implementa la lógica de autenticación para el sistema UmeEgunero,
+ * gestionando todo el proceso de inicio de sesión para los diferentes tipos de usuarios
+ * (administradores, centros educativos, profesores y familiares).
  * 
- * Siguiendo la arquitectura MVVM (Model-View-ViewModel), este ViewModel actúa como
- * intermediario entre la vista (Composables) y el modelo (Repositorios).
+ * Responsabilidades principales:
+ * - Validación de credenciales en tiempo real (email y contraseña)
+ * - Autenticación contra Firebase Authentication
+ * - Verificación de permisos según tipo de usuario
+ * - Manejo de errores de autenticación
+ * - Persistencia de credenciales para inicio de sesión automático
  * 
- * @param usuarioRepository Repositorio para la gestión de usuarios y autenticación
+ * El ViewModel expone un [StateFlow] inmutable [uiState] que contiene el estado actual
+ * de la interfaz de usuario, siguiendo el patrón de Unidirectional Data Flow (UDF).
+ * 
+ * Se integra con Hilt para la inyección de dependencias, recibiendo el repositorio
+ * de usuarios y las preferencias compartidas necesarias para su funcionamiento.
+ * 
+ * @param usuarioRepository Repositorio que gestiona la autenticación y datos de usuarios
  * @param sharedPreferences Preferencias compartidas para almacenar datos de sesión
  * 
- * @author Estudiante 2º DAM
+ * @see LoginUiState Para los diferentes estados de la UI
+ * @see UsuarioRepository Para la implementación de la autenticación
+ * @see LoginScreen Para la vista asociada a este ViewModel
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
@@ -98,13 +110,13 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Actualiza el email y valida su formato.
+     * Actualiza el email en el estado y valida su formato.
      * 
-     * Esta función se llama cada vez que el usuario modifica el campo de email
-     * en la interfaz. Realiza una validación en tiempo real para proporcionar
-     * feedback inmediato.
+     * Esta función implementa validación en tiempo real mientras el usuario escribe,
+     * utilizando un patrón regex estándar para verificar que el formato del email
+     * sea correcto. El resultado de la validación se almacena en el estado UI.
      * 
-     * @param email Nuevo valor del email
+     * @param email Nuevo valor del email introducido por el usuario
      */
     fun updateEmail(email: String) {
         val emailError = if (email.isNotBlank() && !isValidEmail(email)) {
@@ -122,13 +134,13 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Actualiza la contraseña y valida su longitud.
+     * Actualiza la contraseña en el estado y valida su longitud.
      * 
-     * Esta función se llama cada vez que el usuario modifica el campo de contraseña
-     * en la interfaz. Realiza una validación en tiempo real para comprobar que
-     * la contraseña cumple con los requisitos mínimos.
+     * Implementa validación en tiempo real para asegurar que la contraseña
+     * cumple con los requisitos mínimos de seguridad (6 caracteres).
+     * El resultado de la validación se almacena en el estado UI.
      * 
-     * @param password Nuevo valor de la contraseña
+     * @param password Nuevo valor de la contraseña introducida por el usuario
      */
     fun updatePassword(password: String) {
         val passwordError = if (password.isNotBlank() && password.length < 6) {
@@ -146,7 +158,7 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Valida el formato del email utilizando un patrón regex.
+     * Valida el formato del email utilizando el patrón estándar de Android.
      * 
      * @param email Email a validar
      * @return true si el email tiene un formato válido, false en caso contrario
@@ -156,7 +168,10 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Guarda las credenciales del usuario en las preferencias compartidas.
+     * Persiste las credenciales del usuario en las preferencias compartidas.
+     * 
+     * Utilizado cuando el usuario marca la opción "Recordarme" para facilitar
+     * futuros inicios de sesión sin tener que volver a introducir las credenciales.
      * 
      * @param email Email del usuario a guardar
      */
@@ -167,7 +182,10 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Borra las credenciales guardadas en las preferencias compartidas.
+     * Elimina las credenciales guardadas de las preferencias compartidas.
+     * 
+     * Utilizado cuando el usuario desmarca la opción "Recordarme" o
+     * cuando se cierra sesión explícitamente.
      */
     private fun clearSavedCredentials() {
         sharedPreferences.edit()
@@ -176,20 +194,22 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * Realiza el inicio de sesión con las credenciales proporcionadas.
+     * Inicia el proceso de autenticación con las credenciales proporcionadas.
      * 
-     * Este método:
-     * 1. Valida los campos antes de enviar la solicitud
-     * 2. Actualiza el estado a "cargando"
-     * 3. Llama al repositorio para iniciar sesión
-     * 4. Verifica que el usuario tenga el perfil correcto
-     * 5. Actualiza el estado según el resultado
+     * Este método ejecuta el flujo completo de autenticación:
+     * 1. Valida los campos de entrada (email y contraseña)
+     * 2. Actualiza el estado a "cargando" (isLoading)
+     * 3. Invoca al repositorio para realizar la autenticación con Firebase
+     * 4. Verifica que el usuario tenga el perfil correcto para el tipo seleccionado
+     * 5. Actualiza el estado según el resultado:
+     *    - En caso de éxito: marca success=true y guarda credenciales si corresponde
+     *    - En caso de error: almacena el mensaje de error para mostrarlo en la UI
      * 
-     * Utiliza corrutinas para realizar la operación de forma asíncrona sin
-     * bloquear el hilo principal.
+     * La operación se ejecuta en una corrutina dentro del viewModelScope para 
+     * no bloquear el hilo principal de la aplicación.
      * 
-     * @param userType Tipo de usuario que intenta iniciar sesión
-     * @param rememberUser Indica si se deben recordar las credenciales
+     * @param userType Tipo de usuario que intenta iniciar sesión (ADMIN, CENTRO, PROFESOR, FAMILIAR)
+     * @param rememberUser Indica si se deben recordar las credenciales para futuros inicios de sesión
      */
     fun login(userType: UserType, rememberUser: Boolean = false) {
         val email = _uiState.value.email.trim()

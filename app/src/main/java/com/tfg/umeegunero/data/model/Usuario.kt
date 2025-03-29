@@ -4,7 +4,34 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 
 /**
- * Modelo principal que representa a un usuario en el sistema
+ * Modelo principal que representa a un usuario en el sistema UmeEgunero.
+ * 
+ * Esta clase contiene toda la información personal y de gestión de los usuarios,
+ * independientemente de su rol en el sistema (administrador, profesor, familiar).
+ * La información específica según el rol se gestiona mediante la colección de perfiles.
+ *
+ * Los usuarios se almacenan en Firestore en la colección 'usuarios' donde el ID del
+ * documento corresponde al DNI del usuario.
+ *
+ * @property dni Documento Nacional de Identidad del usuario (formato español). Sirve como
+ *               identificador único en el sistema y clave primaria en la base de datos.
+ * @property email Correo electrónico del usuario, utilizado para autenticación y comunicaciones.
+ * @property nombre Nombre del usuario.
+ * @property apellidos Apellidos del usuario.
+ * @property telefono Número de teléfono de contacto.
+ * @property fechaRegistro Fecha y hora en que el usuario se registró en el sistema.
+ * @property ultimoAcceso Fecha y hora del último inicio de sesión del usuario. Puede ser null
+ *                       si el usuario nunca ha iniciado sesión.
+ * @property activo Estado de la cuenta (true = activa, false = desactivada).
+ * @property perfiles Lista de perfiles asignados al usuario, que determinan sus roles y permisos.
+ * @property direccion Información de domicilio del usuario (opcional).
+ * @property preferencias Configuraciones personalizadas del usuario (tema, notificaciones, etc).
+ * @property documentId Campo utilizado por Firestore para mapear el ID del documento.
+ *                      Por defecto se establece igual al DNI.
+ *
+ * @see Perfil
+ * @see Direccion
+ * @see Preferencias
  */
 data class Usuario(
     val dni: String = "",

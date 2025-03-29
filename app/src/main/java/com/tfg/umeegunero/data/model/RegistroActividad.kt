@@ -6,11 +6,61 @@ import com.google.firebase.firestore.DocumentId
 /**
  * Modelo que representa un registro de actividad diaria de un alumno.
  * 
+ * Esta clase centraliza toda la información relacionada con las actividades 
+ * diarias de un alumno, incluyendo alimentación, siesta, necesidades fisiológicas,
+ * y observaciones generales. Está diseñada para centros de educación infantil
+ * donde se requiere un seguimiento detallado de las actividades del día.
+ * 
+ * El registro de actividad es creado por los profesores y puede ser consultado
+ * por los familiares, permitiendo una comunicación efectiva entre ambas partes.
+ * 
  * Este modelo unifica las funcionalidades de los antiguos modelos
  * RegistroDiario y RegistroActividad para evitar duplicidad y
  * simplificar la estructura de datos.
  * 
- * @author Estudiante 2º DAM
+ * @property id Identificador único del registro generado automáticamente.
+ * @property alumnoId Identificador del alumno al que pertenece el registro.
+ * @property alumnoNombre Nombre completo del alumno para visualización rápida.
+ * @property claseId Identificador de la clase donde se realizó el registro.
+ * @property fecha Fecha y hora en que se creó el registro.
+ * @property profesorId Identificador del profesor que creó el registro.
+ * @property profesorNombre Nombre del profesor para visualización rápida.
+ * @property comida Modelo completo de comida (alternativa a los campos individuales).
+ * @property comidas Agrupación de todos los registros de comida.
+ * @property primerPlato Estado de consumo del primer plato.
+ * @property segundoPlato Estado de consumo del segundo plato.
+ * @property postre Estado de consumo del postre.
+ * @property merienda Estado de consumo de la merienda.
+ * @property observacionesComida Comentarios específicos sobre la alimentación.
+ * @property siesta Modelo completo de siesta (alternativa a los campos individuales).
+ * @property haSiestaSiNo Indica si el alumno ha dormido siesta.
+ * @property horaInicioSiesta Hora en que comenzó la siesta.
+ * @property horaFinSiesta Hora en que terminó la siesta.
+ * @property observacionesSiesta Comentarios sobre cómo ha dormido.
+ * @property cacaControl Modelo completo para necesidades fisiológicas.
+ * @property necesidadesFisiologicas Agrupación de todos los registros de necesidades.
+ * @property haHechoCaca Indica si el alumno ha hecho deposiciones.
+ * @property numeroCacas Cantidad de deposiciones realizadas.
+ * @property observacionesCaca Comentarios sobre las deposiciones (consistencia, etc).
+ * @property necesitaPanales Indica si el alumno necesita pañales nuevos.
+ * @property necesitaToallitas Indica si el alumno necesita toallitas.
+ * @property necesitaRopaCambio Indica si el alumno necesita ropa de cambio.
+ * @property otroMaterialNecesario Otros materiales que se necesiten reponer.
+ * @property actividades Actividades específicas realizadas durante el día.
+ * @property observaciones Observaciones generales (nuevo formato).
+ * @property observacionesGenerales Observaciones generales (formato anterior).
+ * @property vistoPorFamiliar Indica si el familiar ha visto el registro (nuevo formato).
+ * @property fechaVisto Fecha en que el familiar visualizó el registro (nuevo formato).
+ * @property visualizadoPorFamiliar Indica si el familiar ha visto el registro (formato anterior).
+ * @property fechaVisualizacion Fecha en que el familiar visualizó el registro (formato anterior).
+ * @property ultimaModificacion Fecha de la última modificación del registro.
+ * @property creadoPor Identificador del usuario que creó el registro.
+ * @property modificadoPor Identificador del último usuario que modificó el registro.
+ *
+ * @see Comida
+ * @see Siesta
+ * @see CacaControl
+ * @see Actividad
  */
 data class RegistroActividad(
     // Datos básicos
@@ -73,7 +123,13 @@ data class RegistroActividad(
     val modificadoPor: String = ""
 ) {
     /**
-     * Función de extensión para convertir el modelo antiguo RegistroDiario a RegistroActividad
+     * Función de extensión para convertir el modelo antiguo RegistroDiario a RegistroActividad.
+     * 
+     * Esta función es útil durante la migración de datos del sistema antiguo al nuevo,
+     * asegurando la compatibilidad hacia atrás.
+     * 
+     * @param registro Registro diario antiguo que se va a convertir
+     * @return Un nuevo objeto RegistroActividad con los datos del registro antiguo
      */
     companion object {
         fun fromRegistroDiario(registro: RegistroDiario): RegistroActividad {

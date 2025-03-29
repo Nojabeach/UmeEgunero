@@ -81,6 +81,32 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.HorizontalDivider
 
+/**
+ * Pantalla de inicio de sesión para la aplicación UmeEgunero.
+ * 
+ * Este componente implementa una interfaz de autenticación adaptada al tipo de usuario
+ * que intenta acceder al sistema (administrador, centro educativo, profesor o familiar).
+ * La interfaz se adapta visualmente según el tipo de usuario, mostrando colores y textos
+ * específicos para mejorar la experiencia de usuario.
+ * 
+ * Características principales:
+ * - Formulario con validación en tiempo real
+ * - Adaptación visual según tipo de usuario
+ * - Soporte para recordar credenciales
+ * - Opción para recuperar contraseña
+ * - Manejo de errores con Snackbars
+ * - Animaciones y feedback visual durante la autenticación
+ * - Soporte para diferentes modos (claro/oscuro)
+ * 
+ * @param userType Tipo de usuario que intenta iniciar sesión, determina la apariencia y comportamiento
+ * @param viewModel ViewModel que gestiona la lógica de autenticación
+ * @param onNavigateBack Callback que se ejecuta cuando el usuario pulsa el botón de retroceso
+ * @param onLoginSuccess Callback que se ejecuta cuando la autenticación es exitosa
+ * @param onForgotPassword Callback que se ejecuta cuando el usuario pulsa "Olvidé mi contraseña"
+ * 
+ * @see LoginViewModel Para la lógica de negocio
+ * @see UserType Para los diferentes tipos de usuario
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(

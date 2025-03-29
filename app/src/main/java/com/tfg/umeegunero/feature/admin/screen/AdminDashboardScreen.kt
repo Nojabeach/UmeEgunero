@@ -132,7 +132,32 @@ import com.tfg.umeegunero.feature.admin.components.StatItem
 import androidx.compose.material.icons.filled.Warning
 import com.tfg.umeegunero.feature.admin.components.UserManagementPanel
 
-
+/**
+ * Dashboard principal para administradores del sistema UmeEgunero.
+ * 
+ * Esta pantalla funciona como centro de control para los administradores, proporcionando:
+ * 
+ * - Panel de estadísticas generales (usuarios, centros, actividad)
+ * - Acceso rápido a la gestión de centros educativos
+ * - Gestión de usuarios del sistema (administradores, profesores, familiares)
+ * - Herramientas de configuración y mantenimiento del sistema
+ * - Visualización de notificaciones y alertas importantes
+ * 
+ * El diseño implementa un cajón de navegación lateral (drawer) que permite acceder
+ * a todas las funcionalidades administrativas, adaptándose a los permisos del usuario.
+ * La interfaz está organizada en secciones con tarjetas informativas y accesos directos
+ * a las funciones más utilizadas.
+ * 
+ * Este dashboard utiliza Material Design 3 con soporte para temas claro/oscuro
+ * y se integra con el sistema de navegación principal de la aplicación.
+ *
+ * @param navController Controlador de navegación para gestionar la navegación entre pantallas
+ * @param viewModel ViewModel que gestiona el estado y la lógica del dashboard de administración
+ *
+ * @see AdminDashboardViewModel Para la lógica de negocio
+ * @see NavController Para la navegación
+ * @see NavigationStructure Para la estructura de navegación de la aplicación
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(

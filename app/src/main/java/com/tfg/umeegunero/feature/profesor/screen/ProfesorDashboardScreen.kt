@@ -106,6 +106,9 @@ import java.util.Locale
 
 /**
  * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
+ * 
+ * @param fechaNacimiento Fecha de nacimiento en formato dd/MM/yyyy
+ * @return Edad en años, o 0 si la fecha no es válida
  */
 fun calcularEdad(fechaNacimiento: String?): Int {
     if (fechaNacimiento.isNullOrEmpty()) return 0
@@ -129,6 +132,45 @@ fun calcularEdad(fechaNacimiento: String?): Int {
     }
 }
 
+/**
+ * Dashboard principal para profesores del sistema UmeEgunero.
+ * 
+ * Esta pantalla actúa como centro de operaciones para los profesores, permitiéndoles:
+ * 
+ * - Visualizar y gestionar los alumnos asignados a sus clases
+ * - Acceder rápidamente a la creación de registros diarios de actividad
+ * - Monitorear alumnos que requieren atención prioritaria
+ * - Comunicarse con los familiares mediante el sistema de chat
+ * - Gestionar asistencias, tareas y calendario
+ * 
+ * La interfaz está organizada en secciones mediante pestañas y tarjetas informativas
+ * para facilitar el acceso a la información más relevante. Incluye además un cajón
+ * de navegación lateral para acceder a todas las funcionalidades disponibles.
+ * 
+ * Los datos se cargan dinámicamente desde el ViewModel, que gestiona la comunicación
+ * con los repositorios de datos.
+ *
+ * @param navController Controlador de navegación para la aplicación
+ * @param onLogout Callback ejecutado cuando el profesor cierra sesión
+ * @param onNavigateToRegistroActividad Callback para navegar a la pantalla de registro de actividad
+ * @param onNavigateToDetalleAlumno Callback para navegar a los detalles de un alumno
+ * @param onNavigateToChat Callback para navegar al chat con un familiar
+ * @param alumnosPendientes Lista de alumnos que requieren atención prioritaria
+ * @param alumnos Lista completa de alumnos asignados al profesor
+ * @param mensajesNoLeidos Mensajes pendientes de leer, con información del remitente
+ * @param totalMensajesNoLeidos Contador total de mensajes no leídos
+ * @param isLoading Indicador de carga de datos
+ * @param error Mensaje de error, si existe
+ * @param selectedTab Índice de la pestaña seleccionada
+ * @param onTabSelected Callback cuando se cambia de pestaña
+ * @param onCrearRegistroActividad Callback para crear un nuevo registro de actividad
+ * @param onErrorDismissed Callback para descartar un error mostrado
+ * @param viewModel ViewModel que gestiona los datos y la lógica de negocio
+ * 
+ * @see ProfesorDashboardViewModel
+ * @see RegistroActividadScreen
+ * @see AlumnoScreen
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesorDashboardScreen(

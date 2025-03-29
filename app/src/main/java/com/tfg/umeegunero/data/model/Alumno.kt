@@ -4,8 +4,38 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 
 /**
- * Modelo que representa un alumno en el sistema
- * Este modelo contiene toda la información necesaria para la gestión de alumnos
+ * Modelo que representa a un alumno en el sistema UmeEgunero.
+ * 
+ * Este modelo almacena toda la información relevante de un estudiante incluyendo datos
+ * personales, académicos, médicos y relaciones con familiares y profesores. Los alumnos
+ * son el eje central del sistema educativo y están vinculados a centros, aulas y clases.
+ *
+ * La información del alumno incluye datos relevantes para su gestión diaria, seguimiento
+ * académico y atención de necesidades especiales o médicas.
+ *
+ * @property id Identificador único del alumno generado por el sistema.
+ * @property dni Documento Nacional de Identidad del alumno. Marcado con @DocumentId para
+ *              indicar que es el ID del documento en Firestore.
+ * @property nombre Nombre completo del alumno.
+ * @property apellidos Apellidos del alumno.
+ * @property email Correo electrónico de contacto (generalmente de los padres para menores).
+ * @property telefono Teléfono de contacto.
+ * @property fechaNacimiento Fecha de nacimiento en formato string (YYYY-MM-DD).
+ * @property centroId Identificador del centro educativo al que pertenece.
+ * @property aulaId Identificador del aula específica a la que asiste.
+ * @property curso Nombre del curso académico (por ejemplo, "Primero de Infantil").
+ * @property clase Nombre de la clase específica (por ejemplo, "Clase A").
+ * @property profesorIds Lista de identificadores de los profesores asignados.
+ * @property familiarIds Lista de identificadores de los familiares vinculados.
+ * @property activo Estado de actividad del alumno en el sistema.
+ * @property necesidadesEspeciales Descripción de necesidades educativas especiales.
+ * @property alergias Lista de alergias conocidas (alimentos, medicamentos, etc.).
+ * @property medicacion Lista de medicamentos que el alumno debe tomar regularmente.
+ * @property observacionesMedicas Observaciones relevantes sobre la salud del alumno.
+ * @property observaciones Observaciones generales sobre el comportamiento o situación del alumno.
+ * @property familiares Lista de objetos [Familiar] con información de contactos familiares.
+ *
+ * @see Familiar
  */
 data class Alumno(
     val id: String = "",
@@ -31,7 +61,19 @@ data class Alumno(
 )
 
 /**
- * Modelo que representa la información básica de un familiar vinculado a un alumno
+ * Modelo que representa la información básica de un familiar vinculado a un alumno.
+ * 
+ * Esta clase contiene información resumida de un familiar para uso en listados
+ * o referencias rápidas. Para información completa del familiar, se debe consultar
+ * el modelo [Usuario] correspondiente usando el ID.
+ *
+ * @property id Identificador único del familiar (normalmente su DNI).
+ * @property nombre Nombre del familiar.
+ * @property apellidos Apellidos del familiar.
+ * @property parentesco Relación con el alumno (padre, madre, tutor, etc.).
+ *
+ * @see Alumno
+ * @see Usuario
  */
 data class Familiar(
     val id: String = "",

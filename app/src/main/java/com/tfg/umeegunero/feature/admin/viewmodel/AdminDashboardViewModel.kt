@@ -21,16 +21,21 @@ import timber.log.Timber
 import kotlinx.coroutines.flow.map
 
 /**
- * Estado UI para la pantalla de dashboard del administrador
+ * Estado UI para la pantalla de dashboard del administrador.
  * 
  * Esta clase define un estado inmutable que representa toda la información
  * necesaria para mostrar la interfaz de usuario del panel de control del
- * administrador de la aplicación. Contiene datos de centros, usuarios,
- * estados de carga, errores y navegación.
+ * administrador de la aplicación. Sigue el patrón de Unidirectional Data Flow (UDF)
+ * donde cada cambio en los datos genera un nuevo objeto de estado inmutable.
  * 
- * Siguiendo el patrón de UI State en Jetpack Compose, cada cambio en el estado
- * genera un nuevo objeto inmutable, facilitando el seguimiento de cambios
- * y la predictibilidad del estado de la UI.
+ * El estado incluye:
+ * - Datos de centros educativos y usuarios del sistema
+ * - Indicadores de carga para operaciones asíncronas
+ * - Mensajes de error y éxito para feedback al usuario
+ * - Referencias al usuario actual y flags de navegación
+ * 
+ * Esta clase es utilizada por el [AdminDashboardViewModel] para gestionar y exponer
+ * el estado de la UI a los componentes Compose que conforman la pantalla.
  * 
  * @property centros Lista de centros educativos registrados en el sistema
  * @property usuarios Lista de usuarios del sistema, incluyendo administradores, profesores y familiares
@@ -42,8 +47,8 @@ import kotlinx.coroutines.flow.map
  * @property showListadoCentros Flag para controlar la visibilidad del listado de centros
  * @property mensajeExito Mensaje de éxito a mostrar tras completar una operación
  * 
- * @author Maitane (Estudiante 2º DAM)
- * @version 1.3
+ * @see AdminDashboardViewModel
+ * @see AdminDashboardScreen
  */
 data class AdminDashboardUiState(
     val centros: List<Centro> = emptyList(),
@@ -58,26 +63,37 @@ data class AdminDashboardUiState(
 )
 
 /**
- * ViewModel para la pantalla de dashboard del administrador
+ * ViewModel para la pantalla de dashboard del administrador del sistema UmeEgunero.
  * 
- * Este ViewModel implementa el patrón MVVM y es responsable de toda la lógica
- * de negocio relacionada con la administración global del sistema:
- * - Gestión completa de centros educativos (CRUD)
- * - Administración de usuarios de todos los tipos
- * - Monitorización del sistema completo
- * - Generación de estadísticas y reportes
+ * Este ViewModel es el componente central de la funcionalidad administrativa del sistema,
+ * implementando la lógica de negocio para la gestión completa de la plataforma educativa.
+ * Sigue el patrón MVVM (Model-View-ViewModel) para separar la lógica de negocio
+ * de la interfaz de usuario.
  * 
- * Actúa como intermediario entre los repositorios (acceso a datos) y la UI,
- * exponiendo el estado a través de Flows reactivos y procesando eventos
- * mediante corrutinas.
+ * Responsabilidades principales:
+ * - Gestión completa del ciclo de vida de centros educativos (CRUD)
+ * - Administración centralizada de usuarios y permisos
+ * - Monitorización del estado global del sistema
+ * - Generación de estadísticas y métricas de uso
+ * - Gestión de la sesión del administrador
  * 
+ * Este ViewModel utiliza corrutinas de Kotlin y Flow para operaciones asíncronas,
+ * proporcionando reactivamente datos actualizados a la UI. Se integra con Hilt
+ * para la inyección de dependencias y con Timber para el registro de eventos.
+ * 
+ * El estado se expone mediante [StateFlow] a través de la propiedad [uiState],
+ * que contiene toda la información necesaria para que la UI refleje correctamente
+ * el estado actual del sistema.
+ *
  * @property centroRepository Repositorio para acceder a datos de centros educativos
  * @property usuarioRepository Repositorio para acceder a datos de usuarios
  * @property authRepository Repositorio para gestionar la autenticación
  * @property errorHandler Utilidad para procesar y formatear errores de forma consistente
  * 
- * @author Maitane (Estudiante 2º DAM)
- * @version 1.3
+ * @see AdminDashboardUiState
+ * @see AdminDashboardScreen
+ * @see CentroRepository
+ * @see UsuarioRepository
  */
 @HiltViewModel
 class AdminDashboardViewModel @Inject constructor(
@@ -94,18 +110,27 @@ class AdminDashboardViewModel @Inject constructor(
     val uiState: StateFlow<AdminDashboardUiState> = _uiState.asStateFlow()
 
     /**
-     * Propiedad derivada que expone directamente los centros
+     * Propiedad derivada que expone directamente los centros educativos.
      * 
-     * Facilita a la UI el acceso a la lista de centros sin necesidad
-     * de procesar todo el objeto de estado.
+     * Transforma el flujo de estado principal para extraer únicamente la lista de centros,
+     * facilitando a los componentes de UI que solo necesitan acceder a esta información
+     * específica sin tener que observar todo el estado.
+     * 
+     * @return [StateFlow] que emite la lista actualizada de centros educativos
      */
     val centros = _uiState.asStateFlow().map { it.centros }
 
     /**
-     * Inicialización del ViewModel
+     * Inicialización del ViewModel.
      * 
-     * Ejecuta las cargas iniciales necesarias para poblar el dashboard
-     * del administrador con los datos relevantes del sistema.
+     * Al crear una instancia del ViewModel, este bloque se ejecuta automáticamente
+     * para cargar los datos iniciales necesarios para poblar el dashboard:
+     * - Lista de centros educativos
+     * - Usuarios por tipo
+     * - Información del administrador actual
+     * 
+     * Estas cargas iniciales establecen el estado base para que la UI
+     * pueda mostrar la información relevante inmediatamente.
      */
     init {
         loadCentros()
@@ -114,15 +139,19 @@ class AdminDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Carga todos los centros educativos registrados
+     * Carga todos los centros educativos registrados en el sistema.
      * 
-     * Este método recupera la lista completa de centros educativos 
-     * desde el repositorio y actualiza el estado de la UI.
+     * Este método recupera la lista completa de centros educativos desde Firestore
+     * a través del repositorio correspondiente. Durante la operación, gestiona
+     * el estado de carga y posibles errores para informar correctamente a la UI.
      * 
-     * Los centros son una entidad fundamental para:
-     * - Mostrar la distribución geográfica de la plataforma
-     * - Acceder a detalles específicos de cada centro
-     * - Ejecutar operaciones administrativas por centro
+     * Los centros educativos son una entidad fundamental en el sistema, ya que:
+     * - Representan los nodos principales de la estructura organizativa
+     * - Contienen referencias a profesores, clases y alumnos
+     * - Son el punto de partida para muchas operaciones administrativas
+     * 
+     * La carga se realiza asíncronamente mediante una corrutina en el viewModelScope,
+     * garantizando que se cancele automáticamente cuando el ViewModel sea destruido.
      */
     fun loadCentros() {
         viewModelScope.launch {
@@ -166,16 +195,20 @@ class AdminDashboardViewModel @Inject constructor(
     }
     
     /**
-     * Carga todos los usuarios del sistema por tipo
+     * Carga todos los usuarios del sistema organizados por tipo.
      * 
      * Este método obtiene todos los usuarios registrados en el sistema,
-     * categorizados por su tipo (administrador, profesor, familiar, etc.)
-     * para permitir una gestión centralizada.
+     * categorizados por su tipo (administrador, centro, profesor, familiar)
+     * para permitir una gestión centralizada por parte del administrador.
      * 
-     * Esta funcionalidad es crítica para:
-     * - Monitorizar el crecimiento de la plataforma
-     * - Gestionar permisos y accesos globales
-     * - Identificar patrones de uso por tipo de usuario
+     * La información agregada de usuarios permite:
+     * - Visualizar la distribución de usuarios por rol
+     * - Identificar patrones de crecimiento del sistema
+     * - Realizar operaciones masivas por tipo de usuario
+     * - Monitorear el estado de las cuentas y permisos
+     * 
+     * La carga se realiza de forma paralela para cada tipo de usuario,
+     * combinando los resultados en una única lista actualizada en el estado.
      */
     fun loadUsuarios() {
         viewModelScope.launch {
