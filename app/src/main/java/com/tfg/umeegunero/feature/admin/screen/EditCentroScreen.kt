@@ -364,10 +364,22 @@ private fun EditCentroContent(
             value = uiState.latitud?.toString() ?: "",
             onValueChange = { 
                 try {
-                    val latValue = if (it.isBlank()) null else it.toDouble()
+                    // Si había un valor de 0.0 y es el comienzo de una edición, borrarlo completamente
+                    val newValue = if (uiState.latitud == 0.0 && it.isNotEmpty()) it else it
+                    val latValue = if (newValue.isBlank()) null else newValue.toDouble()
                     onUpdateLatitud(latValue)
                 } catch (e: NumberFormatException) {
-                    // No hacemos nada si el texto no es un número válido
+                    // Intentar limpiar el texto para que sea un número válido
+                    val cleanText = it.replace(",", ".")
+                    try {
+                        val latValue = if (cleanText.isBlank()) null else cleanText.toDouble()
+                        onUpdateLatitud(latValue)
+                    } catch (e: NumberFormatException) {
+                        // Seguimos permitiendo la entrada del texto para que pueda seguir editando
+                        if (it.isEmpty()) {
+                            onUpdateLatitud(null)
+                        }
+                    }
                 }
             },
             label = { Text("Latitud") },
@@ -392,10 +404,22 @@ private fun EditCentroContent(
             value = uiState.longitud?.toString() ?: "",
             onValueChange = { 
                 try {
-                    val longValue = if (it.isBlank()) null else it.toDouble()
+                    // Si había un valor de 0.0 y es el comienzo de una edición, borrarlo completamente
+                    val newValue = if (uiState.longitud == 0.0 && it.isNotEmpty()) it else it
+                    val longValue = if (newValue.isBlank()) null else newValue.toDouble()
                     onUpdateLongitud(longValue)
                 } catch (e: NumberFormatException) {
-                    // No hacemos nada si el texto no es un número válido
+                    // Intentar limpiar el texto para que sea un número válido
+                    val cleanText = it.replace(",", ".")
+                    try {
+                        val longValue = if (cleanText.isBlank()) null else cleanText.toDouble()
+                        onUpdateLongitud(longValue)
+                    } catch (e: NumberFormatException) {
+                        // Seguimos permitiendo la entrada del texto para que pueda seguir editando
+                        if (it.isEmpty()) {
+                            onUpdateLongitud(null)
+                        }
+                    }
                 }
             },
             label = { Text("Longitud") },

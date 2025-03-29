@@ -184,8 +184,8 @@ fun GestionClasesScreen(
             // Mostrar el indicador de carga si está cargando
             if (uiState.isLoading) {
                 LoadingIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = AcademicoColor
+                    isLoading = true,
+                    message = "Cargando clases..."
                 )
             }
             

@@ -88,7 +88,10 @@ fun ListFamiliarScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                LoadingIndicator(message = "Cargando familiares...")
+                LoadingIndicator(
+                    isLoading = true,
+                    message = "Cargando datos..."
+                )
             }
         } else if (uiState.familiares.isEmpty()) {
             Box(

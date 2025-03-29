@@ -180,11 +180,10 @@ fun EditClaseScreen(
             }
             
             // Mostrar el indicador de carga si está cargando
-            if (uiState.isLoading) {
-                LoadingIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
+            LoadingIndicator(
+                isLoading = true,
+                message = "Cargando datos de la clase..."
+            )
             
             // Mostrar mensaje de error si hay alguno
             uiState.error?.let { error ->

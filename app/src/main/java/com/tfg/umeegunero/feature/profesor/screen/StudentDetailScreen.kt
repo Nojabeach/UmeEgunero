@@ -82,7 +82,10 @@ fun StudentDetailScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                LoadingIndicator(message = "Cargando información del alumno...")
+                LoadingIndicator(
+                    isLoading = true,
+                    message = "Cargando datos del alumno..."
+                )
             }
         } else if (uiState.alumno == null) {
             Box(

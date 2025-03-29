@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Save
@@ -74,8 +76,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -129,6 +129,11 @@ import androidx.compose.material3.MenuAnchorType
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminCentroUsuario
 import androidx.compose.material3.AlertDialog
 import androidx.navigation.NavController
+import android.widget.Toast
+import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
+import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.model.Centro as ModelCentro
+import androidx.compose.material3.ExtendedFloatingActionButton
 
 // Datos para provincias con soporte multilingüe
 data class Provincia(
@@ -164,87 +169,417 @@ data class Municipio(
     }
 }
 
+/**
+ * Pantalla para añadir un nuevo centro educativo.
+ *
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel de administración
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCentroScreen(
     navController: NavController,
-    viewModel: AddCentroViewModel = hiltViewModel(),
-    centroId: String? = null
+    viewModel: AdminViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val provinciasLista by viewModel.provincias.collectAsState()
+    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     
-    // Si hay un ID de centro, cargar sus datos
-    LaunchedEffect(centroId) {
-        if (!centroId.isNullOrBlank()) {
-            viewModel.loadCentro(centroId)
+    // Estado del formulario
+    var nombre by remember { mutableStateOf("") }
+    var direccion by remember { mutableStateOf("") }
+    var telefono by remember { mutableStateOf("") }
+    var latitud by remember { mutableStateOf("") }
+    var longitud by remember { mutableStateOf("") }
+    
+    // Estado de errores
+    var nombreError by remember { mutableStateOf<String?>(null) }
+    var direccionError by remember { mutableStateOf<String?>(null) }
+    var telefonoError by remember { mutableStateOf<String?>(null) }
+    var latitudError by remember { mutableStateOf<String?>(null) }
+    var longitudError by remember { mutableStateOf<String?>(null) }
+    
+    // Estado del proceso
+    var isLoading by remember { mutableStateOf(false) }
+    var currentStep by remember { mutableStateOf(1) }
+    val totalSteps = 3
+    
+    // Función para validar el formulario
+    fun validateForm(): Boolean {
+        // Validar campos obligatorios
+        if (nombre.isEmpty()) {
+            nombreError = "El nombre es obligatorio"
+            currentStep = 1
+            Toast.makeText(context, "El nombre es obligatorio", Toast.LENGTH_SHORT).show()
+            return false
         }
+        
+        if (direccion.isEmpty()) {
+            direccionError = "La dirección es obligatoria"
+            currentStep = 2
+            Toast.makeText(context, "La dirección es obligatoria", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        
+        // Validar teléfono si se ha proporcionado
+        if (telefono.isNotEmpty() && !telefono.matches(Regex("^[0-9]{9}$"))) {
+            telefonoError = "El teléfono debe tener 9 dígitos"
+            currentStep = 1
+            Toast.makeText(context, "El teléfono debe tener 9 dígitos", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        
+        // Validar coordenadas si se han proporcionado
+        if (latitud.isNotEmpty()) {
+            val error = validateCoordinate(latitud, true)
+            if (error != null) {
+                latitudError = error
+                currentStep = 3
+                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                return false
+            }
+        }
+        
+        if (longitud.isNotEmpty()) {
+            val error = validateCoordinate(longitud, false)
+            if (error != null) {
+                longitudError = error
+                currentStep = 3
+                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                return false
+            }
+        }
+        
+        // Validar que si hay una coordenada, debe haber la otra
+        if ((latitud.isNotEmpty() && longitud.isEmpty()) || (latitud.isEmpty() && longitud.isNotEmpty())) {
+            Toast.makeText(
+                context, 
+                "Si proporciona una coordenada, debe proporcionar ambas", 
+                Toast.LENGTH_SHORT
+            ).show()
+            currentStep = 3
+            return false
+        }
+        
+        return true
     }
     
-    // Observar cambios en el estado y navegar de vuelta si la operación fue exitosa
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) {
-            navController.popBackStack()
-        }
+    // Función para guardar un centro
+    fun guardarCentro() {
+        isLoading = true
+        
+        val centro = ModelCentro(
+            id = "", // El ID será asignado por Firebase
+            nombre = nombre,
+            direccion = direccion,
+            telefono = telefono.takeIf { it.isNotEmpty() },
+            latitud = latitud.takeIf { it.isNotEmpty() }?.toDoubleOrNull(),
+            longitud = longitud.takeIf { it.isNotEmpty() }?.toDoubleOrNull()
+        )
+        
+        viewModel.agregarCentro(
+            centro = centro,
+            onSuccess = {
+                isLoading = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("Centro añadido correctamente")
+                }
+                navController.navigate(AppScreens.GestionCentros.route) {
+                    popUpTo(AppScreens.GestionCentros.route) { inclusive = true }
+                }
+            },
+            onError = { errorMsg ->
+                isLoading = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("Error: $errorMsg")
+                }
+            }
+        )
     }
-
-    val onGuardarClick: (String, Boolean) -> Unit = { centroId, isDeleting ->
-        if (isDeleting) {
-            // Lógica de eliminación de centro
-            viewModel.deleteCentro(centroId)
-            navController.popBackStack()
-        } else {
-            // Lógica de guardado o actualización de centro
-            val centro = Centro(
-                id = uiState.id.ifBlank { "" }, // Usar un valor por defecto si está en blanco
-                nombre = uiState.nombre,
-                direccion = Direccion(
-                    calle = uiState.calle,
-                    numero = uiState.numero,
-                    codigoPostal = uiState.codigoPostal,
-                    ciudad = uiState.ciudad,
-                    provincia = uiState.provincia
-                ),
-                contacto = Contacto(
-                    telefono = uiState.telefono,
-                    email = uiState.adminCentro.firstOrNull()?.email ?: ""
-                ),
-                // Asegurarse de que las coordenadas siempre tengan valores válidos
-                latitud = uiState.latitud ?: obtenerLatitudPorDefecto(uiState.ciudad, uiState.provincia),
-                longitud = uiState.longitud ?: obtenerLongitudPorDefecto(uiState.ciudad, uiState.provincia),
-                adminIds = emptyList() // Se llenará después de crear los administradores
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Añadir Centro") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = {
+                    if (validateForm()) {
+                        guardarCentro()
+                    }
+                },
+                icon = { Icon(Icons.Default.Save, contentDescription = "Guardar") },
+                text = { Text("Guardar Centro") }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
+                // Indicador de progreso simple
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp)
+                ) {
+                    Text(
+                        text = "Paso $currentStep de $totalSteps",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    // Barra de progreso lineal simplificada
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .padding(vertical = 2.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(currentStep.toFloat() / totalSteps)
+                                .height(8.dp)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                }
+                
+                // Formulario
+                when (currentStep) {
+                    1 -> {
+                        // Paso 1: Información básica
+                        Text(
+                            text = "Información Básica",
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = nombre,
+                            onValueChange = { 
+                                nombre = it
+                                nombreError = if (it.isEmpty()) "El nombre es obligatorio" else null
+                            },
+                            label = { Text("Nombre del Centro") },
+                            isError = nombreError != null,
+                            supportingText = nombreError?.let { { Text(it) } },
+                            leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = telefono,
+                            onValueChange = { 
+                                telefono = it
+                                telefonoError = if (!it.matches(Regex("^[0-9]{9}$")) && it.isNotEmpty()) 
+                                    "El teléfono debe tener 9 dígitos" else null
+                            },
+                            label = { Text("Teléfono") },
+                            isError = telefonoError != null,
+                            supportingText = telefonoError?.let { { Text(it) } },
+                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Button(
+                            onClick = { 
+                                if (nombre.isNotEmpty() && (telefono.isEmpty() || telefono.matches(Regex("^[0-9]{9}$")))) {
+                                    currentStep = 2
+                                } else {
+                                    nombreError = if (nombre.isEmpty()) "El nombre es obligatorio" else null
+                                    telefonoError = if (!telefono.matches(Regex("^[0-9]{9}$")) && telefono.isNotEmpty()) 
+                                        "El teléfono debe tener 9 dígitos" else null
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Siguiente")
+                        }
+                    }
+                    2 -> {
+                        // Paso 2: Dirección
+                        Text(
+                            text = "Dirección",
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = direccion,
+                            onValueChange = { 
+                                direccion = it
+                                direccionError = if (it.isEmpty()) "La dirección es obligatoria" else null
+                            },
+                            label = { Text("Dirección Completa") },
+                            isError = direccionError != null,
+                            supportingText = direccionError?.let { { Text(it) } },
+                            leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            maxLines = 3
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Button(
+                            onClick = { 
+                                if (direccion.isNotEmpty()) {
+                                    currentStep = 3
+                                } else {
+                                    direccionError = "La dirección es obligatoria"
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Siguiente")
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        OutlinedButton(
+                            onClick = { currentStep = 1 },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Anterior")
+                        }
+                    }
+                    3 -> {
+                        // Paso 3: Coordenadas
+                        Text(
+                            text = "Coordenadas Geográficas",
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        Text(
+                            text = "Añade las coordenadas para mostrar el centro en el mapa",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = latitud,
+                            onValueChange = { 
+                                latitud = it
+                                latitudError = validateCoordinate(it, true)
+                            },
+                            label = { Text("Latitud") },
+                            isError = latitudError != null,
+                            supportingText = latitudError?.let { { Text(it) } },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Next
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = longitud,
+                            onValueChange = { 
+                                longitud = it
+                                longitudError = validateCoordinate(it, false)
+                            },
+                            label = { Text("Longitud") },
+                            isError = longitudError != null,
+                            supportingText = longitudError?.let { { Text(it) } },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Done
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        OutlinedButton(
+                            onClick = { currentStep = 2 },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Anterior")
+                        }
+                    }
+                }
+            }
             
-            viewModel.saveCentro(centro)
+            // Indicador de carga
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Guardando centro...")
+                    }
+                }
+            }
         }
     }
+}
 
-    AddCentroScreenContent(
-        uiState = uiState,
-        provincias = provinciasLista,
-        snackbarHostState = snackbarHostState,
-        onNombreChange = viewModel::updateNombre,
-        onCalleChange = viewModel::updateCalle,
-        onNumeroChange = viewModel::updateNumero,
-        onCodigoPostalChange = viewModel::updateCodigoPostal,
-        onCiudadChange = viewModel::updateCiudad,
-        onProvinciaChange = viewModel::updateProvincia,
-        onTelefonoChange = viewModel::updateTelefono,
-        onCiudadSelected = viewModel::seleccionarCiudad,
-        onToggleMapa = viewModel::toggleMapa,
-        onGuardarClick = onGuardarClick,
-        onCancelarClick = { navController.popBackStack() },
-        onErrorDismiss = viewModel::clearError,
-        onAddAdminCentro = viewModel::addAdminCentro,
-        onRemoveAdminCentro = viewModel::removeAdminCentro,
-        onUpdateAdminCentroDni = viewModel::updateAdminCentroDni,
-        onUpdateAdminCentroNombre = viewModel::updateAdminCentroNombre,
-        onUpdateAdminCentroApellidos = viewModel::updateAdminCentroApellidos,
-        onUpdateAdminCentroEmail = viewModel::updateAdminCentroEmail,
-        onUpdateAdminCentroTelefono = viewModel::updateAdminCentroTelefono,
-        onUpdateAdminCentroPassword = viewModel::updateAdminCentroPassword
-    )
+/**
+ * Valida las coordenadas geográficas.
+ *
+ * @param value Valor a validar
+ * @param isLatitude Si es latitud (true) o longitud (false)
+ * @return Mensaje de error o null si es válido
+ */
+private fun validateCoordinate(value: String, isLatitude: Boolean): String? {
+    if (value.isEmpty()) return null // Opcional
+    
+    return try {
+        val coordinate = value.toDouble()
+        val range = if (isLatitude) -90.0..90.0 else -180.0..180.0
+        
+        if (coordinate !in range) {
+            if (isLatitude) "La latitud debe estar entre -90 y 90" 
+            else "La longitud debe estar entre -180 y 180"
+        } else null
+    } catch (e: NumberFormatException) {
+        "Formato inválido. Usa punto como separador decimal"
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

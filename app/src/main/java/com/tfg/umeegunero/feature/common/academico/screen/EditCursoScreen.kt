@@ -86,46 +86,46 @@ fun EditCursoScreen(
                         OutlinedTextFieldWithError(
                             value = uiState.nombre,
                             onValueChange = { viewModel.updateNombre(it) },
-                            label = { Text("Nombre del curso") },
+                            label = "Nombre del curso",
                             modifier = Modifier.fillMaxWidth(),
                             isError = false,
-                            errorMessage = null
+                            errorText = ""
                         )
 
                         OutlinedTextFieldWithError(
                             value = uiState.descripcion,
                             onValueChange = { viewModel.updateDescripcion(it) },
-                            label = { Text("Descripción") },
+                            label = "Descripción",
                             modifier = Modifier.fillMaxWidth(),
                             isError = false,
-                            errorMessage = null
+                            errorText = ""
                         )
 
                         OutlinedTextFieldWithError(
                             value = uiState.edadMinima.toString(),
                             onValueChange = { viewModel.updateEdadMinima(it.toIntOrNull() ?: 0) },
-                            label = { Text("Edad mínima") },
+                            label = "Edad mínima",
                             modifier = Modifier.fillMaxWidth(),
                             isError = false,
-                            errorMessage = null
+                            errorText = ""
                         )
 
                         OutlinedTextFieldWithError(
                             value = uiState.edadMaxima.toString(),
                             onValueChange = { viewModel.updateEdadMaxima(it.toIntOrNull() ?: 0) },
-                            label = { Text("Edad máxima") },
+                            label = "Edad máxima",
                             modifier = Modifier.fillMaxWidth(),
                             isError = false,
-                            errorMessage = null
+                            errorText = ""
                         )
 
                         OutlinedTextFieldWithError(
                             value = uiState.anioAcademico,
                             onValueChange = { viewModel.updateAnioAcademico(it) },
-                            label = { Text("Año académico") },
+                            label = "Año académico",
                             modifier = Modifier.fillMaxWidth(),
                             isError = false,
-                            errorMessage = null
+                            errorText = ""
                         )
 
                         Row(

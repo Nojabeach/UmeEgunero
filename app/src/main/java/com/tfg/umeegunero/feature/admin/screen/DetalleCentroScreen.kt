@@ -606,11 +606,37 @@ private fun MapaCard(centro: Centro) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.height(200.dp)) {
-            // Mapa como fondo
+            // Mapa como fondo, ahora clickable para abrir Google Maps directamente
             ImagenMapa(
                 latitud = centro.latitud,
                 longitud = centro.longitud,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable {
+                        val direccion = "${centro.direccion.calle}, ${centro.direccion.numero}, ${centro.direccion.ciudad}"
+                        val gmmIntentUri = Uri.parse("geo:${centro.latitud},${centro.longitud}?q=${Uri.encode(direccion)}")
+                        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                        mapIntent.setPackage("com.google.android.apps.maps")
+                        
+                        try {
+                            context.startActivity(mapIntent)
+                        } catch (e: Exception) {
+                            // Si Google Maps no está instalado, intentamos abrir en el navegador
+                            val browserIntent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://www.google.com/maps/search/?api=1&query=${centro.latitud},${centro.longitud}")
+                            )
+                            try {
+                                context.startActivity(browserIntent)
+                            } catch (e: Exception) {
+                                Toast.makeText(
+                                    context, 
+                                    "No se pudo abrir Google Maps", 
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
             )
             
             // Overlay con información de ubicación
@@ -643,14 +669,23 @@ private fun MapaCard(centro: Centro) {
                             val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                             mapIntent.setPackage("com.google.android.apps.maps")
                             
-                            if (mapIntent.resolveActivity(context.packageManager) != null) {
+                            try {
                                 context.startActivity(mapIntent)
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "No se pudo abrir Google Maps",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                            } catch (e: Exception) {
+                                // Si Google Maps no está instalado, intentamos abrir en el navegador
+                                val browserIntent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://www.google.com/maps/search/?api=1&query=${centro.latitud},${centro.longitud}")
+                                )
+                                try {
+                                    context.startActivity(browserIntent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(
+                                        context, 
+                                        "No se pudo abrir Google Maps", 
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -674,6 +709,8 @@ private fun ImagenMapa(
     longitud: Double?,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    
     if (latitud != null && longitud != null) {
         // Construir URL para la imagen estática de Google Maps
         val url = "https://maps.googleapis.com/maps/api/staticmap?" +
@@ -689,7 +726,31 @@ private fun ImagenMapa(
             painter = painterResource(id = R.drawable.map_placeholder),
             contentDescription = "Mapa de ubicación",
             contentScale = ContentScale.Crop,
-            modifier = modifier
+            modifier = modifier.clickable {
+                // Abrir Google Maps con las coordenadas cuando se hace clic en la imagen
+                val gmmIntentUri = Uri.parse("geo:$latitud,$longitud?z=15")
+                val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                mapIntent.setPackage("com.google.android.apps.maps")
+                
+                try {
+                    context.startActivity(mapIntent)
+                } catch (e: Exception) {
+                    // Si Google Maps no está instalado, intentamos abrir en el navegador
+                    val browserIntent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://www.google.com/maps/search/?api=1&query=$latitud,$longitud")
+                    )
+                    try {
+                        context.startActivity(browserIntent)
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "No se pudo abrir el mapa",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
         )
     } else {
         // Mostrar placeholder si no hay coordenadas

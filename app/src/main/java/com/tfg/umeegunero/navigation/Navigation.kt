@@ -368,11 +368,9 @@ fun Navigation(
                 )
             }
 
-            // Pantalla para añadir centro
+            // Ruta para añadir un nuevo centro
             composable(route = AppScreens.AddCentro.route) {
-                AddCentroScreen(
-                    navController = navController
-                )
+                AddCentroScreen(navController = navController)
             }
 
             composable(

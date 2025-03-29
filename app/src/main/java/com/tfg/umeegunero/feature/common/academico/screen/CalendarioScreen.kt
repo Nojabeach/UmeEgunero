@@ -122,7 +122,10 @@ fun CalendarioScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                LoadingIndicator(message = "Cargando eventos...")
+                LoadingIndicator(
+                    isLoading = true,
+                    message = "Cargando eventos..."
+                )
             }
         } else {
             Column(

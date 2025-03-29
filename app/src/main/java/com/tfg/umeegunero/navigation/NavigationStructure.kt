@@ -55,13 +55,6 @@ object NavigationStructure {
                     route = AppScreens.AddCentro.route,
                     description = "Registrar un nuevo centro",
                     isImplemented = true
-                ),
-                NavItem(
-                    title = "Estadísticas",
-                    icon = Icons.Outlined.BarChart,
-                    route = AppScreens.Estadisticas.route,
-                    description = "Estadísticas de los centros",
-                    isImplemented = true
                 )
             )
         ),
@@ -228,6 +221,13 @@ object NavigationStructure {
                     icon = Icons.Outlined.Event,
                     route = "centro/calendario",
                     description = "Gestión del calendario escolar"
+                ),
+                NavItem(
+                    title = "Añadir Centro",
+                    icon = Icons.Outlined.Add,
+                    route = AppScreens.AddCentro.route,
+                    description = "Registrar un nuevo centro",
+                    isImplemented = true
                 )
             )
         ),

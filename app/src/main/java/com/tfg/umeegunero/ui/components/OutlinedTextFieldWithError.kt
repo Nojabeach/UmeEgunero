@@ -3,38 +3,102 @@ package com.tfg.umeegunero.ui.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
+/**
+ * Campo de texto con soporte para mostrar errores de validación.
+ *
+ * @param value Valor actual del campo
+ * @param onValueChange Callback cuando cambia el valor
+ * @param label Etiqueta del campo
+ * @param modifier Modificador para personalizar el componente
+ * @param enabled Si el campo está habilitado
+ * @param readOnly Si el campo es de solo lectura
+ * @param isError Si hay un error de validación
+ * @param errorText Texto del error a mostrar
+ * @param leadingIcon Icono inicial (opcional)
+ * @param trailingIcon Icono final personalizado (opcional)
+ * @param visualTransformation Transformación visual del texto (para campos de contraseña)
+ * @param keyboardType Tipo de teclado a mostrar
+ * @param imeAction Acción del teclado (Next, Done, etc.)
+ * @param keyboardActions Acciones a ejecutar con las teclas del teclado
+ * @param singleLine Si el campo debe ser de una sola línea
+ * @param maxLines Máximo número de líneas
+ * @param textStyle Estilo del texto
+ * @param placeholder Texto de marcador de posición
+ */
 @Composable
 fun OutlinedTextFieldWithError(
     value: String,
     onValueChange: (String) -> Unit,
-    label: @Composable () -> Unit,
+    label: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    readOnly: Boolean = false,
     isError: Boolean = false,
-    errorMessage: String? = null
+    errorText: String? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    singleLine: Boolean = true,
+    maxLines: Int = 1,
+    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+    placeholder: @Composable (() -> Unit)? = null
 ) {
-    Column(modifier = modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            label = label,
+            label = { Text(text = label) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+            readOnly = readOnly,
             isError = isError,
-            modifier = Modifier.fillMaxWidth()
+            leadingIcon = leadingIcon,
+            trailingIcon = if (isError && errorText != null) {
+                {
+                    Icon(
+                        imageVector = Icons.Filled.Error,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            } else trailingIcon,
+            visualTransformation = visualTransformation,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = keyboardType,
+                imeAction = imeAction
+            ),
+            keyboardActions = keyboardActions,
+            singleLine = singleLine,
+            maxLines = maxLines,
+            textStyle = textStyle,
+            placeholder = placeholder
         )
-        if (isError && errorMessage != null) {
+        
+        if (isError && !errorText.isNullOrBlank()) {
             Text(
-                text = errorMessage,
-                color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Start,
+                text = errorText,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
             )
         }
