@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.data.model
 
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 
 /**
@@ -32,6 +33,8 @@ import com.google.firebase.firestore.DocumentId
  * @property aniosNacimiento Lista de años de nacimiento de los alumnos que pertenecen a este curso
  * @property activo Indica si el curso está actualmente operativo en el sistema
  * @property anioAcademico Período académico al que corresponde el curso (ej. "2023-2024")
+ * @property fechaCreacion Fecha de creación del curso
+ * @property clases Lista de IDs de clases asociadas al curso
  * 
  * @see Centro Entidad relacionada que contiene el curso
  * @see Clase Entidad relacionada que representa los grupos dentro del curso
@@ -39,12 +42,13 @@ import com.google.firebase.firestore.DocumentId
  */
 data class Curso(
     @DocumentId val id: String = "",
-    val centroId: String = "",
-    val nombre: String = "", // Por ejemplo: "Infantil 3 años", "Primaria 1º"
+    val nombre: String = "",
     val descripcion: String = "",
     val edadMinima: Int = 0,
     val edadMaxima: Int = 0,
-    val aniosNacimiento: List<Int> = emptyList(), // Lista de años de nacimiento de los alumnos que pertenecen a este curso
+    val anioAcademico: String = "",
+    val centroId: String = "",
+    val fechaCreacion: Timestamp = Timestamp.now(),
     val activo: Boolean = true,
-    val anioAcademico: String = "" // Por ejemplo: "2023-2024"
+    val clases: List<String> = emptyList()
 ) 

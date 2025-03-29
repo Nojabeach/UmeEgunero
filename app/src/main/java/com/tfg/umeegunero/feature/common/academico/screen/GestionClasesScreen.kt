@@ -105,7 +105,7 @@ fun GestionClasesScreen(
             ExtendedFloatingActionButton(
                 onClick = { 
                     // Navegar a la pantalla de añadir clase
-                    navController.navigate(AppScreens.EditClase.createRoute(cursoId))
+                    navController.navigate(AppScreens.AddClase.createRoute(cursoId))
                 },
                 icon = { 
                     Icon(
@@ -132,7 +132,8 @@ fun GestionClasesScreen(
                 EmptyClasesMessage(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    cursoId = cursoId
                 )
             } else {
                 // Mostrar la lista de clases
@@ -161,7 +162,7 @@ fun GestionClasesScreen(
                                 clase = clase,
                                 onEditClick = {
                                     // Navegar a la pantalla de editar clase con el ID de la clase
-                                    navController.navigate(AppScreens.EditClase.createRoute(cursoId, clase.id))
+                                    navController.navigate(AppScreens.EditClase.createRoute(clase.id))
                                 },
                                 onDeleteClick = {
                                     viewModel.mostrarDialogoEliminar(clase)
@@ -202,7 +203,10 @@ fun GestionClasesScreen(
 }
 
 @Composable
-private fun EmptyClasesMessage(modifier: Modifier = Modifier) {
+private fun EmptyClasesMessage(
+    modifier: Modifier = Modifier,
+    cursoId: String
+) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -218,19 +222,37 @@ private fun EmptyClasesMessage(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "No hay clases disponibles",
-            style = MaterialTheme.typography.headlineSmall,
+            text = "Gestión de Clases",
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "Curso ID: $cursoId",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Pulsa el botón + para añadir una nueva clase",
+            text = "Aquí podrá gestionar todas las clases del curso académico seleccionado",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Utilice el botón + para añadir una nueva clase o grupo",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

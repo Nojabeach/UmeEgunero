@@ -63,6 +63,11 @@ import com.tfg.umeegunero.feature.profesor.registros.screen.HiltRegistroDiarioSc
 import com.tfg.umeegunero.feature.familiar.registros.screen.HiltConsultaRegistroDiarioScreen
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
@@ -73,6 +78,18 @@ import com.tfg.umeegunero.feature.centro.screen.GestionProfesoresScreen
 import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
 import com.tfg.umeegunero.data.model.TipoUsuario
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import com.tfg.umeegunero.feature.common.academico.screen.GestionCursosScreen
+import com.tfg.umeegunero.feature.common.academico.screen.GestionClasesScreen
+import com.tfg.umeegunero.feature.common.academico.screen.AddCursoScreen
 
 /**
  * Componente principal de navegación de la aplicación UmeEgunero.
@@ -750,6 +767,59 @@ fun Navigation(
             composable(route = AppScreens.GestionProfesores.route) {
                 GestionProfesoresScreen(
                     navController = navController
+                )
+            }
+
+            composable(
+                route = AppScreens.GestionCursos.route,
+                arguments = listOf(
+                    navArgument("centroId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+                GestionCursosScreen(
+                    navController = navController,
+                    centroId = centroId
+                )
+            }
+
+            composable(
+                route = AppScreens.GestionClases.route,
+                arguments = listOf(
+                    navArgument("cursoId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+                GestionClasesScreen(
+                    navController = navController,
+                    cursoId = cursoId
+                )
+            }
+
+            composable(
+                route = AppScreens.AddCurso.route,
+                arguments = listOf(
+                    navArgument("centroId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+                AddCursoScreen(
+                    navController = navController,
+                    centroId = centroId
+                )
+            }
+
+            composable(
+                route = AppScreens.AddClase.route,
+                arguments = listOf(
+                    navArgument("cursoId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+                DummyScreen(
+                    title = "Añadir Clase",
+                    description = "Pantalla para añadir una nueva clase al curso con ID: $cursoId",
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }

@@ -34,6 +34,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
  * Pantalla genérica para funcionalidades aún no implementadas
  * 
  * @param title Título de la pantalla
+ * @param description Descripción de la pantalla
  * @param onNavigateBack Función para volver atrás
  * @param onMenuClick Función para abrir el menú lateral
  */
@@ -41,6 +42,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 @Composable
 fun DummyScreen(
     title: String,
+    description: String? = null,
     onNavigateBack: () -> Unit,
     onMenuClick: () -> Unit = {}
 ) {
@@ -108,6 +110,17 @@ fun DummyScreen(
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
+            
+            if (description != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             
             Spacer(modifier = Modifier.height(32.dp))
             

@@ -31,8 +31,7 @@ import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.theme.AcademicoColor
 
 /**
- * Pantalla para la gestión de cursos
- * Permite ver la lista de cursos, añadir nuevos y editar existentes
+ * Pantalla para gestionar los cursos académicos de un centro educativo
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,110 +39,88 @@ fun GestionCursosScreen(
     navController: NavController,
     centroId: String
 ) {
-    val cursos = remember {
-        listOf(
-            Curso("1", "1º ESO", "Educación Secundaria Obligatoria - Primer curso"),
-            Curso("2", "2º ESO", "Educación Secundaria Obligatoria - Segundo curso"),
-            Curso("3", "3º ESO", "Educación Secundaria Obligatoria - Tercer curso"),
-            Curso("4", "4º ESO", "Educación Secundaria Obligatoria - Cuarto curso")
-        )
-    }
-    
-    val snackbarHostState = remember { SnackbarHostState() }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
-                    Text(
-                        "Gestión de Cursos",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    ) 
-                },
+                title = { Text("Gestión de Cursos") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
+                            contentDescription = "Volver",
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AcademicoColor,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { 
-                    // En una implementación completa, navegaríamos a la pantalla de añadir curso
-                    navController.navigate(AppScreens.Dummy.createRoute("Añadir Curso"))
-                },
-                icon = { 
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Añadir curso"
-                    ) 
-                },
+                onClick = { navController.navigate(AppScreens.AddCurso.createRoute(centroId)) },
+                icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
                 text = { Text("Añadir Curso") },
-                containerColor = AcademicoColor,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
+        }
     ) { paddingValues ->
-        if (cursos.isEmpty()) {
-            EmptyCursosMessage(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(16.dp)
             ) {
-                itemsIndexed(cursos) { index, curso ->
-                    val animatedVisibilityState = remember {
-                        MutableTransitionState(false).apply { 
-                            targetState = true 
-                        }
-                    }
-                    
-                    AnimatedVisibility(
-                        visibleState = animatedVisibilityState,
-                        enter = slideInVertically(
-                            initialOffsetY = { it * (index + 1) / 8 },
-                            animationSpec = tween(durationMillis = 300, delayMillis = index * 50)
-                        ) + fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = index * 50)),
-                        exit = fadeOut()
-                    ) {
-                        CursoItem(
-                            curso = curso,
-                            onEditClick = {
-                                // En una implementación completa, navegaríamos a la pantalla de editar curso
-                                navController.navigate(AppScreens.Dummy.createRoute("Editar Curso: ${curso.nombre}"))
-                            },
-                            onItemClick = {
-                                // Navegar a la pantalla de gestión de clases para este curso
-                                navController.navigate(AppScreens.GestionClases.createRoute(curso.id))
-                            }
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = null,
+                    modifier = Modifier.size(100.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                )
                 
-                // Espacio adicional al final para evitar que el FAB tape el último elemento
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
-                }
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Text(
+                    text = "Gestión de Cursos",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Centro ID: $centroId",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                Text(
+                    text = "En esta pantalla podrá añadir, editar y eliminar cursos académicos.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Pulse el botón 'Añadir Curso' para crear un nuevo curso académico.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

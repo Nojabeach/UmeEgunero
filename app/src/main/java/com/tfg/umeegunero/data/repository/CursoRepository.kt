@@ -2,6 +2,8 @@ package com.tfg.umeegunero.data.repository
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Result
@@ -12,6 +14,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber
 
+/**
+ * Repositorio para la gestión de cursos académicos
+ */
 @Singleton
 class CursoRepository @Inject constructor(
     private val firestore: FirebaseFirestore
@@ -209,6 +214,76 @@ class CursoRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al asignar alumno a clase")
             return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Guarda un curso en Firestore
+     * @param curso El curso a guardar
+     */
+    suspend fun guardarCurso(curso: Curso) {
+        try {
+            cursosCollection.document(curso.id).set(curso).await()
+        } catch (e: FirebaseFirestoreException) {
+            throw Exception("Error al guardar el curso: ${e.message}")
+        }
+    }
+    
+    /**
+     * Obtiene un curso por su ID
+     * @param cursoId ID del curso
+     * @return El curso encontrado
+     */
+    suspend fun obtenerCursoPorId(cursoId: String): Curso? {
+        return try {
+            val document = cursosCollection.document(cursoId).get().await()
+            document.toObject(Curso::class.java)
+        } catch (e: FirebaseFirestoreException) {
+            throw Exception("Error al obtener el curso: ${e.message}")
+        }
+    }
+    
+    /**
+     * Obtiene todos los cursos de un centro educativo
+     * @param centroId ID del centro educativo
+     * @return Lista de cursos del centro
+     */
+    suspend fun obtenerCursosPorCentro(centroId: String): List<Curso> {
+        return try {
+            val querySnapshot = cursosCollection
+                .whereEqualTo("centroId", centroId)
+                .orderBy("nombre", Query.Direction.ASCENDING)
+                .get()
+                .await()
+            
+            querySnapshot.documents.mapNotNull { it.toObject(Curso::class.java) }
+        } catch (e: FirebaseFirestoreException) {
+            throw Exception("Error al obtener los cursos: ${e.message}")
+        }
+    }
+    
+    /**
+     * Actualiza un curso existente
+     * @param curso El curso con los datos actualizados
+     */
+    suspend fun actualizarCurso(curso: Curso) {
+        try {
+            cursosCollection.document(curso.id).set(curso).await()
+        } catch (e: FirebaseFirestoreException) {
+            throw Exception("Error al actualizar el curso: ${e.message}")
+        }
+    }
+    
+    /**
+     * Actualiza el estado activo de un curso
+     * @param cursoId ID del curso
+     * @param activo Nuevo estado activo
+     */
+    suspend fun actualizarEstadoActivo(cursoId: String, activo: Boolean) {
+        try {
+            cursosCollection.document(cursoId).update("activo", activo).await()
+        } catch (e: FirebaseFirestoreException) {
+            throw Exception("Error al actualizar el estado del curso: ${e.message}")
         }
     }
 }

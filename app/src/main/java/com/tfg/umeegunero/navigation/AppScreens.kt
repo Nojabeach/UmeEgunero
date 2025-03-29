@@ -145,9 +145,8 @@ sealed class AppScreens(val route: String) {
      * @param centroId Identificador único del centro
      * @param cursoId Identificador del curso (opcional, para edición)
      */
-    object AddCurso : AppScreens("add_curso/{centroId}?cursoId={cursoId}") {
-        fun createRoute(centroId: String, cursoId: String? = null) = 
-            "add_curso/$centroId${if (cursoId != null) "?cursoId=$cursoId" else ""}"
+    object AddCurso : AppScreens("add_curso/{centroId}") {
+        fun createRoute(centroId: String) = "add_curso/$centroId"
     }
     
     /**
@@ -163,9 +162,8 @@ sealed class AppScreens(val route: String) {
      * @param cursoId Identificador único del curso
      * @param claseId Identificador de la clase (opcional, para edición)
      */
-    object AddClase : AppScreens("add_clase/{cursoId}?claseId={claseId}") {
-        fun createRoute(cursoId: String, claseId: String? = null) = 
-            "add_clase/$cursoId${if (claseId != null) "?claseId=$claseId" else ""}"
+    object AddClase : AppScreens("add_clase/{cursoId}") {
+        fun createRoute(cursoId: String) = "add_clase/$cursoId"
     }
     
     /**
@@ -173,9 +171,8 @@ sealed class AppScreens(val route: String) {
      * @param cursoId Identificador único del curso
      * @param claseId Identificador de la clase a editar
      */
-    object EditClase : AppScreens("edit_clase/{cursoId}?claseId={claseId}") {
-        fun createRoute(cursoId: String, claseId: String? = null) = 
-            if (claseId != null) "edit_clase/$cursoId?claseId=$claseId" else "edit_clase/$cursoId"
+    object EditClase : AppScreens("edit_clase/{claseId}") {
+        fun createRoute(claseId: String) = "edit_clase/$claseId"
     }
     
     /** Pantalla de calendario y eventos académicos */

@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Save
@@ -282,9 +283,9 @@ fun AddCentroScreen(
             onSuccess = {
                 isLoading = false
                 scope.launch {
-                    // Mostrar un diálogo de éxito con opciones
+                    // Mostrar un Snackbar de éxito con opciones
                     val result = snackbarHostState.showSnackbar(
-                        message = "Centro añadido correctamente",
+                        message = "Centro '${centro.nombre}' añadido correctamente",
                         actionLabel = "Gestionar Cursos",
                         duration = SnackbarDuration.Long
                     )
@@ -316,22 +317,33 @@ fun AddCentroScreen(
             onDismissRequest = { showOptionsDialog = false },
             title = { Text("Centro guardado correctamente") },
             text = { 
-                Text("¿Qué desea hacer a continuación?") 
+                Column {
+                    Text("¿Qué desea hacer a continuación?")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Puede gestionar los cursos académicos y las clases asociadas a este centro.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showOptionsDialog = false
                         navController.navigate(AppScreens.GestionCursos.createRoute(savedCentroId))
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
-                    Icon(Icons.Filled.MenuBook, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Gestionar Cursos")
                 }
             },
             dismissButton = {
-                Button(
+                OutlinedButton(
                     onClick = {
                         showOptionsDialog = false
                         navController.popBackStack()
@@ -472,7 +484,7 @@ fun AddCentroScreen(
                                 modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.MenuBook,
+                                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)
