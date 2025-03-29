@@ -1117,31 +1117,75 @@ open class UsuarioRepository @Inject constructor(
             val alumno = alumnoDoc.toObject(Alumno::class.java)
             
             // Actualizamos su lista de familiares si no está ya
-            val familiares = alumno?.familiarIds?.toMutableList() ?: mutableListOf<String>()
-            if (!familiares.contains(familiarDni)) {
-                familiares.add(familiarDni)
+            val familiares = alumno?.familiares?.toMutableList() ?: mutableListOf()
+            
+            // Comprobamos si el familiar ya está vinculado
+            val familiarExistente = familiares.find { it.id == familiarDni }
+            
+            if (familiarExistente == null) {
+                // Obtenemos los datos del familiar
+                val familiar = familiarDoc.toObject(Usuario::class.java)
+                
+                // Creamos un nuevo objeto Familiar con la relación de parentesco
+                familiares.add(
+                    Familiar(
+                        id = familiarDni,
+                        nombre = familiar?.nombre ?: "",
+                        apellidos = familiar?.apellidos ?: "",
+                        parentesco = parentesco.name
+                    )
+                )
+                
+                // Actualizamos también la lista de IDs de familiares para compatibilidad
+                val familiarIds = alumno?.familiarIds?.toMutableList() ?: mutableListOf()
+                if (!familiarIds.contains(familiarDni)) {
+                    familiarIds.add(familiarDni)
+                }
+                
+                // Guardamos las relaciones en el documento del alumno
+                val updates = mapOf(
+                    "familiares" to familiares,
+                    "familiarIds" to familiarIds
+                )
+                alumnosCollection.document(alumnoDni).update(updates).await()
+            } else {
+                // Si ya existe, actualizamos solo el parentesco
+                val index = familiares.indexOf(familiarExistente)
+                familiares[index] = familiarExistente.copy(parentesco = parentesco.name)
+                
+                // Guardamos la lista actualizada
+                alumnosCollection.document(alumnoDni).update("familiares", familiares).await()
             }
             
-            // Guardamos la relación en el documento del alumno
-            alumnosCollection.document(alumnoDni).update("familiarIds", familiares).await()
-            
-            // También actualizamos el familiar para añadir el subtipo de familiar
+            // También actualizamos el familiar para añadir el perfil con el subtipo
             val familiar = familiarDoc.toObject(Usuario::class.java)
             val perfiles = familiar?.perfiles?.toMutableList() ?: mutableListOf()
             
-            // Buscamos si ya tiene un perfil de FAMILIAR para este alumno
+            // Buscamos si ya tiene un perfil de FAMILIAR para este centro
             val perfilExistente = perfiles.find { 
-                it.tipo == TipoUsuario.FAMILIAR
+                it.tipo == TipoUsuario.FAMILIAR && it.centroId == alumno?.centroId
             }
             
             if (perfilExistente != null) {
-                // Ya existe un perfil, no necesitamos hacer nada más
+                // Actualizamos el perfil existente con el nuevo subtipo y añadimos al alumno a la lista
+                val alumnosDelPerfil = perfilExistente.alumnos.toMutableList()
+                if (!alumnosDelPerfil.contains(alumnoDni)) {
+                    alumnosDelPerfil.add(alumnoDni)
+                }
+                
+                val index = perfiles.indexOf(perfilExistente)
+                perfiles[index] = perfilExistente.copy(
+                    subtipo = parentesco,
+                    alumnos = alumnosDelPerfil
+                )
             } else {
                 // Creamos un nuevo perfil
                 perfiles.add(
                     Perfil(
                         tipo = TipoUsuario.FAMILIAR,
-                        centroId = alumno?.centroId ?: ""
+                        subtipo = parentesco,
+                        centroId = alumno?.centroId ?: "",
+                        alumnos = listOf(alumnoDni)
                     )
                 )
             }
@@ -1151,6 +1195,7 @@ open class UsuarioRepository @Inject constructor(
             
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            Timber.e(e, "Error al vincular familiar: ${e.message}")
             return@withContext Result.Error(e)
         }
     }
@@ -1174,17 +1219,50 @@ open class UsuarioRepository @Inject constructor(
             // Obtenemos el alumno actual
             val alumno = alumnoDoc.toObject(Alumno::class.java)
             
-            // Eliminamos al familiar de la lista
-            val familiares = alumno?.familiarIds?.toMutableList() ?: mutableListOf<String>()
-            familiares.remove(familiarDni)
+            // Actualizamos la lista de objetos Familiar
+            val familiares = alumno?.familiares?.toMutableList() ?: mutableListOf()
+            familiares.removeIf { it.id == familiarDni }
             
-            // Guardamos la nueva lista en el documento del alumno
-            alumnosCollection.document(alumnoDni).update("familiarIds", familiares).await()
+            // Actualizamos también la lista de IDs de familiares para compatibilidad
+            val familiarIds = alumno?.familiarIds?.toMutableList() ?: mutableListOf()
+            familiarIds.remove(familiarDni)
             
-            // No modificamos los perfiles del familiar, ya que podría estar vinculado a otros alumnos
+            // Guardamos las relaciones actualizadas en el documento del alumno
+            val updates = mapOf(
+                "familiares" to familiares,
+                "familiarIds" to familiarIds
+            )
+            alumnosCollection.document(alumnoDni).update(updates).await()
+            
+            // Actualizamos también los perfiles del familiar para eliminar la relación con este alumno
+            val familiar = familiarDoc.toObject(Usuario::class.java)
+            val perfiles = familiar?.perfiles?.toMutableList() ?: mutableListOf()
+            
+            // Buscamos el perfil de FAMILIAR para el centro del alumno
+            val perfilFamiliar = perfiles.find { 
+                it.tipo == TipoUsuario.FAMILIAR && it.centroId == alumno?.centroId
+            }
+            
+            if (perfilFamiliar != null) {
+                // Removemos al alumno de la lista de alumnos en el perfil
+                val alumnosDelPerfil = perfilFamiliar.alumnos.toMutableList()
+                alumnosDelPerfil.remove(alumnoDni)
+                
+                // Si quedan otros alumnos, actualizamos el perfil
+                if (alumnosDelPerfil.isNotEmpty()) {
+                    val index = perfiles.indexOf(perfilFamiliar)
+                    perfiles[index] = perfilFamiliar.copy(alumnos = alumnosDelPerfil)
+                    usuariosCollection.document(familiarDni).update("perfiles", perfiles).await()
+                } else {
+                    // Si no quedan alumnos, eliminamos el perfil de familiar para este centro
+                    perfiles.remove(perfilFamiliar)
+                    usuariosCollection.document(familiarDni).update("perfiles", perfiles).await()
+                }
+            }
             
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            Timber.e(e, "Error al desvincular familiar: ${e.message}")
             return@withContext Result.Error(e)
         }
     }

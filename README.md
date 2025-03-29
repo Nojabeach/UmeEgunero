@@ -115,15 +115,15 @@ La documentación técnica se genera con **Dokka**:
 ```
 Salida en: `app/build/dokka/`
 
-[!NOTE]
+.[!NOTE].
 > Esta documentación se actualiza automáticamente con cada commit en la rama principal.
 
 ---
 
 ## 👤 Autor
 
-Desarrollado como TFG en DAM. Para más información, contacta a [tuemail@ejemplo.com](mailto:tuemail@ejemplo.com).
+Desarrollado como TFG en DAM. Para más información, contacta a [maitaneibaira@gmail.com](mailto:maitaneibaira@gmail.com).
 
-[!TIP]
+.[!TIP].
 > Si te gusta el proyecto, dale una estrella ⭐ en GitHub.
 

@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,9 +26,9 @@ import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.centro.viewmodel.VinculacionFamiliarViewModel
-import com.tfg.umeegunero.navigation.AppScreens
 import androidx.compose.foundation.selection.selectable
-import java.util.*
+import com.tfg.umeegunero.ui.components.LoadingIndicator
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla para gestionar las vinculaciones entre alumnos y familiares
@@ -42,38 +41,40 @@ fun VinculacionFamiliarScreen(
     viewModel: VinculacionFamiliarViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
     var showFamiliaresDialog by remember { mutableStateOf(false) }
     var showVinculacionDialog by remember { mutableStateOf(false) }
-    var showFamiliarFilterDialog by remember { mutableStateOf(false) }
     var alumnoSeleccionado by remember { mutableStateOf<Usuario?>(null) }
+    var familiarSeleccionado by remember { mutableStateOf<Usuario?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     
-    // Cargar datos al iniciar
-    LaunchedEffect(Unit) {
-        viewModel.cargarAlumnos()
-        viewModel.cargarFamiliares()
-    }
-    
-    // Mostrar mensajes de error
-    LaunchedEffect(uiState.error) {
+    // Manejar mensajes y errores
+    LaunchedEffect(uiState.error, uiState.mensaje) {
         uiState.error?.let { error ->
-            snackbarHostState.showSnackbar(error)
-            viewModel.clearError()
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = error,
+                    duration = SnackbarDuration.Long
+                )
+                viewModel.clearError()
+            }
         }
-    }
-    
-    // Mostrar mensajes de éxito
-    LaunchedEffect(uiState.mensaje) {
+        
         uiState.mensaje?.let { mensaje ->
-            snackbarHostState.showSnackbar(mensaje)
-            viewModel.clearMensaje()
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = mensaje,
+                    duration = SnackbarDuration.Short
+                )
+                viewModel.clearMensaje()
+            }
         }
     }
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Vinculación Familiar") },
+                title = { Text("Vinculación familiar") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -81,128 +82,201 @@ fun VinculacionFamiliarScreen(
                             contentDescription = "Volver"
                         )
                     }
-                },
-                actions = {
-                    // Acción para filtrar
-                    IconButton(onClick = { showFamiliarFilterDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filtrar"
-                        )
-                    }
-                    
-                    // Acción para añadir familiar
-                    IconButton(
-                        onClick = { 
-                            navController.navigate(
-                                AppScreens.AddUser.createRoute(
-                                    isAdminApp = false,
-                                    tipoUsuario = TipoUsuario.FAMILIAR.toString()
-                                )
-                            )
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PersonAdd,
-                            contentDescription = "Añadir Familiar"
-                        )
-                    }
                 }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Indicador de carga
-            if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .align(Alignment.Center)
-                )
-            }
-            
-            // Contenido principal
+        if (uiState.isLoading) {
+            LoadingIndicator(fullScreen = true)
+        } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(paddingValues)
                     .padding(16.dp)
             ) {
-                // Pestañas para alternar entre alumnos y familiares
-                TabRow(
-                    selectedTabIndex = uiState.selectedTab,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                Text(
+                    text = "Gestión de vinculaciones alumno-familiar",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                // Sección de Alumnos
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Tab(
-                        selected = uiState.selectedTab == 0,
-                        onClick = { viewModel.setSelectedTab(0) },
-                        text = { Text("Alumnos") },
-                        icon = { Icon(Icons.Default.School, contentDescription = null) }
-                    )
-                    Tab(
-                        selected = uiState.selectedTab == 1,
-                        onClick = { viewModel.setSelectedTab(1) },
-                        text = { Text("Familiares") },
-                        icon = { Icon(Icons.Default.People, contentDescription = null) }
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        // Cabecera de alumnos
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Alumnos",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Buscador de alumnos
+                        OutlinedTextField(
+                            value = uiState.filtroAlumnos,
+                            onValueChange = { viewModel.updateFiltroAlumnos(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Buscar alumno...") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Buscar"
+                                )
+                            },
+                            singleLine = true
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Lista de alumnos
+                        if (uiState.alumnosFiltrados.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No hay alumnos disponibles",
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(uiState.alumnosFiltrados) { alumno ->
+                                    AlumnoListItem(
+                                        alumno = alumno,
+                                        onItemClick = {
+                                            alumnoSeleccionado = alumno
+                                            alumno.dni.let { viewModel.cargarFamiliaresPorAlumno(it) }
+                                            showFamiliaresDialog = true
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Muestra alumnos o familiares según la pestaña seleccionada
-                when (uiState.selectedTab) {
-                    0 -> AlumnosTab(
-                        alumnos = uiState.alumnosFiltrados,
-                        onAlumnoClick = { alumno ->
-                            alumnoSeleccionado = alumno
-                            showFamiliaresDialog = true
-                            viewModel.cargarFamiliaresPorAlumno(alumno.dni)
-                        },
-                        onAddVinculacionClick = { alumno ->
-                            alumnoSeleccionado = alumno
-                            showVinculacionDialog = true
+                // Sección de Familiares
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        // Cabecera de familiares
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.People,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Familiares",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    )
-                    1 -> FamiliaresTab(
-                        familiares = uiState.familiaresFiltrados,
-                        onFamiliarClick = { familiar ->
-                            viewModel.cargarAlumnosPorFamiliar(familiar.dni)
-                            navController.navigate(AppScreens.UserDetail.createRoute(familiar.dni))
-                        }
-                    )
-                }
-            }
-            
-            // Botón flotante para añadir alumnos o familiares según la pestaña
-            FloatingActionButton(
-                onClick = {
-                    val route = if (uiState.selectedTab == 0) {
-                        AppScreens.AddAlumno.route
-                    } else {
-                        AppScreens.AddUser.createRoute(
-                            isAdminApp = false,
-                            tipoUsuario = TipoUsuario.FAMILIAR.toString()
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Buscador de familiares
+                        OutlinedTextField(
+                            value = uiState.filtroFamiliares,
+                            onValueChange = { viewModel.updateFiltroFamiliares(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Buscar familiar...") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Buscar"
+                                )
+                            },
+                            singleLine = true
                         )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Lista de familiares
+                        if (uiState.familiaresFiltrados.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No hay familiares disponibles",
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(uiState.familiaresFiltrados) { familiar ->
+                                    FamiliarListItem(
+                                        familiar = familiar,
+                                        onItemClick = {
+                                            familiarSeleccionado = familiar
+                                            viewModel.cargarAlumnosPorFamiliar(familiar.dni)
+                                            // Aquí podríamos mostrar los alumnos vinculados al familiar
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
-                    navController.navigate(route)
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = if (uiState.selectedTab == 0) "Añadir Alumno" else "Añadir Familiar"
-                )
+                }
             }
         }
     }
     
-    // Diálogo para mostrar los familiares de un alumno
+    // Diálogo para ver los familiares de un alumno
     if (showFamiliaresDialog && alumnoSeleccionado != null) {
         AlertDialog(
             onDismissRequest = { showFamiliaresDialog = false },
@@ -234,7 +308,7 @@ fun VinculacionFamiliarScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         alumnoSeleccionado?.let {
                             showVinculacionDialog = true
@@ -257,6 +331,7 @@ fun VinculacionFamiliarScreen(
     if (showVinculacionDialog && alumnoSeleccionado != null) {
         var selectedFamiliar by remember { mutableStateOf<Usuario?>(null) }
         var selectedParentesco by remember { mutableStateOf(SubtipoFamiliar.PADRE) }
+        var dropdownExpanded by remember { mutableStateOf(false) }
         
         AlertDialog(
             onDismissRequest = { showVinculacionDialog = false },
@@ -266,28 +341,35 @@ fun VinculacionFamiliarScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("Seleccione un familiar para ${alumnoSeleccionado?.nombre} ${alumnoSeleccionado?.apellidos}")
+                    Text(
+                        text = "Alumno: ${alumnoSeleccionado?.nombre} ${alumnoSeleccionado?.apellidos}",
+                        fontWeight = FontWeight.Bold
+                    )
                     
                     // Selector de familiar
-                    ExposedDropdownMenuBox(
-                        expanded = uiState.isFamiliarDropdownExpanded,
-                        onExpandedChange = { viewModel.toggleFamiliarDropdown() }
-                    ) {
+                    Text("Selecciona un familiar")
+                    
+                    Box {
                         OutlinedTextField(
-                            value = selectedFamiliar?.let { "${it.nombre} ${it.apellidos}" } ?: "Seleccione un familiar",
-                            onValueChange = {},
+                            value = selectedFamiliar?.let { "${it.nombre} ${it.apellidos}" } ?: "",
+                            onValueChange = { },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Familiar") },
                             readOnly = true,
                             trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = uiState.isFamiliarDropdownExpanded)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                                IconButton(onClick = { dropdownExpanded = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Mostrar opciones"
+                                    )
+                                }
+                            }
                         )
                         
-                        ExposedDropdownMenu(
-                            expanded = uiState.isFamiliarDropdownExpanded,
-                            onDismissRequest = { viewModel.toggleFamiliarDropdown() }
+                        DropdownMenu(
+                            expanded = dropdownExpanded,
+                            onDismissRequest = { dropdownExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
                         ) {
                             // Filtramos los familiares que ya están vinculados
                             val familiaresDisponibles = uiState.familiares.filter { familiar ->
@@ -297,7 +379,7 @@ fun VinculacionFamiliarScreen(
                             if (familiaresDisponibles.isEmpty()) {
                                 DropdownMenuItem(
                                     text = { Text("No hay familiares disponibles") },
-                                    onClick = { viewModel.toggleFamiliarDropdown() }
+                                    onClick = { dropdownExpanded = false }
                                 )
                             } else {
                                 familiaresDisponibles.forEach { familiar ->
@@ -305,7 +387,7 @@ fun VinculacionFamiliarScreen(
                                         text = { Text("${familiar.nombre} ${familiar.apellidos}") },
                                         onClick = {
                                             selectedFamiliar = familiar
-                                            viewModel.toggleFamiliarDropdown()
+                                            dropdownExpanded = false
                                         }
                                     )
                                 }
@@ -368,139 +450,19 @@ fun VinculacionFamiliarScreen(
             }
         )
     }
-    
-    // Diálogo para filtrar familiares
-    if (showFamiliarFilterDialog) {
-        AlertDialog(
-            onDismissRequest = { showFamiliarFilterDialog = false },
-            title = { Text("Filtrar") },
-            text = {
-                Column {
-                    // Checkbox para mostrar solo activos
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.toggleSoloActivos() }
-                            .padding(8.dp)
-                    ) {
-                        Checkbox(
-                            checked = uiState.soloActivos,
-                            onCheckedChange = { viewModel.toggleSoloActivos() }
-                        )
-                        Text("Mostrar solo usuarios activos")
-                    }
-                    
-                    // Campo de búsqueda
-                    OutlinedTextField(
-                        value = uiState.searchText,
-                        onValueChange = { viewModel.updateSearchText(it) },
-                        label = { Text("Buscar por nombre o DNI") },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showFamiliarFilterDialog = false }) {
-                    Text("Aplicar")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { 
-                        viewModel.resetFiltros()
-                        showFamiliarFilterDialog = false 
-                    }
-                ) {
-                    Text("Restablecer")
-                }
-            }
-        )
-    }
 }
 
 @Composable
-fun AlumnosTab(
-    alumnos: List<Usuario>,
-    onAlumnoClick: (Usuario) -> Unit,
-    onAddVinculacionClick: (Usuario) -> Unit
-) {
-    if (alumnos.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No hay alumnos disponibles",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
-            )
-        }
-    } else {
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(alumnos) { alumno ->
-                AlumnoItem(
-                    alumno = alumno,
-                    onItemClick = { onAlumnoClick(alumno) },
-                    onVincularClick = { onAddVinculacionClick(alumno) }
-                )
-            }
-            
-            // Espacio para el FAB
-            item { Spacer(modifier = Modifier.height(80.dp)) }
-        }
-    }
-}
-
-@Composable
-fun FamiliaresTab(
-    familiares: List<Usuario>,
-    onFamiliarClick: (Usuario) -> Unit
-) {
-    if (familiares.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No hay familiares disponibles",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
-            )
-        }
-    } else {
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(familiares) { familiar ->
-                FamiliarListItem(
-                    familiar = familiar,
-                    onItemClick = { onFamiliarClick(familiar) }
-                )
-            }
-            
-            // Espacio para el FAB
-            item { Spacer(modifier = Modifier.height(80.dp)) }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AlumnoItem(
+fun AlumnoListItem(
     alumno: Usuario,
-    onItemClick: () -> Unit,
-    onVincularClick: () -> Unit
+    onItemClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onItemClick),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -511,15 +473,14 @@ fun AlumnoItem(
             // Avatar
             Box(
                 modifier = Modifier
-                    .size(50.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .align(Alignment.CenterVertically),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = alumno.nombre.firstOrNull()?.uppercase() ?: "?",
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
             
@@ -531,22 +492,24 @@ fun AlumnoItem(
             ) {
                 Text(
                     text = "${alumno.nombre} ${alumno.apellidos}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 
                 Text(
-                    text = alumno.dni,
+                    text = "DNI: ${alumno.dni}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            // Botón para vincular
-            IconButton(onClick = onVincularClick) {
+            // Botón para ver familiares/vincular
+            IconButton(onClick = onItemClick) {
                 Icon(
-                    imageVector = Icons.Default.Link,
-                    contentDescription = "Vincular familiar",
+                    imageVector = Icons.Default.Group,
+                    contentDescription = "Ver familiares",
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -564,7 +527,7 @@ fun FamiliarListItem(
             .fillMaxWidth()
             .clickable(onClick = onItemClick),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -575,10 +538,9 @@ fun FamiliarListItem(
             // Avatar
             Box(
                 modifier = Modifier
-                    .size(50.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .align(Alignment.CenterVertically),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -595,30 +557,33 @@ fun FamiliarListItem(
             ) {
                 Text(
                     text = "${familiar.nombre} ${familiar.apellidos}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 
                 Text(
-                    text = familiar.dni,
+                    text = "DNI: ${familiar.dni}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
-                val subtipoFamiliar = familiar.perfiles
+                // Mostrar el tipo de familiar
+                val tipoFamiliar = familiar.perfiles
                     .firstOrNull { it.tipo == TipoUsuario.FAMILIAR }
                     ?.subtipo?.name?.lowercase()?.capitalize()
                 
-                if (subtipoFamiliar != null) {
+                if (tipoFamiliar != null) {
                     Text(
-                        text = subtipoFamiliar,
+                        text = tipoFamiliar,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
             
-            // Icono de información
+            // Botón para ver información
             IconButton(onClick = onItemClick) {
                 Icon(
                     imageVector = Icons.Default.Info,
@@ -687,14 +652,14 @@ fun FamiliarItem(
         IconButton(onClick = onRemoveClick) {
             Icon(
                 imageVector = Icons.Default.Delete,
-                contentDescription = "Eliminar vínculo",
+                contentDescription = "Desvincular",
                 tint = MaterialTheme.colorScheme.error
             )
         }
     }
 }
 
-// Extensión para capitalizar strings
-fun String.capitalize(): String {
-    return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+// Función auxiliar para capitalizar strings
+private fun String.capitalize(): String {
+    return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 } 

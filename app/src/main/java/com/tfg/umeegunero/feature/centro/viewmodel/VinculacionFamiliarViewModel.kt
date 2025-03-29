@@ -2,14 +2,13 @@ package com.tfg.umeegunero.feature.centro.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.data.model.Perfil
+import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,141 +18,102 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Estado UI para la pantalla de vinculación familiar
+ * Estado de UI para la pantalla de vinculación familiar-alumno
  */
 data class VinculacionFamiliarUiState(
-    // Datos y filtros
     val alumnos: List<Usuario> = emptyList(),
     val familiares: List<Usuario> = emptyList(),
+    val alumnosFiltrados: List<Usuario> = emptyList(),
+    val familiaresFiltrados: List<Usuario> = emptyList(),
     val familiaresDelAlumno: List<Usuario> = emptyList(),
     val alumnosDelFamiliar: List<Usuario> = emptyList(),
-    val soloActivos: Boolean = true,
-    val searchText: String = "",
-    val selectedTab: Int = 0,
-    val isFamiliarDropdownExpanded: Boolean = false,
-    
-    // Estados UI
-    val isLoading: Boolean = false,
-    val error: String? = null,
+    val filtroAlumnos: String = "",
+    val filtroFamiliares: String = "",
     val mensaje: String? = null,
-    
-    // Centro
-    val centroId: String = ""
-) {
-    // Alumnos filtrados según los criterios actuales
-    val alumnosFiltrados: List<Usuario>
-        get() {
-            val filtradosPorActivo = if (soloActivos) {
-                alumnos.filter { it.activo }
-            } else {
-                alumnos
-            }
-            
-            return if (searchText.isBlank()) {
-                filtradosPorActivo
-            } else {
-                filtradosPorActivo.filter {
-                    it.nombre.contains(searchText, ignoreCase = true) ||
-                    it.apellidos.contains(searchText, ignoreCase = true) ||
-                    it.dni.contains(searchText, ignoreCase = true)
-                }
-            }
-        }
-    
-    // Familiares filtrados según los criterios actuales
-    val familiaresFiltrados: List<Usuario>
-        get() {
-            val filtradosPorActivo = if (soloActivos) {
-                familiares.filter { it.activo }
-            } else {
-                familiares
-            }
-            
-            return if (searchText.isBlank()) {
-                filtradosPorActivo
-            } else {
-                filtradosPorActivo.filter {
-                    it.nombre.contains(searchText, ignoreCase = true) ||
-                    it.apellidos.contains(searchText, ignoreCase = true) ||
-                    it.dni.contains(searchText, ignoreCase = true)
-                }
-            }
-        }
-}
+    val error: String? = null,
+    val isLoading: Boolean = false,
+    val isFamiliarDropdownOpen: Boolean = false,
+    val isAlumnoDropdownOpen: Boolean = false
+)
 
+/**
+ * ViewModel para la pantalla de vinculación familiar-alumno
+ */
 @HiltViewModel
 class VinculacionFamiliarViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository,
-    private val authRepository: AuthRepository
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
+    
     private val _uiState = MutableStateFlow(VinculacionFamiliarUiState())
     val uiState: StateFlow<VinculacionFamiliarUiState> = _uiState.asStateFlow()
     
+    private var alumnosJob: Job? = null
+    private var familiaresJob: Job? = null
+    
     init {
-        // Obtener el ID del centro del administrador actual
-        getCentroIdFromCurrentUser()
+        cargarDatosIniciales()
     }
     
     /**
-     * Obtiene el ID del centro del usuario administrador actual
+     * Carga los datos iniciales necesarios para la pantalla
      */
-    private fun getCentroIdFromCurrentUser() {
+    private fun cargarDatosIniciales() {
         viewModelScope.launch {
-            try {
-                val currentUser = authRepository.getCurrentUser()
-                
-                if (currentUser != null) {
-                    // Obtener el perfil completo del usuario
-                    val usuarioResult = usuarioRepository.getUsuarioByEmail(currentUser.email)
-                    
-                    if (usuarioResult is Result.Success) {
-                        val usuario = usuarioResult.data
-                        
-                        // Obtener el centroId del primer perfil de tipo ADMIN_CENTRO
-                        val centroId = usuario?.perfiles
-                            ?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
-                            ?.centroId
-                        
-                        centroId?.let {
-                            _uiState.update { state -> state.copy(centroId = it) }
-                        }
-                    }
+            _uiState.update { it.copy(isLoading = true) }
+            
+            // Obtener el centro seleccionado por el usuario actual (admin centro)
+            val centroId = obtenerCentroSeleccionado()
+            
+            if (centroId.isNullOrEmpty()) {
+                _uiState.update { 
+                    it.copy(
+                        error = "No se ha podido determinar el centro actual. Por favor, seleccione un centro.",
+                        isLoading = false
+                    )
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener centro del usuario actual")
+                return@launch
             }
+            
+            // Cargar alumnos y familiares del centro
+            cargarAlumnosPorCentro(centroId)
+            cargarFamiliaresPorCentro(centroId)
         }
     }
     
     /**
-     * Carga todos los alumnos del centro
+     * Obtiene el ID del centro seleccionado actualmente
      */
-    fun cargarAlumnos() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            
+    private suspend fun obtenerCentroSeleccionado(): String? {
+        val usuario = usuarioRepository.auth.currentUser?.uid ?: return null
+        
+        when (val result = usuarioRepository.getUsuarioById(usuario)) {
+            is Result.Success -> {
+                // Buscar un perfil de tipo ADMIN_CENTRO
+                val perfil = result.data.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                return perfil?.centroId
+            }
+            else -> return null
+        }
+    }
+    
+    /**
+     * Carga la lista de alumnos del centro
+     */
+    private fun cargarAlumnosPorCentro(centroId: String) {
+        // Cancelar job anterior si existe
+        alumnosJob?.cancel()
+        
+        alumnosJob = viewModelScope.launch {
             try {
-                val centroId = _uiState.value.centroId
-                
-                if (centroId.isBlank()) {
-                    _uiState.update { 
-                        it.copy(
-                            error = "No se pudo determinar el centro del administrador",
-                            isLoading = false
-                        )
-                    }
-                    return@launch
-                }
-                
-                // Obtener alumnos por centro
                 val result = usuarioRepository.obtenerAlumnosPorCentro(centroId)
                 
                 when (result) {
-                    is Result.Success<*> -> {
+                    is Result.Success -> {
                         _uiState.update { 
                             it.copy(
-                                alumnos = result.data as List<Usuario>,
-                                isLoading = false
+                                alumnos = result.data,
+                                alumnosFiltrados = result.data,
+                                isLoading = familiaresJob?.isActive ?: false
                             )
                         }
                     }
@@ -161,7 +121,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 error = "Error al cargar alumnos: ${result.exception.message}",
-                                isLoading = false
+                                isLoading = familiaresJob?.isActive ?: false
                             )
                         }
                         Timber.e(result.exception, "Error al cargar alumnos")
@@ -172,7 +132,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         error = "Error inesperado al cargar alumnos: ${e.message}",
-                        isLoading = false
+                        isLoading = familiaresJob?.isActive ?: false
                     )
                 }
                 Timber.e(e, "Error inesperado al cargar alumnos")
@@ -181,34 +141,23 @@ class VinculacionFamiliarViewModel @Inject constructor(
     }
     
     /**
-     * Carga todos los familiares del centro
+     * Carga la lista de familiares del centro
      */
-    fun cargarFamiliares() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            
+    private fun cargarFamiliaresPorCentro(centroId: String) {
+        // Cancelar job anterior si existe
+        familiaresJob?.cancel()
+        
+        familiaresJob = viewModelScope.launch {
             try {
-                val centroId = _uiState.value.centroId
-                
-                if (centroId.isBlank()) {
-                    _uiState.update { 
-                        it.copy(
-                            error = "No se pudo determinar el centro del administrador",
-                            isLoading = false
-                        )
-                    }
-                    return@launch
-                }
-                
-                // Obtener familiares por centro
                 val result = usuarioRepository.obtenerFamiliaresPorCentro(centroId)
                 
                 when (result) {
-                    is Result.Success<*> -> {
+                    is Result.Success -> {
                         _uiState.update { 
                             it.copy(
-                                familiares = result.data as List<Usuario>,
-                                isLoading = false
+                                familiares = result.data,
+                                familiaresFiltrados = result.data,
+                                isLoading = alumnosJob?.isActive ?: false
                             )
                         }
                     }
@@ -216,7 +165,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 error = "Error al cargar familiares: ${result.exception.message}",
-                                isLoading = false
+                                isLoading = alumnosJob?.isActive ?: false
                             )
                         }
                         Timber.e(result.exception, "Error al cargar familiares")
@@ -227,7 +176,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         error = "Error inesperado al cargar familiares: ${e.message}",
-                        isLoading = false
+                        isLoading = alumnosJob?.isActive ?: false
                     )
                 }
                 Timber.e(e, "Error inesperado al cargar familiares")
@@ -236,21 +185,20 @@ class VinculacionFamiliarViewModel @Inject constructor(
     }
     
     /**
-     * Carga los familiares vinculados a un alumno específico
+     * Carga los familiares vinculados a un alumno
      */
     fun cargarFamiliaresPorAlumno(alumnoDni: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Obtener los familiares vinculados al alumno
                 val result = usuarioRepository.obtenerFamiliaresPorAlumno(alumnoDni)
                 
                 when (result) {
-                    is Result.Success<*> -> {
+                    is Result.Success -> {
                         _uiState.update { 
                             it.copy(
-                                familiaresDelAlumno = result.data as List<Usuario>,
+                                familiaresDelAlumno = result.data,
                                 isLoading = false
                             )
                         }
@@ -258,7 +206,6 @@ class VinculacionFamiliarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                familiaresDelAlumno = emptyList(),
                                 error = "Error al cargar familiares del alumno: ${result.exception.message}",
                                 isLoading = false
                             )
@@ -270,7 +217,6 @@ class VinculacionFamiliarViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        familiaresDelAlumno = emptyList(),
                         error = "Error inesperado al cargar familiares del alumno: ${e.message}",
                         isLoading = false
                     )
@@ -281,21 +227,20 @@ class VinculacionFamiliarViewModel @Inject constructor(
     }
     
     /**
-     * Carga los alumnos vinculados a un familiar específico
+     * Carga los alumnos vinculados a un familiar
      */
     fun cargarAlumnosPorFamiliar(familiarDni: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Obtener los alumnos vinculados al familiar
                 val result = usuarioRepository.obtenerAlumnosPorFamiliar(familiarDni)
                 
                 when (result) {
-                    is Result.Success<*> -> {
+                    is Result.Success -> {
                         _uiState.update { 
                             it.copy(
-                                alumnosDelFamiliar = result.data as List<Usuario>,
+                                alumnosDelFamiliar = result.data,
                                 isLoading = false
                             )
                         }
@@ -303,7 +248,6 @@ class VinculacionFamiliarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                alumnosDelFamiliar = emptyList(),
                                 error = "Error al cargar alumnos del familiar: ${result.exception.message}",
                                 isLoading = false
                             )
@@ -425,38 +369,76 @@ class VinculacionFamiliarViewModel @Inject constructor(
     }
     
     // Funciones para manejar filtros
-    fun toggleSoloActivos() {
-        _uiState.update { it.copy(soloActivos = !it.soloActivos) }
-    }
     
-    fun updateSearchText(text: String) {
-        _uiState.update { it.copy(searchText = text) }
-    }
-    
-    fun resetFiltros() {
-        _uiState.update { 
-            it.copy(
-                searchText = "",
-                soloActivos = true
+    /**
+     * Actualiza el filtro para la lista de alumnos
+     */
+    fun updateFiltroAlumnos(filtro: String) {
+        _uiState.update { currentState ->
+            val alumnosFiltrados = if (filtro.isBlank()) {
+                currentState.alumnos
+            } else {
+                currentState.alumnos.filter { alumno ->
+                    alumno.nombre.contains(filtro, ignoreCase = true) ||
+                    alumno.apellidos.contains(filtro, ignoreCase = true) ||
+                    alumno.dni.contains(filtro, ignoreCase = true)
+                }
+            }
+            
+            currentState.copy(
+                filtroAlumnos = filtro,
+                alumnosFiltrados = alumnosFiltrados
             )
         }
     }
     
-    // Funciones para manejar pestañas y dropdowns
-    fun setSelectedTab(tab: Int) {
-        _uiState.update { it.copy(selectedTab = tab) }
+    /**
+     * Actualiza el filtro para la lista de familiares
+     */
+    fun updateFiltroFamiliares(filtro: String) {
+        _uiState.update { currentState ->
+            val familiaresFiltrados = if (filtro.isBlank()) {
+                currentState.familiares
+            } else {
+                currentState.familiares.filter { familiar ->
+                    familiar.nombre.contains(filtro, ignoreCase = true) ||
+                    familiar.apellidos.contains(filtro, ignoreCase = true) ||
+                    familiar.dni.contains(filtro, ignoreCase = true)
+                }
+            }
+            
+            currentState.copy(
+                filtroFamiliares = filtro,
+                familiaresFiltrados = familiaresFiltrados
+            )
+        }
     }
     
+    /**
+     * Alterna el estado del dropdown de familiares
+     */
     fun toggleFamiliarDropdown() {
-        _uiState.update { it.copy(isFamiliarDropdownExpanded = !it.isFamiliarDropdownExpanded) }
+        _uiState.update { it.copy(isFamiliarDropdownOpen = !it.isFamiliarDropdownOpen) }
     }
     
-    // Funciones para manejar mensajes
-    fun clearError() {
-        _uiState.update { it.copy(error = null) }
+    /**
+     * Alterna el estado del dropdown de alumnos
+     */
+    fun toggleAlumnoDropdown() {
+        _uiState.update { it.copy(isAlumnoDropdownOpen = !it.isAlumnoDropdownOpen) }
     }
     
+    /**
+     * Limpia el mensaje de éxito
+     */
     fun clearMensaje() {
         _uiState.update { it.copy(mensaje = null) }
+    }
+    
+    /**
+     * Limpia el mensaje de error
+     */
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 } 
