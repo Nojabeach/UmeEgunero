@@ -3,6 +3,7 @@ package com.tfg.umeegunero.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,91 +28,149 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 
 /**
- * Componente para mostrar el progreso en formularios multi-paso.
+ * Componente que muestra un indicador de progreso para formularios multi-paso.
  * 
- * Muestra una barra de progreso con indicación visual del progreso actual.
- * 
- * @param currentStep Paso actual del formulario
- * @param totalSteps Total de pasos en el formulario
- * @param modifier Modificador opcional para personalizar el componente
- * @param showLabel Indica si se debe mostrar el texto con el porcentaje
- * @param color Color principal de la barra de progreso
+ * Este componente proporciona una barra de progreso visual que indica el avance del usuario
+ * a través de un formulario de varios pasos o un proceso secuencial. Puede mostrar opcionalmente
+ * etiquetas para el paso actual y el total de pasos, y es personalizable en términos de colores y tamaños.
+ *
+ * @param currentStep El paso actual en el que se encuentra el usuario (comienza desde 1)
+ * @param totalSteps El número total de pasos en el formulario
+ * @param modifier Modificador opcional para personalizar el diseño del componente
+ * @param showLabels Si se deben mostrar etiquetas indicando el paso actual y el total (por defecto: true)
+ * @param showStepText Si se debe mostrar el texto "Paso X de Y" (por defecto: true)
+ * @param progressColor Color personalizado para la barra de progreso (por defecto: usa el color primario del tema)
+ * @param trackColor Color personalizado para el fondo de la barra de progreso (por defecto: usa el color de superficie del tema)
+ * @param stepLabel Etiqueta personalizada para mostrar antes del número de paso (por defecto: "Paso")
+ * @param height Altura personalizada para la barra de progreso (por defecto: 8.dp)
  */
 @Composable
 fun FormProgressIndicator(
     currentStep: Int,
     totalSteps: Int,
     modifier: Modifier = Modifier,
-    showLabel: Boolean = true,
-    color: Color = MaterialTheme.colorScheme.primary
+    showLabels: Boolean = true,
+    showStepText: Boolean = true,
+    progressColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+    trackColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
+    stepLabel: String = "Paso",
+    height: androidx.compose.ui.unit.Dp = 8.dp
 ) {
-    val progress = (currentStep.toFloat() / totalSteps).coerceIn(0f, 1f)
+    // Validación de parámetros
+    val validCurrentStep = currentStep.coerceIn(1, totalSteps)
+    val progress = validCurrentStep.toFloat() / totalSteps.toFloat()
+    
+    // Animación del progreso
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(durationMillis = 500),
         label = "ProgressAnimation"
     )
     
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (showLabel) {
-            Text(
-                text = "${(progress * 100).toInt()}% completado",
-                modifier = Modifier.padding(bottom = 8.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium
-            )
-        }
-        
-        // Barra de progreso estilizada
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(12.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(animatedProgress)
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(color)
-            )
-        }
-        
-        // Indicadores de pasos
-        if (totalSteps <= 10) {
+    Column(modifier = modifier) {
+        // Mostrar etiquetas si está habilitado
+        if (showLabels) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                for (i in 1..totalSteps) {
-                    val isCompleted = i <= currentStep
-                    val stepColor = if (isCompleted) color else MaterialTheme.colorScheme.surfaceVariant
-                    
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 2.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .clip(CircleShape)
-                                .background(stepColor)
-                                .align(Alignment.Center)
-                        )
-                    }
+                // Etiqueta para el paso actual
+                if (showStepText) {
+                    Text(
+                        text = "$stepLabel $validCurrentStep de $totalSteps",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
+                
+                // Porcentaje de finalización
+                Text(
+                    text = "${(progress * 100).toInt()}% completado",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+        }
+        
+        // Barra de progreso
+        LinearProgressIndicator(
+            progress = { animatedProgress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height),
+            trackColor = trackColor,
+            color = progressColor
+        )
+    }
+}
+
+/**
+ * Vista previa del componente FormProgressIndicator.
+ * 
+ * Muestra tres ejemplos del indicador de progreso con diferentes configuraciones:
+ * 1. Con etiquetas predeterminadas
+ * 2. Sin etiquetas
+ * 3. Con etiqueta personalizada
+ */
+@Preview(showBackground = true)
+@Composable
+fun FormProgressIndicatorPreview() {
+    MaterialTheme {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(32.dp)
+        ) {
+            // Ejemplo 1: Con etiquetas predeterminadas
+            Text(
+                text = "Con etiquetas predeterminadas",
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            FormProgressIndicator(
+                currentStep = 2,
+                totalSteps = 4,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            // Ejemplo 2: Sin etiquetas
+            Text(
+                text = "Sin etiquetas",
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            FormProgressIndicator(
+                currentStep = 3,
+                totalSteps = 5,
+                showLabels = false,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            // Ejemplo 3: Con etiqueta personalizada
+            Text(
+                text = "Con etiqueta personalizada",
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            FormProgressIndicator(
+                currentStep = 1,
+                totalSteps = 3,
+                stepLabel = "Etapa",
+                progressColor = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 } 

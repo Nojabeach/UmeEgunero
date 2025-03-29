@@ -416,7 +416,7 @@ fun AddCentroScreen(
                         FormProgressIndicator(
                             currentStep = currentStep,
                             totalSteps = totalSteps,
-                            showLabel = false
+                            showLabels = false
                         )
                     }
                 }

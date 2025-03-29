@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Comunicado
 import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.feature.admin.model.ComunicadosUiState
+import com.tfg.umeegunero.data.model.ComunicadosUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
