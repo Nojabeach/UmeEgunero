@@ -5,8 +5,10 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -68,6 +70,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
 import com.tfg.umeegunero.feature.centro.screen.GestionProfesoresScreen
+import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
+import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
+import com.tfg.umeegunero.data.model.TipoUsuario
 
 /**
  * Componente principal de navegación de la aplicación UmeEgunero.
@@ -383,6 +388,71 @@ fun Navigation(
                 UserDetailScreen(
                     navController = navController,
                     userId = dni
+                )
+            }
+
+            // Ruta para añadir un nuevo usuario
+            composable(
+                route = "add_user/{isAdminApp}?tipo={tipoUsuario}",
+                arguments = listOf(
+                    navArgument("isAdminApp") { type = NavType.BoolType },
+                    navArgument("tipoUsuario") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: true
+                val tipoUsuarioStr = backStackEntry.arguments?.getString("tipoUsuario")
+                
+                val tipoUsuario = tipoUsuarioStr?.let { TipoUsuario.valueOf(it) } ?: TipoUsuario.FAMILIAR
+                
+                val viewModel: AddUserViewModel = hiltViewModel()
+                // Configurar el tipo de usuario inicial si se proporciona
+                LaunchedEffect(tipoUsuario) {
+                    viewModel.updateTipoUsuario(tipoUsuario)
+                }
+                
+                val state = viewModel.uiState.collectAsState().value
+                
+                // Adaptamos el estado del viewmodel al formato que espera la UI
+                val screenUiState = com.tfg.umeegunero.feature.common.users.screen.AddUserUiState(
+                    dni = state.dni,
+                    dniError = state.dniError,
+                    email = state.email,
+                    emailError = state.emailError,
+                    password = state.password,
+                    passwordError = state.passwordError,
+                    confirmPassword = state.confirmPassword,
+                    confirmPasswordError = state.confirmPasswordError,
+                    nombre = state.nombre,
+                    nombreError = state.nombreError,
+                    apellidos = state.apellidos,
+                    apellidosError = state.apellidosError,
+                    telefono = state.telefono,
+                    telefonoError = state.telefonoError,
+                    tipoUsuario = state.tipoUsuario,
+                    isLoading = state.isLoading,
+                    error = state.error,
+                    success = state.success,
+                    isAdminApp = isAdminApp
+                )
+                
+                AddUserScreen(
+                    uiState = screenUiState,
+                    onUpdateDni = viewModel::updateDni,
+                    onUpdateEmail = viewModel::updateEmail,
+                    onUpdatePassword = viewModel::updatePassword,
+                    onUpdateConfirmPassword = viewModel::updateConfirmPassword,
+                    onUpdateNombre = viewModel::updateNombre,
+                    onUpdateApellidos = viewModel::updateApellidos,
+                    onUpdateTelefono = viewModel::updateTelefono,
+                    onUpdateTipoUsuario = viewModel::updateTipoUsuario,
+                    onUpdateCentroSeleccionado = { centro -> centro?.id?.let { viewModel.updateCentroSeleccionado(it) } },
+                    onSaveUser = viewModel::saveUser,
+                    onClearError = viewModel::clearError,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

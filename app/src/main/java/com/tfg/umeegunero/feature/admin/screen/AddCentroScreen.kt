@@ -39,16 +39,19 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -205,6 +208,10 @@ fun AddCentroScreen(
     var currentStep by remember { mutableStateOf(1) }
     val totalSteps = 3
     
+    // Añadir variables de estado para el diálogo de opciones
+    var showOptionsDialog by remember { mutableStateOf(false) }
+    var savedCentroId by remember { mutableStateOf("") }
+    
     // Función para validar el formulario
     fun validateForm(): Boolean {
         // Validar campos obligatorios
@@ -275,6 +282,7 @@ fun AddCentroScreen(
             onSuccess = {
                 isLoading = false
                 scope.launch {
+                    // Mostrar un diálogo de éxito con opciones
                     val result = snackbarHostState.showSnackbar(
                         message = "Centro añadido correctamente",
                         actionLabel = "Gestionar Cursos",
@@ -286,7 +294,9 @@ fun AddCentroScreen(
                             navController.navigate(AppScreens.GestionCursos.createRoute(centro.id))
                         }
                         SnackbarResult.Dismissed -> {
-                            navController.popBackStack()
+                            // Mostrar diálogo con opciones adicionales
+                            showOptionsDialog = true
+                            savedCentroId = centro.id
                         }
                     }
                 }
@@ -295,6 +305,41 @@ fun AddCentroScreen(
                 isLoading = false
                 scope.launch {
                     snackbarHostState.showSnackbar(error)
+                }
+            }
+        )
+    }
+    
+    // Añadir diálogo de opciones después de guardar
+    if (showOptionsDialog && savedCentroId.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showOptionsDialog = false },
+            title = { Text("Centro guardado correctamente") },
+            text = { 
+                Text("¿Qué desea hacer a continuación?") 
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showOptionsDialog = false
+                        navController.navigate(AppScreens.GestionCursos.createRoute(savedCentroId))
+                    }
+                ) {
+                    Icon(Icons.Filled.MenuBook, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Gestionar Cursos")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        showOptionsDialog = false
+                        navController.popBackStack()
+                    }
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Volver")
                 }
             }
         )
@@ -361,6 +406,101 @@ fun AddCentroScreen(
                             totalSteps = totalSteps,
                             showLabel = false
                         )
+                    }
+                }
+                
+                // Información acerca de las capacidades del administrador
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Flujo de gestión académica",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
+                            Text(
+                                text = "Como administrador de la aplicación, puede crear centros educativos y posteriormente gestionar:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Centros educativos",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.MenuBook,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Cursos académicos",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Groups,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Clases y grupos",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
                     }
                 }
                 
@@ -1969,7 +2109,7 @@ private fun obtenerLatitudPorDefecto(ciudad: String, provincia: String): Double 
         "Segovia" to 40.942903,
         "Pontevedra" to 42.431196,
         "Orense" to 42.335344,
-        "Guadalajara" to 40.632771,
+        "Guadalajara" to 39.986356,
         "Palencia" to 42.010369,
         "Ávila" to 40.656685,
         "Teruel" to 40.345673,
