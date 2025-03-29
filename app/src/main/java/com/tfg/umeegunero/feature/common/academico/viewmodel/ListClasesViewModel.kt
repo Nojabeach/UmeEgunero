@@ -47,17 +47,25 @@ class ListClasesViewModel @Inject constructor(
         val cursoId = savedStateHandle.get<String>("cursoId")
         if (!cursoId.isNullOrEmpty()) {
             _uiState.update { it.copy(cursoId = cursoId) }
-            cargarClases(cursoId)
+            cargarClases()
             cargarDatosCurso(cursoId)
         }
     }
     
     /**
      * Carga las clases de un curso específico
-     * @param cursoId ID del curso
      */
-    fun cargarClases(cursoId: String) {
-        _uiState.update { it.copy(isLoading = true, error = null, cursoId = cursoId) }
+    fun cargarClases() {
+        val cursoId = _uiState.value.cursoId
+        if (cursoId.isEmpty()) {
+            _uiState.update { it.copy(
+                error = "No se pudo determinar el curso para cargar las clases",
+                isLoading = false
+            ) }
+            return
+        }
+        
+        _uiState.update { it.copy(isLoading = true, error = null) }
         
         viewModelScope.launch {
             when (val result = claseRepository.getClasesByCursoId(cursoId)) {
@@ -120,7 +128,7 @@ class ListClasesViewModel @Inject constructor(
                 is Result.Success -> {
                     Timber.d("Clase eliminada: $claseId")
                     // Recargar la lista de clases después de eliminar
-                    cargarClases(_uiState.value.cursoId)
+                    cargarClases()
                 }
                 is Result.Error -> {
                     Timber.e(result.exception, "Error al eliminar clase")

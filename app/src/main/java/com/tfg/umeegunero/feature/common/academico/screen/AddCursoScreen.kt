@@ -23,27 +23,38 @@ import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla para añadir un nuevo curso al sistema
+ * Pantalla para añadir un nuevo curso o editar uno existente
  * 
  * @param navController Controlador de navegación
- * @param viewModel ViewModel para la gestión de cursos
+ * @param centroId ID del centro educativo donde se añadirá el curso
+ * @param onNavigateBack Callback para navegar hacia atrás
+ * @param onCursoAdded Callback que se ejecuta cuando se añade o actualiza un curso
+ * @param viewModel ViewModel para la gestión del curso
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddCursoScreen(
+fun HiltAddCursoScreen(
     navController: NavController,
+    centroId: String,
+    onNavigateBack: () -> Unit = { navController.popBackStack() },
+    onCursoAdded: () -> Unit = {},
     viewModel: AddCursoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val scrollState = rememberScrollState()
+
+    // Establecer el centroId al iniciar
+    LaunchedEffect(centroId) {
+        viewModel.updateCentroId(centroId)
+    }
 
     // Efecto para manejar la navegación después de un guardado exitoso
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
-            navController.popBackStack()
+            onCursoAdded()
+            onNavigateBack()
         }
     }
 
@@ -52,7 +63,7 @@ fun AddCursoScreen(
             DefaultTopAppBar(
                 title = if (uiState.isEditMode) "Editar Curso" else "Nuevo Curso",
                 showBackButton = true,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = onNavigateBack
             )
         },
         floatingActionButton = {
@@ -86,9 +97,9 @@ fun AddCursoScreen(
                     value = uiState.nombre,
                     onValueChange = viewModel::updateNombre,
                     label = "Nombre del curso",
-                    placeholder = "Ej: Infantil 3 años",
-                    errorMessage = uiState.errorNombre ?: "",
-                    isError = uiState.errorNombre != null,
+                    placeholder = "Ej: Infantil 3 años, Primaria 1º",
+                    errorMessage = uiState.nombreError ?: "",
+                    isError = uiState.nombreError != null,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -97,21 +108,21 @@ fun AddCursoScreen(
                     value = uiState.descripcion,
                     onValueChange = viewModel::updateDescripcion,
                     label = "Descripción",
-                    placeholder = "Descripción del curso, objetivos, etc.",
-                    errorMessage = uiState.errorDescripcion ?: "",
-                    isError = uiState.errorDescripcion != null,
+                    placeholder = "Describe el curso académico",
+                    errorMessage = uiState.descripcionError ?: "",
+                    isError = uiState.descripcionError != null,
                     modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
+                    maxLines = 4
                 )
 
                 // Edad mínima
                 OutlinedTextFieldWithError(
                     value = uiState.edadMinima,
                     onValueChange = viewModel::updateEdadMinima,
-                    label = "Edad mínima",
+                    label = "Edad mínima (años)",
                     placeholder = "Ej: 3",
-                    errorMessage = uiState.errorEdadMinima ?: "",
-                    isError = uiState.errorEdadMinima != null,
+                    errorMessage = uiState.edadMinimaError ?: "",
+                    isError = uiState.edadMinimaError != null,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
@@ -120,10 +131,10 @@ fun AddCursoScreen(
                 OutlinedTextFieldWithError(
                     value = uiState.edadMaxima,
                     onValueChange = viewModel::updateEdadMaxima,
-                    label = "Edad máxima",
+                    label = "Edad máxima (años)",
                     placeholder = "Ej: 4",
-                    errorMessage = uiState.errorEdadMaxima ?: "",
-                    isError = uiState.errorEdadMaxima != null,
+                    errorMessage = uiState.edadMaximaError ?: "",
+                    isError = uiState.edadMaximaError != null,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
@@ -134,8 +145,8 @@ fun AddCursoScreen(
                     onValueChange = viewModel::updateAnioAcademico,
                     label = "Año académico",
                     placeholder = "Ej: 2023-2024",
-                    errorMessage = uiState.errorAnioAcademico ?: "",
-                    isError = uiState.errorAnioAcademico != null,
+                    errorMessage = uiState.anioAcademicoError ?: "",
+                    isError = uiState.anioAcademicoError != null,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -176,22 +187,4 @@ fun AddCursoScreen(
             }
         }
     }
-}
-
-/**
- * Versión del componente que utiliza Hilt para la inyección de dependencias,
- * diseñada para ser llamada desde Navigation.
- */
-@Composable
-fun HiltAddCursoScreen(
-    navController: NavController,
-    centroId: String = "",
-    onNavigateBack: () -> Unit = { navController.popBackStack() },
-    onCursoAdded: () -> Unit = { navController.popBackStack() },
-    viewModel: AddCursoViewModel = hiltViewModel()
-) {
-    AddCursoScreen(
-        navController = navController,
-        viewModel = viewModel
-    )
 } 

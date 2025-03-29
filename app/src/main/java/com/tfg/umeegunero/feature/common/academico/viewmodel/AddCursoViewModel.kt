@@ -34,11 +34,11 @@ data class AddCursoUiState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
     val error: String? = null,
-    val errorNombre: String? = null,
-    val errorDescripcion: String? = null,
-    val errorEdadMinima: String? = null,
-    val errorEdadMaxima: String? = null,
-    val errorAnioAcademico: String? = null,
+    val nombreError: String? = null,
+    val descripcionError: String? = null,
+    val edadMinimaError: String? = null,
+    val edadMaximaError: String? = null,
+    val anioAcademicoError: String? = null,
     val isEditMode: Boolean = false
 )
 
@@ -151,13 +151,20 @@ class AddCursoViewModel @Inject constructor(
     }
     
     /**
+     * Actualiza el ID del centro educativo
+     */
+    fun updateCentroId(centroId: String) {
+        _uiState.update { it.copy(centroId = centroId) }
+    }
+    
+    /**
      * Actualiza el nombre del curso
      */
     fun updateNombre(nombre: String) {
         _uiState.update { 
             it.copy(
                 nombre = nombre,
-                errorNombre = null
+                nombreError = null
             )
         }
     }
@@ -169,7 +176,7 @@ class AddCursoViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 descripcion = descripcion,
-                errorDescripcion = null
+                descripcionError = null
             )
         }
     }
@@ -181,7 +188,7 @@ class AddCursoViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 edadMinima = edadMinima,
-                errorEdadMinima = null
+                edadMinimaError = null
             )
         }
     }
@@ -193,7 +200,7 @@ class AddCursoViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 edadMaxima = edadMaxima,
-                errorEdadMaxima = null
+                edadMaximaError = null
             )
         }
     }
@@ -205,7 +212,7 @@ class AddCursoViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 anioAcademico = anioAcademico,
-                errorAnioAcademico = null
+                anioAcademicoError = null
             )
         }
     }
@@ -297,20 +304,20 @@ class AddCursoViewModel @Inject constructor(
         
         // Validar nombre
         if (state.nombre.isBlank()) {
-            _uiState.update { it.copy(errorNombre = "El nombre es obligatorio") }
+            _uiState.update { it.copy(nombreError = "El nombre es obligatorio") }
             isValid = false
         }
         
         // Validar edades
         val edadMinima = state.edadMinima.toIntOrNull()
         if (edadMinima == null) {
-            _uiState.update { it.copy(errorEdadMinima = "Introduce una edad válida") }
+            _uiState.update { it.copy(edadMinimaError = "Introduce una edad válida") }
             isValid = false
         }
         
         val edadMaxima = state.edadMaxima.toIntOrNull()
         if (edadMaxima == null) {
-            _uiState.update { it.copy(errorEdadMaxima = "Introduce una edad válida") }
+            _uiState.update { it.copy(edadMaximaError = "Introduce una edad válida") }
             isValid = false
         }
         
@@ -318,8 +325,8 @@ class AddCursoViewModel @Inject constructor(
         if (edadMinima != null && edadMaxima != null && edadMinima > edadMaxima) {
             _uiState.update { 
                 it.copy(
-                    errorEdadMinima = "La edad mínima no puede ser mayor que la máxima",
-                    errorEdadMaxima = "La edad máxima no puede ser menor que la mínima"
+                    edadMinimaError = "La edad mínima no puede ser mayor que la máxima",
+                    edadMaximaError = "La edad máxima no puede ser menor que la mínima"
                 ) 
             }
             isValid = false
@@ -327,10 +334,10 @@ class AddCursoViewModel @Inject constructor(
         
         // Validar año académico
         if (state.anioAcademico.isBlank()) {
-            _uiState.update { it.copy(errorAnioAcademico = "El año académico es obligatorio") }
+            _uiState.update { it.copy(anioAcademicoError = "El año académico es obligatorio") }
             isValid = false
         } else if (!state.anioAcademico.matches(Regex("^\\d{4}-\\d{4}$"))) {
-            _uiState.update { it.copy(errorAnioAcademico = "Formato incorrecto. Debe ser YYYY-YYYY") }
+            _uiState.update { it.copy(anioAcademicoError = "Formato incorrecto. Debe ser YYYY-YYYY") }
             isValid = false
         }
         

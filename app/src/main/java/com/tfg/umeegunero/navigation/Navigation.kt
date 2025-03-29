@@ -89,7 +89,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import com.tfg.umeegunero.feature.common.academico.screen.GestionCursosScreen
 import com.tfg.umeegunero.feature.common.academico.screen.GestionClasesScreen
-import com.tfg.umeegunero.feature.common.academico.screen.AddCursoScreen
 import com.tfg.umeegunero.feature.admin.screen.SeguridadScreen
 import com.tfg.umeegunero.navigation.Screens
 import com.tfg.umeegunero.feature.common.academico.screen.HiltAddCursoScreen
@@ -869,16 +868,12 @@ fun Navigation(
             // Añadir la ruta para la pantalla de Añadir Curso
             composable(
                 route = Screens.AddCurso.route,
-                arguments = listOf(
-                    navArgument("centroId") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            ) {
                 HiltAddCursoScreen(
                     navController = navController,
-                    centroId = centroId,
+                    centroId = "default_centro_id", // Este valor debe venir del contexto real
                     onNavigateBack = { navController.popBackStack() },
-                    onCursoAdded = { navController.popBackStack() }
+                    onCursoAdded = { /* Puedes mostrar un mensaje o recargar datos */ }
                 )
             }
 
@@ -892,8 +887,13 @@ fun Navigation(
                 arguments = listOf(
                     navArgument("cursoId") { type = NavType.StringType }
                 )
-            ) {
-                AddCursoScreen(navController = navController)
+            ) { backStackEntry ->
+                val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+                HiltAddCursoScreen(
+                    navController = navController,
+                    centroId = "default_centro_id", // Este valor debe venir del contexto real
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             
             composable(

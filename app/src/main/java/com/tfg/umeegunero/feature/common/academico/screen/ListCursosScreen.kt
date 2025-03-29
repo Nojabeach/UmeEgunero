@@ -110,57 +110,59 @@ fun ListCursosScreen(
             }
 
             // Mostrar mensaje de error si existe
-            uiState.error?.let { error ->
-                LaunchedEffect(error) {
+            if (uiState.error != null) {
+                LaunchedEffect(uiState.error) {
                     scope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = error,
-                            duration = SnackbarDuration.Short
-                        )
+                        snackbarHostState.showSnackbar(uiState.error!!)
                         viewModel.clearError()
                     }
                 }
             }
-        }
-    }
 
-    // Diálogo de confirmación para eliminar curso
-    if (showConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Eliminar curso") },
-            text = { Text("¿Estás seguro de que deseas eliminar el curso '${cursoToDelete?.nombre}'? Esta acción no se puede deshacer.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        cursoToDelete?.let { curso ->
-                            viewModel.eliminarCurso(curso.id)
-                            showConfirmDialog = false
+            // Diálogo de confirmación para eliminar curso
+            if (showConfirmDialog) {
+                AlertDialog(
+                    onDismissRequest = { showConfirmDialog = false },
+                    title = { Text("Confirmar eliminación") },
+                    text = { Text("¿Está seguro que desea eliminar el curso ${cursoToDelete?.nombre}? Esta acción no se puede deshacer.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                cursoToDelete?.let { curso ->
+                                    viewModel.eliminarCurso(curso.id)
+                                    showConfirmDialog = false
+                                    cursoToDelete = null
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Eliminar")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showConfirmDialog = false }) {
+                            Text("Cancelar")
                         }
                     }
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancelar")
-                }
+                )
             }
-        )
+        }
     }
 }
 
 /**
- * Componente que muestra la información de un curso en forma de tarjeta
- * 
- * @param curso Curso a mostrar
- * @param onEditClick Acción al hacer clic en el botón de editar
- * @param onDeleteClick Acción al hacer clic en el botón de eliminar
- * @param onVerClasesClick Acción al hacer clic en el botón de ver clases
+ * Tarjeta que muestra la información de un curso académico
+ *
+ * @param curso Datos del curso a mostrar
+ * @param onEditClick Callback para el evento de edición
+ * @param onDeleteClick Callback para el evento de eliminación
+ * @param onVerClasesClick Callback para navegar a las clases del curso
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CursoCard(
+private fun CursoCard(
     curso: Curso,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -170,73 +172,143 @@ fun CursoCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
+            // Fila superior: Título y estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = curso.nombre,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "Año académico: ${curso.anioAcademico}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Edad: ${curso.edadMinima} - ${curso.edadMaxima} años",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Row {
-                    IconButton(onClick = onEditClick) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Editar curso",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar curso",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            if (curso.descripcion.isNotEmpty()) {
                 Text(
-                    text = curso.descripcion,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                    text = curso.nombre,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
                 )
+                
+                if (curso.activo) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Text(
+                            text = "Activo",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                } else {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.error
+                    ) {
+                        Text(
+                            text = "Inactivo",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            Button(
-                onClick = onVerClasesClick,
-                modifier = Modifier.align(Alignment.End)
+            // Descripción
+            Text(
+                text = curso.descripcion,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Información adicional
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.List,
+                    imageVector = Icons.Default.CalendarToday,
                     contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
                 )
-                Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                Text(text = "Ver clases")
+                
+                Text(
+                    text = curso.anioAcademico,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
+                )
+                
+                Text(
+                    text = "Edad: ${curso.edadMinima}-${curso.edadMaxima} años",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Fila de acciones
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                // Botón para ver clases
+                TextButton(
+                    onClick = onVerClasesClick,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.List,
+                        contentDescription = "Ver clases",
+                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text("Ver clases")
+                }
+                
+                // Botón para editar
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar curso",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                // Botón para eliminar
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar curso",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }

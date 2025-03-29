@@ -20,9 +20,11 @@ import com.tfg.umeegunero.ui.components.EmptyStateMessage
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.navigation.Screens
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
- * Pantalla que muestra el listado de clases de un curso específico
+ * Pantalla que muestra el listado de clases de un curso
+ * Permite añadir, editar y eliminar clases
  * 
  * @param navController Controlador de navegación
  * @param viewModel ViewModel para la gestión de clases
@@ -39,29 +41,23 @@ fun ListClasesScreen(
     var showConfirmDialog by remember { mutableStateOf(false) }
     var claseToDelete by remember { mutableStateOf<Clase?>(null) }
 
-    // Obtener el cursoId del argumento de navegación
-    val cursoId = remember { 
-        navController.currentBackStackEntry?.arguments?.getString("cursoId") ?: ""
-    }
-
-    // Cargar las clases al iniciar la pantalla
-    LaunchedEffect(key1 = cursoId) {
-        if (cursoId.isNotEmpty()) {
-            viewModel.cargarClases(cursoId)
-        }
+    LaunchedEffect(key1 = true) {
+        viewModel.cargarClases()
     }
 
     Scaffold(
         topBar = {
             DefaultTopAppBar(
-                title = "Clases del curso: ${uiState.nombreCurso}",
+                title = "Gestión de Clases",
                 showBackButton = true,
                 onBackClick = { navController.popBackStack() }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(Screens.AddClase.createRoute(cursoId)) },
+                onClick = { 
+                    navController.navigate(Screens.AddClase.createRoute(uiState.cursoId))
+                },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
@@ -77,16 +73,18 @@ fun ListClasesScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Mostrar indicador de carga
+            // Mostrar el indicador de carga
             if (uiState.isLoading) {
                 LoadingIndicator(fullScreen = true)
             } else if (uiState.clases.isEmpty()) {
                 // Mostrar mensaje si no hay clases
                 EmptyStateMessage(
-                    message = "No hay clases disponibles para este curso",
-                    icon = Icons.Default.Group,
+                    message = "No hay clases disponibles en este curso",
+                    icon = Icons.Default.Class,
                     buttonText = "Añadir clase",
-                    onButtonClick = { navController.navigate(Screens.AddClase.createRoute(cursoId)) }
+                    onButtonClick = { 
+                        navController.navigate(Screens.AddClase.createRoute(uiState.cursoId))
+                    }
                 )
             } else {
                 // Mostrar la lista de clases
@@ -105,8 +103,9 @@ fun ListClasesScreen(
                                 claseToDelete = clase
                                 showConfirmDialog = true
                             },
-                            onVerAlumnosClick = {
-                                // Acción para ver alumnos (pendiente implementación)
+                            onVerDetallesClick = {
+                                // Navegar a los detalles de la clase (alumnos, etc)
+                                // Por implementar
                             }
                         )
                     }
@@ -114,117 +113,111 @@ fun ListClasesScreen(
             }
 
             // Mostrar mensaje de error si existe
-            uiState.error?.let { error ->
-                LaunchedEffect(error) {
+            if (uiState.error != null) {
+                LaunchedEffect(uiState.error) {
                     scope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = error,
-                            duration = SnackbarDuration.Short
-                        )
+                        snackbarHostState.showSnackbar(uiState.error!!)
                         viewModel.clearError()
                     }
                 }
             }
-        }
-    }
 
-    // Diálogo de confirmación para eliminar clase
-    if (showConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Eliminar clase") },
-            text = { Text("¿Estás seguro de que deseas eliminar la clase '${claseToDelete?.nombre}'? Esta acción no se puede deshacer.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        claseToDelete?.let { clase ->
-                            viewModel.eliminarClase(clase.id)
-                            showConfirmDialog = false
+            // Diálogo de confirmación para eliminar clase
+            if (showConfirmDialog) {
+                AlertDialog(
+                    onDismissRequest = { showConfirmDialog = false },
+                    title = { Text("Confirmar eliminación") },
+                    text = { Text("¿Está seguro que desea eliminar la clase ${claseToDelete?.nombre}? Esta acción no se puede deshacer.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                claseToDelete?.let { clase ->
+                                    viewModel.eliminarClase(clase.id)
+                                    showConfirmDialog = false
+                                    claseToDelete = null
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Eliminar")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showConfirmDialog = false }) {
+                            Text("Cancelar")
                         }
                     }
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancelar")
-                }
+                )
             }
-        )
+        }
     }
 }
 
 /**
- * Componente que muestra la información de una clase en forma de tarjeta
- * 
- * @param clase Clase a mostrar
- * @param onEditClick Acción al hacer clic en el botón de editar
- * @param onDeleteClick Acción al hacer clic en el botón de eliminar
- * @param onVerAlumnosClick Acción al hacer clic en el botón de ver alumnos
+ * Tarjeta que muestra la información de una clase
+ *
+ * @param clase Datos de la clase a mostrar
+ * @param onEditClick Callback para el evento de edición
+ * @param onDeleteClick Callback para el evento de eliminación
+ * @param onVerDetallesClick Callback para ver detalles de la clase
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClaseCard(
+private fun ClaseCard(
     clase: Clase,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onVerAlumnosClick: () -> Unit
+    onVerDetallesClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
+            // Fila superior: Título y estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Clase ${clase.nombre}",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "Aula: ${clase.aula}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Capacidad: ${clase.capacidadMaxima} alumnos",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (clase.alumnosIds.isNotEmpty()) {
+                Text(
+                    text = "Clase ${clase.nombre}",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                if (clase.activo) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ) {
                         Text(
-                            text = "Alumnos: ${clase.alumnosIds.size}",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "Activa",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
-                    if (clase.horario.isNotEmpty()) {
+                } else {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.error
+                    ) {
                         Text(
-                            text = "Horario: ${clase.horario}",
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-                Row {
-                    IconButton(onClick = onEditClick) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Editar clase",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar clase",
-                            tint = MaterialTheme.colorScheme.error
+                            text = "Inactiva",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -232,17 +225,122 @@ fun ClaseCard(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            Button(
-                onClick = onVerAlumnosClick,
-                modifier = Modifier.align(Alignment.End)
+            // Información adicional
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Room,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
+                )
+                
+                Text(
+                    text = clase.aula,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
+                )
+                
+                Text(
+                    text = clase.horario,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Capacidad
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Default.People,
                     contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
                 )
-                Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                Text(text = "Ver alumnos")
+                
+                Text(
+                    text = "Capacidad máxima: ${clase.capacidadMaxima} alumnos",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
+                )
+                
+                Text(
+                    text = "Alumnos: ${clase.alumnosIds.size}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Fila de acciones
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                // Botón para ver detalles
+                TextButton(
+                    onClick = onVerDetallesClick,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Ver detalles",
+                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text("Detalles")
+                }
+                
+                // Botón para editar
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar clase",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                // Botón para eliminar
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar clase",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
