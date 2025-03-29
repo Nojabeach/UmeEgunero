@@ -185,6 +185,9 @@ fun AddCursoScreen(
 @Composable
 fun HiltAddCursoScreen(
     navController: NavController,
+    centroId: String = "",
+    onNavigateBack: () -> Unit = { navController.popBackStack() },
+    onCursoAdded: () -> Unit = { navController.popBackStack() },
     viewModel: AddCursoViewModel = hiltViewModel()
 ) {
     AddCursoScreen(

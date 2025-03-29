@@ -874,8 +874,11 @@ fun Navigation(
                 )
             ) { backStackEntry ->
                 val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
-                AddCursoScreen(
-                    navController = navController
+                HiltAddCursoScreen(
+                    navController = navController,
+                    centroId = centroId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onCursoAdded = { navController.popBackStack() }
                 )
             }
 
