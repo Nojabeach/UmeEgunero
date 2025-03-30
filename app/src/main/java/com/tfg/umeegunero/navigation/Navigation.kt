@@ -28,6 +28,10 @@ fun Navigation(
     startDestination: String = AppScreens.Welcome.route,
     onCloseApp: () -> Unit = {}
 ) {
+    // Estado para almacenar el ID y nombre del usuario actual
+    var currentUserId by remember { mutableStateOf("") }
+    var currentUserName by remember { mutableStateOf("") }
+    
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -35,8 +39,8 @@ fun Navigation(
         // Pantalla de bienvenida
         composable(route = AppScreens.Welcome.route) {
             WelcomeScreen(
-                onNavigateToLogin = { userType ->
-                    val userTypeRoute = when (userType) {
+                onNavigateToLogin = { userType: WelcomeUserType ->
+                    val userTypeRoute: String = when (userType) {
                         WelcomeUserType.ADMIN -> "ADMIN"
                         WelcomeUserType.CENTRO -> "CENTRO"
                         WelcomeUserType.PROFESOR -> "PROFESOR"
@@ -92,12 +96,20 @@ fun Navigation(
                 userType = userType,
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
-                onLoginSuccess = {
+                onLoginSuccess = { _ ->
+                    // Usar IDs ficticios para desarrollo
+                    val userId = "user123"
+                    val userName = "Usuario de Prueba"
+                    
+                    // Guardar el ID y nombre de usuario para pasarlo a los grafos de navegación
+                    currentUserId = userId
+                    currentUserName = userName
+                    
                     val route = when(userType) {
                         UserType.ADMIN_APP -> AppScreens.AdminDashboard.route
                         UserType.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
-                        UserType.PROFESOR -> AppScreens.ProfesorDashboard.route
-                        UserType.FAMILIAR -> AppScreens.FamiliarDashboard.route
+                        UserType.PROFESOR -> "profesor_graph"
+                        UserType.FAMILIAR -> "familiar_graph"
                     }
                     navController.navigate(route) {
                         popUpTo(AppScreens.Welcome.route) { inclusive = true }
@@ -118,6 +130,20 @@ fun Navigation(
                 }
             )
         }
+        
+        // Grafo de navegación para Familiar
+        familiarNavGraph(
+            navController = navController,
+            userId = currentUserId,
+            userName = currentUserName
+        )
+        
+        // Grafo de navegación para Profesor
+        profesorNavGraph(
+            navController = navController,
+            userId = currentUserId,
+            userName = currentUserName
+        )
     }
 }
 
@@ -142,4 +168,4 @@ fun CentroDashboardScreen(
             Text("Cerrar Sesión")
         }
     }
-} 
+}

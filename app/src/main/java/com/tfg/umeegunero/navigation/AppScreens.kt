@@ -404,4 +404,13 @@ sealed class AppScreens(val route: String) {
 
     /** Registros de actividad diaria */
     object RegistroActividad : AppScreens("registro_actividad")
+    
+    /**
+     * Sección: Actividades preescolares (2-3 años)
+     */
+    /** Visualización de actividades preescolares para familiares */
+    object ActividadesPreescolar : AppScreens("actividades_preescolar")
+    
+    /** Gestión de actividades preescolares para profesores */
+    object ActividadesPreescolarProfesor : AppScreens("actividades_preescolar_profesor")
 } 

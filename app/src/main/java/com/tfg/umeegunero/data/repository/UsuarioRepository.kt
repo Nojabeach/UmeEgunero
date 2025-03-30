@@ -29,8 +29,8 @@ import java.io.IOException
  */
 @Singleton
 open class UsuarioRepository @Inject constructor(
-    val auth: FirebaseAuth,
-    val firestore: FirebaseFirestore
+    private val firebaseAuth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
 ) {
     val usuariosCollection = firestore.collection("usuarios")
     val solicitudesCollection = firestore.collection("solicitudesRegistro")
@@ -53,7 +53,7 @@ open class UsuarioRepository @Inject constructor(
             }
 
             // 2. Crear usuario en Firebase Auth
-            val authResult = auth.createUserWithEmailAndPassword(form.email, form.password).await()
+            val authResult = firebaseAuth.createUserWithEmailAndPassword(form.email, form.password).await()
             val uid = authResult.user?.uid ?: throw Exception("Error al crear usuario en Firebase Auth")
 
             // 3. Crear perfil de familia
@@ -107,7 +107,7 @@ open class UsuarioRepository @Inject constructor(
     suspend fun iniciarSesion(email: String, password: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             Timber.d("Intentando login en Firebase Auth para email: $email")
-            val authResult = auth.signInWithEmailAndPassword(email, password).await()
+            val authResult = firebaseAuth.signInWithEmailAndPassword(email, password).await()
             val uid = authResult.user?.uid ?: throw Exception("Error al iniciar sesión: UID no disponible")
             Timber.d("Login exitoso en Firebase Auth, UID: $uid")
 
@@ -127,7 +127,7 @@ open class UsuarioRepository @Inject constructor(
             } else {
                 Timber.e("Usuario no encontrado en Firestore para email: $email")
                 // Cerrar sesión ya que el usuario no existe en Firestore
-                auth.signOut()
+                firebaseAuth.signOut()
                 return@withContext Result.Error(Exception("Usuario no encontrado en la base de datos"))
             }
         } catch (e: FirebaseAuthException) {
@@ -143,7 +143,7 @@ open class UsuarioRepository @Inject constructor(
      * Cierra la sesión actual
      */
     fun cerrarSesion() {
-        auth.signOut()
+        firebaseAuth.signOut()
     }
 
     /**
@@ -152,7 +152,7 @@ open class UsuarioRepository @Inject constructor(
     fun getUsuarioActual(): Flow<Result<Usuario?>> = flow {
         emit(Result.Loading)
         try {
-            val currentUser = auth.currentUser
+            val currentUser = firebaseAuth.currentUser
 
             if (currentUser != null) {
                 // Buscar el usuario en Firestore por email
@@ -177,7 +177,7 @@ open class UsuarioRepository @Inject constructor(
      * Obtiene el ID del usuario actualmente logueado
      */
     suspend fun getUsuarioActualId(): String = withContext(Dispatchers.IO) {
-        val user = auth.currentUser ?: return@withContext ""
+        val user = firebaseAuth.currentUser ?: return@withContext ""
 
         // Buscar el usuario en Firestore por email
         val userQuery = usuariosCollection.whereEqualTo("email", user.email).get().await()
@@ -263,7 +263,7 @@ open class UsuarioRepository @Inject constructor(
      */
     suspend fun crearUsuarioConEmailYPassword(email: String, password: String): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val authResult = auth.createUserWithEmailAndPassword(email, password).await()
+            val authResult = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             val uid = authResult.user?.uid ?: throw Exception("Error al crear usuario en Firebase Auth")
             
             return@withContext Result.Success(uid)
@@ -280,7 +280,7 @@ open class UsuarioRepository @Inject constructor(
     suspend fun borrarUsuario(uid: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             // Necesitamos reautenticar al usuario antes de eliminarlo
-            val user = auth.currentUser
+            val user = firebaseAuth.currentUser
             
             if (user != null && user.uid == uid) {
                 user.delete().await()
@@ -300,7 +300,7 @@ open class UsuarioRepository @Inject constructor(
      */
     suspend fun recuperarContraseña(email: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            auth.sendPasswordResetEmail(email).await()
+            firebaseAuth.sendPasswordResetEmail(email).await()
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
             return@withContext Result.Error(e)
@@ -1281,7 +1281,7 @@ open class UsuarioRepository @Inject constructor(
             val usuario = usuarioResult.data
             
             // Buscamos el usuario en Firebase Auth por su email
-            val userQuery = auth.fetchSignInMethodsForEmail(usuario.email).await()
+            val userQuery = firebaseAuth.fetchSignInMethodsForEmail(usuario.email).await()
             
             if (userQuery.signInMethods?.isNotEmpty() == true) {
                 // Generamos un código de reautenticación
@@ -1292,7 +1292,7 @@ open class UsuarioRepository @Inject constructor(
                     .data as String
                     
                 // Iniciamos sesión con el token personalizado
-                val authResult = auth.signInWithCustomToken(customToken).await()
+                val authResult = firebaseAuth.signInWithCustomToken(customToken).await()
                 
                 // Actualizamos la contraseña
                 authResult.user?.updatePassword(newPassword)?.await()

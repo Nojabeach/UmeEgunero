@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
+import com.tfg.umeegunero.data.repository.ActividadPreescolarRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
@@ -58,7 +59,7 @@ object RepositoryModule {
     fun provideAlumnoRepository(
         firestore: FirebaseFirestore
     ): AlumnoRepository {
-        return AlumnoRepositoryImpl()
+        return AlumnoRepositoryImpl(firestore)
     }
 
     @Provides
@@ -102,5 +103,20 @@ object RepositoryModule {
         registroActividadDao: RegistroActividadDao
     ): LocalRegistroActividadRepository {
         return LocalRegistroActividadRepository(registroActividadDao)
+    }
+    
+    /**
+     * Proporciona una instancia del repositorio para actividades preescolares.
+     * Este repositorio maneja las operaciones con actividades adaptadas para niños de 2-3 años.
+     *
+     * @param firestore Instancia de FirebaseFirestore
+     * @return Instancia de ActividadPreescolarRepository
+     */
+    @Provides
+    @Singleton
+    fun provideActividadPreescolarRepository(
+        firestore: FirebaseFirestore
+    ): ActividadPreescolarRepository {
+        return ActividadPreescolarRepository(firestore)
     }
 } 

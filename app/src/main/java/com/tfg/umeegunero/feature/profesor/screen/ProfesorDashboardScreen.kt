@@ -103,6 +103,7 @@ import java.util.Date
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.material.icons.filled.ChildCare
 
 /**
  * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
@@ -572,57 +573,86 @@ fun ProfesorHomeContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Sección de funcionalidades
+        // Acciones rápidas
         Text(
-            text = "Funcionalidades",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            text = "Acciones rápidas",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
         )
-        
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.height(230.dp)
+            columns = GridCells.Fixed(3),
+            state = rememberLazyGridState(),
+            contentPadding = PaddingValues(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.height(180.dp)
         ) {
-            // Función de Asistencia
             item {
-                FuncionalidadCard(
+                AccionRapidaItem(
                     title = "Asistencia",
                     icon = Icons.Default.CheckCircle,
                     color = Color(0xFF34C759),
-                    onClick = { navController.navigate(AppScreens.ProfesorAsistencia.route) }
+                    onClick = {
+                        navController.navigate(AppScreens.AsistenciaProfesor.route)
+                    }
                 )
             }
             
-            // Función de Tareas
             item {
-                FuncionalidadCard(
+                AccionRapidaItem(
                     title = "Tareas",
                     icon = Icons.AutoMirrored.Filled.Assignment,
-                    color = Color(0xFF34C759),
-                    onClick = { navController.navigate(AppScreens.ProfesorTareas.route) }
+                    color = Color(0xFF007AFF),
+                    onClick = {
+                        navController.navigate(AppScreens.ProfesorTareas.route)
+                    }
                 )
             }
             
-            // Función de Calendario
             item {
-                FuncionalidadCard(
+                AccionRapidaItem(
+                    title = "Comunicación",
+                    icon = Icons.AutoMirrored.Filled.Chat,
+                    color = Color(0xFF5856D6),
+                    onClick = {
+                        navController.navigate(AppScreens.ChatProfesor.route)
+                    }
+                )
+            }
+            
+            item {
+                AccionRapidaItem(
+                    title = "Actividades Preescolar",
+                    icon = Icons.Default.ChildCare,
+                    color = Color(0xFF8E24AA),
+                    onClick = {
+                        navController.navigate(AppScreens.ActividadesPreescolarProfesor.route)
+                    }
+                )
+            }
+            
+            item {
+                AccionRapidaItem(
+                    title = "Comedor",
+                    icon = Icons.Default.Fastfood,
+                    color = Color(0xFFFF9500),
+                    onClick = {
+                        // Navegar a comedor
+                    }
+                )
+            }
+            
+            item {
+                AccionRapidaItem(
                     title = "Calendario",
                     icon = Icons.Default.CalendarToday,
-                    color = Color(0xFF34C759),
-                    onClick = { navController.navigate(AppScreens.ProfesorCalendario.route) }
-                )
-            }
-            
-            // Función de Registro Diario
-            item {
-                FuncionalidadCard(
-                    title = "Registro Diario",
-                    icon = Icons.Default.Add,
-                    color = Color(0xFF5856D6),
-                    onClick = { navController.navigate(AppScreens.AlumnoList.route) }
+                    color = Color(0xFFFF2D55),
+                    onClick = {
+                        navController.navigate(AppScreens.ProfesorCalendario.route)
+                    }
                 )
             }
         }
@@ -1039,6 +1069,53 @@ fun ProfesorDashboardDarkPreview() {
 
 @Composable
 fun FuncionalidadCard(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .background(color.copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun AccionRapidaItem(
     title: String,
     icon: ImageVector,
     color: Color,

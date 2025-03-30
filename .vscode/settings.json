@@ -1,3 +1,12 @@
 {
-    "chat.editor.fontSize": 14
+    "chat.editor.fontSize": 14,
+    "workbench.productIconTheme": "a-file-icon-vscode-product-icon-theme",
+    "workbench.colorTheme": "Tomorrow Night Blue",
+    "workbench.preferredDarkColorTheme": "Winter is Coming (Dark Blue)",
+    "workbench.preferredHighContrastColorTheme": "Abyss",
+    "workbench.preferredHighContrastLightColorTheme": "Cursor Dark High Contrast",
+    "workbench.iconTheme": "vscode-great-icons",
+    "editor.semanticHighlighting.enabled": true,
+    "window.autoDetectColorScheme": false,
+    "editor.tokenColorCustomizations": {}
 }

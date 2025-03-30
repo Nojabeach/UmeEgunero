@@ -142,7 +142,7 @@ fun FamiliaDashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
+                        .height(180.dp)
                 ) {
                     item {
                         AccionRapidaCard(
@@ -177,6 +177,41 @@ fun FamiliaDashboardScreen(
                                 navController.navigate(AppScreens.TareasFamilia.route) {
                                     launchSingleTop = true
                                 }
+                            }
+                        )
+                    }
+                    
+                    item {
+                        AccionRapidaCard(
+                            title = "Actividades Preescolar",
+                            icon = Icons.Default.ChildCare,
+                            color = Color(0xFF8E24AA), // Morado
+                            onClick = {
+                                navController.navigate(AppScreens.ActividadesPreescolar.route) {
+                                    launchSingleTop = true
+                                }
+                            }
+                        )
+                    }
+                    
+                    item {
+                        AccionRapidaCard(
+                            title = "Asistencia",
+                            icon = Icons.Default.EventAvailable,
+                            color = Color(0xFF00897B), // Verde azulado
+                            onClick = {
+                                // Navegación a asistencia
+                            }
+                        )
+                    }
+                    
+                    item {
+                        AccionRapidaCard(
+                            title = "Notas",
+                            icon = Icons.AutoMirrored.Filled.List,
+                            color = Color(0xFFFFB300), // Ámbar
+                            onClick = {
+                                // Navegación a notas
                             }
                         )
                     }
