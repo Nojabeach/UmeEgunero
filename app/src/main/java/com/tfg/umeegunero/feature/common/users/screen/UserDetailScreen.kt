@@ -401,5 +401,6 @@ private fun getTipoUsuarioLabel(tipo: TipoUsuario): String {
         TipoUsuario.PROFESOR -> "Profesor"
         TipoUsuario.FAMILIAR -> "Familiar"
         TipoUsuario.ALUMNO -> "Alumno"
+        TipoUsuario.DESCONOCIDO -> "Desconocido"
     }
 } 

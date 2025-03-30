@@ -4,7 +4,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 
 /**
- * Modelo para representar un mensaje entre usuarios
+ * Modelo que representa un mensaje entre usuarios
  */
 data class Mensaje(
     @DocumentId val id: String = "",
@@ -14,6 +14,7 @@ data class Mensaje(
     val texto: String = "",
     val leido: Boolean = false,
     val fechaLeido: Timestamp? = null,
-    val alumnoId: String = "",
-    val adjuntos: List<String> = emptyList()
+    val alumnoId: String? = null,
+    val conversacionId: String = "",
+    val adjuntos: List<String>? = null
 ) 

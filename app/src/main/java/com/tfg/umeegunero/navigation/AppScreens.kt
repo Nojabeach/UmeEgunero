@@ -335,7 +335,13 @@ sealed class AppScreens(val route: String) {
     object AsistenciaProfesor : AppScreens("asistencia_profesor")
     
     /** Pantalla de chat para el profesor */
-    object ChatProfesor : AppScreens("chat_profesor")
+    object ChatProfesor : AppScreens("chat_profesor/{conversacionId}/{participanteId}") {
+        fun createRoute(conversacionId: String, participanteId: String) = 
+            "chat_profesor/$conversacionId/$participanteId"
+    }
+    
+    /** Pantalla de conversaciones para el profesor */
+    object ConversacionesProfesor : AppScreens("conversaciones_profesor")
     
     /**
      * Detalles de un alumno desde la perspectiva del profesor
@@ -393,8 +399,14 @@ sealed class AppScreens(val route: String) {
     /** Vista de tareas para familiares */
     object TareasFamilia : AppScreens("tareas_familia")
     
-    /** Chat para familiares */
-    object ChatFamilia : AppScreens("chat_familia")
+    /** Pantalla de Chat para la familia */
+    object ChatFamilia : AppScreens("chat_familia/{conversacionId}/{participanteId}") {
+        fun createRoute(conversacionId: String, participanteId: String) = 
+            "chat_familia/$conversacionId/$participanteId"
+    }
+    
+    /** Pantalla de conversaciones para la familia */
+    object ConversacionesFamilia : AppScreens("conversaciones_familia")
     
     /** Notificaciones para familiares */
     object NotificacionesFamilia : AppScreens("notificaciones_familia")
@@ -413,4 +425,23 @@ sealed class AppScreens(val route: String) {
     
     /** Gestión de actividades preescolares para profesores */
     object ActividadesPreescolarProfesor : AppScreens("actividades_preescolar_profesor")
+    
+    /**
+     * Sección: Tareas académicas
+     */
+    /** 
+     * Detalles de una tarea para profesores, muestra entregas de alumnos 
+     * @param tareaId Identificador único de la tarea
+     */
+    object DetalleTareaProfesor : AppScreens("detalle_tarea_profesor/{tareaId}") {
+        fun createRoute(tareaId: String) = "detalle_tarea_profesor/$tareaId"
+    }
+    
+    /**
+     * Detalles de una tarea para alumnos, muestra información de la tarea para entregar
+     * @param tareaId Identificador único de la tarea
+     */
+    object DetalleTareaAlumno : AppScreens("detalle_tarea_alumno/{tareaId}") {
+        fun createRoute(tareaId: String) = "detalle_tarea_alumno/$tareaId"
+    }
 } 

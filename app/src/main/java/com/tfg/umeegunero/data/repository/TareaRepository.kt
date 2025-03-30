@@ -289,14 +289,58 @@ class TareaRepository @Inject constructor(
             val tareasAlumno = queryAlumno.toObjects(Tarea::class.java)
             
             // Luego buscamos tareas de la clase del alumno
-            // Nota: En una implementación real, primero obtendríamos las clases del alumno
-            // Para simplificar, asumiremos que podemos consultar directamente por el claseId
-            // que obtendríamos del perfil del alumno
+            val alumnoDoc = firestore.collection("alumnos")
+                .document(alumnoId)
+                .get()
+                .await()
             
-            // Por ahora, devolvemos sólo las tareas específicas del alumno
+            if (alumnoDoc.exists()) {
+                val claseId = alumnoDoc.getString("aulaId")
+                
+                if (claseId != null) {
+                    val queryClase = firestore.collection(COLLECTION_TAREAS)
+                        .whereEqualTo("claseId", claseId)
+                        .whereEqualTo("alumnoId", "")  // Tareas para toda la clase (sin alumno específico)
+                        .get()
+                        .await()
+                    
+                    val tareasClase = queryClase.toObjects(Tarea::class.java)
+                    
+                    // Combinar ambas listas y ordenar por fecha de creación descendente
+                    return@withContext Result.Success(
+                        (tareasAlumno + tareasClase).sortedByDescending { it.fechaCreacion.seconds }
+                    )
+                }
+            }
+            
+            // Si no pudimos obtener la clase, devolvemos solo las tareas específicas del alumno
             return@withContext Result.Success(tareasAlumno)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener tareas por alumno")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Actualiza el estado de una tarea existente
+     * @param tareaId ID de la tarea a actualizar
+     * @param nuevoEstado Nuevo estado de la tarea
+     * @return Resultado con true si se actualizó correctamente
+     */
+    suspend fun actualizarEstadoTarea(tareaId: String, nuevoEstado: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            if (tareaId.isEmpty()) {
+                return@withContext Result.Error(IllegalArgumentException("La tarea debe tener un ID"))
+            }
+
+            firestore.collection(COLLECTION_TAREAS)
+                .document(tareaId)
+                .update("estado", nuevoEstado)
+                .await()
+
+            return@withContext Result.Success(true)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar estado de tarea")
             return@withContext Result.Error(e)
         }
     }

@@ -173,11 +173,12 @@ fun PerfilScreen(
                     
                     // Tipo de usuario
                     val tipoDisplay = when (uiState.tipoUsuario) {
-                        TipoUsuario.ADMIN_APP -> "Administrador de Aplicación"
-                        TipoUsuario.ADMIN_CENTRO -> "Administrador de Centro"
+                        TipoUsuario.ADMIN_APP -> "Administrador del sistema"
+                        TipoUsuario.ADMIN_CENTRO -> "Administrador de centro"
                         TipoUsuario.PROFESOR -> "Profesor"
                         TipoUsuario.FAMILIAR -> "Familiar"
                         TipoUsuario.ALUMNO -> "Alumno"
+                        TipoUsuario.DESCONOCIDO -> "Usuario"
                     }
                     
                     Surface(

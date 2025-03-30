@@ -32,8 +32,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.EstadoTarea
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.feature.profesor.viewmodel.TareasViewModel
+import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
@@ -197,6 +199,11 @@ fun TareasScreen(
                                 onDeleteClick = {
                                     selectedTarea = tarea
                                     showDeleteDialog = true
+                                },
+                                onVerEntregasClick = {
+                                    navController.navigate(
+                                        AppScreens.DetalleTareaProfesor.createRoute(tarea.id)
+                                    )
                                 }
                             )
                             
@@ -256,26 +263,27 @@ fun TareasScreen(
         // Diálogo para añadir tarea
         if (showAddDialog) {
             TareaDialog(
-                tarea = null,
-                clases = uiState.clases,
+                titulo = "Nueva Tarea",
                 onDismiss = { showAddDialog = false },
-                onConfirm = { tarea ->
-                    viewModel.crearTarea(tarea)
+                onConfirm = { nuevaTarea ->
+                    viewModel.crearTarea(nuevaTarea)
                     showAddDialog = false
-                }
+                },
+                clases = uiState.clases
             )
         }
         
         // Diálogo para editar tarea
         if (showEditDialog && selectedTarea != null) {
             TareaDialog(
-                tarea = selectedTarea,
-                clases = uiState.clases,
+                titulo = "Editar Tarea",
                 onDismiss = { showEditDialog = false },
-                onConfirm = { tarea ->
-                    viewModel.actualizarTarea(tarea)
+                onConfirm = { tareaEditada ->
+                    viewModel.actualizarTarea(tareaEditada)
                     showEditDialog = false
-                }
+                },
+                clases = uiState.clases,
+                tareaInicial = selectedTarea
             )
         }
         
@@ -284,7 +292,11 @@ fun TareasScreen(
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 title = { Text("Eliminar tarea") },
-                text = { Text("¿Está seguro de eliminar la tarea '${selectedTarea?.titulo}'?") },
+                text = { 
+                    Text(
+                        "¿Estás seguro de que deseas eliminar la tarea '${selectedTarea?.titulo}'? Esta acción no se puede deshacer."
+                    ) 
+                },
                 confirmButton = {
                     Button(
                         onClick = {
@@ -292,14 +304,14 @@ fun TareasScreen(
                             showDeleteDialog = false
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Red
+                            containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
                         Text("Eliminar")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
+                    OutlinedButton(onClick = { showDeleteDialog = false }) {
                         Text("Cancelar")
                     }
                 }
@@ -308,146 +320,196 @@ fun TareasScreen(
     }
 }
 
+/**
+ * Item que representa una tarea en la lista
+ */
 @Composable
 fun TareaItem(
     tarea: Tarea,
     onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onVerEntregasClick: () -> Unit = {}
 ) {
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Cabecera con clase y fecha
+            // Cabecera con título y acciones
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Clase
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Class,
-                        contentDescription = null,
-                        tint = ProfesorColor,
-                        modifier = Modifier.size(16.dp)
-                    )
+                Text(
+                    text = tarea.titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Botones de acciones
+                Row {
+                    IconButton(
+                        onClick = onVerEntregasClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = "Ver entregas",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     
-                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar tarea",
+                            tint = ProfesorColor
+                        )
+                    }
                     
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar tarea",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Detalles de la tarea
+            Text(
+                text = tarea.descripcion,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Información adicional
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Fecha de entrega
+                Column {
                     Text(
-                        text = tarea.nombreClase,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "Fecha de entrega",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(tarea.fechaEntrega?.toDate() ?: Date()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
                     )
                 }
                 
-                // Fecha entrega
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Event,
-                        contentDescription = null,
-                        tint = Color(0xFFF57C00), // Naranja
-                        modifier = Modifier.size(16.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.width(4.dp))
-                    
+                // Clase asignada
+                Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = tarea.fechaEntrega?.let { dateFormat.format(it.toDate()) } ?: "Sin fecha",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "Clase",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = tarea.nombreClase ?: "No asignada",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Título
-            Text(
-                text = tarea.titulo,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // Descripción
-            Text(
-                text = tarea.descripcion,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Acciones
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                // Editar
-                IconButton(onClick = onEditClick) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar tarea"
-                    )
-                }
-                
-                // Eliminar
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar tarea",
-                        tint = Color.Red
-                    )
-                }
-            }
+            // Indicador de estado
+            EstadoTareaChip(estado = tarea.estado)
         }
     }
+}
+
+@Composable
+fun EstadoTareaChip(estado: EstadoTarea) {
+    val (color, texto) = when (estado) {
+        EstadoTarea.PENDIENTE -> Pair(MaterialTheme.colorScheme.errorContainer, "Pendiente")
+        EstadoTarea.EN_PROGRESO -> Pair(MaterialTheme.colorScheme.secondaryContainer, "En progreso")
+        EstadoTarea.COMPLETADA -> Pair(MaterialTheme.colorScheme.primaryContainer, "Completada") 
+        else -> Pair(MaterialTheme.colorScheme.surfaceVariant, estado.name)
+    }
+    
+    SuggestionChip(
+        onClick = { },
+        label = { Text(texto) },
+        colors = SuggestionChipDefaults.suggestionChipColors(
+            containerColor = color
+        )
+    )
+}
+
+@Composable
+fun FiltroChip(
+    texto: String,
+    seleccionado: Boolean,
+    onSeleccionado: () -> Unit
+) {
+    ElevatedFilterChip(
+        selected = seleccionado,
+        onClick = onSeleccionado,
+        label = { Text(texto) },
+        leadingIcon = {
+            if (seleccionado) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null
+                )
+            }
+        },
+        colors = FilterChipDefaults.elevatedFilterChipColors(
+            selectedContainerColor = ProfesorColor,
+            selectedLabelColor = Color.White,
+            selectedLeadingIconColor = Color.White
+        )
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TareaDialog(
-    tarea: Tarea?,
-    clases: List<Clase>,
+    titulo: String,
     onDismiss: () -> Unit,
-    onConfirm: (Tarea) -> Unit
+    onConfirm: (Tarea) -> Unit,
+    clases: List<Clase>,
+    tareaInicial: Tarea? = null
 ) {
-    val context = LocalContext.current
-    
-    // Estado para los campos
-    var titulo by remember { mutableStateOf(tarea?.titulo ?: "") }
-    var descripcion by remember { mutableStateOf(tarea?.descripcion ?: "") }
-    var claseSeleccionada by remember { mutableStateOf(
-        clases.find { it.id == tarea?.claseId } ?: clases.firstOrNull()
-    )}
-    
-    // Fecha
-    val calendar = remember { Calendar.getInstance() }
-    tarea?.fechaEntrega?.toDate()?.let {
-        calendar.time = it
+    var tituloTarea by remember { mutableStateOf(tareaInicial?.titulo ?: "") }
+    var descripcion by remember { mutableStateOf(tareaInicial?.descripcion ?: "") }
+    var fechaEntrega by remember { 
+        mutableStateOf(
+            tareaInicial?.fechaEntrega?.toDate() ?: Date()
+        ) 
     }
+    var claseSeleccionadaId by remember { mutableStateOf(tareaInicial?.claseId ?: "") }
     
-    var showDatePicker by remember { mutableStateOf(false) }
-    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
+    // Validación
+    val isValid = tituloTarea.isNotEmpty() && descripcion.isNotEmpty() && claseSeleccionadaId.isNotEmpty()
     
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -461,63 +523,25 @@ fun TareaDialog(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
+                // Título del diálogo
                 Text(
-                    text = if (tarea == null) "Nueva Tarea" else "Editar Tarea",
-                    style = MaterialTheme.typography.titleLarge,
+                    text = titulo,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
                 
                 Spacer(modifier = Modifier.height(20.dp))
                 
-                // Selector de clase
-                if (clases.isNotEmpty()) {
-                    var expanded by remember { mutableStateOf(false) }
-                    
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
-                    ) {
-                        OutlinedTextField(
-                            value = claseSeleccionada?.nombre ?: "Seleccione una clase",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Clase") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
-                        )
-                        
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            clases.forEach { clase ->
-                                DropdownMenuItem(
-                                    text = { Text(clase.nombre) },
-                                    onClick = {
-                                        claseSeleccionada = clase
-                                        expanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-                
-                // Título
+                // Título de la tarea
                 OutlinedTextField(
-                    value = titulo,
-                    onValueChange = { titulo = it },
+                    value = tituloTarea,
+                    onValueChange = { tituloTarea = it },
                     label = { Text("Título") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
                 // Descripción
                 OutlinedTextField(
@@ -528,105 +552,106 @@ fun TareaDialog(
                     minLines = 3
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
-                // Fecha de entrega
-                OutlinedTextField(
-                    value = dateFormatter.format(calendar.time),
-                    onValueChange = {},
-                    label = { Text("Fecha de entrega") },
-                    modifier = Modifier.fillMaxWidth(),
-                    readOnly = true,
-                    trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = "Seleccionar fecha"
+                // Selector de clase
+                val claseSeleccionada = clases.find { it.id == claseSeleccionadaId }
+                var expanded by remember { mutableStateOf(false) }
+                
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = claseSeleccionada?.nombre ?: "Selecciona una clase",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Clase") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        clases.forEach { clase ->
+                            DropdownMenuItem(
+                                text = { Text(clase.nombre) },
+                                onClick = {
+                                    claseSeleccionadaId = clase.id
+                                    expanded = false
+                                }
                             )
                         }
                     }
-                )
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Selector de fecha (simplificado)
+                Text("Fecha de entrega: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fechaEntrega)}")
+                
+                // Aquí podría implementarse un DatePicker, pero para simplicidad usamos un botón
+                Button(
+                    onClick = {
+                        // Mostrar un DatePicker y actualizar fechaEntrega
+                        // Por simplicidad, sumamos una semana a la fecha actual
+                        val calendar = Calendar.getInstance()
+                        calendar.time = fechaEntrega
+                        calendar.add(Calendar.DAY_OF_MONTH, 7)
+                        fechaEntrega = calendar.time
+                    },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Cambiar fecha")
+                }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // Botones
+                // Botones de acción
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
                         Text("Cancelar")
                     }
                     
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
                     Button(
                         onClick = {
-                            // Validar campos
-                            if (titulo.isBlank()) {
-                                return@Button
-                            }
-                            
                             // Crear o actualizar tarea
-                            val nuevaTarea = if (tarea == null) {
-                                Tarea(
-                                    id = "",
-                                    profesorId = "", // Se asignará en el ViewModel
-                                    claseId = claseSeleccionada?.id ?: "",
-                                    nombreClase = claseSeleccionada?.nombre ?: "",
-                                    titulo = titulo,
-                                    descripcion = descripcion,
-                                    fechaCreacion = com.google.firebase.Timestamp.now(),
-                                    fechaEntrega = com.google.firebase.Timestamp(calendar.time)
-                                )
-                            } else {
-                                tarea.copy(
-                                    claseId = claseSeleccionada?.id ?: tarea.claseId,
-                                    nombreClase = claseSeleccionada?.nombre ?: tarea.nombreClase,
-                                    titulo = titulo,
-                                    descripcion = descripcion,
-                                    fechaEntrega = com.google.firebase.Timestamp(calendar.time)
-                                )
-                            }
+                            val nuevaTarea = tareaInicial?.copy(
+                                titulo = tituloTarea,
+                                descripcion = descripcion,
+                                fechaEntrega = com.google.firebase.Timestamp(fechaEntrega),
+                                claseId = claseSeleccionadaId
+                            ) ?: Tarea(
+                                id = "",
+                                titulo = tituloTarea,
+                                descripcion = descripcion,
+                                fechaEntrega = com.google.firebase.Timestamp(fechaEntrega),
+                                claseId = claseSeleccionadaId,
+                                profesorId = "",
+                                estado = EstadoTarea.PENDIENTE,
+                                fechaCreacion = com.google.firebase.Timestamp.now()
+                            )
                             
                             onConfirm(nuevaTarea)
                         },
-                        enabled = titulo.isNotBlank() && claseSeleccionada != null
+                        enabled = isValid
                     ) {
-                        Text(if (tarea == null) "Crear" else "Actualizar")
+                        Text(if (tareaInicial == null) "Crear" else "Guardar")
                     }
                 }
             }
-        }
-    }
-    
-    // DatePicker
-    if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = calendar.timeInMillis
-        )
-        
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let {
-                            calendar.timeInMillis = it
-                        }
-                        showDatePicker = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancelar")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
         }
     }
 }
@@ -645,17 +670,4 @@ fun TareasScreenDarkPreview() {
     UmeEguneroTheme {
         TareasScreen(navController = rememberNavController())
     }
-}
-
-@Composable
-private fun FiltroChip(
-    texto: String,
-    seleccionado: Boolean,
-    onSeleccionado: (Boolean) -> Unit
-) {
-    FilterChip(
-        selected = seleccionado,
-        onClick = { onSeleccionado(!seleccionado) },
-        label = { Text(texto) }
-    )
 } 

@@ -210,7 +210,12 @@ open class UsuarioRepository @Inject constructor(
     /**
      * Obtiene un usuario por su ID (DNI)
      */
-    suspend fun getUsuarioById(id: String): Result<Usuario> = withContext(Dispatchers.IO) {
+    suspend fun getUsuarioById(id: String): Result<Usuario> = obtenerUsuarioPorId(id)
+
+    /**
+     * Obtiene un usuario por su ID (DNI)
+     */
+    suspend fun obtenerUsuarioPorId(id: String): Result<Usuario> = withContext(Dispatchers.IO) {
         try {
             val userDoc = usuariosCollection.document(id).get().await()
 

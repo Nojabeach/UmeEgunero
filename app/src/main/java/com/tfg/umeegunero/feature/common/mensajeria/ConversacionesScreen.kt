@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.feature.common.mensajeria
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,24 +10,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.ui.components.LoadingIndicator
-import com.tfg.umeegunero.ui.theme.FamiliarColor
-import com.tfg.umeegunero.ui.theme.ProfesorColor
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,89 +37,149 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversacionesScreen(
-    esFamiliar: Boolean = false,
-    viewModel: ConversacionesViewModel = hiltViewModel(),
-    onNavigateToChat: (String, String) -> Unit,
-    onNavigateBack: () -> Unit
+    navController: NavController,
+    rutaChat: String,
+    viewModel: ConversacionesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var textoBusqueda by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
+    val showBusqueda = remember { mutableStateOf(false) }
     
-    // Establecer el color del tema según el tipo de usuario
-    val temaColor = if (esFamiliar) FamiliarColor else ProfesorColor
-    
-    // Manejar errores
+    // Mostrar errores en Snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
-            snackbarHostState.showSnackbar(message = error)
-            viewModel.clearError()
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = error,
+                    actionLabel = "OK"
+                )
+                viewModel.borrarError()
+            }
         }
     }
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mensajes", color = Color.White) },
+                title = {
+                    if (showBusqueda.value) {
+                        OutlinedTextField(
+                            value = uiState.busqueda,
+                            onValueChange = { viewModel.actualizarBusqueda(it) },
+                            placeholder = { Text("Buscar conversaciones...") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(end = 16.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedBorderColor = Color.Transparent
+                            ),
+                            trailingIcon = {
+                                if (uiState.busqueda.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.actualizarBusqueda("") }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Clear,
+                                            contentDescription = "Limpiar búsqueda"
+                                        )
+                                    }
+                                }
+                            }
+                        )
+                    } else {
+                        Text(
+                            text = "Mensajes"
+                        )
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = Color.White
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { showBusqueda.value = !showBusqueda.value }
+                    ) {
+                        Icon(
+                            imageVector = if (showBusqueda.value) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = if (showBusqueda.value) "Cerrar búsqueda" else "Buscar"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = temaColor,
-                    titleContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    // TODO: Implementar selección de destinatario para nueva conversación
+                },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Nueva conversación",
+                    tint = Color.White
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Barra de búsqueda
-            OutlinedTextField(
-                value = textoBusqueda,
-                onValueChange = {
-                    textoBusqueda = it
-                    viewModel.filtrarConversaciones(it)
-                },
-                placeholder = { Text("Buscar conversaciones...") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Buscar"
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                singleLine = true,
-                shape = RoundedCornerShape(24.dp)
-            )
-            
-            // Contenido principal
             Box(modifier = Modifier.fillMaxSize()) {
                 if (uiState.isLoading) {
-                    LoadingIndicator(fullScreen = true)
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .align(Alignment.Center)
+                    )
                 } else if (uiState.conversaciones.isEmpty()) {
                     // Mensaje cuando no hay conversaciones
-                    Text(
-                        text = "No tienes conversaciones activas.\nInicia una conversación con un profesor o familiar.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(32.dp)
-                            .align(Alignment.Center)
-                    )
+                            .align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ChatBubbleOutline,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "No tienes conversaciones activas",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "Inicia una conversación",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 } else {
                     // Lista de conversaciones
                     LazyColumn(
@@ -130,9 +191,10 @@ fun ConversacionesScreen(
                             ConversacionItem(
                                 conversacion = conversacion,
                                 onClick = {
-                                    onNavigateToChat(conversacion.conversacionId, conversacion.participanteId)
-                                },
-                                esFamiliar = esFamiliar
+                                    // Marcar como leída y navegar
+                                    viewModel.marcarConversacionComoLeida(conversacion.id)
+                                    navController.navigate("$rutaChat/${conversacion.id}/${conversacion.participanteId}")
+                                }
                             )
                         }
                     }
@@ -146,13 +208,13 @@ fun ConversacionesScreen(
 fun ConversacionItem(
     conversacion: ConversacionResumen,
     onClick: () -> Unit,
-    esFamiliar: Boolean
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -161,98 +223,83 @@ fun ConversacionItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
+            // Avatar del usuario
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
-                    .background(if (esFamiliar) ProfesorColor else FamiliarColor),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                Text(
+                    text = conversacion.nombreParticipante.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
-            // Información de la conversación
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // Nombre del participante
+                Text(
+                    text = conversacion.nombreParticipante,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Nombre del alumno (si existe)
+                if (conversacion.nombreAlumno != null) {
                     Text(
-                        text = conversacion.participanteNombre,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    // Fecha del último mensaje
-                    Text(
-                        text = formatTimestamp(conversacion.fechaUltimoMensaje),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                // Alumno relacionado, si existe
-                if (conversacion.alumnoNombre != null) {
-                    Text(
-                        text = "Alumno: ${conversacion.alumnoNombre}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                // Último mensaje
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = conversacion.ultimoMensaje,
+                        text = "Alumno: ${conversacion.nombreAlumno}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (conversacion.mensajesNoLeidos > 0) 
-                            MaterialTheme.colorScheme.onSurface 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = if (conversacion.mensajesNoLeidos > 0) 
-                            FontWeight.Medium 
-                        else 
-                            FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                    
-                    // Contador de mensajes no leídos
-                    if (conversacion.mensajesNoLeidos > 0) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = conversacion.mensajesNoLeidos.toString(),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Último mensaje
+                Text(
+                    text = conversacion.ultimoMensaje,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                // Fecha del último mensaje
+                Text(
+                    text = formatDate(conversacion.fechaUltimoMensaje),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Contador de mensajes no leídos
+                if (conversacion.mensajesNoLeidos > 0) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = conversacion.mensajesNoLeidos.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 }
             }
@@ -260,65 +307,64 @@ fun ConversacionItem(
     }
 }
 
-/**
- * Modelo para mostrar información resumida de conversaciones en la UI
- */
-data class ConversacionResumen(
-    val id: String,
-    val conversacionId: String,
-    val participanteId: String,
-    val participanteNombre: String,
-    val participanteTipo: TipoUsuario,
-    val ultimoMensaje: String,
-    val fechaUltimoMensaje: Timestamp,
-    val mensajesNoLeidos: Int = 0,
-    val alumnoId: String? = null,
-    val alumnoNombre: String? = null
-)
-
-// Función para formatear la fecha del último mensaje
-private fun formatTimestamp(timestamp: Timestamp): String {
+@Composable
+private fun formatDate(timestamp: Timestamp): String {
     val date = timestamp.toDate()
     val now = Calendar.getInstance()
-    val messageTime = Calendar.getInstance().apply { time = date }
+    val messageDate = Calendar.getInstance().apply { time = date }
     
     return when {
-        isSameDay(now, messageTime) -> {
-            // Si es hoy, mostrar la hora
+        // Hoy: mostrar hora
+        now.get(Calendar.DAY_OF_YEAR) == messageDate.get(Calendar.DAY_OF_YEAR) &&
+                now.get(Calendar.YEAR) == messageDate.get(Calendar.YEAR) -> {
             SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
         }
-        isYesterday(now, messageTime) -> {
-            // Si fue ayer, mostrar "Ayer"
+        // Ayer: mostrar "Ayer"
+        now.get(Calendar.DAY_OF_YEAR) - messageDate.get(Calendar.DAY_OF_YEAR) == 1 &&
+                now.get(Calendar.YEAR) == messageDate.get(Calendar.YEAR) -> {
             "Ayer"
         }
-        isWithinOneWeek(now, messageTime) -> {
-            // Si es dentro de la última semana, mostrar el día de la semana
-            SimpleDateFormat("EEEE", Locale("es")).format(date)
+        // Esta semana: mostrar día de la semana
+        now.get(Calendar.WEEK_OF_YEAR) == messageDate.get(Calendar.WEEK_OF_YEAR) &&
+                now.get(Calendar.YEAR) == messageDate.get(Calendar.YEAR) -> {
+            SimpleDateFormat("EEEE", Locale("es", "ES")).format(date).capitalize()
         }
+        // Más antiguo: mostrar fecha completa
         else -> {
-            // Si es anterior, mostrar fecha en formato corto
-            SimpleDateFormat("dd/MM/yy", Locale.getDefault()).format(date)
+            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
         }
     }
 }
 
-private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
+/**
+ * Verifica si dos fechas son del mismo día
+ */
+fun esMismaFecha(fecha1: Date, fecha2: Date): Boolean {
+    val cal1 = Calendar.getInstance().apply { time = fecha1 }
+    val cal2 = Calendar.getInstance().apply { time = fecha2 }
     return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+           cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
 }
 
-private fun isYesterday(today: Calendar, other: Calendar): Boolean {
-    val yesterday = Calendar.getInstance().apply {
-        timeInMillis = today.timeInMillis
+/**
+ * Verifica si una fecha es de ayer
+ */
+fun esAyer(fecha: Date): Boolean {
+    val hoy = Calendar.getInstance()
+    val ayer = Calendar.getInstance().apply {
         add(Calendar.DAY_OF_YEAR, -1)
     }
-    return isSameDay(yesterday, other)
+    val fechaCal = Calendar.getInstance().apply { time = fecha }
+    
+    return fechaCal.get(Calendar.YEAR) == ayer.get(Calendar.YEAR) &&
+           fechaCal.get(Calendar.DAY_OF_YEAR) == ayer.get(Calendar.DAY_OF_YEAR)
 }
 
-private fun isWithinOneWeek(today: Calendar, other: Calendar): Boolean {
-    val oneWeekAgo = Calendar.getInstance().apply {
-        timeInMillis = today.timeInMillis
-        add(Calendar.DAY_OF_YEAR, -7)
+/**
+ * Extensión para capitalizar strings
+ */
+private fun String.capitalize(): String {
+    return this.replaceFirstChar { 
+        if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
     }
-    return other.after(oneWeekAgo)
 } 

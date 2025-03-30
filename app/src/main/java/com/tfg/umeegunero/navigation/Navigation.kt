@@ -18,6 +18,12 @@ import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
 import kotlinx.coroutines.launch
+import androidx.navigation.compose.navigation
+import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.feature.common.mensajeria.ChatScreen
+import com.tfg.umeegunero.feature.common.mensajeria.ConversacionesScreen
+import com.tfg.umeegunero.feature.profesor.screen.TareasScreen
+import com.tfg.umeegunero.feature.profesor.screen.DetalleTareaScreen
 
 /**
  * Navegación principal de la aplicación
@@ -166,6 +172,193 @@ fun CentroDashboardScreen(
             }
         }) {
             Text("Cerrar Sesión")
+        }
+    }
+}
+
+// Grafo de navegación para Familiar
+fun NavGraphBuilder.familiarNavGraph(
+    navController: NavController,
+    userId: String,
+    userName: String
+) {
+    navigation(
+        startDestination = AppScreens.FamiliarDashboard.route,
+        route = "familiar_graph"
+    ) {
+        // Dashboard Familiar
+        composable(route = AppScreens.FamiliarDashboard.route) {
+            // Implementación temporal del dashboard familiar
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Familiar Dashboard (Temporal)", fontSize = 24.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = {
+                    navController.navigate(AppScreens.TareasFamilia.route)
+                }) {
+                    Text("Ver Tareas")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
+                    navController.navigate(AppScreens.Welcome.route) {
+                        popUpTo("familiar_graph") { inclusive = true }
+                    }
+                }) {
+                    Text("Cerrar Sesión")
+                }
+            }
+        }
+        
+        // Pantallas de tareas
+        composable(route = AppScreens.TareasFamilia.route) {
+            // Pantalla de tareas para familiares (por implementar)
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Tareas del estudiante (Por implementar)", fontSize = 24.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { navController.popBackStack() }) {
+                    Text("Volver")
+                }
+            }
+        }
+        
+        // Detalle de tarea para alumno (vista de familia)
+        composable(
+            route = AppScreens.DetalleTareaAlumno.route,
+            arguments = listOf(
+                navArgument("tareaId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val tareaId = backStackEntry.arguments?.getString("tareaId") ?: ""
+            // Por implementar: Pantalla de detalle de tarea para alumno
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Detalle de tarea (ID: $tareaId)", fontSize = 24.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { navController.popBackStack() }) {
+                    Text("Volver")
+                }
+            }
+        }
+        
+        // Pantalla de chat para familiar
+        composable(
+            route = AppScreens.ChatFamilia.route,
+            arguments = listOf(
+                navArgument("conversacionId") { type = NavType.StringType },
+                navArgument("participanteId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val conversacionId = backStackEntry.arguments?.getString("conversacionId") ?: ""
+            val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
+            ChatScreen(
+                conversacionId = conversacionId,
+                participanteId = participanteId,
+                esFamiliar = true,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de conversaciones para familiares
+        composable(route = AppScreens.ConversacionesFamilia.route) {
+            ConversacionesScreen(
+                navController = navController,
+                rutaChat = AppScreens.ChatFamilia.route
+            )
+        }
+    }
+}
+
+// Grafo de navegación para Profesor
+fun NavGraphBuilder.profesorNavGraph(
+    navController: NavController,
+    userId: String,
+    userName: String
+) {
+    navigation(
+        startDestination = AppScreens.ProfesorDashboard.route,
+        route = "profesor_graph"
+    ) {
+        // Dashboard Profesor
+        composable(route = AppScreens.ProfesorDashboard.route) {
+            // Implementación temporal del dashboard del profesor
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Profesor Dashboard (Temporal)", fontSize = 24.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = {
+                    navController.navigate(AppScreens.TareasProfesor.route)
+                }) {
+                    Text("Gestionar Tareas")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
+                    navController.navigate(AppScreens.Welcome.route) {
+                        popUpTo("profesor_graph") { inclusive = true }
+                    }
+                }) {
+                    Text("Cerrar Sesión")
+                }
+            }
+        }
+        
+        // Pantallas de tareas para profesor
+        composable(route = AppScreens.TareasProfesor.route) {
+            TareasScreen(
+                navController = navController
+            )
+        }
+        
+        // Detalle de tarea para profesor
+        composable(
+            route = AppScreens.DetalleTareaProfesor.route,
+            arguments = listOf(
+                navArgument("tareaId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val tareaId = backStackEntry.arguments?.getString("tareaId") ?: ""
+            DetalleTareaScreen(
+                navController = navController,
+                tareaId = tareaId
+            )
+        }
+        
+        // Pantalla de chat para profesor
+        composable(
+            route = AppScreens.ChatProfesor.route,
+            arguments = listOf(
+                navArgument("conversacionId") { type = NavType.StringType },
+                navArgument("participanteId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val conversacionId = backStackEntry.arguments?.getString("conversacionId") ?: ""
+            val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
+            ChatScreen(
+                conversacionId = conversacionId,
+                participanteId = participanteId,
+                esFamiliar = false,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de conversaciones para profesores
+        composable(route = AppScreens.ConversacionesProfesor.route) {
+            ConversacionesScreen(
+                navController = navController,
+                rutaChat = AppScreens.ChatProfesor.route
+            )
         }
     }
 }

@@ -23,10 +23,12 @@ package com.tfg.umeegunero.data.model
  *                  sobre sus hijos/tutelados y comunicarse con el centro/profesores.
  * @property ALUMNO Usuario representando a un estudiante (generalmente no accede directamente
  *                al sistema, pero se usa para establecer relaciones en la base de datos).
+ * @property DESCONOCIDO Tipo utilizado cuando no se puede determinar el tipo de usuario o
+ *                     para valores por defecto en ciertos contextos.
  * 
  * @see Perfil Modelo que utiliza esta enumeración para definir roles de usuario
  * @see UserType Enumeración usada para navegación específica basada en tipos de usuario
  */
 enum class TipoUsuario {
-    ADMIN_APP, ADMIN_CENTRO, PROFESOR, FAMILIAR, ALUMNO
+    ADMIN_APP, ADMIN_CENTRO, PROFESOR, FAMILIAR, ALUMNO, DESCONOCIDO
 } 

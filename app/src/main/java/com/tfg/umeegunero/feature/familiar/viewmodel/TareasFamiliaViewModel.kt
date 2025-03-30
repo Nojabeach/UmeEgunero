@@ -1,14 +1,12 @@
 package com.tfg.umeegunero.feature.familiar.viewmodel
 
-// Clase comentada temporalmente mientras se implementan los modelos correctos
-// Se implementará completamente en el próximo Sprint
-
-/*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.EstadoTarea
 import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.model.Tarea
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
@@ -19,13 +17,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Date
 import javax.inject.Inject
 
 /**
  * Enumeración para los filtros de tareas disponibles para los familiares
  */
 enum class FiltroTarea {
-    ALL, PENDING, IN_PROGRESS, COMPLETED, OVERDUE
+    TODAS, 
+    PENDIENTES, 
+    EN_PROGRESO, 
+    COMPLETADAS, 
+    RETRASADAS
 }
 
 /**
@@ -45,13 +48,13 @@ data class AlumnoInfo(
 data class TareasFamiliaUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val message: String? = null,
+    val mensaje: String? = null,
     val familiarId: String = "",
-    val selectedAlumnoId: String = "",
+    val alumnoSeleccionadoId: String = "",
     val alumnos: List<AlumnoInfo> = emptyList(),
     val tareas: List<Tarea> = emptyList(),
     val tareasFiltradas: List<Tarea> = emptyList(),
-    val selectedFilter: FiltroTarea = FiltroTarea.ALL
+    val filtroSeleccionado: FiltroTarea = FiltroTarea.TODAS
 )
 
 /**
@@ -70,23 +73,21 @@ class TareasFamiliaViewModel @Inject constructor(
     /**
      * Inicializa el ViewModel cargando los datos del familiar actual
      */
-    fun initialize(familiarId: String) {
+    fun inicializar(familiarId: String) {
         if (familiarId.isEmpty()) {
             _uiState.update { it.copy(error = "No se pudo identificar al familiar") }
             return
         }
 
-        _uiState.update { it.copy(familiarId = familiarId) }
-        loadAlumnosForFamiliar(familiarId)
+        _uiState.update { it.copy(familiarId = familiarId, isLoading = true) }
+        cargarAlumnosDelFamiliar(familiarId)
     }
 
     /**
      * Carga los alumnos asociados al familiar actual
      */
-    private fun loadAlumnosForFamiliar(familiarId: String) {
+    private fun cargarAlumnosDelFamiliar(familiarId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-
             try {
                 val usuarioResult = usuarioRepository.obtenerUsuarioPorId(familiarId)
                 
@@ -96,7 +97,7 @@ class TareasFamiliaViewModel @Inject constructor(
                         
                         // Obtener los perfiles de familiar del usuario
                         val perfilesFamiliar = usuario.perfiles.filter { 
-                            it.tipo == com.tfg.umeegunero.data.model.TipoUsuario.FAMILIAR 
+                            it.tipo == TipoUsuario.FAMILIAR 
                         }
                         
                         // Obtener las IDs de los alumnos de todos los perfiles
@@ -122,11 +123,11 @@ class TareasFamiliaViewModel @Inject constructor(
                                 val alumno = alumnoResult.data
                                 alumnosInfo.add(
                                     AlumnoInfo(
-                                        id = alumno.dni,
+                                        id = alumno.id,
                                         nombre = alumno.nombre,
                                         apellidos = alumno.apellidos,
-                                        cursoNombre = alumno.cursoNombre,
-                                        claseNombre = alumno.claseNombre
+                                        cursoNombre = alumno.curso ?: "",
+                                        claseNombre = alumno.clase ?: ""
                                     )
                                 )
                             }
@@ -135,14 +136,14 @@ class TareasFamiliaViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 alumnos = alumnosInfo,
-                                selectedAlumnoId = if (alumnosInfo.isNotEmpty()) alumnosInfo[0].id else "",
+                                alumnoSeleccionadoId = if (alumnosInfo.isNotEmpty()) alumnosInfo[0].id else "",
                                 isLoading = false
                             )
                         }
                         
                         // Cargar tareas del primer alumno
                         if (alumnosInfo.isNotEmpty()) {
-                            loadTareasForAlumno(alumnosInfo[0].id)
+                            cargarTareasPorAlumno(alumnosInfo[0].id)
                         }
                     }
                     
@@ -175,12 +176,12 @@ class TareasFamiliaViewModel @Inject constructor(
     /**
      * Carga las tareas de un alumno específico
      */
-    fun loadTareasForAlumno(alumnoId: String) {
+    fun cargarTareasPorAlumno(alumnoId: String) {
         viewModelScope.launch {
             _uiState.update { 
                 it.copy(
                     isLoading = true,
-                    selectedAlumnoId = alumnoId
+                    alumnoSeleccionadoId = alumnoId
                 ) 
             }
 
@@ -194,7 +195,7 @@ class TareasFamiliaViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 tareas = tareas,
-                                tareasFiltradas = applyFilter(tareas, it.selectedFilter),
+                                tareasFiltradas = aplicarFiltro(tareas, it.filtroSeleccionado),
                                 isLoading = false
                             )
                         }
@@ -207,7 +208,7 @@ class TareasFamiliaViewModel @Inject constructor(
                                 isLoading = false
                             )
                         }
-                        Timber.e(tareasResult.exception, "Error al cargar tareas")
+                        Timber.e(tareasResult.exception, "Error al cargar tareas del alumno")
                     }
                     
                     is Result.Loading -> {
@@ -221,76 +222,121 @@ class TareasFamiliaViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-                Timber.e(e, "Error inesperado al cargar tareas")
+                Timber.e(e, "Error inesperado al cargar tareas del alumno")
             }
+        }
+    }
+
+    /**
+     * Selecciona un alumno para mostrar sus tareas
+     */
+    fun seleccionarAlumno(alumnoId: String) {
+        if (alumnoId != _uiState.value.alumnoSeleccionadoId) {
+            cargarTareasPorAlumno(alumnoId)
         }
     }
 
     /**
      * Aplica un filtro a las tareas
      */
-    fun applyFilter(filter: FiltroTarea) {
-        val filtered = applyFilter(_uiState.value.tareas, filter)
+    fun aplicarFiltro(filtro: FiltroTarea) {
+        val tareasFiltradas = aplicarFiltro(_uiState.value.tareas, filtro)
         _uiState.update { 
             it.copy(
-                selectedFilter = filter,
-                tareasFiltradas = filtered
-            ) 
+                filtroSeleccionado = filtro,
+                tareasFiltradas = tareasFiltradas
+            )
         }
     }
 
     /**
-     * Filtra las tareas según el criterio seleccionado
+     * Aplica un filtro a la lista de tareas
      */
-    private fun applyFilter(tareas: List<Tarea>, filter: FiltroTarea): List<Tarea> {
-        return when (filter) {
-            FiltroTarea.ALL -> tareas
-            FiltroTarea.PENDING -> tareas.filter { it.estado == "PENDIENTE" }
-            FiltroTarea.IN_PROGRESS -> tareas.filter { it.estado == "EN_PROGRESO" }
-            FiltroTarea.COMPLETED -> tareas.filter { it.estado == "COMPLETADA" }
-            FiltroTarea.OVERDUE -> tareas.filter { it.estado == "VENCIDA" }
-        }
-    }
-
-    /**
-     * Marca una tarea como revisada por el familiar
-     */
-    fun markTareaAsRevisada(tareaId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-
-            try {
-                // TODO: Implement this when we have the proper repository method
-                _uiState.update {
-                    it.copy(
-                        message = "Tarea marcada como revisada",
-                        isLoading = false
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        error = "Error al marcar tarea como revisada: ${e.message}",
-                        isLoading = false
-                    )
-                }
-                Timber.e(e, "Error al marcar tarea como revisada")
+    private fun aplicarFiltro(tareas: List<Tarea>, filtro: FiltroTarea): List<Tarea> {
+        val fechaActual = Date()
+        
+        return when (filtro) {
+            FiltroTarea.TODAS -> tareas
+            
+            FiltroTarea.PENDIENTES -> tareas.filter { 
+                it.estado == EstadoTarea.PENDIENTE
+            }
+            
+            FiltroTarea.EN_PROGRESO -> tareas.filter { 
+                it.estado == EstadoTarea.EN_PROGRESO
+            }
+            
+            FiltroTarea.COMPLETADAS -> tareas.filter { 
+                it.estado == EstadoTarea.COMPLETADA
+            }
+            
+            FiltroTarea.RETRASADAS -> tareas.filter {
+                val fechaEntrega = it.fechaEntrega?.toDate()
+                fechaEntrega != null && fechaEntrega < fechaActual && 
+                it.estado != EstadoTarea.COMPLETADA
             }
         }
     }
 
     /**
-     * Limpia el mensaje de error
+     * Marcar una tarea como completada
+     */
+    fun marcarTareaComoCompletada(tareaId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            try {
+                val resultado = tareaRepository.actualizarEstadoTarea(tareaId, EstadoTarea.COMPLETADA.name)
+                
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update { 
+                            it.copy(
+                                mensaje = "Tarea marcada como completada",
+                                isLoading = false
+                            )
+                        }
+                        // Recargar tareas para reflejar el cambio
+                        cargarTareasPorAlumno(_uiState.value.alumnoSeleccionadoId)
+                    }
+                    
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                error = "Error al actualizar tarea: ${resultado.exception.message}",
+                                isLoading = false
+                            )
+                        }
+                        Timber.e(resultado.exception, "Error al marcar tarea como completada")
+                    }
+                    
+                    is Result.Loading -> {
+                        // Estado de carga ya actualizado
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        error = "Error inesperado al actualizar tarea: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "Error inesperado al marcar tarea como completada")
+            }
+        }
+    }
+
+    /**
+     * Limpiar mensaje de error
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
 
     /**
-     * Limpia el mensaje de éxito
+     * Limpiar mensaje de éxito
      */
-    fun clearMessage() {
-        _uiState.update { it.copy(message = null) }
+    fun clearMensaje() {
+        _uiState.update { it.copy(mensaje = null) }
     }
-}
-*/ 
+} 

@@ -25,176 +25,51 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
+import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
 import com.tfg.umeegunero.navigation.AppScreens
-import com.tfg.umeegunero.navigation.NavigationStructure
-import kotlinx.coroutines.launch
 
 /**
- * Componente que integra el ViewModel con la pantalla de dashboard del profesor
- *
- * Este componente sirve como puente entre el ViewModel y la UI, permitiendo
- * la inyección de dependencias a través de Hilt y proporcionando los datos
- * necesarios a la pantalla de dashboard del profesor.
+ * Dashboard del profesor con Hilt
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HiltProfesorDashboardScreen(
-    navController: NavHostController,
+    navController: NavController,
     viewModel: ProfesorDashboardViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val currentUser = uiState.profesor
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    
-    if (uiState.navigateToWelcome) {
-        LaunchedEffect(true) {
-            navController.navigate(AppScreens.Welcome.route) {
-                popUpTo(AppScreens.ProfesorDashboard.route) { 
-                    inclusive = true 
-                }
-            }
-        }
-    }
-    
-    val navItems = NavigationStructure.getNavItemsByTipoUsuario(TipoUsuario.PROFESOR)
-    
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.fillMaxSize(),
-                drawerContainerColor = MaterialTheme.colorScheme.background,
-                drawerContentColor = MaterialTheme.colorScheme.onBackground
-            ) {
-                Spacer(modifier = Modifier.height(24.dp)) // Espacio para evitar el notch
-                DrawerContent(
-                    navItems = navItems,
-                    currentUser = currentUser,
-                    onNavigate = { route, isImplemented ->
-                        val handled = handleNavigation(route, navController, viewModel, isImplemented)
-                        if (handled) {
-                            scope.launch { drawerState.close() }
-                        }
-                        handled
-                    },
-                    onCloseDrawer = {
-                        scope.launch { drawerState.close() }
-                    }
-                )
-            }
-        }
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Panel de Profesor") },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Menú"
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
+        Text("Profesor Dashboard (Temporal)", fontSize = 24.sp)
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = {
+            navController.navigate(AppScreens.TareasProfesor.route)
+        }) {
+            Text("Gestionar Tareas")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = {
+            navController.navigate(AppScreens.ConversacionesProfesor.route)
+        }) {
+            Text("Mensajes")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = {
+            navController.navigate(AppScreens.Welcome.route) {
+                popUpTo("profesor_graph") { inclusive = true }
             }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                if (uiState.isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    ProfesorHomeContent(
-                        alumnosPendientes = uiState.alumnosPendientes,
-                        onCrearRegistroActividad = viewModel::crearRegistroActividad,
-                        navController = navController
-                    )
-                }
-            }
+        }) {
+            Text("Cerrar Sesión")
         }
-    }
-}
-
-/**
- * Función para manejar la navegación desde el menú lateral
- */
-private fun handleNavigation(
-    route: String,
-    navController: NavHostController,
-    viewModel: ProfesorDashboardViewModel,
-    isImplemented: Boolean = true
-): Boolean {
-    // Primero verificamos si la opción está implementada
-    if (!isImplemented) {
-        // Si no está implementada, navegamos a la pantalla dummy
-        val title = getRouteTitleForDummy(route)
-        navController.navigate(AppScreens.Dummy.createRoute(title))
-        return true
-    }
-
-    // Para rutas implementadas
-    return when (route) {
-        "profesor_dashboard" -> {
-            // Estamos en el dashboard, no hacemos nada
-            true
-        }
-        AppScreens.Config.route -> {
-            navController.navigate(route)
-            true
-        }
-        AppScreens.Perfil.route -> {
-            navController.navigate(route)
-            true
-        }
-        AppScreens.Notificaciones.route -> {
-            navController.navigate(route)
-            true
-        }
-        "logout" -> {
-            viewModel.logout()
-            true
-        }
-        else -> {
-            // Si no sabemos manejar la ruta, vamos a la pantalla dummy
-            val title = getRouteTitleForDummy(route)
-            navController.navigate(AppScreens.Dummy.createRoute(title))
-            true
-        }
-    }
-}
-
-/**
- * Obtiene el título para la pantalla dummy basado en la ruta
- */
-private fun getRouteTitleForDummy(route: String): String {
-    return when {
-        route.contains("clases") -> "Mis Clases"
-        route.contains("alumnos") -> "Mis Alumnos"
-        route.contains("comunicaciones") -> "Comunicaciones"
-        route.contains("perfil") -> "Mi Perfil"
-        else -> "Funcionalidad en Desarrollo"
     }
 }
 
@@ -205,7 +80,7 @@ private fun getRouteTitleForDummy(route: String): String {
 fun ProfesorHomeContent(
     alumnosPendientes: Int,
     onCrearRegistroActividad: () -> Unit,
-    navController: NavHostController
+    navController: NavController
 ) {
     Column(
         modifier = Modifier
@@ -388,120 +263,6 @@ fun ActionButton(
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge
-            )
-        }
-    }
-}
-
-/**
- * Contenido del drawer de navegación
- */
-@Composable
-fun DrawerContent(
-    navItems: List<NavigationStructure.NavItem>,
-    currentUser: Usuario?,
-    onNavigate: (String, Boolean) -> Boolean,
-    onCloseDrawer: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // Cabecera del drawer con información del usuario
-        DrawerHeader(currentUser)
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Lista de opciones de navegación
-        DrawerBody(
-            items = navItems,
-            onNavigate = onNavigate
-        )
-        
-        Spacer(modifier = Modifier.weight(1f))
-        
-        // Botón de cerrar drawer (opcional)
-        TextButton(
-            onClick = onCloseDrawer,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-            Text("Cerrar menú")
-        }
-    }
-}
-
-/**
- * Cabecera del drawer con información del usuario
- */
-@Composable
-fun DrawerHeader(
-    usuario: Usuario?
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = MaterialTheme.shapes.large
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(40.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = usuario?.nombre ?: "Usuario",
-            style = MaterialTheme.typography.titleLarge
-        )
-        
-        Text(
-            text = usuario?.email ?: "email@example.com",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-/**
- * Cuerpo del drawer con lista de opciones de navegación
- */
-@Composable
-fun DrawerBody(
-    items: List<NavigationStructure.NavItem>,
-    onNavigate: (String, Boolean) -> Boolean
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items.forEach { item ->
-            NavigationDrawerItem(
-                label = { Text(item.title) },
-                selected = false,
-                onClick = { onNavigate(item.route, item.isImplemented) },
-                icon = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = null
-                    )
-                },
-                colors = NavigationDrawerItemDefaults.colors(
-                    unselectedContainerColor = Color.Transparent
-                ),
-                modifier = Modifier.fillMaxWidth()
             )
         }
     }

@@ -34,6 +34,13 @@ interface AlumnoRepository {
      * Obtiene un alumno por su ID (usando nombre nuevo para el Sprint 2)
      */
     suspend fun obtenerAlumnoPorId(alumnoId: String): Result<Alumno?>
+
+    /**
+     * Obtiene todos los alumnos de una clase específica
+     * @param claseId ID de la clase
+     * @return Resultado con la lista de alumnos
+     */
+    suspend fun obtenerAlumnosPorClase(claseId: String): Result<List<Alumno>>
 }
 
 /**
@@ -93,6 +100,26 @@ class AlumnoRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener alumno por ID")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene todos los alumnos de una clase específica
+     * @param claseId ID de la clase
+     * @return Resultado con la lista de alumnos
+     */
+    override suspend fun obtenerAlumnosPorClase(claseId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("aulaId", claseId)
+                .get()
+                .await()
+
+            val alumnos = query.toObjects(Alumno::class.java)
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumnos por clase")
             return@withContext Result.Error(e)
         }
     }
