@@ -64,7 +64,7 @@ fun HiltProfesorDashboardScreen(
         }
     }
     
-    val navItems = NavigationStructure.getNavItemsByTipo(TipoUsuario.PROFESOR)
+    val navItems = NavigationStructure.getNavItemsByTipoUsuario(TipoUsuario.PROFESOR)
     
     ModalNavigationDrawer(
         drawerState = drawerState,

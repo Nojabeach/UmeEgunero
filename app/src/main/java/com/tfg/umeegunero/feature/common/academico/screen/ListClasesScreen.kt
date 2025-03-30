@@ -14,11 +14,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.feature.common.academico.viewmodel.ListClasesViewModel
+import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 import com.tfg.umeegunero.ui.components.EmptyStateMessage
 import com.tfg.umeegunero.ui.components.LoadingIndicator
-import com.tfg.umeegunero.navigation.Screens
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -56,7 +57,7 @@ fun ListClasesScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { 
-                    navController.navigate(Screens.AddClase.createRoute(uiState.cursoId, ""))
+                    navController.navigate(AppScreens.AddClase.createRoute(uiState.cursoId, "0"))
                 },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -83,7 +84,7 @@ fun ListClasesScreen(
                     icon = Icons.Default.Class,
                     buttonText = "Añadir clase",
                     onButtonClick = { 
-                        navController.navigate(Screens.AddClase.createRoute(uiState.cursoId, ""))
+                        navController.navigate(AppScreens.AddClase.createRoute(uiState.cursoId, "0"))
                     }
                 )
             } else {
@@ -97,15 +98,14 @@ fun ListClasesScreen(
                         ClaseCard(
                             clase = clase,
                             onEditClick = {
-                                navController.navigate(Screens.EditClase.createRoute(clase.id))
+                                navController.navigate(AppScreens.EditClase.createRoute(clase.id))
                             },
                             onDeleteClick = {
                                 claseToDelete = clase
                                 showConfirmDialog = true
                             },
                             onVerDetallesClick = {
-                                // Navegar a los detalles de la clase (alumnos, etc)
-                                // Por implementar
+                                navController.navigate(AppScreens.AsistenciaClase.route + "/${clase.id}")
                             }
                         )
                     }

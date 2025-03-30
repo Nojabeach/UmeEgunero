@@ -20,7 +20,7 @@ import com.tfg.umeegunero.feature.common.academico.viewmodel.ListCursosViewModel
 import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 import com.tfg.umeegunero.ui.components.EmptyStateMessage
 import com.tfg.umeegunero.ui.components.LoadingIndicator
-import com.tfg.umeegunero.navigation.Screens
+import com.tfg.umeegunero.navigation.AppScreens
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -57,7 +57,9 @@ fun ListCursosScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(Screens.AddCurso.route) },
+                onClick = {
+                    navController.navigate(AppScreens.AddCurso.createRoute(viewModel.uiState.value.centroId))
+                },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
@@ -82,7 +84,9 @@ fun ListCursosScreen(
                     message = "No hay cursos disponibles",
                     icon = Icons.Default.School,
                     buttonText = "Añadir curso",
-                    onButtonClick = { navController.navigate(Screens.AddCurso.route) }
+                    onButtonClick = {
+                        navController.navigate(AppScreens.AddCurso.createRoute(viewModel.uiState.value.centroId))
+                    }
                 )
             } else {
                 // Mostrar la lista de cursos
@@ -95,14 +99,14 @@ fun ListCursosScreen(
                         CursoCard(
                             curso = curso,
                             onEditClick = {
-                                navController.navigate(Screens.EditCurso.createRoute(curso.id))
+                                navController.navigate(AppScreens.AddCurso.createRoute(viewModel.uiState.value.centroId))
                             },
                             onDeleteClick = {
                                 cursoToDelete = curso
                                 showConfirmDialog = true
                             },
                             onVerClasesClick = {
-                                navController.navigate(Screens.ClasesScreen.route)
+                                navController.navigate(AppScreens.GestionClases.createRoute(curso.id))
                             }
                         )
                     }

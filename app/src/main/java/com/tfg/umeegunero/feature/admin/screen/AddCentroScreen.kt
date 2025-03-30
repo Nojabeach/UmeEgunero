@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
-import com.tfg.umeegunero.navigation.Screens
+import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError

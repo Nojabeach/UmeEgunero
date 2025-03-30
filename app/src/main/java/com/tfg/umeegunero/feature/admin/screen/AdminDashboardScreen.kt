@@ -168,6 +168,8 @@ fun AdminDashboardScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val menuExpanded = remember { mutableStateOf(false) }
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     
     if (uiState.navigateToWelcome) {
         LaunchedEffect(true) {
@@ -179,7 +181,7 @@ fun AdminDashboardScreen(
         }
     }
     
-    val navItems = NavigationStructure.getNavItemsByTipo(TipoUsuario.ADMIN_APP)
+    val navItems = NavigationStructure.getNavItemsByTipoUsuario(TipoUsuario.ADMIN_APP)
     
     ModalNavigationDrawer(
         drawerState = drawerState,

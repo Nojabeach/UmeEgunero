@@ -57,7 +57,7 @@ sealed class AppScreens(val route: String) {
     object ProfesorDashboard : AppScreens("profesor_dashboard")
     
     /** Dashboard principal para familiares */
-    object FamiliarDashboard : AppScreens("familiar_dashboard")
+    object FamiliarDashboard : AppScreens("familia_dashboard")
 
     /**
      * Sección: Pantallas de administración
@@ -160,10 +160,10 @@ sealed class AppScreens(val route: String) {
     /**
      * Formulario para añadir una clase a un curso
      * @param cursoId Identificador único del curso
-     * @param claseId Identificador de la clase (opcional, para edición)
+     * @param centroId Identificador único del centro
      */
-    object AddClase : AppScreens("add_clase/{cursoId}") {
-        fun createRoute(cursoId: String) = "add_clase/$cursoId"
+    object AddClase : AppScreens("add_clase/{cursoId}/{centroId}") {
+        fun createRoute(cursoId: String, centroId: String) = "add_clase/$cursoId/$centroId"
     }
     
     /**
@@ -379,9 +379,6 @@ sealed class AppScreens(val route: String) {
     /**
      * Sección: Pantallas específicas para familiares
      */
-    /** Dashboard principal para familiares */
-    object FamiliaDashboard : AppScreens("familia_dashboard")
-    
     /**
      * Detalles de un alumno desde la perspectiva del familiar
      * @param alumnoId Identificador único del alumno
@@ -404,4 +401,7 @@ sealed class AppScreens(val route: String) {
 
     /** Pantalla de gestión de profesores */
     object GestionProfesores : AppScreens("gestion_profesores")
+
+    /** Registros de actividad diaria */
+    object RegistroActividad : AppScreens("registro_actividad")
 } 

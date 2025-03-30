@@ -105,7 +105,7 @@ fun GestionClasesScreen(
             ExtendedFloatingActionButton(
                 onClick = { 
                     // Navegar a la pantalla de añadir clase
-                    navController.navigate(AppScreens.AddClase.createRoute(cursoId))
+                    navController.navigate(AppScreens.AddClase.createRoute(cursoId, "0"))
                 },
                 icon = { 
                     Icon(

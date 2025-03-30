@@ -412,13 +412,28 @@ object NavigationStructure {
                 NavItem(
                     title = "Cursos",
                     icon = Icons.Outlined.List,
-                    route = Screens.CursosScreen.route,
+                    route = AppScreens.Cursos.route,
+                    description = "Ver todos los cursos",
                     isImplemented = true
                 ),
                 NavItem(
                     title = "Clases",
                     icon = Icons.Outlined.Group,
                     route = "admin_dashboard/clases",
+                    isImplemented = true
+                ),
+                NavItem(
+                    title = "Ver Clases",
+                    icon = Icons.Outlined.School,
+                    route = AppScreens.RegistroActividad.route,
+                    description = "Administrar las clases",
+                    isImplemented = true
+                ),
+                NavItem(
+                    title = "Registros Diarios",
+                    icon = Icons.AutoMirrored.Outlined.Assignment,
+                    route = AppScreens.RegistroActividad.route,
+                    description = "Registro de actividad diaria",
                     isImplemented = true
                 )
             )
@@ -558,12 +573,12 @@ object NavigationStructure {
     )
 
     // PERFIL FAMILIAR
-    fun getFamiliarNavItems(): List<NavItem> = listOf(
+    fun getFamiliaNavItems(): List<NavItem> = listOf(
         NavItem(
             title = "Inicio",
             icon = Icons.Filled.Home,
-            route = AppScreens.FamiliaDashboard.route,
-            description = "Panel principal con resumen de actividad"
+            route = AppScreens.FamiliarDashboard.route,
+            description = "Panel principal para familias"
         ),
         NavItem(
             title = "Estudiantes",
@@ -641,19 +656,21 @@ object NavigationStructure {
         )
     )
 
-    fun getNavItemsByTipo(tipo: TipoUsuario): List<NavItem> = when (tipo) {
-        TipoUsuario.ADMIN_APP -> getAdminNavItems()
+    // Obtener los items de navegación según el perfil del usuario
+    fun getNavItemsByTipoUsuario(tipoUsuario: TipoUsuario): List<NavItem> = when(tipoUsuario) {
+        TipoUsuario.ADMIN_APP -> getAdminNavItems()  
         TipoUsuario.ADMIN_CENTRO -> getCentroNavItems()
         TipoUsuario.PROFESOR -> getProfesorNavItems()
-        TipoUsuario.FAMILIAR -> getFamiliarNavItems()
+        TipoUsuario.FAMILIAR -> getFamiliaNavItems()
         TipoUsuario.ALUMNO -> emptyList() // Los alumnos no tienen navegación por ahora
     }
-
-    fun getNavItemsByTipo(tipoString: String): List<NavItem> = when (tipoString.uppercase()) {
+    
+    // Obtener los items de navegación según el string del perfil
+    fun getNavItemsByTipoUsuarioString(tipoUsuario: String): List<NavItem> = when(tipoUsuario.uppercase()) {
         "ADMIN_APP", "ADMIN" -> getAdminNavItems()
         "ADMIN_CENTRO", "CENTRO" -> getCentroNavItems()
         "PROFESOR" -> getProfesorNavItems()
-        "FAMILIAR" -> getFamiliarNavItems()
+        "FAMILIAR" -> getFamiliaNavItems()
         else -> emptyList()
     }
 } 
