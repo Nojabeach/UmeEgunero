@@ -669,6 +669,144 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
     }
 
     /**
+     * Muestra el diálogo para crear una nueva actividad
+     */
+    fun mostrarDialogoCrearActividad() {
+        val nuevaActividad = ActividadPreescolar(
+            profesorId = _uiState.value.profesorId,
+            profesorNombre = _uiState.value.profesorNombre,
+            claseId = _uiState.value.claseSeleccionadaId,
+            fechaCreacion = Timestamp.now()
+        )
+        
+        _uiState.update { state ->
+            state.copy(
+                actividadEnEdicion = nuevaActividad,
+                modoEdicion = false,
+                mostrarDialogoNuevaActividad = true
+            )
+        }
+    }
+    
+    /**
+     * Oculta el diálogo de nueva actividad
+     */
+    fun ocultarDialogoNuevaActividad() {
+        _uiState.update { state ->
+            state.copy(
+                mostrarDialogoNuevaActividad = false,
+                actividadEnEdicion = null,
+                modoEdicion = false
+            )
+        }
+    }
+
+    /**
+     * Crea una nueva actividad
+     */
+    fun crearActividad(actividad: ActividadPreescolar) {
+        val actividadCompleta = actividad.copy(
+            profesorId = _uiState.value.profesorId,
+            profesorNombre = _uiState.value.profesorNombre,
+            claseId = _uiState.value.claseSeleccionadaId,
+            fechaCreacion = Timestamp.now()
+        )
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            try {
+                val resultado = actividadRepository.crearActividad(actividadCompleta)
+                
+                when (resultado) {
+                    is Result.Success -> {
+                        // Recargar actividades para mostrar los cambios
+                        cargarActividadesPorClase(_uiState.value.claseSeleccionadaId)
+                        
+                        _uiState.update { state ->
+                            state.copy(
+                                mensaje = "Actividad creada correctamente",
+                                isLoading = false
+                            )
+                        }
+                    }
+                    
+                    is Result.Error -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                error = "Error al crear actividad: ${resultado.exception.message}",
+                                isLoading = false
+                            )
+                        }
+                        Timber.e(resultado.exception, "Error al crear actividad")
+                    }
+                    
+                    is Result.Loading -> {
+                        // Estado de carga ya actualizado
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { state ->
+                    state.copy(
+                        error = "Error inesperado al crear actividad: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "Error inesperado al crear actividad")
+            }
+        }
+    }
+    
+    /**
+     * Actualiza una actividad existente
+     */
+    fun actualizarActividad(actividad: ActividadPreescolar) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            try {
+                val resultado = actividadRepository.actualizarActividad(actividad)
+                
+                when (resultado) {
+                    is Result.Success -> {
+                        // Recargar actividades para mostrar los cambios
+                        cargarActividadesPorClase(_uiState.value.claseSeleccionadaId)
+                        
+                        _uiState.update { state ->
+                            state.copy(
+                                mensaje = "Actividad actualizada correctamente",
+                                isLoading = false
+                            )
+                        }
+                    }
+                    
+                    is Result.Error -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                error = "Error al actualizar actividad: ${resultado.exception.message}",
+                                isLoading = false
+                            )
+                        }
+                        Timber.e(resultado.exception, "Error al actualizar actividad")
+                    }
+                    
+                    is Result.Loading -> {
+                        // Estado de carga ya actualizado
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { state ->
+                    state.copy(
+                        error = "Error inesperado al actualizar actividad: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "Error inesperado al actualizar actividad")
+            }
+        }
+    }
+
+    /**
      * Limpia el mensaje de error
      */
     fun clearError() {

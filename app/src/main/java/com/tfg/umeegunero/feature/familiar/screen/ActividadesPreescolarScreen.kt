@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -153,42 +154,78 @@ fun ActividadesPreescolarScreen(
                     modifier = Modifier.padding(16.dp)
                 )
                 
-                // Mensaje temporal mientras se implementa
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                // Filtros para actividades
+                FiltersSection(
+                    filtroSeleccionado = uiState.filtroSeleccionado,
+                    categoriaSeleccionada = uiState.categoriaSeleccionada,
+                    onFiltroSelected = { viewModel.aplicarFiltro(it) },
+                    onCategoriaSelected = { viewModel.aplicarFiltroCategoria(it) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Lista de actividades filtradas
+                if (uiState.actividadesFiltradas.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Construction,
-                            contentDescription = null,
-                            modifier = Modifier.size(72.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "En desarrollo",
-                            style = MaterialTheme.typography.titleLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "Estamos trabajando en implementar las actividades preescolares. ¡Próximamente disponible!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(72.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = "No hay actividades",
+                                style = MaterialTheme.typography.titleLarge,
+                                textAlign = TextAlign.Center
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "No se encontraron actividades con los filtros seleccionados",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(uiState.actividadesFiltradas) { actividad ->
+                            ActividadPreescolarItem(
+                                actividad = actividad,
+                                onClick = { viewModel.seleccionarActividad(actividad.id) }
+                            )
+                        }
                     }
                 }
+            }
+            
+            // Detalle de actividad en un diálogo
+            if (uiState.mostrarDetalleActividad && uiState.actividadSeleccionada != null) {
+                DetalleActividadDialog(
+                    actividad = uiState.actividadSeleccionada!!,
+                    onDismiss = { viewModel.cerrarDetalleActividad() },
+                    onMarcarRevisada = { comentario ->
+                        viewModel.marcarComoRevisada(uiState.actividadSeleccionada!!.id, comentario)
+                    }
+                )
             }
         }
     }
@@ -624,7 +661,7 @@ fun obtenerNombreCategoria(categoria: CategoriaActividad): String {
 fun obtenerIconoCategoria(categoria: CategoriaActividad): ImageVector {
     return when (categoria) {
         CategoriaActividad.JUEGO -> Icons.Default.Toys
-        CategoriaActividad.MOTOR -> Icons.Default.DirectionsRun
+        CategoriaActividad.MOTOR -> Icons.AutoMirrored.Filled.DirectionsRun
         CategoriaActividad.LENGUAJE -> Icons.Default.RecordVoiceOver
         CategoriaActividad.MUSICA -> Icons.Default.MusicNote
         CategoriaActividad.ARTE -> Icons.Default.Palette
@@ -637,4 +674,489 @@ fun obtenerIconoCategoria(categoria: CategoriaActividad): ImageVector {
 @Composable
 fun obtenerColorCategoria(categoria: CategoriaActividad): Color {
     return colorCategoriaActividad(categoria)
+}
+
+/**
+ * Sección de filtros para actividades
+ */
+@Composable
+fun FiltersSection(
+    filtroSeleccionado: FiltroActividad,
+    categoriaSeleccionada: CategoriaActividad?,
+    onFiltroSelected: (FiltroActividad) -> Unit,
+    onCategoriaSelected: (CategoriaActividad?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Filtrar actividades",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        // Chips de filtros por estado
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(FiltroActividad.values()) { filtro ->
+                FilterChip(
+                    selected = filtroSeleccionado == filtro,
+                    onClick = { onFiltroSelected(filtro) },
+                    label = { 
+                        Text(
+                            when(filtro) {
+                                FiltroActividad.TODAS -> "Todas"
+                                FiltroActividad.PENDIENTES -> "Pendientes"
+                                FiltroActividad.REALIZADAS -> "Realizadas"
+                                FiltroActividad.RECIENTES -> "Recientes"
+                            }
+                        ) 
+                    },
+                    leadingIcon = if (filtroSeleccionado == filtro) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Chips de categorías
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Chip "Todas las categorías"
+            item {
+                FilterChip(
+                    selected = categoriaSeleccionada == null,
+                    onClick = { onCategoriaSelected(null) },
+                    label = { Text("Todas") },
+                    leadingIcon = if (categoriaSeleccionada == null) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null
+                )
+            }
+            
+            // Chips para cada categoría
+            items(CategoriaActividad.values()) { categoria ->
+                FilterChip(
+                    selected = categoriaSeleccionada == categoria,
+                    onClick = { onCategoriaSelected(categoria) },
+                    label = { 
+                        Text(
+                            when(categoria) {
+                                CategoriaActividad.JUEGO -> "Juego"
+                                CategoriaActividad.MOTOR -> "Motricidad"
+                                CategoriaActividad.LENGUAJE -> "Lenguaje"
+                                CategoriaActividad.MUSICA -> "Música"
+                                CategoriaActividad.ARTE -> "Arte"
+                                CategoriaActividad.EXPLORACION -> "Exploración"
+                                CategoriaActividad.AUTONOMIA -> "Autonomía"
+                                CategoriaActividad.OTRA -> "Otras"
+                            }
+                        ) 
+                    },
+                    leadingIcon = if (categoriaSeleccionada == categoria) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = colorCategoriaActividad(categoria).copy(alpha = 0.2f),
+                        selectedLabelColor = colorCategoriaActividad(categoria)
+                    )
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Item de actividad preescolar en la lista
+ */
+@Composable
+fun ActividadPreescolarItem(
+    actividad: ActividadPreescolar,
+    onClick: () -> Unit
+) {
+    val colorCategoria = colorCategoriaActividad(actividad.categoria)
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Indicador de categoría
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(colorCategoria.copy(alpha = 0.2f))
+                    .border(2.dp, colorCategoria.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = getCategoriaIcon(actividad.categoria),
+                    contentDescription = null,
+                    tint = colorCategoria,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = actividad.titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Text(
+                    text = actividad.descripcion,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    Text(
+                        text = dateFormat.format(actividad.fechaCreacion.toDate()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    // Profesor
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    Text(
+                        text = actividad.profesorNombre,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // Indicador de estado
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when (actividad.estado) {
+                            EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.errorContainer
+                            EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiaryContainer
+                            EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = when (actividad.estado) {
+                        EstadoActividad.PENDIENTE -> Icons.Default.HourglassEmpty
+                        EstadoActividad.REALIZADA -> Icons.Default.Done
+                        EstadoActividad.CANCELADA -> Icons.Default.Close
+                    },
+                    contentDescription = null,
+                    tint = when (actividad.estado) {
+                        EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.error
+                        EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiary
+                        EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Diálogo para mostrar detalles de una actividad
+ */
+@Composable
+fun DetalleActividadDialog(
+    actividad: ActividadPreescolar,
+    onDismiss: () -> Unit,
+    onMarcarRevisada: (String) -> Unit
+) {
+    var comentario by remember { mutableStateOf("") }
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    val colorCategoria = colorCategoriaActividad(actividad.categoria)
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(actividad.titulo, style = MaterialTheme.typography.titleLarge)
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .fillMaxWidth()
+            ) {
+                // Categoría
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(colorCategoria.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = getCategoriaIcon(actividad.categoria),
+                            contentDescription = null,
+                            tint = colorCategoria,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = when(actividad.categoria) {
+                            CategoriaActividad.JUEGO -> "Juego"
+                            CategoriaActividad.MOTOR -> "Motricidad"
+                            CategoriaActividad.LENGUAJE -> "Lenguaje"
+                            CategoriaActividad.MUSICA -> "Música"
+                            CategoriaActividad.ARTE -> "Arte"
+                            CategoriaActividad.EXPLORACION -> "Exploración"
+                            CategoriaActividad.AUTONOMIA -> "Autonomía"
+                            CategoriaActividad.OTRA -> "Otra categoría"
+                        },
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colorCategoria
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Descripción
+                Text(
+                    text = actividad.descripcion,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Información adicional
+                Text(
+                    text = "Fecha: ${dateFormat.format(actividad.fechaCreacion.toDate())}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Text(
+                    text = "Profesor: ${actividad.profesorNombre}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Estado
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            when (actividad.estado) {
+                                EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.errorContainer
+                                EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiaryContainer
+                                EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = when (actividad.estado) {
+                            EstadoActividad.PENDIENTE -> Icons.Default.HourglassEmpty
+                            EstadoActividad.REALIZADA -> Icons.Default.Done
+                            EstadoActividad.CANCELADA -> Icons.Default.Close
+                        },
+                        contentDescription = null,
+                        tint = when (actividad.estado) {
+                            EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.error
+                            EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiary
+                            EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = when (actividad.estado) {
+                            EstadoActividad.PENDIENTE -> "Pendiente"
+                            EstadoActividad.REALIZADA -> "Realizada"
+                            EstadoActividad.CANCELADA -> "Cancelada"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = when (actividad.estado) {
+                            EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.error
+                            EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiary
+                            EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+                
+                // Comentarios del profesor
+                if (actividad.comentariosProfesor.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Comentarios del profesor:",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    
+                    Text(
+                        text = actividad.comentariosProfesor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+                
+                // Si ya ha sido revisada, mostrar comentarios del familiar
+                if (actividad.revisadaPorFamiliar) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Sus comentarios:",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    
+                    Text(
+                        text = actividad.comentariosFamiliar.ifEmpty { "Sin comentarios" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    
+                    if (actividad.fechaRevision != null) {
+                        Text(
+                            text = "Revisado el: ${dateFormat.format(actividad.fechaRevision.toDate())}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } 
+                // Si no ha sido revisada, mostrar campo para comentarios
+                else if (actividad.estado == EstadoActividad.REALIZADA) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = comentario,
+                        onValueChange = { comentario = it },
+                        label = { Text("Añadir comentarios (opcional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (!actividad.revisadaPorFamiliar && actividad.estado == EstadoActividad.REALIZADA) {
+                Button(
+                    onClick = { 
+                        onMarcarRevisada(comentario)
+                        onDismiss()
+                    }
+                ) {
+                    Text("Marcar como revisada")
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text("Aceptar")
+                }
+            }
+        },
+        dismissButton = {
+            if (!actividad.revisadaPorFamiliar && actividad.estado == EstadoActividad.REALIZADA) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancelar")
+                }
+            }
+        }
+    )
+}
+
+/**
+ * Devuelve un icono para cada categoría de actividad
+ */
+@Composable
+fun getCategoriaIcon(categoria: CategoriaActividad): ImageVector {
+    return when (categoria) {
+        CategoriaActividad.JUEGO -> Icons.Default.Extension
+        CategoriaActividad.MOTOR -> Icons.AutoMirrored.Filled.DirectionsRun
+        CategoriaActividad.LENGUAJE -> Icons.Default.RecordVoiceOver
+        CategoriaActividad.MUSICA -> Icons.Default.MusicNote
+        CategoriaActividad.ARTE -> Icons.Default.Palette
+        CategoriaActividad.EXPLORACION -> Icons.Default.Search
+        CategoriaActividad.AUTONOMIA -> Icons.Default.EmojiPeople
+        CategoriaActividad.OTRA -> Icons.Default.Lightbulb
+    }
 } 
