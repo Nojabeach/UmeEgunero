@@ -24,6 +24,8 @@ import com.tfg.umeegunero.feature.common.mensajeria.ChatScreen
 import com.tfg.umeegunero.feature.common.mensajeria.ConversacionesScreen
 import com.tfg.umeegunero.feature.profesor.screen.TareasScreen
 import com.tfg.umeegunero.feature.profesor.screen.DetalleTareaScreen
+import com.tfg.umeegunero.feature.familiar.screen.ActividadesPreescolarScreen
+import com.tfg.umeegunero.feature.profesor.screen.ActividadesPreescolarProfesorScreen
 
 /**
  * Navegación principal de la aplicación
@@ -204,6 +206,12 @@ fun NavGraphBuilder.familiarNavGraph(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = {
+                    navController.navigate(AppScreens.ActividadesPreescolar.route)
+                }) {
+                    Text("Actividades Preescolares")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
                     navController.navigate(AppScreens.Welcome.route) {
                         popUpTo("familiar_graph") { inclusive = true }
                     }
@@ -227,6 +235,15 @@ fun NavGraphBuilder.familiarNavGraph(
                     Text("Volver")
                 }
             }
+        }
+        
+        // Actividades preescolares
+        composable(route = AppScreens.ActividadesPreescolar.route) {
+            // Importar ActividadesPreescolarScreen del feature/familiar/screen
+            com.tfg.umeegunero.feature.familiar.screen.ActividadesPreescolarScreen(
+                navController = navController,
+                familiarId = userId
+            )
         }
         
         // Detalle de tarea para alumno (vista de familia)
@@ -306,6 +323,12 @@ fun NavGraphBuilder.profesorNavGraph(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = {
+                    navController.navigate(AppScreens.ActividadesPreescolarProfesor.route)
+                }) {
+                    Text("Actividades Preescolares")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
                     navController.navigate(AppScreens.Welcome.route) {
                         popUpTo("profesor_graph") { inclusive = true }
                     }
@@ -319,6 +342,15 @@ fun NavGraphBuilder.profesorNavGraph(
         composable(route = AppScreens.TareasProfesor.route) {
             TareasScreen(
                 navController = navController
+            )
+        }
+        
+        // Actividades preescolares para profesor
+        composable(route = AppScreens.ActividadesPreescolarProfesor.route) {
+            com.tfg.umeegunero.feature.profesor.screen.ActividadesPreescolarProfesorScreen(
+                profesorId = userId,
+                profesorNombre = userName,
+                onBackClick = { navController.popBackStack() }
             )
         }
         
