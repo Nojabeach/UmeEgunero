@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.local.entity.RegistroActividadEntity
-import com.tfg.umeegunero.data.local.util.Converters
+import com.tfg.umeegunero.util.Converters
 
 /**
  * Definición de la base de datos Room para la aplicación UmeEgunero.

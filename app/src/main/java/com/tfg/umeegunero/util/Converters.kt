@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.data.local.util
+package com.tfg.umeegunero.util
 
 import androidx.room.TypeConverter
 import com.google.firebase.Timestamp
@@ -8,14 +8,17 @@ import com.tfg.umeegunero.data.model.EstadoComida
 import java.util.Date
 
 /**
- * Clase que proporciona convertidores para tipos de datos complejos que Room no puede manejar directamente.
- * Estos convertidores permiten almacenar objetos personalizados, colecciones, etc. en la base de datos.
+ * Clase de utilidad que proporciona convertidores para tipos de datos complejos.
+ * 
+ * Estos convertidores pueden utilizarse con Room o para cualquier otra conversión
+ * en la aplicación que requiera transformar entre tipos de datos nativos y formatos
+ * serializables o entre distintos tipos de datos.
  */
 class Converters {
     private val gson = Gson()
 
     /**
-     * Convierte una fecha (Date) a un timestamp (Long) para almacenamiento en la BD.
+     * Convierte una fecha (Date) a un timestamp (Long).
      */
     @TypeConverter
     fun dateToTimestamp(date: Date?): Long? {
@@ -23,7 +26,7 @@ class Converters {
     }
 
     /**
-     * Convierte un timestamp (Long) a un objeto Date para uso en la aplicación.
+     * Convierte un timestamp (Long) a un objeto Date.
      */
     @TypeConverter
     fun fromTimestamp(value: Long?): Date? {
@@ -31,7 +34,7 @@ class Converters {
     }
 
     /**
-     * Convierte una lista de strings a formato JSON para almacenamiento.
+     * Convierte una lista de strings a formato JSON.
      */
     @TypeConverter
     fun fromStringList(value: List<String>?): String {
@@ -39,7 +42,7 @@ class Converters {
     }
 
     /**
-     * Convierte un string JSON a una lista de strings para uso en la aplicación.
+     * Convierte un string JSON a una lista de strings.
      */
     @TypeConverter
     fun toStringList(value: String): List<String> {
@@ -49,7 +52,7 @@ class Converters {
     }
 
     /**
-     * Convierte un mapa de String a String a formato JSON para almacenamiento.
+     * Convierte un mapa de String a String a formato JSON.
      */
     @TypeConverter
     fun fromStringMap(map: Map<String, String>?): String {
@@ -57,7 +60,7 @@ class Converters {
     }
 
     /**
-     * Convierte un string JSON a un mapa de String a String para uso en la aplicación.
+     * Convierte un string JSON a un mapa de String a String.
      */
     @TypeConverter
     fun toStringMap(value: String): Map<String, String> {
@@ -67,7 +70,7 @@ class Converters {
     }
 
     /**
-     * Convierte un mapa de String a Any a formato JSON para almacenamiento.
+     * Convierte un mapa de String a Any a formato JSON.
      */
     @TypeConverter
     fun fromAnyMap(map: Map<String, Any>?): String {
@@ -75,7 +78,7 @@ class Converters {
     }
 
     /**
-     * Convierte un string JSON a un mapa de String a Any para uso en la aplicación.
+     * Convierte un string JSON a un mapa de String a Any.
      */
     @TypeConverter
     fun toAnyMap(value: String): Map<String, Any> {
