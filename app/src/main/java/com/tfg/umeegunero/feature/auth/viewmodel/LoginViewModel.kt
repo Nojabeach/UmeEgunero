@@ -4,7 +4,7 @@ import android.content.SharedPreferences
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.data.model.UserType
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,7 +46,7 @@ data class LoginUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val success: Boolean = false,
-    val userType: UserType? = null
+    val userType: TipoUsuario? = null
 ) {
     /**
      * Propiedad calculada que indica si el botón de login debe estar habilitado.
@@ -208,10 +208,10 @@ class LoginViewModel @Inject constructor(
      * La operación se ejecuta en una corrutina dentro del viewModelScope para 
      * no bloquear el hilo principal de la aplicación.
      * 
-     * @param userType Tipo de usuario que intenta iniciar sesión (ADMIN, CENTRO, PROFESOR, FAMILIAR)
-     * @param rememberUser Indica si se deben recordar las credenciales para futuros inicios de sesión
+     * @param userType Tipo de usuario que intenta iniciar sesión (ADMIN_APP, ADMIN_CENTRO, PROFESOR, FAMILIAR)
+     * @param rememberUser Si se debe recordar al usuario para futuros inicios de sesión
      */
-    fun login(userType: UserType, rememberUser: Boolean = false) {
+    fun login(userType: TipoUsuario, rememberUser: Boolean = false) {
         val email = _uiState.value.email.trim()
         val password = _uiState.value.password
 
@@ -271,12 +271,7 @@ class LoginViewModel @Inject constructor(
                             Timber.d("Datos de usuario obtenidos: ${usuario.email}")
 
                             // Verificar que el usuario tiene el tipo adecuado de perfil
-                            val tipoUsuarioFirebase = when (userType) {
-                                UserType.ADMIN_APP -> com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_APP
-                                UserType.ADMIN_CENTRO -> com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_CENTRO
-                                UserType.PROFESOR -> com.tfg.umeegunero.data.model.TipoUsuario.PROFESOR
-                                UserType.FAMILIAR -> com.tfg.umeegunero.data.model.TipoUsuario.FAMILIAR
-                            }
+                            val tipoUsuarioFirebase = userType
 
                             val perfiles = usuario.perfiles
                             Timber.d("Perfiles del usuario: ${perfiles.map { it.tipo }}")

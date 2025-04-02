@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.*
 import androidx.navigation.compose.*
-import com.tfg.umeegunero.data.model.UserType
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
@@ -91,10 +91,10 @@ fun Navigation(
             val userTypeStr = backStackEntry.arguments?.getString("userType") ?: "FAMILIAR"
             val userType = remember(userTypeStr) {
                 when(userTypeStr) {
-                    "ADMIN" -> UserType.ADMIN_APP
-                    "CENTRO" -> UserType.ADMIN_CENTRO
-                    "PROFESOR" -> UserType.PROFESOR
-                    else -> UserType.FAMILIAR
+                    "ADMIN" -> TipoUsuario.ADMIN_APP
+                    "CENTRO" -> TipoUsuario.ADMIN_CENTRO
+                    "PROFESOR" -> TipoUsuario.PROFESOR
+                    else -> TipoUsuario.FAMILIAR
                 }
             }
             
@@ -112,10 +112,11 @@ fun Navigation(
                     currentUserName = userName
                     
                     val route = when(userType) {
-                        UserType.ADMIN_APP -> AppScreens.AdminDashboard.route
-                        UserType.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
-                        UserType.PROFESOR -> "profesor_graph"
-                        UserType.FAMILIAR -> "familiar_graph"
+                        TipoUsuario.ADMIN_APP -> AppScreens.AdminDashboard.route
+                        TipoUsuario.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
+                        TipoUsuario.PROFESOR -> "profesor_graph"
+                        TipoUsuario.FAMILIAR -> "familiar_graph"
+                        else -> AppScreens.Welcome.route
                     }
                     navController.navigate(route) {
                         popUpTo(AppScreens.Welcome.route) { inclusive = true }

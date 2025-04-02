@@ -63,6 +63,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.NivelConsumo
+import com.tfg.umeegunero.data.model.Comida
+import com.tfg.umeegunero.data.model.Siesta
+import com.tfg.umeegunero.data.model.CacaControl
+import com.tfg.umeegunero.data.model.Actividad
 import com.tfg.umeegunero.feature.familiar.viewmodel.DetalleRegistroViewModel
 import com.tfg.umeegunero.ui.theme.FamiliarColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -71,45 +75,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Clases de datos para el preview
-enum class NivelConsumo {
-    NADA, POCO, BIEN, TODO
-}
-
-data class ComidaModel(
-    val consumoPrimero: String? = null,
-    val descripcionPrimero: String? = null,
-    val consumoSegundo: String? = null,
-    val descripcionSegundo: String? = null,
-    val consumoPostre: String? = null,
-    val descripcionPostre: String? = null,
-    val observaciones: String? = null
-)
-
-data class SiestaModel(
-    val duracion: Int,
-    val observaciones: String,
-    val inicio: Timestamp? = null,
-    val fin: Timestamp? = null
-)
-
-data class CacaControlModel(
-    val tipo1: Boolean? = null,
-    val tipo2: Boolean? = null,
-    val tipo3: Boolean? = null,
-    val hora: String? = null,
-    val cantidad: String? = null,
-    val tipo: String? = null,
-    val descripcion: String? = null
-)
-
-data class ActividadesModel(
-    val titulo: String,
-    val descripcion: String,
-    val participacion: String,
-    val observaciones: String
-)
-
+/**
+ * Modelo que representa un registro de actividad diaria simplificado para la UI.
+ * 
+ * Este es un modelo que utiliza los tipos de datos del dominio pero está adaptado
+ * para las necesidades de la pantalla de detalle de registro. Se utiliza para
+ * simplificar la comunicación entre la capa de dominio y la UI.
+ */
 data class RegistroModel(
     val id: String,
     val alumnoId: String,
@@ -117,10 +89,10 @@ data class RegistroModel(
     val fecha: com.google.firebase.Timestamp,
     val profesorId: String? = null,
     val profesorNombre: String? = null,
-    val comida: ComidaModel? = null,
-    val siesta: SiestaModel? = null,
-    val cacaControl: CacaControlModel? = null,
-    val actividades: ActividadesModel? = null,
+    val comida: Comida? = null,
+    val siesta: Siesta? = null,
+    val cacaControl: CacaControl? = null,
+    val actividades: Actividad? = null,
     val observaciones: String? = null
 )
 
@@ -759,9 +731,9 @@ fun DetalleRegistroTopBar(
 fun DetalleRegistroContent(
     fecha: String,
     nombreAlumno: String,
-    comidaData: ComidaModel? = null,
+    comidaData: Comida? = null,
     observacionesTexto: String? = null,
-    cacaControlData: CacaControlModel? = null,
+    cacaControlData: CacaControl? = null,
     descanso: String,
     actividades: List<String>,
     isLoading: Boolean,
@@ -1199,7 +1171,7 @@ fun DetalleRegistroScreenPreviewContent() {
     
     // Mock de datos para el preview
     val alumnoNombre = "Martín García López"
-    val comidaMock = ComidaModel(
+    val comidaMock = Comida(
         consumoPrimero = "Lentejas con verduras",
         descripcionPrimero = "Delicioso plato de lentejas con verduras",
         consumoSegundo = "Filete de pollo con ensalada",
@@ -1208,14 +1180,14 @@ fun DetalleRegistroScreenPreviewContent() {
         descripcionPostre = "Deliciosa fruta fresca"
     )
     
-    val siestaMock = SiestaModel(
+    val siestaMock = Siesta(
         duracion = 45,
         observaciones = "Ha dormido tranquilamente.",
         inicio = Timestamp(Date()),
         fin = Timestamp(Date())
     )
     
-    val cacaMock = CacaControlModel(
+    val cacaMock = CacaControl(
         tipo1 = true,
         tipo2 = true,
         tipo3 = true,
@@ -1225,7 +1197,7 @@ fun DetalleRegistroScreenPreviewContent() {
         descripcion = "Sin problemas."
     )
     
-    val actividadesMock = ActividadesModel(
+    val actividadesMock = Actividad(
         titulo = "Clase de pintura",
         descripcion = "Hoy hemos realizado dibujos con acuarelas sobre el otoño.",
         participacion = "Ha participado activamente y ha mostrado creatividad.",

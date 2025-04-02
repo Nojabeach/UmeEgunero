@@ -3,19 +3,10 @@ package com.tfg.umeegunero.feature.familiar.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.data.model.Actividad
-import com.tfg.umeegunero.data.model.CacaControl
-import com.tfg.umeegunero.data.model.Comida
-import com.tfg.umeegunero.data.model.RegistroActividad
-import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.feature.familiar.screen.RegistroModel
 import com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroUiState
-import com.tfg.umeegunero.feature.familiar.screen.ComidaModel
-import com.tfg.umeegunero.feature.familiar.screen.SiestaModel
-import com.tfg.umeegunero.feature.familiar.screen.CacaControlModel
-import com.tfg.umeegunero.feature.familiar.screen.ActividadesModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,44 +63,10 @@ class DetalleRegistroViewModel @Inject constructor(
                             fecha = registroOriginal.fecha,
                             profesorId = registroOriginal.profesorId,
                             profesorNombre = registroOriginal.profesorNombre,
-                            comida = registroOriginal.comida?.let { comida ->
-                                ComidaModel(
-                                    consumoPrimero = comida.consumoPrimero,
-                                    descripcionPrimero = comida.descripcionPrimero,
-                                    consumoSegundo = comida.consumoSegundo,
-                                    descripcionSegundo = comida.descripcionSegundo,
-                                    consumoPostre = comida.consumoPostre,
-                                    descripcionPostre = comida.descripcionPostre,
-                                    observaciones = comida.observaciones
-                                )
-                            },
-                            siesta = registroOriginal.siesta?.let { siesta ->
-                                SiestaModel(
-                                    duracion = siesta.duracion,
-                                    observaciones = siesta.observaciones,
-                                    inicio = siesta.inicio,
-                                    fin = siesta.fin
-                                )
-                            },
-                            cacaControl = registroOriginal.cacaControl?.let { necesidades ->
-                                CacaControlModel(
-                                    tipo1 = necesidades.tipo1,
-                                    tipo2 = necesidades.tipo2,
-                                    tipo3 = necesidades.tipo3,
-                                    hora = necesidades.hora,
-                                    cantidad = necesidades.cantidad,
-                                    tipo = necesidades.tipo,
-                                    descripcion = necesidades.descripcion
-                                )
-                            },
-                            actividades = registroOriginal.actividades?.let { actividad ->
-                                ActividadesModel(
-                                    titulo = actividad.titulo,
-                                    descripcion = actividad.descripcion,
-                                    participacion = actividad.participacion,
-                                    observaciones = actividad.observaciones
-                                )
-                            },
+                            comida = registroOriginal.comida,
+                            siesta = registroOriginal.siesta,
+                            cacaControl = registroOriginal.cacaControl,
+                            actividades = registroOriginal.actividades,
                             observaciones = registroOriginal.observaciones?.toString()
                         )
 

@@ -74,7 +74,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.R
-import com.tfg.umeegunero.data.model.UserType
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
@@ -105,15 +105,15 @@ import androidx.compose.material3.HorizontalDivider
  * @param onForgotPassword Callback que se ejecuta cuando el usuario pulsa "Olvidé mi contraseña"
  * 
  * @see LoginViewModel Para la lógica de negocio
- * @see UserType Para los diferentes tipos de usuario
+ * @see TipoUsuario Para los diferentes tipos de usuario
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    userType: UserType,
+    userType: TipoUsuario,
     viewModel: LoginViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onLoginSuccess: (UserType) -> Unit,
+    onLoginSuccess: (TipoUsuario) -> Unit,
     onForgotPassword: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -127,18 +127,22 @@ fun LoginScreen(
 
     // Color según tipo de usuario
     val userTypeColor = when (userType) {
-        UserType.ADMIN_APP -> MaterialTheme.colorScheme.tertiary
-        UserType.ADMIN_CENTRO-> Color(0xFF007AFF) // Azul iOS
-        UserType.PROFESOR -> Color(0xFF34C759) // Verde iOS
-        UserType.FAMILIAR -> Color(0xFF5856D6) // Púrpura iOS
+        TipoUsuario.ADMIN_APP -> MaterialTheme.colorScheme.tertiary
+        TipoUsuario.ADMIN_CENTRO-> Color(0xFF007AFF) // Azul iOS
+        TipoUsuario.PROFESOR -> Color(0xFF34C759) // Verde iOS
+        TipoUsuario.FAMILIAR -> Color(0xFF5856D6) // Púrpura iOS
+        TipoUsuario.ALUMNO -> Color(0xFFFF9500) // Naranja iOS
+        TipoUsuario.DESCONOCIDO -> Color.Gray
     }
 
     // Título según tipo de usuario
     val userTypeTitle = when (userType) {
-        UserType.ADMIN_APP -> "Administrador"
-        UserType.ADMIN_CENTRO -> "Centro Educativo"
-        UserType.PROFESOR -> "Profesor"
-        UserType.FAMILIAR -> "Familiar"
+        TipoUsuario.ADMIN_APP -> "Administrador"
+        TipoUsuario.ADMIN_CENTRO -> "Centro Educativo"
+        TipoUsuario.PROFESOR -> "Profesor"
+        TipoUsuario.FAMILIAR -> "Familiar"
+        TipoUsuario.ALUMNO -> "Alumno"
+        TipoUsuario.DESCONOCIDO -> "Usuario"
     }
 
     // Validar el formato del email en tiempo real
@@ -604,10 +608,11 @@ fun LoginScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val instructionText = when (userType) {
-                            UserType.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación."
-                            UserType.ADMIN_CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
-                            UserType.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo."
-                            UserType.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro."
+                            TipoUsuario.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación."
+                            TipoUsuario.ADMIN_CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
+                            TipoUsuario.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo."
+                            TipoUsuario.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro."
+                            else -> "Introduce tus credenciales para acceder."
                         }
 
                         Text(
@@ -636,7 +641,7 @@ private fun Color.luminance(): Float {
 fun LoginScreenLightPreview() {
     UmeEguneroTheme(darkTheme = false) {
         // Usar una versión simplificada sin dependencia del ViewModel
-        LoginScreenPreview(userType = UserType.ADMIN_APP, darkTheme = false)
+        LoginScreenPreview(userType = TipoUsuario.ADMIN_APP, darkTheme = false)
     }
 }
 
@@ -645,12 +650,12 @@ fun LoginScreenLightPreview() {
 fun LoginScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
         // Usar una versión simplificada sin dependencia del ViewModel
-        LoginScreenPreview(userType = UserType.ADMIN_APP, darkTheme = true)
+        LoginScreenPreview(userType = TipoUsuario.ADMIN_APP, darkTheme = true)
     }
 }
 
 @Composable
-fun LoginScreenPreview(userType: UserType, darkTheme: Boolean) {
+fun LoginScreenPreview(userType: TipoUsuario, darkTheme: Boolean) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
@@ -658,18 +663,22 @@ fun LoginScreenPreview(userType: UserType, darkTheme: Boolean) {
     
     // Color según tipo de usuario
     val userTypeColor = when (userType) {
-        UserType.ADMIN_APP -> MaterialTheme.colorScheme.tertiary
-        UserType.ADMIN_CENTRO-> Color(0xFF007AFF) // Azul iOS
-        UserType.PROFESOR -> Color(0xFF34C759) // Verde iOS
-        UserType.FAMILIAR -> Color(0xFF5856D6) // Púrpura iOS
+        TipoUsuario.ADMIN_APP -> MaterialTheme.colorScheme.tertiary
+        TipoUsuario.ADMIN_CENTRO-> Color(0xFF007AFF) // Azul iOS
+        TipoUsuario.PROFESOR -> Color(0xFF34C759) // Verde iOS
+        TipoUsuario.FAMILIAR -> Color(0xFF5856D6) // Púrpura iOS
+        TipoUsuario.ALUMNO -> Color(0xFFFF9500) // Naranja iOS
+        TipoUsuario.DESCONOCIDO -> Color.Gray
     }
 
     // Título según tipo de usuario
     val userTypeTitle = when (userType) {
-        UserType.ADMIN_APP -> "Administrador"
-        UserType.ADMIN_CENTRO -> "Centro Educativo"
-        UserType.PROFESOR -> "Profesorado"
-        UserType.FAMILIAR -> "Familiar"
+        TipoUsuario.ADMIN_APP -> "Administrador"
+        TipoUsuario.ADMIN_CENTRO -> "Centro Educativo"
+        TipoUsuario.PROFESOR -> "Profesorado"
+        TipoUsuario.FAMILIAR -> "Familiar"
+        TipoUsuario.ALUMNO -> "Alumno"
+        TipoUsuario.DESCONOCIDO -> "Usuario"
     }
 
     Scaffold(
@@ -727,10 +736,12 @@ fun LoginScreenPreview(userType: UserType, darkTheme: Boolean) {
                     // Usar iconos de Material en lugar de recursos drawable
                     // ya que parece que faltan esos recursos
                     val icon = when (userType) {
-                        UserType.ADMIN_APP -> Icons.Default.AccountCircle
-                        UserType.ADMIN_CENTRO -> Icons.Default.School
-                        UserType.PROFESOR -> Icons.Default.Person
-                        UserType.FAMILIAR -> Icons.Default.Person // Family icon no está en el Material Icons por defecto
+                        TipoUsuario.ADMIN_APP -> Icons.Default.AccountCircle
+                        TipoUsuario.ADMIN_CENTRO -> Icons.Default.School
+                        TipoUsuario.PROFESOR -> Icons.Default.Person
+                        TipoUsuario.FAMILIAR -> Icons.Default.Person // Family icon no está en el Material Icons por defecto
+                        TipoUsuario.ALUMNO -> Icons.Default.Person // Icono para alumno
+                        TipoUsuario.DESCONOCIDO -> Icons.Default.Person // Icono para desconocido
                     }
                     Icon(
                         imageVector = icon,
@@ -883,10 +894,11 @@ fun LoginScreenPreview(userType: UserType, darkTheme: Boolean) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val instructionText = when (userType) {
-                            UserType.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación."
-                            UserType.ADMIN_CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
-                            UserType.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo."
-                            UserType.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro."
+                            TipoUsuario.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación."
+                            TipoUsuario.ADMIN_CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
+                            TipoUsuario.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo."
+                            TipoUsuario.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro."
+                            else -> "Introduce tus credenciales para acceder."
                         }
 
                         Text(
