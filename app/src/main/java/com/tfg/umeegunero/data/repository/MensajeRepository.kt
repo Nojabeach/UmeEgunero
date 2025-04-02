@@ -35,11 +35,9 @@ data class ConversacionInfo(
 @Singleton
 class MensajeRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val storage: FirebaseStorage
 ) {
-    // Referencia al Storage para adjuntos
-    private val storage = FirebaseStorage.getInstance()
-    
     // Referencia a colecciones
     private val conversacionesRef = firestore.collection("conversaciones")
     private val mensajesRef = firestore.collection("mensajes")

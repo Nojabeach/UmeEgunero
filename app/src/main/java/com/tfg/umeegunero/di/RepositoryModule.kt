@@ -3,6 +3,7 @@ package com.tfg.umeegunero.di
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.repository.ActividadPreescolarRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
@@ -11,8 +12,10 @@ import com.tfg.umeegunero.data.repository.AsistenciaRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepositoryImpl
 import com.tfg.umeegunero.data.repository.AlumnoRepositoryImpl
+import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ComunicadoRepository
 import com.tfg.umeegunero.data.repository.LocalRegistroActividadRepository
+import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
@@ -78,6 +81,24 @@ object RepositoryModule {
     @Singleton
     fun provideTareaRepository(firestore: FirebaseFirestore): TareaRepository {
         return TareaRepository(firestore)
+    }
+    
+    /**
+     * Proporciona una instancia del repositorio de mensajes.
+     * Este repositorio maneja la comunicación entre usuarios.
+     *
+     * @param firestore Instancia de FirebaseFirestore
+     * @param authRepository Repositorio de autenticación
+     * @return Instancia de MensajeRepository
+     */
+    @Provides
+    @Singleton
+    fun provideMensajeRepository(
+        firestore: FirebaseFirestore,
+        authRepository: AuthRepository,
+        storage: FirebaseStorage
+    ): MensajeRepository {
+        return MensajeRepository(firestore, authRepository, storage)
     }
     
     @Provides
