@@ -123,7 +123,8 @@ fun ConversacionesScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    // TODO: Implementar selección de destinatario para nueva conversación
+                    // Implementar selección de destinatario para nueva conversación
+                    navController.navigate("seleccion_destinatario")
                 },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {

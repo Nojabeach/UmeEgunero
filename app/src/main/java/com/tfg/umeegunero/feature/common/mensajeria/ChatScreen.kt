@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.feature.common.mensajeria
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -548,7 +549,9 @@ fun AdjuntoItem(url: String) {
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
             .clickable {
-                // TODO: Implementar visualización del adjunto
+                // Implementar visualización del adjunto
+                val intent = android.content.Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                context.startActivity(intent)
             }
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
