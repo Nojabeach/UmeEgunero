@@ -85,6 +85,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.material3.HorizontalDivider
+import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 
 /**
  * Pantalla de detalle de un centro educativo
@@ -850,21 +851,10 @@ private fun TopBar(
     onEditClicked: () -> Unit = {},
     onBackClicked: () -> Unit = {}
 ) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBackClicked) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver atrás"
-                )
-            }
-        },
-        title = {
-            Text(
-                text = "Detalles del Centro",
-                style = MaterialTheme.typography.titleLarge
-            )
-        },
+    DefaultTopAppBar(
+        title = "Detalles del Centro",
+        showBackButton = true,
+        onBackClick = onBackClicked,
         actions = {
             IconButton(onClick = onEditClicked) {
                 Icon(
@@ -878,12 +868,6 @@ private fun TopBar(
                     contentDescription = "Menú"
                 )
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            titleContentColor = MaterialTheme.colorScheme.onPrimary,
-            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-        )
+        }
     )
 } 

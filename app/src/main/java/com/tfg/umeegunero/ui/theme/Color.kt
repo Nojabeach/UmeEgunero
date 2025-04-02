@@ -1,6 +1,8 @@
 package com.tfg.umeegunero.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.tfg.umeegunero.data.model.CategoriaActividad
+import com.tfg.umeegunero.data.model.EstadoTarea
 
 // Paleta de colores principal inspirada en CDK Admin
 val Primary = Color(0xFF5E35B1)      // Púrpura intenso (primario)
@@ -46,3 +48,32 @@ val GradientEnd = Color(0xFF3F51B5)    // Fin de gradiente
 // Colores para modo oscuro
 val PurpleDark = Color(0xFF4527A0)
 val BlueDark = Color(0xFF283593)
+
+/**
+ * Devuelve un color representativo para cada categoría de actividad preescolar
+ */
+fun colorCategoriaActividad(categoria: CategoriaActividad): Color {
+    return when (categoria) {
+        CategoriaActividad.JUEGO -> Color(0xFF8E24AA)         // Morado
+        CategoriaActividad.MOTOR -> Color(0xFFE53935)         // Rojo
+        CategoriaActividad.LENGUAJE -> Color(0xFF1E88E5)      // Azul
+        CategoriaActividad.MUSICA -> Color(0xFF26A69A)        // Verde azulado
+        CategoriaActividad.ARTE -> Color(0xFFFFB300)          // Ámbar
+        CategoriaActividad.EXPLORACION -> Color(0xFF7CB342)   // Verde claro
+        CategoriaActividad.AUTONOMIA -> Color(0xFFEF6C00)     // Naranja
+        CategoriaActividad.OTRA -> Color(0xFF757575)          // Gris
+    }
+}
+
+/**
+ * Devuelve un color representativo para cada estado de tarea
+ */
+fun colorEstadoTarea(estado: EstadoTarea): Color {
+    return when (estado) {
+        EstadoTarea.PENDIENTE -> Warning
+        EstadoTarea.EN_PROGRESO -> Info
+        EstadoTarea.COMPLETADA -> Success
+        EstadoTarea.CANCELADA -> Error
+        EstadoTarea.VENCIDA -> Error.copy(alpha = 0.7f)
+    }
+}

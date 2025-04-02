@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.util
 
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.util.formatDate
 
 /**
  * Clase de utilidades para exportar datos de usuarios a diferentes formatos.
