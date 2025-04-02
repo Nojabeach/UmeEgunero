@@ -3,7 +3,6 @@ package com.tfg.umeegunero
 import android.content.SharedPreferences
 import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.data.model.UserType
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.Perfil
 import com.tfg.umeegunero.data.repository.UsuarioRepository
@@ -118,11 +117,11 @@ class LoginViewModelTest {
         viewModel.updatePassword(password)
         
         // When: Realizamos login
-        viewModel.login(UserType.ADMIN_APP, true)
+        viewModel.login(TipoUsuario.ADMIN_APP, true)
         
         // Then: Estado de éxito y tipo de usuario correcto
         assertTrue(viewModel.uiState.value.success)
-        assertEquals(UserType.ADMIN_APP, viewModel.uiState.value.userType)
+        assertEquals(TipoUsuario.ADMIN_APP, viewModel.uiState.value.userType)
         assertFalse(viewModel.uiState.value.isLoading)
         assertNull(viewModel.uiState.value.error)
         
@@ -144,7 +143,7 @@ class LoginViewModelTest {
         viewModel.updatePassword(password)
         
         // When: Realizamos login con credenciales incorrectas
-        viewModel.login(UserType.FAMILIAR)
+        viewModel.login(TipoUsuario.FAMILIAR)
         
         // Then: Estado de error y no éxito
         assertFalse(viewModel.uiState.value.success)
@@ -176,7 +175,7 @@ class LoginViewModelTest {
         viewModel.updatePassword(password)
         
         // When: Intentamos login como profesor (perfil que no tiene)
-        viewModel.login(UserType.PROFESOR)
+        viewModel.login(TipoUsuario.PROFESOR)
         
         // Then: Estado de error y no éxito
         assertFalse(viewModel.uiState.value.success)

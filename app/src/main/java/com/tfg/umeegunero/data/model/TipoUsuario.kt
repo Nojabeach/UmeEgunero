@@ -27,7 +27,6 @@ package com.tfg.umeegunero.data.model
  *                     para valores por defecto en ciertos contextos.
  * 
  * @see Perfil Modelo que utiliza esta enumeración para definir roles de usuario
- * @see UserType Enumeración usada para navegación específica basada en tipos de usuario
  */
 enum class TipoUsuario {
     ADMIN_APP, ADMIN_CENTRO, PROFESOR, FAMILIAR, ALUMNO, DESCONOCIDO

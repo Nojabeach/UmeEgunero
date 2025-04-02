@@ -3,7 +3,7 @@ package com.tfg.umeegunero
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.tfg.umeegunero.data.model.UserType
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -33,7 +33,7 @@ class LoginScreenTest {
                     onNavigateToRegister = {},
                     onNavigateToSupport = {},
                     onNavigateToDashboard = {},
-                    userType = UserType.FAMILIAR
+                    userType = TipoUsuario.FAMILIAR
                 )
             }
         }
@@ -54,7 +54,7 @@ class LoginScreenTest {
                     onNavigateToRegister = {},
                     onNavigateToSupport = {},
                     onNavigateToDashboard = {},
-                    userType = UserType.FAMILIAR
+                    userType = TipoUsuario.FAMILIAR
                 )
             }
         }
@@ -85,7 +85,7 @@ class LoginScreenTest {
                     onNavigateToRegister = {},
                     onNavigateToSupport = {},
                     onNavigateToDashboard = {},
-                    userType = UserType.FAMILIAR
+                    userType = TipoUsuario.FAMILIAR
                 )
             }
         }
@@ -117,7 +117,7 @@ class LoginScreenTest {
                     onNavigateToRegister = {},
                     onNavigateToSupport = {},
                     onNavigateToDashboard = {},
-                    userType = UserType.FAMILIAR
+                    userType = TipoUsuario.FAMILIAR
                 )
             }
         }
