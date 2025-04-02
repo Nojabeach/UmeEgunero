@@ -97,4 +97,24 @@ fun formatRelativeDate(timestamp: Long): String {
  */
 fun formatRelativeDate(timestamp: Timestamp): String {
     return formatRelativeDate(timestamp.toDate().time)
+}
+
+/**
+ * Convierte un Timestamp de Firebase a un objeto Date
+ * 
+ * @param timestamp El timestamp de Firebase a convertir
+ * @return Objeto Date o null si el timestamp es null
+ */
+fun timestampToDate(timestamp: Timestamp?): Date? {
+    return timestamp?.toDate()
+}
+
+/**
+ * Convierte una Date a un Timestamp de Firebase
+ * 
+ * @param date La fecha a convertir
+ * @return Objeto Timestamp de Firebase o null si la fecha es null
+ */
+fun dateToTimestamp(date: Date?): Timestamp? {
+    return date?.let { Timestamp(it) }
 } 
