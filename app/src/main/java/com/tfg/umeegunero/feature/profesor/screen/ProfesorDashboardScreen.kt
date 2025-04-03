@@ -21,27 +21,32 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ChildCare
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -77,6 +82,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -103,7 +109,6 @@ import java.util.Date
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
-import androidx.compose.material.icons.filled.ChildCare
 
 /**
  * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
@@ -246,7 +251,7 @@ fun ProfesorDashboardScreen(
                 val menuItems = listOf(
                     "Inicio" to Icons.Default.Home,
                     "Mis Alumnos" to Icons.Default.Person,
-                    "Historial" to Icons.Default.History,
+                    "Actividad" to Icons.AutoMirrored.Filled.List,
                     "Mensajes" to Icons.AutoMirrored.Filled.Chat,
                     "Configuración" to Icons.Default.Settings
                 )
@@ -301,7 +306,7 @@ fun ProfesorDashboardScreen(
                             when (selectedTab) {
                                 0 -> "Panel de Profesor"
                                 1 -> "Mis Alumnos"
-                                2 -> "Historial"
+                                2 -> "Actividad"
                                 3 -> "Mensajes"
                                 4 -> "Configuración"
                                 else -> "Panel de Profesor"
@@ -897,14 +902,183 @@ fun AlumnoItem(
 
 @Composable
 fun HistorialContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
         Text(
             text = "Historial de Actividades",
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
         )
+        
+        // Selector de fecha
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Hoy, ${
+                        SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
+                            .format(Date())
+                    }",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = "Seleccionar fecha",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+        
+        // Lista de actividades
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Actividades de la mañana
+            item {
+                Text(
+                    text = "Mañana",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            items(3) { index ->
+                ActividadItem(
+                    hora = when(index) {
+                        0 -> "08:30"
+                        1 -> "10:15"
+                        else -> "11:45"
+                    },
+                    descripcion = when(index) {
+                        0 -> "Llegada y control de asistencia"
+                        1 -> "Actividad de lectura en grupo"
+                        else -> "Juegos en el patio"
+                    },
+                    completada = index != 2
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+            
+            // Actividades de la tarde
+            item {
+                Text(
+                    text = "Tarde",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            items(2) { index ->
+                ActividadItem(
+                    hora = when(index) {
+                        0 -> "14:30"
+                        else -> "16:00"
+                    },
+                    descripcion = when(index) {
+                        0 -> "Siesta y control de descanso"
+                        else -> "Actividades psicomotrices"
+                    },
+                    completada = index == 0
+                )
+                if (index < 1) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ActividadItem(
+    hora: String,
+    descripcion: String,
+    completada: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Hora
+        Text(
+            text = hora,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(50.dp)
+        )
+        
+        // Estado (completada o pendiente)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(
+                    if (completada) 
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    else 
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.2f), 
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (completada) Icons.Default.Check else Icons.Default.CalendarToday,
+                contentDescription = null,
+                tint = if (completada) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Descripción
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = descripcion,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (completada) 
+                    MaterialTheme.colorScheme.onSurface 
+                else 
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                textDecoration = if (completada) TextDecoration.None else TextDecoration.None
+            )
+            
+            if (completada) {
+                Text(
+                    text = "Completada",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Text(
+                    text = "Pendiente",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
     }
 }
 
@@ -1014,7 +1188,253 @@ fun ChatItem(
 
 @Composable
 fun ConfiguracionProfesorContent() {
-    ConfiguracionScreen(perfil = PerfilConfiguracion.PROFESOR)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Configuración",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        // Sección de perfil
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Imagen de perfil
+                    Image(
+                        painter = painterResource(id = R.drawable.app_icon),
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier
+                            .size(70.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    // Información del profesor
+                    Column {
+                        Text(
+                            text = "Laura Martínez",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Text(
+                            text = "Profesora • Aula 2B",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Botón para editar perfil
+                Button(
+                    onClick = { /* Navegar a editar perfil */ },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF34C759)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Editar perfil")
+                }
+            }
+        }
+        
+        // Opciones de configuración
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Preferencias",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                // Opción 1: Notificaciones
+                ConfiguracionItem(
+                    icon = Icons.Default.Notifications,
+                    title = "Notificaciones",
+                    subtitle = "Configura las alertas que recibes",
+                    onClick = { /* Navegar a configuración de notificaciones */ }
+                )
+                
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                
+                // Opción 2: Tema
+                ConfiguracionItem(
+                    icon = Icons.Default.Settings,
+                    title = "Tema de la aplicación",
+                    subtitle = "Personaliza la apariencia",
+                    onClick = { /* Abrir selector de tema */ }
+                )
+                
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                
+                // Opción 3: Idioma
+                ConfiguracionItem(
+                    icon = Icons.AutoMirrored.Filled.Chat,
+                    title = "Idioma",
+                    subtitle = "Español",
+                    onClick = { /* Abrir selector de idioma */ }
+                )
+            }
+        }
+        
+        // Ajustes de clase
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Ajustes de Clase",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                // Opción 1: Gestión de clase
+                ConfiguracionItem(
+                    icon = Icons.Default.Person,
+                    title = "Gestión de alumnos",
+                    subtitle = "Administra los alumnos de tu clase",
+                    onClick = { /* Navegar a gestión de alumnos */ }
+                )
+                
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                
+                // Opción 2: Plantillas de actividad
+                ConfiguracionItem(
+                    icon = Icons.AutoMirrored.Filled.Assignment,
+                    title = "Plantillas de actividad",
+                    subtitle = "Crea y gestiona plantillas para registros",
+                    onClick = { /* Navegar a plantillas */ }
+                )
+                
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                
+                // Opción 3: Calendario escolar
+                ConfiguracionItem(
+                    icon = Icons.Default.CalendarToday,
+                    title = "Calendario escolar",
+                    subtitle = "Ajusta fechas importantes del curso",
+                    onClick = { /* Navegar a calendario */ }
+                )
+            }
+        }
+        
+        // Botón de cerrar sesión
+        Button(
+            onClick = { /* Cerrar sesión */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "Cerrar sesión")
+        }
+    }
+}
+
+@Composable
+fun ConfiguracionItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icono
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Textos
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium
+            )
+            
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        // Flecha
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Preview(showBackground = true)
