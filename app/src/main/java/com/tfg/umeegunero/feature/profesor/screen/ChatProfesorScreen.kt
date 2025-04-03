@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,11 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,22 +27,32 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import android.net.Uri as AndroidUri
+
+enum class AttachmentType {
+    IMAGE, PDF, AUDIO, LOCATION
+}
 
 data class ChatMessage(
-    val content: String,
-    val timestamp: Long = System.currentTimeMillis(),
-    val isFromMe: Boolean,
-    val isRead: Boolean = false,
-    val mediaUrl: String? = null
+    val id: String,
+    val senderId: String,
+    val text: String,
+    val timestamp: Long,
+    val isRead: Boolean,
+    val readTimestamp: Long?,
+    val attachmentType: AttachmentType? = null,
+    val attachmentUrl: String? = null
 )
 
 /**
@@ -55,33 +62,129 @@ data class ChatMessage(
 @Composable
 fun ChatProfesorScreen(
     navController: NavController,
-    familiarId: String? = null,
-    nombreFamiliar: String? = null
+    familiarId: String = "familiar123",
+    familiarNombre: String = "María García (Madre de Miguel)"
 ) {
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
+    var inputMessage by remember { mutableStateOf("") }
+    var showAttachmentOptions by remember { mutableStateOf(false) }
+    var showNotificationsDialog by remember { mutableStateOf(false) }
     
-    var message by remember { mutableStateOf("") }
-    var showAttachOptions by remember { mutableStateOf(false) }
+    // Estado para la simulación de notificaciones en tiempo real
+    var notificationEnabled by remember { mutableStateOf(true) }
+    var lastSeen by remember { mutableStateOf("Hoy 14:30") }
+    var isTyping by remember { mutableStateOf(false) }
     
-    // Datos de ejemplo - En producción deberían venir de un ViewModel
+    // Simulación de adjuntos
+    var selectedImageUri by remember { mutableStateOf<String?>(null) }
+    var selectedDocumentName by remember { mutableStateOf<String?>(null) }
+    var hasAttachment by remember { mutableStateOf(false) }
+    
+    // Estado para la visualización de adjuntos
+    var showAttachmentPreview by remember { mutableStateOf(false) }
+    var previewAttachmentType by remember { mutableStateOf<AttachmentType?>(null) }
+    var previewAttachmentUrl by remember { mutableStateOf("") }
+    
+    // Estado de los mensajes
     val messages = remember {
         mutableStateListOf(
-            ChatMessage("Hola, quería consultar sobre la evolución de mi hijo en clase", System.currentTimeMillis() - 3600000 * 10, false, true),
-            ChatMessage("Claro, Miguel está avanzando bien en lectura y actividades grupales", System.currentTimeMillis() - 3600000 * 9, true),
-            ChatMessage("¿Ha mejorado su comportamiento durante la siesta?", System.currentTimeMillis() - 3600000 * 8, false, true),
-            ChatMessage("Sí, esta semana ha estado más tranquilo durante las siestas", System.currentTimeMillis() - 3600000 * 7, true),
-            ChatMessage("Me alegra escuchar eso, hemos trabajado en su rutina de sueño en casa", System.currentTimeMillis() - 3600000 * 6, false, true),
-            ChatMessage("Se nota el esfuerzo. También quería comentarte que la próxima semana haremos una actividad especial de pintura, por si quieres enviarle una camiseta que se pueda manchar", System.currentTimeMillis() - 3600000 * 5, true)
+            ChatMessage(
+                id = "1",
+                senderId = "profesor456",
+                text = "Buenos días, quería comentarle que Miguel ha mejorado mucho en matemáticas esta semana.",
+                timestamp = System.currentTimeMillis() - 86400000,
+                isRead = true,
+                readTimestamp = System.currentTimeMillis() - 80000000
+            ),
+            ChatMessage(
+                id = "2",
+                senderId = familiarId,
+                text = "Me alegra mucho escuchar eso. Hemos estado practicando en casa con las operaciones básicas.",
+                timestamp = System.currentTimeMillis() - 85000000,
+                isRead = true,
+                readTimestamp = System.currentTimeMillis() - 84000000
+            ),
+            ChatMessage(
+                id = "3",
+                senderId = "profesor456",
+                text = "Se nota el esfuerzo. También quería comentarle que mañana tendremos una actividad especial de ciencias.",
+                timestamp = System.currentTimeMillis() - 84000000,
+                isRead = true,
+                readTimestamp = System.currentTimeMillis() - 83000000
+            ),
+            ChatMessage(
+                id = "4",
+                senderId = familiarId,
+                text = "Perfecto. ¿Necesita llevar algún material específico?",
+                timestamp = System.currentTimeMillis() - 82000000,
+                isRead = true,
+                readTimestamp = System.currentTimeMillis() - 81000000
+            ),
+            ChatMessage(
+                id = "5",
+                senderId = "profesor456",
+                text = "No será necesario, el colegio proporcionará todo lo necesario para la actividad.",
+                timestamp = System.currentTimeMillis() - 80000000,
+                isRead = true,
+                readTimestamp = System.currentTimeMillis() - 79000000
+            ),
+            ChatMessage(
+                id = "6",
+                senderId = familiarId,
+                text = "Entendido. Por cierto, ¿cuándo será la próxima reunión de padres?",
+                timestamp = System.currentTimeMillis() - 70000000,
+                isRead = true,
+                readTimestamp = System.currentTimeMillis() - 65000000
+            ),
+            ChatMessage(
+                id = "7",
+                senderId = "profesor456",
+                text = "Está programada para el próximo viernes a las 17:00. Le enviaré la información detallada por correo.",
+                timestamp = System.currentTimeMillis() - 60000000,
+                isRead = true,
+                readTimestamp = System.currentTimeMillis() - 55000000
+            ),
+            ChatMessage(
+                id = "8",
+                senderId = familiarId,
+                text = "Perfecto, ahí estaremos. ¿Hablará sobre el progreso individual de cada niño?",
+                timestamp = System.currentTimeMillis() - 40000000,
+                isRead = true,
+                readTimestamp = System.currentTimeMillis() - 35000000
+            ),
+            ChatMessage(
+                id = "9",
+                senderId = "profesor456",
+                text = "Sí, repasaremos el progreso general del grupo y luego habrá tiempo para consultas individuales.",
+                timestamp = System.currentTimeMillis() - 30000000,
+                isRead = false,
+                readTimestamp = null,
+                attachmentType = AttachmentType.PDF,
+                attachmentUrl = "informe_reunion.pdf"
+            )
         )
     }
     
-    // Efecto para desplazar automáticamente al último mensaje
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            coroutineScope.launch {
-                listState.animateScrollToItem(messages.size - 1)
+    // Simulación de mensajes marcados como leídos automáticamente
+    LaunchedEffect(messages) {
+        val unreadMessages = messages.filter { !it.isRead && it.senderId == familiarId }
+        if (unreadMessages.isNotEmpty()) {
+            delay(2000) // Simular retraso en la lectura
+            unreadMessages.forEach { message ->
+                val index = messages.indexOf(message)
+                if (index != -1) {
+                    messages[index] = message.copy(isRead = true, readTimestamp = System.currentTimeMillis())
+                }
             }
+        }
+    }
+    
+    // Agrupar mensajes por fecha para mostrar encabezados
+    val groupedMessages = remember(messages) {
+        messages.sortedBy { it.timestamp }.groupBy { message ->
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = message.timestamp
+            val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            formatter.format(calendar.time)
         }
     }
     
@@ -92,38 +195,45 @@ fun ChatProfesorScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Avatar del familiar
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.secondaryContainer),
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = (nombreFamiliar?.firstOrNull() ?: "F").toString(),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                text = familiarNombre.first().toString(),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                         
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         
                         Column {
-                            // Nombre del familiar
                             Text(
-                                text = nombreFamiliar ?: "Familiar de alumno",
+                                text = familiarNombre,
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.Bold
                             )
                             
-                            // Estado (en línea/última vez)
-                            Text(
-                                text = "En línea",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (isTyping) {
+                                    Text(
+                                        text = "Escribiendo...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Última vez: $lastSeen",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
                         }
                     }
                 },
@@ -136,345 +246,591 @@ fun ChatProfesorScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Abrir menú de opciones */ }) {
+                    IconButton(onClick = { /* Llamada */ }) {
                         Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Más opciones"
+                            imageVector = Icons.Default.Call,
+                            contentDescription = "Llamar"
+                        )
+                    }
+                    
+                    IconButton(onClick = { showNotificationsDialog = true }) {
+                        Icon(
+                            imageVector = if (notificationEnabled) 
+                                Icons.Default.Notifications
+                            else 
+                                Icons.Default.NotificationsOff,
+                            contentDescription = "Configurar notificaciones"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
         bottomBar = {
-            Column {
-                // Panel de opciones para adjuntar archivos
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                // Visualización de vista previa de archivos adjuntos
                 AnimatedVisibility(
-                    visible = showAttachOptions,
+                    visible = hasAttachment,
                     enter = expandVertically(),
                     exit = shrinkVertically()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AttachmentOption(
-                            icon = Icons.Default.Image,
-                            label = "Foto",
-                            color = Color(0xFF34C759)
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    RoundedCornerShape(4.dp)
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            // Seleccionar imagen
-                            showAttachOptions = false
+                            Icon(
+                                imageVector = if (selectedImageUri != null) 
+                                    Icons.Default.Image 
+                                else 
+                                    Icons.Default.Description,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                         
-                        AttachmentOption(
-                            icon = Icons.Default.AttachFile,
-                            label = "Archivo",
-                            color = Color(0xFF007AFF)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Column(
+                            modifier = Modifier.weight(1f)
                         ) {
-                            // Adjuntar archivo
-                            showAttachOptions = false
+                            Text(
+                                text = selectedImageUri?.substringAfterLast('/') ?: selectedDocumentName ?: "Archivo adjunto",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            
+                            Text(
+                                text = "Toca para previsualizar",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         
-                        AttachmentOption(
-                            icon = Icons.Default.Mic,
-                            label = "Audio",
-                            color = Color(0xFFFF9500)
+                        IconButton(
+                            onClick = { 
+                                selectedImageUri = null
+                                selectedDocumentName = null
+                                hasAttachment = false
+                            }
                         ) {
-                            // Grabar audio
-                            showAttachOptions = false
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Eliminar archivo"
+                            )
                         }
                     }
                 }
                 
-                // Campo de mensaje
+                // Barra de entrada de mensajes
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Botón para adjuntar
                     IconButton(
-                        onClick = { showAttachOptions = !showAttachOptions }
+                        onClick = { showAttachmentOptions = !showAttachmentOptions }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Adjuntar",
-                            tint = MaterialTheme.colorScheme.primary
+                            imageVector = Icons.Default.AttachFile,
+                            contentDescription = "Adjuntar archivo"
                         )
                     }
                     
-                    // Campo de texto
                     TextField(
-                        value = message,
-                        onValueChange = { message = it },
+                        value = inputMessage,
+                        onValueChange = { inputMessage = it },
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = 8.dp),
-                        placeholder = { Text("Escribe un mensaje...") },
+                        placeholder = { Text("Mensaje") },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
                         ),
-                        shape = RoundedCornerShape(24.dp),
-                        maxLines = 3
+                        shape = CircleShape,
+                        maxLines = 4
                     )
                     
-                    // Botón de enviar
-                    IconButton(
-                        onClick = {
-                            if (message.isNotEmpty()) {
-                                messages.add(
-                                    ChatMessage(
-                                        content = message,
-                                        isFromMe = true
+                    if (inputMessage.isNotEmpty() || hasAttachment) {
+                        IconButton(
+                            onClick = {
+                                if (inputMessage.isNotEmpty() || hasAttachment) {
+                                    val newMessage = ChatMessage(
+                                        id = UUID.randomUUID().toString(),
+                                        senderId = "profesor456",
+                                        text = inputMessage,
+                                        timestamp = System.currentTimeMillis(),
+                                        isRead = false,
+                                        readTimestamp = null,
+                                        attachmentType = if (selectedImageUri != null) 
+                                            AttachmentType.IMAGE 
+                                        else if (selectedDocumentName != null) 
+                                            AttachmentType.PDF 
+                                        else 
+                                            null,
+                                        attachmentUrl = selectedImageUri ?: selectedDocumentName
                                     )
-                                )
-                                message = ""
+                                    messages.add(newMessage)
+                                    inputMessage = ""
+                                    selectedImageUri = null
+                                    selectedDocumentName = null
+                                    hasAttachment = false
+                                }
                             }
-                        },
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.clip(CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Enviar"
-                        )
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Enviar mensaje"
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { /* Agregar nota de voz */ }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = "Grabar audio"
+                            )
+                        }
                     }
+                }
+            }
+            
+            // Menú de opciones para adjuntar archivos
+            AnimatedVisibility(
+                visible = showAttachmentOptions,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    AttachmentOption(
+                        icon = Icons.Default.Image,
+                        label = "Imagen",
+                        onClick = { 
+                            selectedImageUri = "content://media/sample_image.jpg"
+                            selectedDocumentName = null
+                            hasAttachment = true
+                            showAttachmentOptions = false
+                        }
+                    )
+                    
+                    AttachmentOption(
+                        icon = Icons.Default.Camera,
+                        label = "Cámara",
+                        onClick = {
+                            selectedImageUri = "content://media/new_photo.jpg"
+                            selectedDocumentName = null
+                            hasAttachment = true
+                            showAttachmentOptions = false
+                        }
+                    )
+                    
+                    AttachmentOption(
+                        icon = Icons.Default.Description,
+                        label = "Documento",
+                        onClick = {
+                            selectedImageUri = null
+                            selectedDocumentName = "informe_alumno.pdf"
+                            hasAttachment = true
+                            showAttachmentOptions = false
+                        }
+                    )
+                    
+                    AttachmentOption(
+                        icon = Icons.Default.LocationOn,
+                        label = "Ubicación",
+                        onClick = {
+                            inputMessage = "Mi ubicación actual: Centro Educativo UmeEgunero"
+                            showAttachmentOptions = false
+                        }
+                    )
                 }
             }
         }
     ) { paddingValues ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 16.dp),
+            reverseLayout = true
         ) {
-            if (messages.isEmpty()) {
-                // Mensaje cuando no hay mensajes
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+            // Mostrar mensajes agrupados por fecha
+            groupedMessages.entries.sortedByDescending { it.key }.forEach { (date, messagesForDate) ->
+                items(messagesForDate.reversed()) { message ->
+                    val isFromMe = message.senderId != familiarId
+                    
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.app_icon),
-                            contentDescription = null,
+                        // Mostrar el mensaje
+                        Box(
                             modifier = Modifier
-                                .size(100.dp)
-                                .clip(CircleShape),
-                            tint = Color.Unspecified
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "No hay mensajes",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "Envía un mensaje para iniciar la conversación",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            } else {
-                // Lista de mensajes
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 16.dp)
-                ) {
-                    // Agrupar mensajes por fecha
-                    val groupedMessages = messages.groupBy { 
-                        val date = Date(it.timestamp)
-                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
-                    }
-                    
-                    groupedMessages.forEach { (date, messagesForDate) ->
-                        // Encabezado de fecha
-                        item {
-                            DateHeader(date)
+                                .background(
+                                    if (isFromMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                    RoundedCornerShape(16.dp)
+                                )
+                                .clickable(
+                                    enabled = message.attachmentType != null,
+                                    onClick = {
+                                        if (message.attachmentType != null && message.attachmentUrl != null) {
+                                            previewAttachmentType = message.attachmentType
+                                            previewAttachmentUrl = message.attachmentUrl
+                                            showAttachmentPreview = true
+                                        }
+                                    }
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Column {
+                                // Contenido del mensaje (texto)
+                                Text(
+                                    text = message.text,
+                                    color = if (isFromMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                
+                                // Si hay un archivo adjunto, mostrar una vista previa
+                                if (message.attachmentType != null && message.attachmentUrl != null) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .background(
+                                                if (isFromMe) 
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.7f) 
+                                                else 
+                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = when (message.attachmentType) {
+                                                AttachmentType.IMAGE -> Icons.Default.Image
+                                                AttachmentType.PDF -> Icons.Default.Description
+                                                AttachmentType.AUDIO -> Icons.Default.Mic
+                                                AttachmentType.LOCATION -> Icons.Default.LocationOn
+                                            },
+                                            contentDescription = null,
+                                            tint = if (isFromMe) 
+                                                MaterialTheme.colorScheme.onPrimary 
+                                            else 
+                                                MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        
+                                        Text(
+                                            text = when (message.attachmentType) {
+                                                AttachmentType.IMAGE -> "Imagen"
+                                                AttachmentType.PDF -> message.attachmentUrl
+                                                AttachmentType.AUDIO -> "Nota de voz (1:30)"
+                                                AttachmentType.LOCATION -> "Ubicación"
+                                            },
+                                            color = if (isFromMe) 
+                                                MaterialTheme.colorScheme.onPrimary 
+                                            else 
+                                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                                
+                                // Mostrar la hora del mensaje
+                                val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                val messageTime = formatter.format(Date(message.timestamp))
+                                
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End,
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text(
+                                        text = messageTime,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (isFromMe) 
+                                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
+                                        else 
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        modifier = Modifier.padding(end = 4.dp, top = 4.dp)
+                                    )
+                                    
+                                    if (isFromMe) {
+                                        Icon(
+                                            imageVector = if (message.isRead) 
+                                                Icons.Default.Check
+                                            else 
+                                                Icons.Default.Done,
+                                            contentDescription = if (message.isRead) "Leído" else "Enviado",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = if (message.isRead) 
+                                                Color(0xFF34B7F1) 
+                                            else 
+                                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+                            }
                         }
                         
-                        // Mensajes del día
-                        items(messagesForDate) { message ->
-                            MessageItem(message)
+                        // Mostrar la hora de lectura si está leído
+                        if (isFromMe && message.isRead && message.readTimestamp != null) {
+                            val readFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                            val readTime = readFormatter.format(Date(message.readTimestamp))
+                            
+                            Text(
+                                text = "Leído a las $readTime",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(end = 8.dp, top = 2.dp)
+                            )
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun DateHeader(date: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = formatDateHeader(date),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .background(
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    RoundedCornerShape(16.dp)
-                )
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-        )
-    }
-}
-
-fun formatDateHeader(dateStr: String): String {
-    val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-    val yesterday = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(
-        Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000)
-    )
-    
-    return when (dateStr) {
-        today -> "Hoy"
-        yesterday -> "Ayer"
-        else -> dateStr
-    }
-}
-
-@Composable
-fun MessageItem(message: ChatMessage) {
-    val alignment = if (message.isFromMe) Alignment.End else Alignment.Start
-    val backgroundColor = if (message.isFromMe) 
-        MaterialTheme.colorScheme.primary 
-    else 
-        MaterialTheme.colorScheme.surfaceVariant
-    
-    val textColor = if (message.isFromMe) 
-        MaterialTheme.colorScheme.onPrimary 
-    else 
-        MaterialTheme.colorScheme.onSurfaceVariant
-    
-    val maxWidth = 0.8f // 80% del ancho disponible
-    
-    val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val timeStr = formatter.format(Date(message.timestamp))
-    
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = alignment
-    ) {
-        // Burbuja de mensaje
-        Box(
-            modifier = Modifier
-                .widthIn(max = (maxWidth * 400).dp)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 16.dp,
-                        topEnd = 16.dp,
-                        bottomStart = if (message.isFromMe) 16.dp else 4.dp,
-                        bottomEnd = if (message.isFromMe) 4.dp else 16.dp
-                    )
-                )
-                .background(backgroundColor)
-                .padding(12.dp)
-        ) {
-            Column {
-                // Contenido del mensaje
-                Text(
-                    text = message.content,
-                    color = textColor,
-                    style = MaterialTheme.typography.bodyLarge
-                )
                 
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                // Hora y estado
-                Row(
-                    modifier = Modifier.align(Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = timeStr,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (message.isFromMe) 
-                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                    
-                    if (message.isFromMe) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            painter = painterResource(
-                                id = if (message.isRead) 
-                                    R.drawable.app_icon // Debería ser un icono de doble check
-                                else 
-                                    R.drawable.app_icon // Debería ser un icono de check simple
-                            ),
-                            contentDescription = if (message.isRead) "Leído" else "Enviado",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                        )
+                // Mostrar encabezado de fecha
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = formatDateHeader(date),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
         }
         
-        Spacer(modifier = Modifier.height(2.dp))
+        // Diálogo para la previsualización de adjuntos
+        if (showAttachmentPreview && previewAttachmentType != null) {
+            AlertDialog(
+                onDismissRequest = { showAttachmentPreview = false },
+                text = {
+                    AttachmentPreview(
+                        attachmentType = previewAttachmentType!!,
+                        attachmentUrl = previewAttachmentUrl,
+                        onDismiss = { showAttachmentPreview = false }
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAttachmentPreview = false }) {
+                        Text("Cerrar")
+                    }
+                }
+            )
+        }
+        
+        // Diálogo para configurar notificaciones
+        if (showNotificationsDialog) {
+            AlertDialog(
+                onDismissRequest = { showNotificationsDialog = false },
+                title = { Text("Configuración de notificaciones") },
+                text = {
+                    Column {
+                        Text("Elige cómo quieres recibir notificaciones de este chat:")
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Switch(
+                                checked = notificationEnabled,
+                                onCheckedChange = { notificationEnabled = it }
+                            )
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            Text(
+                                text = if (notificationEnabled) 
+                                    "Activar notificaciones" 
+                                else 
+                                    "Silenciar notificaciones",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        if (notificationEnabled) {
+                            Column {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp)
+                                        .clickable { },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = true,
+                                        onClick = { }
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    Column {
+                                        Text("Todas las notificaciones")
+                                        Text(
+                                            text = "Recibirás todas las notificaciones de este chat",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp)
+                                        .clickable { },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = false,
+                                        onClick = { }
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    Column {
+                                        Text("Solo menciones")
+                                        Text(
+                                            text = "Solo recibirás notificaciones cuando seas mencionado",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { showNotificationsDialog = false }
+                    ) {
+                        Text("Guardar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showNotificationsDialog = false }
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+        
+        // Efecto para simular el estado de "escribiendo..."
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(8000)
+                isTyping = true
+                delay(3000)
+                isTyping = false
+                delay(2000)
+                
+                // Simular recepción de nuevo mensaje
+                if (notificationEnabled) {
+                    val newMessage = ChatMessage(
+                        id = UUID.randomUUID().toString(),
+                        senderId = familiarId,
+                        text = "Le confirmo que asistiremos a la reunión del viernes. ¿Hay algún tema específico que debamos preparar de antemano?",
+                        timestamp = System.currentTimeMillis(),
+                        isRead = false,
+                        readTimestamp = null
+                    )
+                    messages.add(newMessage)
+                    
+                    // Actualizar hora de última conexión
+                    lastSeen = "En línea"
+                    delay(5000)
+                    lastSeen = "Hace un momento"
+                }
+                
+                delay(15000)
+            }
+        }
     }
 }
 
 @Composable
 fun AttachmentOption(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
-    color: Color,
     onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .padding(8.dp)
             .clickable(onClick = onClick)
+            .padding(8.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .background(color.copy(alpha = 0.2f), CircleShape),
+                .background(
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    shape = CircleShape
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = label,
-                tint = color,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -483,9 +839,207 @@ fun AttachmentOption(
         
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            style = MaterialTheme.typography.bodySmall
         )
+    }
+}
+
+// Burbuja de mensaje de chat
+@Composable
+fun ChatMessageBubble(
+    message: ChatMessage,
+    isFromMe: Boolean
+) {
+    Column(
+        horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
+    ) {
+        // Contenido del mensaje
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (isFromMe) 16.dp else 4.dp,
+                bottomEnd = if (isFromMe) 4.dp else 16.dp
+            ),
+            color = if (isFromMe) 
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.9f) 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .padding(12.dp)
+            ) {
+                // Mostrar adjunto si existe
+                if (message.attachmentType != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isFromMe) 
+                                    MaterialTheme.colorScheme.primaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when (message.attachmentType) {
+                            AttachmentType.IMAGE -> {
+                                Icon(
+                                    imageVector = Icons.Default.Image,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = if (isFromMe) 
+                                        MaterialTheme.colorScheme.onPrimaryContainer 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            AttachmentType.PDF -> {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PictureAsPdf,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = if (isFromMe) 
+                                            MaterialTheme.colorScheme.onPrimaryContainer 
+                                        else 
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    Text(
+                                        text = message.attachmentUrl ?: "documento.pdf",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (isFromMe) 
+                                            MaterialTheme.colorScheme.onPrimaryContainer 
+                                        else 
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    
+                                    Button(
+                                        onClick = { /* Abrir documento */ },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isFromMe) 
+                                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f) 
+                                            else 
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Text(
+                                            text = "Ver documento",
+                                            color = if (isFromMe) 
+                                                MaterialTheme.colorScheme.onPrimaryContainer 
+                                            else 
+                                                MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
+                                }
+                            }
+                            else -> {
+                                // Otros tipos de adjuntos
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                if (message.text.isNotEmpty()) {
+                    Text(
+                        text = message.text,
+                        color = if (isFromMe) 
+                            MaterialTheme.colorScheme.onPrimary 
+                        else 
+                            MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                
+                // Hora y estado del mensaje
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formatTime(message.timestamp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isFromMe) 
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    
+                    if (isFromMe) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Icon(
+                            imageVector = if (message.isRead) 
+                                Icons.Default.Check 
+                            else 
+                                Icons.Default.Done,
+                            contentDescription = if (message.isRead) "Leído" else "Enviado",
+                            modifier = Modifier.size(16.dp),
+                            tint = if (message.isRead) 
+                                Color(0xFF34B7F1) 
+                            else 
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Indicador de tiempo de lectura para mis mensajes
+        if (isFromMe && message.isRead && message.readTimestamp != null) {
+            Text(
+                text = "Leído: ${formatTime(message.readTimestamp)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(top = 2.dp, end = 8.dp)
+            )
+        }
+    }
+}
+
+// Función para formatear la hora de un mensaje
+private fun formatTime(timestamp: Long): String {
+    val date = Date(timestamp)
+    val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+    return formatter.format(date)
+}
+
+// Función para formatear el encabezado de fecha
+private fun formatDateHeader(dateStr: String): String {
+    val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+    val yesterday = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(
+        Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000)
+    )
+    
+    return when (dateStr) {
+        today -> "Hoy"
+        yesterday -> "Ayer"
+        else -> {
+            // Convertir de formato dd/MM/yyyy a un formato más legible
+            val originalFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            val targetFormat = SimpleDateFormat("d 'de' MMMM", Locale("es"))
+            val date = originalFormat.parse(dateStr)
+            date?.let { targetFormat.format(it) } ?: dateStr
+        }
     }
 }
 
@@ -496,7 +1050,241 @@ fun ChatProfesorScreenPreview() {
         ChatProfesorScreen(
             navController = rememberNavController(),
             familiarId = "123",
-            nombreFamiliar = "Juan García"
+            familiarNombre = "Juan García"
         )
+    }
+}
+
+@Composable
+private fun AttachmentPreview(
+    attachmentType: AttachmentType,
+    attachmentUrl: String,
+    onDismiss: () -> Unit
+) {
+    var isLoading by remember { mutableStateOf(true) }
+    
+    LaunchedEffect(Unit) {
+        delay(1500) // Simular carga
+        isLoading = false
+    }
+    
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 300.dp),
+        shape = RoundedCornerShape(8.dp),
+        shadowElevation = 4.dp
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            when (attachmentType) {
+                AttachmentType.IMAGE -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator()
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.LightGray)
+                            ) {
+                                // Simulación de una imagen cargada
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                )
+                                
+                                Icon(
+                                    imageVector = Icons.Default.Image,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .align(Alignment.Center),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                AttachmentType.PDF -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator()
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = null,
+                                modifier = Modifier.size(80.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = attachmentUrl,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Button(
+                                onClick = { /* Simulación de apertura */ }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Description,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Text("Abrir documento")
+                            }
+                        }
+                    }
+                }
+                
+                AttachmentType.AUDIO -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator()
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                modifier = Modifier.size(60.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Simulación de control de audio
+                            Slider(
+                                value = 0f,
+                                onValueChange = { },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("0:00")
+                                Text("1:30")
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            IconButton(
+                                onClick = { /* Reproducir audio */ },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Reproducir",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                AttachmentType.LOCATION -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator()
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(60.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = "Centro Educativo UmeEgunero",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            
+                            Text(
+                                text = "Av. Principal 123, Ciudad",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Button(
+                                onClick = { /* Abrir mapa */ }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Map,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Text("Ver en mapa")
+                            }
+                        }
+                    }
+                }
+            }
+            
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(32.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Cerrar",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 } 
