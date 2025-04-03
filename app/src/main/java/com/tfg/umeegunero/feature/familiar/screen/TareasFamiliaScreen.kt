@@ -19,7 +19,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.tfg.umeegunero.data.model.EstadoTarea
+import com.tfg.umeegunero.data.model.PrioridadTarea
+import com.tfg.umeegunero.data.model.Tarea
+import com.tfg.umeegunero.feature.familiar.viewmodel.FiltroTarea
+import com.tfg.umeegunero.feature.familiar.viewmodel.TareasFamiliaViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -28,100 +34,37 @@ import java.util.*
 @Composable
 fun TareasFamiliaScreen(
     navController: NavController,
-    alumnoId: String = "1" // Parámetro de ejemplo, en una app real vendría de la navegación
+    familiarId: String,
+    viewModel: TareasFamiliaViewModel = hiltViewModel()
 ) {
-    // Estado para los filtros
-    var filtroSeleccionado by remember { mutableStateOf(FiltroTarea.TODAS) }
-    
-    // Estado para gestionar la selección de alumno (útil para familias con varios hijos)
-    var alumnoSeleccionadoId by remember { mutableStateOf(alumnoId) }
-    
-    // Datos de ejemplo para alumnos (para familias con varios hijos)
-    val alumnos = remember {
-        listOf(
-            AlumnoBasico(id = "1", nombre = "Ana", apellidos = "López García"),
-            AlumnoBasico(id = "2", nombre = "Carlos", apellidos = "López García")
-        )
+    // Inicializar ViewModel
+    LaunchedEffect(familiarId) {
+        viewModel.inicializar(familiarId)
     }
     
-    // Datos de ejemplo para tareas
-    val tareas = remember {
-        listOf(
-            Tarea(
-                id = "1",
-                titulo = "Proyecto de ciencias",
-                descripcion = "Realizar un proyecto sobre el sistema solar con materiales reciclados",
-                fechaEntrega = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 7) }.time,
-                asignatura = "Ciencias Naturales",
-                profesorNombre = "Laura García",
-                estado = EstadoTarea.PENDIENTE,
-                prioridad = PrioridadTarea.ALTA,
-                alumnoId = "1"
-            ),
-            Tarea(
-                id = "2",
-                titulo = "Ejercicios de matemáticas",
-                descripcion = "Completar los ejercicios de la página 45 del libro de matemáticas",
-                fechaEntrega = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 2) }.time,
-                asignatura = "Matemáticas",
-                profesorNombre = "Manuel Sánchez",
-                estado = EstadoTarea.EN_PROGRESO,
-                prioridad = PrioridadTarea.MEDIA,
-                alumnoId = "1"
-            ),
-            Tarea(
-                id = "3",
-                titulo = "Lectura y resumen",
-                descripcion = "Leer el capítulo 3 del libro 'El principito' y hacer un resumen de una página",
-                fechaEntrega = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 5) }.time,
-                asignatura = "Lengua",
-                profesorNombre = "Ana Martínez",
-                estado = EstadoTarea.PENDIENTE,
-                prioridad = PrioridadTarea.BAJA,
-                alumnoId = "1"
-            ),
-            Tarea(
-                id = "4",
-                titulo = "Maqueta histórica",
-                descripcion = "Crear una maqueta de un monumento histórico estudiado en clase",
-                fechaEntrega = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1) }.time,
-                asignatura = "Historia",
-                profesorNombre = "Pablo Ruiz",
-                estado = EstadoTarea.COMPLETADA,
-                prioridad = PrioridadTarea.ALTA,
-                alumnoId = "1"
-            ),
-            Tarea(
-                id = "5",
-                titulo = "Vocabulario en inglés",
-                descripcion = "Aprender el vocabulario de la unidad 5 y prepararse para el examen oral",
-                fechaEntrega = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 4) }.time,
-                asignatura = "Inglés",
-                profesorNombre = "María Gómez",
-                estado = EstadoTarea.PENDIENTE,
-                prioridad = PrioridadTarea.MEDIA,
-                alumnoId = "2"
-            )
-        )
-    }
-    
-    // Filtrar tareas según el filtro seleccionado y el alumno seleccionado
-    val tareasFiltradas = tareas.filter { tarea ->
-        tarea.alumnoId == alumnoSeleccionadoId && when (filtroSeleccionado) {
-            FiltroTarea.TODAS -> true
-            FiltroTarea.PENDIENTES -> tarea.estado == EstadoTarea.PENDIENTE
-            FiltroTarea.EN_PROGRESO -> tarea.estado == EstadoTarea.EN_PROGRESO
-            FiltroTarea.COMPLETADAS -> tarea.estado == EstadoTarea.COMPLETADA
-            FiltroTarea.RETRASADAS -> {
-                val fechaActual = Calendar.getInstance().time
-                tarea.fechaEntrega.before(fechaActual) && tarea.estado != EstadoTarea.COMPLETADA
-            }
-        }
-    }
+    // Observar estado de la UI
+    val uiState by viewModel.uiState.collectAsState()
     
     // Scope para el Scaffold
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Mostrar mensajes de error o éxito
+    LaunchedEffect(uiState.error, uiState.mensaje) {
+        uiState.error?.let {
+            scope.launch {
+                snackbarHostState.showSnackbar(it)
+                viewModel.limpiarMensajes()
+            }
+        }
+        
+        uiState.mensaje?.let {
+            scope.launch {
+                snackbarHostState.showSnackbar(it)
+                viewModel.limpiarMensajes()
+            }
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -142,7 +85,7 @@ fun TareasFamiliaScreen(
                 ),
                 actions = {
                     // Selector de alumno (solo visible si hay más de un alumno)
-                    if (alumnos.size > 1) {
+                    if (uiState.alumnos.size > 1) {
                         var expandido by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { expandido = true }) {
@@ -157,11 +100,11 @@ fun TareasFamiliaScreen(
                                 expanded = expandido,
                                 onDismissRequest = { expandido = false }
                             ) {
-                                alumnos.forEach { alumno ->
+                                uiState.alumnos.forEach { alumno ->
                                     DropdownMenuItem(
-                                        text = { Text("${alumno.nombre} ${alumno.apellidos}") },
+                                        text = { Text(alumno.nombreCompleto) },
                                         onClick = {
-                                            alumnoSeleccionadoId = alumno.id
+                                            viewModel.cargarTareas(alumno.id)
                                             expandido = false
                                         }
                                     )
@@ -181,75 +124,82 @@ fun TareasFamiliaScreen(
         ) {
             // Filtros
             FiltrosTareasBar(
-                filtroSeleccionado = filtroSeleccionado,
-                onFiltroSelected = { filtroSeleccionado = it }
+                filtroSeleccionado = uiState.filtroSeleccionado,
+                onFiltroSelected = { viewModel.cambiarFiltro(it) }
             )
             
-            // Contenido principal
-            if (tareasFiltradas.isEmpty()) {
-                // Mensaje cuando no hay tareas
+            // Indicador de carga
+            if (uiState.isLoading) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(72.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = when (filtroSeleccionado) {
-                                FiltroTarea.TODAS -> "No hay tareas asignadas"
-                                FiltroTarea.PENDIENTES -> "No hay tareas pendientes"
-                                FiltroTarea.EN_PROGRESO -> "No hay tareas en progreso"
-                                FiltroTarea.COMPLETADAS -> "No hay tareas completadas"
-                                FiltroTarea.RETRASADAS -> "No hay tareas retrasadas"
-                            },
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    CircularProgressIndicator()
                 }
             } else {
-                // Lista de tareas
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    items(tareasFiltradas) { tarea ->
-                        TareaCard(
-                            tarea = tarea,
-                            onTareaClick = { 
-                                // Navegar al detalle de la tarea o ejecutar alguna acción
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Viendo detalle de tarea: ${tarea.titulo}")
-                                }
-                            },
-                            onTareaStateChange = { nuevoEstado ->
-                                // Aquí se actualizaría el estado de la tarea en un caso real
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Tarea marcada como $nuevoEstado")
-                                }
-                            }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
+                // Contenido principal
+                if (uiState.tareasFiltradas.isEmpty()) {
+                    // Mensaje cuando no hay tareas
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(72.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = when (uiState.filtroSeleccionado) {
+                                    FiltroTarea.TODAS -> "No hay tareas asignadas"
+                                    FiltroTarea.PENDIENTES -> "No hay tareas pendientes"
+                                    FiltroTarea.EN_PROGRESO -> "No hay tareas en progreso"
+                                    FiltroTarea.COMPLETADAS -> "No hay tareas completadas"
+                                    FiltroTarea.RETRASADAS -> "No hay tareas retrasadas"
+                                },
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                    
-                    // Espacio adicional al final de la lista
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                } else {
+                    // Lista de tareas
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        items(uiState.tareasFiltradas) { tarea ->
+                            TareaCard(
+                                tarea = tarea,
+                                onTareaClick = { 
+                                    // Aquí se podría navegar al detalle de la tarea en el futuro
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Viendo detalle de tarea: ${tarea.titulo}")
+                                    }
+                                },
+                                onRevisarTarea = { comentario ->
+                                    viewModel.marcarTareaComoRevisada(tarea.id, comentario)
+                                }
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        
+                        // Espacio adicional al final de la lista
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                     }
                 }
             }
@@ -288,12 +238,16 @@ fun FiltrosTareasBar(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TareaCard(
     tarea: Tarea,
     onTareaClick: () -> Unit,
-    onTareaStateChange: (EstadoTarea) -> Unit
+    onRevisarTarea: (String) -> Unit
 ) {
+    var mostrarDialogoRevision by remember { mutableStateOf(false) }
+    var comentarioRevision by remember { mutableStateOf("") }
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onTareaClick
@@ -322,6 +276,8 @@ fun TareaCard(
                                     PrioridadTarea.ALTA -> Color.Red
                                     PrioridadTarea.MEDIA -> Color(0xFFFFA500) // Orange
                                     PrioridadTarea.BAJA -> Color(0xFF4CAF50) // Green
+                                    PrioridadTarea.URGENTE -> Color(0xFF5C0000) // Dark Red
+                                    else -> Color.Gray
                                 }
                             )
                     )
@@ -338,15 +294,23 @@ fun TareaCard(
                     )
                 }
                 
-                // Checkbox o indicador de estado
-                Checkbox(
-                    checked = tarea.estado == EstadoTarea.COMPLETADA,
-                    onCheckedChange = { isChecked ->
-                        onTareaStateChange(
-                            if (isChecked) EstadoTarea.COMPLETADA else EstadoTarea.PENDIENTE
+                // Botón de revisión
+                if (!tarea.revisadaPorFamiliar) {
+                    IconButton(onClick = { mostrarDialogoRevision = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = "Marcar como revisada",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.VisibilityOff,
+                        contentDescription = "Ya revisada",
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
             
             // Descripción
@@ -381,7 +345,7 @@ fun TareaCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     
                     Text(
-                        text = tarea.asignatura,
+                        text = tarea.asignatura ?: "Sin asignatura",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -392,8 +356,10 @@ fun TareaCard(
                 ) {
                     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                     val fechaActual = Calendar.getInstance().time
-                    val esRetrasada = tarea.fechaEntrega.before(fechaActual) && 
-                                     tarea.estado != EstadoTarea.COMPLETADA
+                    val fechaEntrega = tarea.fechaEntrega?.toDate()
+                    val esRetrasada = fechaEntrega != null && 
+                                      fechaEntrega.before(Calendar.getInstance().time) && 
+                                      tarea.estado != EstadoTarea.COMPLETADA
                     
                     Icon(
                         imageVector = Icons.Default.DateRange,
@@ -405,34 +371,56 @@ fun TareaCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     
                     Text(
-                        text = dateFormat.format(tarea.fechaEntrega),
+                        text = if (fechaEntrega != null) dateFormat.format(fechaEntrega) else "Sin fecha",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (esRetrasada) Color.Red else MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
             
-            // Etiqueta de estado
-            if (tarea.estado != EstadoTarea.PENDIENTE || 
-                tarea.fechaEntrega.before(Calendar.getInstance().time)) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // Etiqueta de estado y revisión
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Indicador de revisión
+                if (tarea.revisadaPorFamiliar) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Revisada",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 
+                // Etiqueta de estado
                 Surface(
-                    modifier = Modifier.align(Alignment.End),
+                    modifier = Modifier.align(Alignment.CenterVertically),
                     shape = RoundedCornerShape(4.dp),
                     color = when {
                         tarea.estado == EstadoTarea.COMPLETADA -> Color(0xFF4CAF50) // Green
                         tarea.estado == EstadoTarea.EN_PROGRESO -> Color(0xFF2196F3) // Blue
-                        tarea.fechaEntrega.before(Calendar.getInstance().time) -> Color.Red
-                        else -> MaterialTheme.colorScheme.surface
+                        tarea.fechaEntrega?.toDate()?.before(Calendar.getInstance().time) == true -> Color.Red
+                        else -> Color(0xFFFFA500) // Orange para PENDIENTE
                     }
                 ) {
                     Text(
                         text = when {
                             tarea.estado == EstadoTarea.COMPLETADA -> "Completada"
                             tarea.estado == EstadoTarea.EN_PROGRESO -> "En progreso"
-                            tarea.fechaEntrega.before(Calendar.getInstance().time) -> "Retrasada"
-                            else -> ""
+                            tarea.fechaEntrega?.toDate()?.before(Calendar.getInstance().time) == true -> "Retrasada"
+                            else -> "Pendiente"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
@@ -441,6 +429,43 @@ fun TareaCard(
                 }
             }
         }
+    }
+    
+    // Diálogo para revisar tarea
+    if (mostrarDialogoRevision) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoRevision = false },
+            title = { Text("Revisar tarea") },
+            text = {
+                Column {
+                    Text("Marcar esta tarea como revisada por ti")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = comentarioRevision,
+                        onValueChange = { comentarioRevision = it },
+                        label = { Text("Comentario (opcional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onRevisarTarea(comentarioRevision)
+                        mostrarDialogoRevision = false
+                    }
+                ) {
+                    Text("Confirmar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { mostrarDialogoRevision = false }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
@@ -472,7 +497,8 @@ enum class EstadoTarea {
 enum class PrioridadTarea {
     ALTA,
     MEDIA,
-    BAJA
+    BAJA,
+    URGENTE
 }
 
 enum class FiltroTarea {

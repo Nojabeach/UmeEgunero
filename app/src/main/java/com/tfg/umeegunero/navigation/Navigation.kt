@@ -245,18 +245,11 @@ fun NavGraphBuilder.familiarNavGraph(
         
         // Pantallas de tareas
         composable(route = AppScreens.TareasFamilia.route) {
-            // Pantalla de tareas para familiares (por implementar)
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Tareas del estudiante (Por implementar)", fontSize = 24.sp)
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { navController.popBackStack() }) {
-                    Text("Volver")
-                }
-            }
+            // Importar la pantalla real de tareas para familiares
+            com.tfg.umeegunero.feature.familiar.screen.TareasFamiliaScreen(
+                navController = navController,
+                familiarId = userId
+            )
         }
         
         // Actividades preescolares

@@ -322,6 +322,15 @@ class TareaRepository @Inject constructor(
     }
 
     /**
+     * Obtiene todas las tareas asociadas a un alumno - Versión compatible con el nuevo ViewModel
+     * @param alumnoId ID del alumno
+     * @return Resultado con la lista de tareas
+     */
+    suspend fun getTareasByAlumnoId(alumnoId: String): Result<List<Tarea>> {
+        return obtenerTareasPorAlumno(alumnoId)
+    }
+
+    /**
      * Actualiza el estado de una tarea existente
      * @param tareaId ID de la tarea a actualizar
      * @param nuevoEstado Nuevo estado de la tarea
@@ -341,6 +350,43 @@ class TareaRepository @Inject constructor(
             return@withContext Result.Success(true)
         } catch (e: Exception) {
             Timber.e(e, "Error al actualizar estado de tarea")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Marca una tarea como revisada por un familiar
+     * @param tareaId ID de la tarea
+     * @param familiarId ID del familiar que revisa la tarea
+     * @param comentario Comentario opcional del familiar
+     * @return Resultado con true si se actualizó correctamente
+     */
+    suspend fun marcarTareaComoRevisadaPorFamiliar(
+        tareaId: String,
+        familiarId: String,
+        comentario: String = ""
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            if (tareaId.isEmpty() || familiarId.isEmpty()) {
+                return@withContext Result.Error(IllegalArgumentException("Se requieren tareaId y familiarId"))
+            }
+
+            // Actualizar los campos relacionados con la revisión del familiar
+            firestore.collection(COLLECTION_TAREAS)
+                .document(tareaId)
+                .update(
+                    mapOf(
+                        "revisadaPorFamiliar" to true,
+                        "familiarRevisorId" to familiarId,
+                        "fechaRevision" to Timestamp.now(),
+                        "comentariosFamiliar" to comentario
+                    )
+                )
+                .await()
+
+            return@withContext Result.Success(true)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al marcar tarea como revisada por familiar")
             return@withContext Result.Error(e)
         }
     }
