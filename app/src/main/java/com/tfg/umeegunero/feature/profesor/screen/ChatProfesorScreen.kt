@@ -45,10 +45,27 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import android.net.Uri as AndroidUri
-
-enum class AttachmentType {
-    IMAGE, PDF, AUDIO, LOCATION
-}
+import com.tfg.umeegunero.data.model.AttachmentType
+import com.tfg.umeegunero.data.model.InteractionStatus
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 
 data class ChatMessage(
     val id: String,
@@ -61,16 +78,11 @@ data class ChatMessage(
     val attachmentUrl: String? = null,
     val interactionStatus: InteractionStatus = InteractionStatus.NONE,
     val isTranslated: Boolean = false,
-    val originalText: String? = null
+    val originalText: String? = null,
+    // Propiedades para resaltado de texto en búsquedas
+    val highlightedText: String? = null,
+    val highlightQuery: String? = null
 )
-
-enum class InteractionStatus {
-    NONE,           // Sin interacción
-    READING,        // Leyendo activamente el mensaje
-    VIEWED,         // Solo visto
-    INTERACTION,    // Interactuando con el mensaje (por ejemplo, con archivos adjuntos)
-    DOWNLOADING     // Descargando un archivo
-}
 
 /**
  * Pantalla de chat para profesores
@@ -334,101 +346,217 @@ fun ChatProfesorScreen(
         }
     }
     
+    // Estado para la búsqueda
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    
+    // Filtrar mensajes según la búsqueda
+    val filteredMessages = remember(messages, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            messages
+        } else {
+            val query = searchQuery.lowercase()
+            messages.filter { message ->
+                message.text.lowercase().contains(query) ||
+                message.id.contains(query) // También podríamos buscar por otros campos relevantes
+            }
+        }
+    }
+    
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = familiarNombre.first().toString(),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Column {
-                            Text(
-                                text = familiarNombre,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
+            Column {
+                // Barra de navegación normal
+                if (!isSearchActive) {
+                    TopAppBar(
+                        title = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (isTyping) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
-                                        text = "Escribiendo...",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary
+                                        text = familiarNombre.first().toString(),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
                                     )
-                                } else {
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Column {
                                     Text(
-                                        text = "Última vez: $lastSeen",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        text = familiarNombre,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        if (isTyping) {
+                                            Text(
+                                                text = "Escribiendo...",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        } else {
+                                            Text(
+                                                text = "Última vez: $lastSeen",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Volver"
+                                )
+                            }
+                        },
+                        actions = {
+                            // Icono de búsqueda
+                            IconButton(onClick = { 
+                                isSearchActive = true
+                                // Dar tiempo para la composición
+                                kotlinx.coroutines.MainScope().launch {
+                                    delay(100)
+                                    focusRequester.requestFocus()
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Buscar mensajes"
+                                )
+                            }
+                        
+                            // Icono de estadísticas
+                            IconButton(onClick = { showStatsDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Analytics,
+                                    contentDescription = "Estadísticas de comunicación"
+                                )
+                            }
+                            
+                            IconButton(onClick = { showTranslationDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Translate,
+                                    contentDescription = "Traducir mensajes"
+                                )
+                            }
+                            
+                            IconButton(onClick = { /* Llamada */ }) {
+                                Icon(
+                                    imageVector = Icons.Default.Call,
+                                    contentDescription = "Llamar"
+                                )
+                            }
+                            
+                            IconButton(onClick = { showNotificationsDialog = true }) {
+                                Icon(
+                                    imageVector = if (notificationEnabled) 
+                                        Icons.Default.Notifications
+                                    else 
+                                        Icons.Default.NotificationsOff,
+                                    contentDescription = "Configurar notificaciones"
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                } else {
+                    // Barra de búsqueda
+                    TopAppBar(
+                        title = {
+                            TextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester),
+                                placeholder = { Text("Buscar en la conversación...") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Search,
+                                    keyboardType = KeyboardType.Text
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onSearch = {
+                                        keyboardController?.hide()
+                                    }
+                                ),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                )
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { 
+                                isSearchActive = false
+                                searchQuery = ""
+                                keyboardController?.hide()
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Cerrar búsqueda"
+                                )
+                            }
+                        },
+                        actions = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Limpiar búsqueda"
                                     )
                                 }
                             }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                }
+                
+                // Mostrar contador de resultados si hay búsqueda activa
+                if (isSearchActive && searchQuery.isNotEmpty()) {
+                    val resultsCount = filteredMessages.size
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shadowElevation = 1.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$resultsCount resultados encontrados",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-                actions = {
-                    // Icono de estadísticas
-                    IconButton(onClick = { showStatsDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Analytics,
-                            contentDescription = "Estadísticas de comunicación"
-                        )
-                    }
-                    
-                    // Icono de traducción
-                    IconButton(onClick = { showTranslationDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Translate,
-                            contentDescription = "Traducir mensajes"
-                        )
-                    }
-                    
-                    IconButton(onClick = { /* Llamada */ }) {
-                        Icon(
-                            imageVector = Icons.Default.Call,
-                            contentDescription = "Llamar"
-                        )
-                    }
-                    
-                    IconButton(onClick = { showNotificationsDialog = true }) {
-                        Icon(
-                            imageVector = if (notificationEnabled) 
-                                Icons.Default.Notifications
-                            else 
-                                Icons.Default.NotificationsOff,
-                            contentDescription = "Configurar notificaciones"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
+                }
+            }
         },
         bottomBar = {
             Column(
@@ -670,316 +798,99 @@ fun ChatProfesorScreen(
                 .padding(horizontal = 16.dp),
             reverseLayout = true
         ) {
-            // Mostrar mensajes agrupados por fecha
-            groupedMessages.entries.sortedByDescending { it.key }.forEach { (date, messagesForDate) ->
-                items(messagesForDate.reversed()) { message ->
-                    val isFromMe = message.senderId != familiarId
-                    
-                    // Buscar si hay traducción disponible
-                    val displayMessage = if (!isFromMe && autoTranslateEnabled && selectedLanguage != "Español") {
-                        translatedMessages.find { it.id == message.id } ?: message
-                    } else {
-                        message
-                    }
-                    
-                    Column(
+            // Usar los mensajes filtrados en lugar de los originales
+            val messagesSource = if (isSearchActive) filteredMessages else messages
+            
+            // Mostrar mensaje de "No se encontraron resultados" si es necesario
+            if (isSearchActive && searchQuery.isNotEmpty() && filteredMessages.isEmpty()) {
+                item {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Mostrar el mensaje
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isFromMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .clickable(
-                                    enabled = message.attachmentType != null || displayMessage.isTranslated,
-                                    onClick = {
-                                        if (message.attachmentType != null && message.attachmentUrl != null) {
-                                            previewAttachmentType = message.attachmentType
-                                            previewAttachmentUrl = message.attachmentUrl
-                                            showAttachmentPreview = true
-                                        }
-                                    }
-                                )
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column {
-                                // Contenido del mensaje (texto)
-                                Text(
-                                    text = displayMessage.text,
-                                    color = if (isFromMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                
-                                // Indicador de traducción si el mensaje está traducido
-                                if (displayMessage.isTranslated) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .align(Alignment.Start)
-                                            .clickable {
-                                                // Aquí podríamos mostrar el texto original o cambiar idiomas
-                                            }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Translate,
-                                            contentDescription = "Traducido",
-                                            modifier = Modifier.size(12.dp),
-                                            tint = if (isFromMe) 
-                                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
-                                            else 
-                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        
-                                        Text(
-                                            text = "Traducido del español",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (isFromMe) 
-                                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
-                                            else 
-                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                                        )
-                                    }
-                                    
-                                    // Mostrar texto original como desplegable
-                                    var showOriginal by remember { mutableStateOf(false) }
-                                    
-                                    AnimatedVisibility(
-                                        visible = showOriginal,
-                                        enter = expandVertically(),
-                                        exit = shrinkVertically()
-                                    ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .padding(top = 8.dp)
-                                                .background(
-                                                    if (isFromMe) 
-                                                        MaterialTheme.colorScheme.primaryContainer 
-                                                    else 
-                                                        MaterialTheme.colorScheme.secondaryContainer,
-                                                    RoundedCornerShape(8.dp)
-                                                )
-                                                .padding(8.dp)
-                                        ) {
-                                            Text(
-                                                text = "Mensaje original:",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Medium,
-                                                color = if (isFromMe) 
-                                                    MaterialTheme.colorScheme.onPrimaryContainer 
-                                                else 
-                                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                            )
-                                            
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            
-                                            Text(
-                                                text = displayMessage.originalText ?: displayMessage.text,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = if (isFromMe) 
-                                                    MaterialTheme.colorScheme.onPrimaryContainer 
-                                                else 
-                                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                            )
-                                        }
-                                    }
-                                }
-                                
-                                // Si hay un archivo adjunto, mostrar una vista previa
-                                if (message.attachmentType != null && message.attachmentUrl != null) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .background(
-                                                if (isFromMe) 
-                                                    MaterialTheme.colorScheme.primaryContainer 
-                                                else 
-                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                                RoundedCornerShape(8.dp)
-                                            )
-                                            .padding(8.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = when (message.attachmentType) {
-                                                AttachmentType.IMAGE -> Icons.Default.Image
-                                                AttachmentType.PDF -> Icons.Default.Description
-                                                AttachmentType.AUDIO -> Icons.Default.Mic
-                                                AttachmentType.LOCATION -> Icons.Default.LocationOn
-                                            },
-                                            contentDescription = null,
-                                            tint = if (isFromMe) 
-                                                MaterialTheme.colorScheme.onPrimaryContainer 
-                                            else 
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        
-                                        Text(
-                                            text = when (message.attachmentType) {
-                                                AttachmentType.IMAGE -> "Imagen"
-                                                AttachmentType.PDF -> message.attachmentUrl
-                                                AttachmentType.AUDIO -> "Nota de voz (1:30)"
-                                                AttachmentType.LOCATION -> "Ubicación"
-                                            },
-                                            color = if (isFromMe) 
-                                                MaterialTheme.colorScheme.onPrimaryContainer 
-                                            else 
-                                                MaterialTheme.colorScheme.onSurfaceVariant,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-                                }
-                                
-                                // Mostrar la hora del mensaje
-                                val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-                                val messageTime = formatter.format(Date(message.timestamp))
-                                
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.End,
-                                    modifier = Modifier.align(Alignment.End)
-                                ) {
-                                    Text(
-                                        text = messageTime,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (isFromMe) 
-                                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
-                                        else 
-                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        modifier = Modifier.padding(end = 4.dp, top = 4.dp)
-                                    )
-                                    
-                                    if (isFromMe) {
-                                        Icon(
-                                            imageVector = if (message.isRead) 
-                                                Icons.Default.Check
-                                            else 
-                                                Icons.Default.Done,
-                                            contentDescription = if (message.isRead) "Leído" else "Enviado",
-                                            modifier = Modifier.size(16.dp),
-                                            tint = if (message.isRead) 
-                                                Color(0xFF34B7F1) 
-                                            else 
-                                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Mostrar la hora de lectura si está leído
-                        if (isFromMe && message.isRead && message.readTimestamp != null) {
-                            val readFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-                            val readTime = readFormatter.format(Date(message.readTimestamp))
+                            Icon(
+                                imageVector = Icons.Default.SearchOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
                             
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(end = 8.dp, top = 2.dp)
-                            ) {
-                                when (message.interactionStatus) {
-                                    InteractionStatus.READING -> {
-                                        Icon(
-                                            imageVector = Icons.Default.Visibility,
-                                            contentDescription = "Leyendo",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        
-                                        Text(
-                                            text = "Leyendo ahora...",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    InteractionStatus.DOWNLOADING -> {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(14.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        
-                                        Text(
-                                            text = "Descargando archivo...",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    InteractionStatus.INTERACTION -> {
-                                        Icon(
-                                            imageVector = when (message.attachmentType) {
-                                                AttachmentType.PDF -> Icons.Default.Description
-                                                AttachmentType.IMAGE -> Icons.Default.Image
-                                                AttachmentType.AUDIO -> Icons.Default.Mic
-                                                AttachmentType.LOCATION -> Icons.Default.LocationOn
-                                                else -> Icons.Default.Info
-                                            },
-                                            contentDescription = "Interactuando",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        
-                                        Text(
-                                            text = "Viendo ${
-                                                when (message.attachmentType) {
-                                                    AttachmentType.PDF -> "documento"
-                                                    AttachmentType.IMAGE -> "imagen"
-                                                    AttachmentType.AUDIO -> "audio"
-                                                    AttachmentType.LOCATION -> "ubicación"
-                                                    else -> "contenido"
-                                                }
-                                            }",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    else -> {
-                                        Text(
-                                            text = "Leído a las $readTime",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                        )
-                                    }
-                                }
-                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = "No se encontraron mensajes con \"$searchQuery\"",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
+            } else {
+                // Agrupar y mostrar mensajes como antes, pero usando la fuente filtrada
+                val groupedMessages = messagesSource.groupBy { message ->
+                    val calendar = Calendar.getInstance()
+                    calendar.timeInMillis = message.timestamp
+                    val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                    formatter.format(calendar.time)
+                }
                 
-                // Mostrar encabezado de fecha
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                        ) {
-                            Text(
-                                text = formatDateHeader(date),
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                groupedMessages.entries.sortedByDescending { it.key }.forEach { (date, messagesForDate) ->
+                    items(messagesForDate.reversed()) { message ->
+                        val isFromMe = message.senderId != familiarId
+                        
+                        // Buscar si hay traducción disponible
+                        val translatedMessage = if (!isFromMe && autoTranslateEnabled && selectedLanguage != "Español") {
+                            translatedMessages.find { it.id == message.id } ?: message
+                        } else {
+                            message
+                        }
+                        
+                        // Resaltar texto que coincide con la búsqueda si hay búsqueda activa
+                        val displayMessage = if (isSearchActive && searchQuery.isNotEmpty()) {
+                            translatedMessage.copy(
+                                highlightQuery = searchQuery
                             )
+                        } else {
+                            translatedMessage
+                        }
+                        
+                        // Mostrar mensaje con/sin resaltado según corresponda
+                        MessageItem(
+                            message = displayMessage,
+                            isFromMe = isFromMe,
+                            onImageClick = { url, type ->
+                                previewAttachmentUrl = url ?: ""
+                                previewAttachmentType = type
+                                showAttachmentPreview = true
+                            }
+                        )
+                    }
+                    
+                    // Mostrar encabezado de fecha
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                            ) {
+                                Text(
+                                    text = formatDateHeader(date),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -2223,6 +2134,31 @@ private fun AttachmentPreview(
                         }
                     }
                 }
+                
+                else -> {
+                    // Caso para NONE u otros tipos futuros
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.InsertDriveFile,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "Archivo desconocido",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
             
             IconButton(
@@ -2360,5 +2296,327 @@ private fun ActivityBar(
             else 
                 MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+// Función para resaltar texto de búsqueda
+@Composable
+fun HighlightedText(
+    text: String,
+    query: String,
+    style: TextStyle = MaterialTheme.typography.bodyLarge,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    highlightColor: Color = MaterialTheme.colorScheme.primary
+) {
+    if (query.isEmpty()) {
+        Text(text = text, style = style, color = color)
+        return
+    }
+    
+    val sections = mutableListOf<Pair<String, Boolean>>() // (texto, resaltado)
+    var remainingText = text
+    val queryLowercase = query.lowercase()
+    
+    while (remainingText.isNotEmpty()) {
+        val startIndex = remainingText.lowercase().indexOf(queryLowercase)
+        if (startIndex == -1) {
+            sections.add(Pair(remainingText, false))
+            break
+        }
+        
+        // Añadir texto antes de la coincidencia
+        if (startIndex > 0) {
+            sections.add(Pair(remainingText.substring(0, startIndex), false))
+        }
+        
+        // Añadir la coincidencia
+        val match = remainingText.substring(startIndex, startIndex + query.length)
+        sections.add(Pair(match, true))
+        
+        // Actualizar texto restante
+        remainingText = if (startIndex + query.length < remainingText.length) {
+            remainingText.substring(startIndex + query.length)
+        } else {
+            ""
+        }
+    }
+    
+    Row(modifier = Modifier.fillMaxWidth()) {
+        sections.forEach { (sectionText, isHighlighted) ->
+            Box(
+                modifier = Modifier
+                    .background(
+                        if (isHighlighted) highlightColor.copy(alpha = 0.2f) else Color.Transparent
+                    )
+            ) {
+                Text(
+                    text = sectionText,
+                    style = style,
+                    color = color,
+                    fontWeight = if (isHighlighted) FontWeight.Bold else null
+                )
+            }
+        }
+    }
+}
+
+// Componente para mostrar un mensaje individual
+@Composable
+fun MessageItem(
+    message: ChatMessage,
+    isFromMe: Boolean,
+    onImageClick: (String?, AttachmentType?) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
+    ) {
+        // Contenido del mensaje
+        Box(
+            modifier = Modifier
+                .widthIn(max = 260.dp)
+        ) {
+            // Burbuja de mensaje
+            Surface(
+                shape = RoundedCornerShape(
+                    topStart = if (isFromMe) 12.dp else 0.dp,
+                    topEnd = if (isFromMe) 0.dp else 12.dp,
+                    bottomStart = 12.dp,
+                    bottomEnd = 12.dp
+                ),
+                color = if (isFromMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                shadowElevation = 1.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp)
+                ) {
+                    // Contenido del mensaje (texto)
+                    if (message.highlightQuery != null && message.highlightQuery.isNotEmpty()) {
+                        HighlightedText(
+                            text = message.text,
+                            query = message.highlightQuery,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (isFromMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = message.text,
+                            color = if (isFromMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    
+                    // Mostrar si es un mensaje traducido
+                    if (message.isTranslated && message.originalText != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Translate,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = if (isFromMe) 
+                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Traducido",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isFromMe) 
+                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                    
+                    // Si hay un archivo adjunto, mostrar una vista previa
+                    if (message.attachmentType != null && message.attachmentUrl != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(
+                                    if (isFromMe) 
+                                        MaterialTheme.colorScheme.primaryContainer 
+                                    else 
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(8.dp)
+                                .clickable {
+                                    onImageClick(message.attachmentUrl, message.attachmentType)
+                                }
+                        ) {
+                            Icon(
+                                imageVector = when (message.attachmentType) {
+                                    AttachmentType.IMAGE -> Icons.Default.Image
+                                    AttachmentType.PDF -> Icons.Default.Description
+                                    AttachmentType.AUDIO -> Icons.Default.Mic
+                                    AttachmentType.LOCATION -> Icons.Default.LocationOn
+                                    else -> Icons.Default.InsertDriveFile
+                                },
+                                contentDescription = null,
+                                tint = if (isFromMe) 
+                                    MaterialTheme.colorScheme.onPrimaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            Text(
+                                text = when (message.attachmentType) {
+                                    AttachmentType.IMAGE -> "Imagen"
+                                    AttachmentType.PDF -> message.attachmentUrl
+                                    AttachmentType.AUDIO -> "Nota de voz"
+                                    AttachmentType.LOCATION -> "Ubicación"
+                                    else -> "Archivo adjunto"
+                                },
+                                color = if (isFromMe) 
+                                    MaterialTheme.colorScheme.onPrimaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                    
+                    // Mostrar la hora y estado del mensaje
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    ) {
+                        // Mostrar la hora del mensaje
+                        val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                        val messageTime = formatter.format(Date(message.timestamp))
+                        
+                        Text(
+                            text = messageTime,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isFromMe) 
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        // Si es un mensaje mío, mostrar indicador de leído/entregado
+                        if (isFromMe) {
+                            Icon(
+                                imageVector = if (message.isRead) 
+                                    Icons.Default.DoneAll 
+                                else 
+                                    Icons.Default.Done,
+                                contentDescription = if (message.isRead) "Leído" else "Enviado",
+                                modifier = Modifier.size(16.dp),
+                                tint = if (message.isRead) 
+                                    Color(0xFF34B7F1) 
+                                else 
+                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Mostrar la información de lectura si es un mensaje mío y ha sido leído
+        if (isFromMe && message.isRead && message.readTimestamp != null) {
+            val readFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val readTime = readFormatter.format(Date(message.readTimestamp))
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 8.dp, top = 2.dp)
+            ) {
+                when (message.interactionStatus) {
+                    InteractionStatus.READING -> {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = "Leyendo",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Text(
+                            text = "Leyendo ahora...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    InteractionStatus.DOWNLOADING -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Text(
+                            text = "Descargando archivo...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    InteractionStatus.INTERACTION -> {
+                        val attachmentType = message.attachmentType
+                        Icon(
+                            imageVector = when (attachmentType) {
+                                AttachmentType.PDF -> Icons.Default.Description
+                                AttachmentType.IMAGE -> Icons.Default.Image
+                                AttachmentType.AUDIO -> Icons.Default.Mic
+                                AttachmentType.LOCATION -> Icons.Default.LocationOn
+                                else -> Icons.Default.Info
+                            },
+                            contentDescription = "Interactuando",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Text(
+                            text = "Viendo ${
+                                when (attachmentType) {
+                                    AttachmentType.PDF -> "documento"
+                                    AttachmentType.IMAGE -> "imagen"
+                                    AttachmentType.AUDIO -> "audio"
+                                    AttachmentType.LOCATION -> "ubicación"
+                                    else -> "contenido"
+                                }
+                            }",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    InteractionStatus.VIEWED -> {
+                        Text(
+                            text = "Leído a las $readTime",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = "Leído a las $readTime",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+        }
     }
 } 

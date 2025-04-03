@@ -2,6 +2,11 @@ package com.tfg.umeegunero.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.google.firebase.firestore.FirebaseFirestore
+import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
+import com.tfg.umeegunero.data.local.dao.ConversacionDao
+import com.tfg.umeegunero.data.local.database.AppDatabase
+import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
 import dagger.Module
 import dagger.Provides
@@ -60,5 +65,36 @@ object AppModule {
         @ApplicationContext context: Context
     ): SharedPreferences {
         return context.getSharedPreferences("ume_egunero_prefs", Context.MODE_PRIVATE)
+    }
+    
+    /**
+     * Proporciona el DAO para los mensajes de chat.
+     */
+    @Provides
+    @Singleton
+    fun provideChatMensajeDao(database: AppDatabase): ChatMensajeDao {
+        return database.chatMensajeDao()
+    }
+    
+    /**
+     * Proporciona el DAO para las conversaciones.
+     */
+    @Provides
+    @Singleton
+    fun provideConversacionDao(database: AppDatabase): ConversacionDao {
+        return database.conversacionDao()
+    }
+    
+    /**
+     * Proporciona el repositorio de chat.
+     */
+    @Provides
+    @Singleton
+    fun provideChatRepository(
+        chatMensajeDao: ChatMensajeDao,
+        conversacionDao: ConversacionDao,
+        firestore: FirebaseFirestore
+    ): ChatRepository {
+        return ChatRepository(chatMensajeDao, conversacionDao, firestore)
     }
 } 

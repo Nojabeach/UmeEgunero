@@ -4,7 +4,9 @@ import androidx.room.TypeConverter
 import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.tfg.umeegunero.data.model.AttachmentType
 import com.tfg.umeegunero.data.model.EstadoComida
+import com.tfg.umeegunero.data.model.InteractionStatus
 import java.util.Date
 
 /**
@@ -133,5 +135,45 @@ class Converters {
     @TypeConverter
     fun fromEstadoComida(estado: EstadoComida?): String? {
         return estado?.name
+    }
+    
+    /**
+     * Convierte un String a InteractionStatus.
+     */
+    @TypeConverter
+    fun toInteractionStatus(value: String?): InteractionStatus {
+        return try {
+            value?.let { InteractionStatus.valueOf(it) } ?: InteractionStatus.NONE
+        } catch (e: IllegalArgumentException) {
+            InteractionStatus.NONE
+        }
+    }
+    
+    /**
+     * Convierte un InteractionStatus a String.
+     */
+    @TypeConverter
+    fun fromInteractionStatus(estado: InteractionStatus?): String {
+        return estado?.name ?: InteractionStatus.NONE.name
+    }
+    
+    /**
+     * Convierte un String a AttachmentType.
+     */
+    @TypeConverter
+    fun toAttachmentType(value: String?): AttachmentType? {
+        return try {
+            value?.let { AttachmentType.valueOf(it) }
+        } catch (e: IllegalArgumentException) {
+            null
+        }
+    }
+    
+    /**
+     * Convierte un AttachmentType a String.
+     */
+    @TypeConverter
+    fun fromAttachmentType(tipo: AttachmentType?): String? {
+        return tipo?.name
     }
 } 

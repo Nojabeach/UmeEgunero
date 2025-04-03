@@ -152,6 +152,12 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
     
+    // Paging 3
+    val pagingVersion = "3.2.1"
+    implementation("androidx.paging:paging-runtime:$pagingVersion")
+    implementation("androidx.paging:paging-compose:$pagingVersion")
+    implementation("androidx.room:room-paging:$roomVersion")
+    
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("androidx.datastore:datastore-preferences-core:1.0.0")
