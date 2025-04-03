@@ -13,6 +13,7 @@ import androidx.navigation.compose.*
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
+import com.tfg.umeegunero.feature.common.config.screen.NotificacionesScreen
 import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
 import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
@@ -141,6 +142,13 @@ fun Navigation(
             )
         }
         
+        // Pantalla de notificaciones
+        composable(route = AppScreens.Notificaciones.route) {
+            NotificacionesScreen(
+                navController = navController
+            )
+        }
+        
         // Grafo de navegación para Familiar
         familiarNavGraph(
             navController = navController,
@@ -231,6 +239,12 @@ fun NavGraphBuilder.familiarNavGraph(
                     navController.navigate(AppScreens.ActividadesPreescolar.route)
                 }) {
                     Text("Actividades Preescolares")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
+                    navController.navigate(AppScreens.Notificaciones.route)
+                }) {
+                    Text("Configurar Notificaciones")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = {
@@ -350,6 +364,12 @@ fun NavGraphBuilder.profesorNavGraph(
                     navController.navigate(AppScreens.ActividadesPreescolarProfesor.route)
                 }) {
                     Text("Actividades Preescolares")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
+                    navController.navigate(AppScreens.Notificaciones.route)
+                }) {
+                    Text("Configurar Notificaciones")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = {

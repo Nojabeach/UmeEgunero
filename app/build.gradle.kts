@@ -177,6 +177,7 @@ dependencies {
     implementation(libs.firebase.functions)
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.config)
+    implementation(libs.firebase.messaging)
 
     // Corrutinas
     implementation(libs.kotlinx.coroutines.android)

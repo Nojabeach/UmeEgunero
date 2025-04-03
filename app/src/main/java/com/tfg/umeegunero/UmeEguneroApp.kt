@@ -8,6 +8,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.firebase.BuildConfig
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
+import com.tfg.umeegunero.notification.NotificationManager
 import com.tfg.umeegunero.util.DebugUtils
 import com.tfg.umeegunero.util.RemoteConfigManager
 import dagger.hilt.android.HiltAndroidApp
@@ -41,6 +42,12 @@ class UmeEguneroApp : Application() {
      */
     @Inject
     lateinit var debugUtils: DebugUtils
+    
+    /**
+     * Gestor de notificaciones inyectado por Hilt
+     */
+    @Inject 
+    lateinit var notificationManager: NotificationManager
 
     /**
      * Método llamado cuando se crea la aplicación.
@@ -50,6 +57,7 @@ class UmeEguneroApp : Application() {
      * 2. Firebase Remote Config para configuraciones remotas
      * 3. Comprueba y crea un administrador en caso de que no exista
      * 4. Configura trabajos periódicos para la sincronización de datos
+     * 5. Inicializa los canales de notificación
      */
     override fun onCreate() {
         super.onCreate()
@@ -64,6 +72,9 @@ class UmeEguneroApp : Application() {
 
         // Me aseguro de que haya un admin en el sistema
         debugUtils.ensureAdminExists()
+        
+        // Inicializar canales de notificación
+        notificationManager.initNotificationChannels()
         
         // Configurar el trabajo periódico de sincronización
         configurarSincronizacionPeriodica()

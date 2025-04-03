@@ -15,6 +15,7 @@ import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.DebugUtils
 import com.tfg.umeegunero.util.FirestoreCache
 import com.tfg.umeegunero.util.ErrorHandler
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -111,5 +112,11 @@ object FirebaseModule {
     @Singleton
     fun provideErrorHandler(): ErrorHandler {
         return ErrorHandler()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseMessaging(): FirebaseMessaging {
+        return FirebaseMessaging.getInstance()
     }
 }
