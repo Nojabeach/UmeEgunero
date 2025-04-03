@@ -116,14 +116,31 @@ fun EntregaTareaScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         if (uiState.isLoading) {
-            // Indicador de carga
+            // Mostrar indicador de carga si estamos cargando
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .background(Color.Black.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(50.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = if (uiState.archivosCargando) 
+                            "Subiendo archivos (${(uiState.progresoCarga * 100).toInt()}%)" 
+                        else 
+                            "Enviando entrega...",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             }
         } else if (tarea == null) {
             // Mensaje si no se encuentra la tarea
@@ -257,48 +274,65 @@ fun EntregaTareaScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Lista de archivos seleccionados
-                if (archivosSeleccionados.isEmpty()) {
-                    Text(
-                        text = "No hay archivos seleccionados",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Column {
-                        archivosSeleccionados.forEachIndexed { index, archivo ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .border(
-                                        width = 1.dp,
-                                        color = MaterialTheme.colorScheme.outline,
-                                        shape = RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.InsertDriveFile,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Text(
-                                    text = archivo.nombre,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                
-                                IconButton(
-                                    onClick = { archivosSeleccionados.removeAt(index) }
+                if (archivosSeleccionados.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Archivos seleccionados (${archivosSeleccionados.size})",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            archivosSeleccionados.forEachIndexed { index, archivo ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Eliminar archivo",
-                                        tint = Color.Red.copy(alpha = 0.8f)
+                                        imageVector = Icons.Default.InsertDriveFile,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    Text(
+                                        text = archivo.nombre,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    
+                                    IconButton(
+                                        onClick = { archivosSeleccionados.removeAt(index) }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Eliminar archivo",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                                
+                                if (index < archivosSeleccionados.size - 1) {
+                                    Divider(
+                                        modifier = Modifier.padding(vertical = 4.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant
                                     )
                                 }
                             }
@@ -326,26 +360,33 @@ fun EntregaTareaScreen(
                 // Botón para enviar la entrega
                 Button(
                     onClick = {
-                        viewModel.enviarEntrega(
-                            comentario = comentario,
-                            archivos = archivosSeleccionados.map { it.uri }
-                        )
+                        val archivosUris = archivosSeleccionados.map { it.uri.toString() }
+                        viewModel.enviarEntrega(comentario, archivosUris)
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    enabled = true // En una implementación real, verificaríamos si hay archivos o comentario
                 ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    
-                    Text("Enviar Entrega")
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "ENVIAR TAREA", 
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
