@@ -26,6 +26,7 @@ import com.tfg.umeegunero.feature.profesor.screen.TareasScreen
 import com.tfg.umeegunero.feature.profesor.screen.DetalleTareaScreen
 import com.tfg.umeegunero.feature.familiar.screen.ActividadesPreescolarScreen
 import com.tfg.umeegunero.feature.profesor.screen.ActividadesPreescolarProfesorScreen
+import com.tfg.umeegunero.feature.profesor.screen.EvaluacionScreen
 
 /**
  * Navegación principal de la aplicación
@@ -153,6 +154,27 @@ fun Navigation(
             userId = currentUserId,
             userName = currentUserName
         )
+
+        // Rutas del profesor
+        /*composable(AppScreens.ProfesorAsistencia.route) {
+            AsistenciaScreen(navController = navController)
+        }
+        
+        composable(AppScreens.ProfesorTareas.route) {
+            TareasScreen(navController = navController)
+        }
+        
+        composable(AppScreens.ProfesorCalendario.route) {
+            CalendarioScreen(navController = navController)
+        }*/
+        
+        // Ruta para la evaluación académica
+        composable("evaluacion") {
+            EvaluacionScreen(
+                navController = navController,
+                alumnos = emptyList() // Aquí deberías pasar la lista real de alumnos
+            )
+        }
     }
 }
 

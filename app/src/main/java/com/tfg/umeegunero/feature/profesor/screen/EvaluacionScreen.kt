@@ -704,33 +704,22 @@ fun AgregarEvaluacionDialog(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                ExposedDropdownMenuBox(
-                    expanded = false,
-                    onExpandedChange = { }
-                ) {
-                    TextField(
-                        value = asignaturaSeleccionada.nombre,
-                        onValueChange = { },
-                        readOnly = true,
-                        trailingIcon = {
-                            IconButton(onClick = { }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                            }
-                        },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.Dropdown, true)
-                            .clickable(
-                                onClick = { 
-                                    // Se implementaría un menú real aquí
-                                }
-                            )
-                    )
-                }
+                // Dropdown simplificado
+                TextField(
+                    value = asignaturaSeleccionada.nombre,
+                    onValueChange = { },
+                    readOnly = true,
+                    trailingIcon = {
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = { /* Se implementaría un menú real aquí */ })
+                )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
