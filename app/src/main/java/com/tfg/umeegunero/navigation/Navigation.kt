@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.navigation
 
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,6 +15,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.common.config.screen.NotificacionesScreen
+import com.tfg.umeegunero.feature.common.files.screen.DocumentoScreen
 import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
 import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
@@ -146,6 +148,31 @@ fun Navigation(
         composable(route = AppScreens.Notificaciones.route) {
             NotificacionesScreen(
                 navController = navController
+            )
+        }
+        
+        // Pantalla de visualización de documentos
+        composable(
+            route = AppScreens.Documento.route,
+            arguments = listOf(
+                navArgument("url") { 
+                    type = NavType.StringType 
+                },
+                navArgument("nombre") { 
+                    type = NavType.StringType 
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val url = Uri.decode(backStackEntry.arguments?.getString("url") ?: "")
+            val nombre = backStackEntry.arguments?.getString("nombre")?.let { Uri.decode(it) }
+            
+            DocumentoScreen(
+                navController = navController,
+                documentoUrl = url,
+                documentoNombre = nombre,
+                viewModel = hiltViewModel()
             )
         }
         

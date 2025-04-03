@@ -23,6 +23,7 @@ timber = "5.0.1"
 retrofit = "2.9.0"
 gson = "2.10.1"  # Versión de Gson para la serialización
 okhttp = "4.11.0"  # Versión de OkHttp
+accompanistVersion = "0.28.0"  # Versión de Accompanist
 
 [libraries]
 # Android Core
@@ -74,6 +75,12 @@ firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashly
 firebase-functions = { group = "com.google.firebase", name = "firebase-functions-ktx" }
 firebase-config = { group = "com.google.firebase", name = "firebase-config-ktx" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging-ktx" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage-ktx" }
+
+# Accompanist
+accompanist-navigation-animation = { group = "com.google.accompanist", name = "accompanist-navigation-animation", version.ref = "accompanistVersion" }
+accompanist-systemuicontroller = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanistVersion" }
+accompanist-pager = { group = "com.google.accompanist", name = "accompanist-pager", version.ref = "accompanistVersion" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

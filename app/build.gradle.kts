@@ -173,11 +173,11 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.functions)
-    implementation(libs.firebase.crashlytics)
-    implementation(libs.firebase.config)
+    implementation(libs.firebase.storage)
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.config)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.functions)
 
     // Corrutinas
     implementation(libs.kotlinx.coroutines.android)
@@ -214,13 +214,19 @@ dependencies {
     implementation("com.sun.mail:android-activation:1.6.7")
 
     // Coil para carga de imágenes
-    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-compose:2.4.0")
     
     // Corrutinas
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // Firebase Storage
-    implementation("com.google.firebase:firebase-storage:20.3.0")
+    // ExoPlayer para visualización de medios
+    implementation("com.google.android.exoplayer:exoplayer-core:2.18.7")
+    implementation("com.google.android.exoplayer:exoplayer-ui:2.18.7")
+
+    // Accompanist
+    implementation(libs.accompanist.navigation.animation)
+    implementation(libs.accompanist.systemuicontroller)
+    implementation(libs.accompanist.pager)
 }
 
 // Configuración de kapt

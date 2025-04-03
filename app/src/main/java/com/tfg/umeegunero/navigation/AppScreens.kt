@@ -191,11 +191,19 @@ sealed class AppScreens(val route: String) {
     object Perfil : AppScreens("perfil")
     
     /**
-     * Pantalla genérica para pruebas y desarrollo
-     * @param title Título a mostrar en la pantalla
+     * Pantalla de visualización de documentos
+     * @param url URL del documento a visualizar (codificada)
+     * @param nombre Nombre opcional del documento (codificado)
      */
-    object Dummy : AppScreens("dummy/{title}") {
-        fun createRoute(title: String) = "dummy/$title"
+    object Documento : AppScreens("documento/{url}?nombre={nombre}") {
+        fun createRoute(url: String, nombre: String? = null): String {
+            val urlEncoded = android.net.Uri.encode(url)
+            return if (nombre != null) {
+                "documento/$urlEncoded?nombre=${android.net.Uri.encode(nombre)}"
+            } else {
+                "documento/$urlEncoded"
+            }
+        }
     }
 
     /**
@@ -452,5 +460,13 @@ sealed class AppScreens(val route: String) {
      */
     object DetalleTareaAlumno : AppScreens("detalle_tarea_alumno/{tareaId}") {
         fun createRoute(tareaId: String) = "detalle_tarea_alumno/$tareaId"
+    }
+
+    /**
+     * Pantalla genérica para pruebas y desarrollo
+     * @param title Título a mostrar en la pantalla
+     */
+    object Dummy : AppScreens("dummy/{title}") {
+        fun createRoute(title: String) = "dummy/$title"
     }
 } 
