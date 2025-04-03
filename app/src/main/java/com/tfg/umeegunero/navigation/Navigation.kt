@@ -269,18 +269,27 @@ fun NavGraphBuilder.familiarNavGraph(
             )
         ) { backStackEntry ->
             val tareaId = backStackEntry.arguments?.getString("tareaId") ?: ""
-            // Por implementar: Pantalla de detalle de tarea para alumno
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Detalle de tarea (ID: $tareaId)", fontSize = 24.sp)
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { navController.popBackStack() }) {
-                    Text("Volver")
-                }
-            }
+            com.tfg.umeegunero.feature.familiar.screen.DetalleTareaAlumnoScreen(
+                navController = navController,
+                tareaId = tareaId
+            )
+        }
+        
+        // Pantalla de entrega de tarea
+        composable(
+            route = AppScreens.EntregaTarea.route,
+            arguments = listOf(
+                navArgument("tareaId") { type = NavType.StringType },
+                navArgument("alumnoId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val tareaId = backStackEntry.arguments?.getString("tareaId") ?: ""
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            com.tfg.umeegunero.feature.familiar.screen.EntregaTareaScreen(
+                navController = navController,
+                tareaId = tareaId,
+                alumnoId = alumnoId
+            )
         }
         
         // Pantalla de chat para familiar

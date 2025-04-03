@@ -308,6 +308,15 @@ sealed class AppScreens(val route: String) {
     object GestionNotificacionesCentro : AppScreens("gestion_notificaciones_centro")
 
     /**
+     * Pantalla para que el familiar entregue una tarea en nombre del alumno
+     * @param tareaId Identificador único de la tarea
+     * @param alumnoId Identificador único del alumno
+     */
+    object EntregaTarea : AppScreens("entrega_tarea/{tareaId}/{alumnoId}") {
+        fun createRoute(tareaId: String, alumnoId: String) = "entrega_tarea/$tareaId/$alumnoId"
+    }
+
+    /**
      * Sección: Pantallas específicas para profesores
      */
     /** Gestión de alumnos por parte del profesor */

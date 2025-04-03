@@ -26,6 +26,7 @@ import com.tfg.umeegunero.data.model.PrioridadTarea
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.feature.familiar.viewmodel.FiltroTarea
 import com.tfg.umeegunero.feature.familiar.viewmodel.TareasFamiliaViewModel
+import com.tfg.umeegunero.navigation.AppScreens
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -183,10 +184,10 @@ fun TareasFamiliaScreen(
                             TareaCard(
                                 tarea = tarea,
                                 onTareaClick = { 
-                                    // Aquí se podría navegar al detalle de la tarea en el futuro
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Viendo detalle de tarea: ${tarea.titulo}")
-                                    }
+                                    // Navegar a la pantalla de detalle de tarea
+                                    navController.navigate(
+                                        AppScreens.DetalleTareaAlumno.createRoute(tarea.id)
+                                    )
                                 },
                                 onRevisarTarea = { comentario ->
                                     viewModel.marcarTareaComoRevisada(tarea.id, comentario)
@@ -355,7 +356,6 @@ fun TareaCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                    val fechaActual = Calendar.getInstance().time
                     val fechaEntrega = tarea.fechaEntrega?.toDate()
                     val esRetrasada = fechaEntrega != null && 
                                       fechaEntrega.before(Calendar.getInstance().time) && 

@@ -261,7 +261,7 @@ class TareaRepository @Inject constructor(
                 .update(
                     mapOf(
                         "calificacion" to calificacion,
-                        "feedbackProfesor" to feedback
+                        "comentarioProfesor" to feedback
                     )
                 )
                 .await()

@@ -174,7 +174,7 @@ fun DetalleTareaScreen(
             alumnoEntrega = uiState.alumnoSeleccionado,
             onDismiss = { viewModel.ocultarDialogoCalificacion() },
             onCalificar = { entregaId, calificacion, feedback ->
-                viewModel.calificarEntrega(entregaId, calificacion, feedback)
+                viewModel.calificarEntrega(entregaId, calificacion.toDouble(), feedback)
             }
         )
     }
@@ -479,9 +479,9 @@ fun DialogoCalificacion(
     if (alumnoEntrega == null) return
     
     val tieneEntrega = alumnoEntrega.entrega != null
-    val calificacionInicial = alumnoEntrega.entrega?.calificacion ?: 0.0
+    val calificacionInicial = alumnoEntrega.entrega?.calificacion ?: 0.0f
     var calificacion by remember { mutableStateOf(calificacionInicial) }
-    var feedback by remember { mutableStateOf(alumnoEntrega.entrega?.feedbackProfesor ?: "") }
+    var feedback by remember { mutableStateOf(alumnoEntrega.entrega?.comentarioProfesor ?: "") }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -539,7 +539,7 @@ fun DialogoCalificacion(
                     
                     Slider(
                         value = calificacion.toFloat(),
-                        onValueChange = { calificacion = it.toDouble() },
+                        onValueChange = { calificacion = it },
                         valueRange = 0f..10f,
                         steps = 20,
                         modifier = Modifier.fillMaxWidth()
@@ -569,7 +569,7 @@ fun DialogoCalificacion(
             Button(
                 onClick = {
                     if (tieneEntrega && alumnoEntrega.entrega?.id?.isNotEmpty() == true) {
-                        onCalificar(alumnoEntrega.entrega.id, calificacion, feedback)
+                        onCalificar(alumnoEntrega.entrega.id, calificacion.toDouble(), feedback)
                     } else {
                         onDismiss()
                     }

@@ -30,20 +30,6 @@ data class Tarea(
 )
 
 /**
- * Representa una entrega de tarea por parte de un alumno
- */
-data class EntregaTarea(
-    @DocumentId val id: String = "",
-    val tareaId: String = "",
-    val alumnoId: String = "",
-    val fechaEntrega: Timestamp = Timestamp.now(),
-    val archivos: List<String> = emptyList(), // URLs de archivos entregados
-    val comentario: String = "",
-    val calificacion: Double? = null,
-    val feedbackProfesor: String = ""
-)
-
-/**
  * Enumeración para representar los diferentes estados de una tarea
  */
 enum class EstadoTarea {

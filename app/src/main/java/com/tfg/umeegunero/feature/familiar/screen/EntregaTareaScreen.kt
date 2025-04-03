@@ -1,0 +1,360 @@
+package com.tfg.umeegunero.feature.familiar.screen
+
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.tfg.umeegunero.data.model.EstadoTarea
+import com.tfg.umeegunero.data.model.PrioridadTarea
+import com.tfg.umeegunero.data.model.Tarea
+import com.tfg.umeegunero.feature.familiar.viewmodel.EntregaTareaViewModel
+import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EntregaTareaScreen(
+    navController: NavController,
+    tareaId: String,
+    alumnoId: String,
+    viewModel: EntregaTareaViewModel = hiltViewModel()
+) {
+    // Inicializar ViewModel
+    LaunchedEffect(tareaId, alumnoId) {
+        viewModel.inicializar(tareaId, alumnoId)
+    }
+    
+    // Estado para la UI
+    val uiState by viewModel.uiState.collectAsState()
+    val tarea = uiState.tarea
+    
+    // Estado para el comentario
+    var comentario by remember { mutableStateOf("") }
+    
+    // Estado para los archivos adjuntos
+    val archivosSeleccionados = remember { mutableStateListOf<ArchivoAdjunto>() }
+    
+    // Snackbar para mensajes
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Mostrar mensajes de error o éxito
+    LaunchedEffect(uiState.error, uiState.mensaje) {
+        uiState.error?.let {
+            scope.launch {
+                snackbarHostState.showSnackbar(it)
+                viewModel.limpiarMensajes()
+            }
+        }
+        
+        uiState.mensaje?.let {
+            scope.launch {
+                snackbarHostState.showSnackbar(it)
+                viewModel.limpiarMensajes()
+                // Si se completó la entrega correctamente, volver a la pantalla anterior
+                if (it.contains("exitosamente")) {
+                    navController.popBackStack()
+                }
+            }
+        }
+    }
+    
+    // Para seleccionar archivos
+    val context = LocalContext.current
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            val nombre = uri.lastPathSegment ?: "archivo_${archivosSeleccionados.size + 1}"
+            val nuevoArchivo = ArchivoAdjunto(uri = uri.toString(), nombre = nombre)
+            archivosSeleccionados.add(nuevoArchivo)
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Entregar Tarea") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        if (uiState.isLoading) {
+            // Indicador de carga
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (tarea == null) {
+            // Mensaje si no se encuentra la tarea
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No se encontró la tarea",
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            // Contenido principal - Formulario de entrega
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Información básica de la tarea
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Indicador de prioridad
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(
+                                when (tarea.prioridad) {
+                                    PrioridadTarea.ALTA -> Color.Red
+                                    PrioridadTarea.MEDIA -> Color(0xFFFFA500) // Orange
+                                    PrioridadTarea.BAJA -> Color(0xFF4CAF50) // Green
+                                    PrioridadTarea.URGENTE -> Color(0xFF5C0000) // Dark Red
+                                    else -> Color.Gray
+                                }
+                            )
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Column {
+                        Text(
+                            text = tarea.titulo,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Text(
+                            text = tarea.asignatura ?: "Sin asignatura",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Fecha límite
+                if (tarea.fechaEntrega != null) {
+                    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                    val fechaEntrega = tarea.fechaEntrega.toDate()
+                    val esRetrasada = fechaEntrega.before(Date())
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Event,
+                            contentDescription = null,
+                            tint = if (esRetrasada) Color.Red else MaterialTheme.colorScheme.primary
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Column {
+                            Text(
+                                text = "Fecha límite: ${dateFormat.format(fechaEntrega)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (esRetrasada) Color.Red else Color.Unspecified
+                            )
+                            
+                            if (esRetrasada) {
+                                Text(
+                                    text = "¡Entrega retrasada!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Red
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+                
+                // Formulario de entrega
+                Text(
+                    text = "Datos de la Entrega",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Comentario
+                OutlinedTextField(
+                    value = comentario,
+                    onValueChange = { comentario = it },
+                    label = { Text("Comentario (opcional)") },
+                    placeholder = { Text("Añade un comentario a la entrega") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Sección de archivos adjuntos
+                Text(
+                    text = "Archivos Adjuntos",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Lista de archivos seleccionados
+                if (archivosSeleccionados.isEmpty()) {
+                    Text(
+                        text = "No hay archivos seleccionados",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Column {
+                        archivosSeleccionados.forEachIndexed { index, archivo ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        shape = RoundedCornerShape(4.dp)
+                                    )
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.InsertDriveFile,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Text(
+                                    text = archivo.nombre,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                
+                                IconButton(
+                                    onClick = { archivosSeleccionados.removeAt(index) }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Eliminar archivo",
+                                        tint = Color.Red.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Botón para agregar archivos
+                OutlinedButton(
+                    onClick = { filePickerLauncher.launch("*/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AttachFile,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Seleccionar Archivo")
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Botón para enviar la entrega
+                Button(
+                    onClick = {
+                        viewModel.enviarEntrega(
+                            comentario = comentario,
+                            archivos = archivosSeleccionados.map { it.uri }
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isLoading
+                ) {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    
+                    Text("Enviar Entrega")
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+/**
+ * Modelo para representar un archivo adjunto seleccionado
+ */
+data class ArchivoAdjunto(
+    val uri: String,
+    val nombre: String
+) 
