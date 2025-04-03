@@ -36,12 +36,14 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ChildCare
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -55,6 +57,8 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -65,14 +69,20 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,7 +104,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.SnackbarHostState
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
 import com.tfg.umeegunero.ui.components.TemaSelector
@@ -109,6 +118,11 @@ import java.util.Date
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.sp
 
 /**
  * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
@@ -489,10 +503,13 @@ fun ProfesorHomeContent(
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
     val formattedDate = remember { today.format(formatter).replaceFirstChar { it.uppercase() } }
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .verticalScroll(scrollState)
     ) {
         // Encabezado con fecha
         Row(
@@ -577,6 +594,73 @@ fun ProfesorHomeContent(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+        
+        // Estadísticas de rendimiento
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Rendimiento semanal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Text(
+                        text = "Ver más",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { /* Navegar a pantalla de estadísticas detalladas */ }
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Gráfico de rendimiento
+                GraficoRendimiento()
+                
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                
+                // Estadísticas de actividad
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    EstadisticaItem(
+                        valor = "93%",
+                        titulo = "Asistencia",
+                        color = Color(0xFF34C759)
+                    )
+                    
+                    EstadisticaItem(
+                        valor = "86%",
+                        titulo = "Actividades",
+                        color = Color(0xFF5856D6)
+                    )
+                    
+                    EstadisticaItem(
+                        valor = "80%",
+                        titulo = "Participación",
+                        color = Color(0xFFFF9500)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Acciones rápidas
         Text(
@@ -593,7 +677,8 @@ fun ProfesorHomeContent(
             contentPadding = PaddingValues(4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.height(180.dp)
+            modifier = Modifier.height(180.dp),
+            userScrollEnabled = false
         ) {
             item {
                 AccionRapidaItem(
@@ -672,12 +757,12 @@ fun ProfesorHomeContent(
                 fontWeight = FontWeight.Bold
             )
             
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
             ) {
-                items(alumnosPendientes) { alumno ->
+                alumnosPendientes.forEach { alumno ->
                     AlumnoPendienteItem(
                         nombre = "${alumno.nombre} ${alumno.apellidos}",
                         onClick = { onCrearRegistroActividad(alumno.dni) }
@@ -1087,6 +1172,28 @@ fun MensajesContent(
     mensajes: List<Triple<String, String, Boolean>> = emptyList(),
     onNavigateToChat: (String, String) -> Unit = { _, _ -> }
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredMensajes = remember(mensajes, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            mensajes
+        } else {
+            mensajes.filter { (nombre, mensaje, _) ->
+                nombre.contains(searchQuery, ignoreCase = true) ||
+                mensaje.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+    
+    var selectedFilter by remember { mutableStateOf(MensajesFiltro.TODOS) }
+    
+    val mensajesFiltrados = remember(filteredMensajes, selectedFilter) {
+        when (selectedFilter) {
+            MensajesFiltro.TODOS -> filteredMensajes
+            MensajesFiltro.NO_LEIDOS -> filteredMensajes.filter { (_, _, noLeido) -> noLeido }
+            MensajesFiltro.LEIDOS -> filteredMensajes.filter { (_, _, noLeido) -> !noLeido }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1098,27 +1205,118 @@ fun MensajesContent(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-
-        // Lista de chats
-        if (mensajes.isEmpty()) {
-            // Mostrar mensaje cuando no hay mensajes
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No tienes mensajes nuevos",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+        
+        // Barra de búsqueda
+        TextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            placeholder = { Text("Buscar mensajes") },
+            leadingIcon = { 
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Buscar"
+                )
+            },
+            trailingIcon = { 
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Limpiar búsqueda"
+                        )
+                    }
+                }
+            },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+            shape = RoundedCornerShape(8.dp),
+            singleLine = true
+        )
+        
+        // Filtros de mensajes
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            MensajesFiltro.values().forEach { filtro ->
+                FilterChip(
+                    selected = selectedFilter == filtro,
+                    onClick = { selectedFilter = filtro },
+                    label = { 
+                        Text(
+                            when (filtro) {
+                                MensajesFiltro.TODOS -> "Todos"
+                                MensajesFiltro.NO_LEIDOS -> "No leídos"
+                                MensajesFiltro.LEIDOS -> "Leídos"
+                            }
+                        )
+                    },
+                    leadingIcon = if (selectedFilter == filtro) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                            )
+                        }
+                    } else null
                 )
             }
+        }
+
+        // Lista de chats
+        if (mensajesFiltrados.isEmpty()) {
+            // Mensaje cuando no hay resultados
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Chat,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = if (searchQuery.isNotEmpty()) 
+                            "No se encontraron resultados para \"$searchQuery\"" 
+                        else if (selectedFilter == MensajesFiltro.NO_LEIDOS)
+                            "No tienes mensajes sin leer"
+                        else
+                            "No tienes mensajes",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         } else {
-            LazyColumn {
-                items(mensajes) { (emisorId, texto, noLeido) ->
-                    ChatItem(
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(mensajesFiltrados) { (emisorId, texto, noLeido) ->
+                    ChatItemMejorado(
                         nombre = emisorId, // Idealmente aquí mostrarías el nombre real del emisor
                         ultimoMensaje = texto,
+                        fecha = "Hoy, 10:30", // Esto debería venir de los datos reales
                         noLeido = noLeido,
                         onClick = { onNavigateToChat(emisorId, "") }
                     )
@@ -1126,64 +1324,140 @@ fun MensajesContent(
                 }
             }
         }
+        
+        // Botón para iniciar nuevo chat
+        Button(
+            onClick = { /* Navegar a lista de contactos para iniciar chat */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF34C759)
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "Nuevo mensaje")
+        }
     }
 }
 
 @Composable
-fun ChatItem(
+fun ChatItemMejorado(
     nombre: String,
     ultimoMensaje: String,
+    fecha: String,
     noLeido: Boolean,
     onClick: () -> Unit = {}
 ) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
             .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
+        colors = CardDefaults.cardColors(
+            containerColor = if (noLeido) 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+            else 
+                MaterialTheme.colorScheme.surface
+        )
     ) {
-        // Avatar
-        Box(
+        Row(
             modifier = Modifier
-                .size(50.dp)
-                .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = nombre.first().toString(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = nombre,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = if (noLeido) FontWeight.Bold else FontWeight.Medium
-            )
-
-            Text(
-                text = ultimoMensaje,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (noLeido) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        if (noLeido) {
+            // Avatar
             Box(
                 modifier = Modifier
-                    .size(12.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-            )
+                    .size(56.dp)
+                    .background(
+                        color = if (noLeido) 
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) 
+                        else 
+                            MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = nombre.first().toString().uppercase(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (noLeido) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = nombre,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (noLeido) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    Text(
+                        text = fecha,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (noLeido) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = ultimoMensaje,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (noLeido) 
+                            MaterialTheme.colorScheme.onSurface 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    if (noLeido) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        )
+                    }
+                }
+            }
         }
     }
+}
+
+enum class MensajesFiltro {
+    TODOS, NO_LEIDOS, LEIDOS
 }
 
 @Composable
@@ -1578,5 +1852,169 @@ fun AccionRapidaItem(
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+@Composable
+fun GraficoRendimiento() {
+    val diasSemana = listOf("L", "M", "X", "J", "V")
+    val valorActividades = listOf(85, 90, 75, 88, 92)
+    val valoresAsistencia = listOf(90, 95, 85, 92, 97)
+    
+    val barWidth = 15.dp
+    val chartHeight = 140.dp
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Leyenda
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(Color(0xFF5856D6), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Actividades",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(24.dp))
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(Color(0xFF34C759), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Asistencia",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+        
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(chartHeight)
+                .padding(vertical = 8.dp)
+        ) {
+            // Líneas horizontales (guías)
+            for (i in 0..4) {
+                val yPosition = (i * 20f + 20) / 100f
+                
+                HorizontalDivider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = (chartHeight * (1 - yPosition)))
+                        .align(Alignment.TopCenter),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                )
+                
+                // Valores de porcentaje
+                Text(
+                    text = "${(i * 20) + 20}%",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 8.sp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .align(Alignment.CenterStart)
+                        .offset(y = (chartHeight * (1 - yPosition) - 8.dp))
+                )
+            }
+            
+            // Barras del gráfico
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 24.dp, end = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                repeat(5) { index ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Barra de actividades
+                        Box(
+                            modifier = Modifier
+                                .width(barWidth)
+                                .height((chartHeight * valorActividades[index] / 100))
+                                .background(
+                                    color = Color(0xFF5856D6),
+                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Día de la semana
+                        Text(
+                            text = diasSemana[index],
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Barra de asistencia
+                        Box(
+                            modifier = Modifier
+                                .width(barWidth)
+                                .height((chartHeight * valoresAsistencia[index] / 100))
+                                .background(
+                                    color = Color(0xFF34C759),
+                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Espacio vacío para alinear con la otra columna
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    
+                    if (index < 4) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EstadisticaItem(
+    valor: String,
+    titulo: String,
+    color: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = valor,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        
+        Text(
+            text = titulo,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
