@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfig
@@ -47,21 +48,54 @@ class UmeEguneroApp : Application(), Configuration.Provider {
         // Inicializar Timber para logging
         Timber.plant(Timber.DebugTree())
         
-        // Inicializar Firebase
-        FirebaseApp.initializeApp(this)
-        
-        // Configurar Remote Config
-        val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
-        val configSettings = remoteConfigSettings {
-            minimumFetchIntervalInSeconds = 3600
-        }
-        remoteConfig.setConfigSettingsAsync(configSettings)
+        // Inicializar Firebase con manejo de errores
+        initializeFirebase()
         
         // Inicializar canales de notificación
         notificationManager.createNotificationChannels()
         
         // Configurar tareas periódicas
         configurarSincronizacionPeriodica()
+    }
+    
+    /**
+     * Inicializa Firebase con manejo de errores
+     */
+    private fun initializeFirebase() {
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                FirebaseApp.initializeApp(this)
+                Timber.d("Firebase inicializado correctamente")
+            }
+            
+            // Configurar Remote Config solo si Firebase se inicializó correctamente
+            if (FirebaseApp.getApps(this).isNotEmpty()) {
+                val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
+                val configSettings = remoteConfigSettings {
+                    minimumFetchIntervalInSeconds = 3600
+                }
+                remoteConfig.setConfigSettingsAsync(configSettings)
+                Timber.d("Remote Config configurado correctamente")
+            } else {
+                Timber.e("Firebase no se pudo inicializar, no se configurará Remote Config")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al inicializar Firebase")
+            
+            // Crear una configuración predeterminada como fallback
+            try {
+                val options = FirebaseOptions.Builder()
+                    .setApplicationId("1:1045944201521:android:1d17f66b49657aef2ac010")
+                    .setApiKey("AIzaSyCO6F98FkXnEoHGS_svEgtWiZdbI3IcVaY")
+                    .setProjectId("umeegunero")
+                    .build()
+                
+                FirebaseApp.initializeApp(this, options, "default")
+                Timber.d("Firebase inicializado con configuración manual")
+            } catch (e2: Exception) {
+                Timber.e(e2, "No se pudo inicializar Firebase con configuración manual")
+            }
+        }
     }
 
     /**
