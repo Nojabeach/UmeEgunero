@@ -59,18 +59,18 @@ fun PerfilScreen(
     }
     
     LaunchedEffect(uiState.error) {
-        uiState.error?.let { mensaje ->
+        uiState.error?.let { errorMsg ->
             scope.launch {
-                snackbarHostState.showSnackbar(mensaje)
+                snackbarHostState.showSnackbar(errorMsg)
                 viewModel.clearError()
             }
         }
     }
     
-    LaunchedEffect(uiState.mensaje) {
-        uiState.mensaje?.let { mensaje ->
+    LaunchedEffect(uiState.success) {
+        uiState.success?.let { successMsg ->
             scope.launch {
-                snackbarHostState.showSnackbar(mensaje)
+                snackbarHostState.showSnackbar(successMsg)
                 viewModel.clearMensaje()
             }
         }
@@ -172,14 +172,16 @@ fun PerfilScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Tipo de usuario
-                    val tipoDisplay = when (uiState.tipoUsuario) {
-                        TipoUsuario.ADMIN_APP -> "Administrador del sistema"
-                        TipoUsuario.ADMIN_CENTRO -> "Administrador de centro"
-                        TipoUsuario.PROFESOR -> "Profesor"
-                        TipoUsuario.FAMILIAR -> "Familiar"
-                        TipoUsuario.ALUMNO -> "Alumno"
-                        TipoUsuario.DESCONOCIDO -> "Usuario"
-                    }
+                    val tipoDisplay = uiState.usuario?.perfiles?.firstOrNull()?.tipo?.let { tipo ->
+                        when (tipo) {
+                            TipoUsuario.ADMIN_APP -> "Administrador del sistema"
+                            TipoUsuario.ADMIN_CENTRO -> "Administrador de centro"
+                            TipoUsuario.PROFESOR -> "Profesor"
+                            TipoUsuario.FAMILIAR -> "Familiar"
+                            TipoUsuario.ALUMNO -> "Alumno"
+                            TipoUsuario.DESCONOCIDO -> "Usuario"
+                        }
+                    } ?: "Usuario"
                     
                     Surface(
                         shape = RoundedCornerShape(50),
@@ -236,7 +238,7 @@ fun PerfilScreen(
                             ProfileField(
                                 icon = Icons.Default.Email,
                                 label = "Email",
-                                value = uiState.email,
+                                value = uiState.usuario?.email ?: "",
                                 onValueChange = { },
                                 editable = false
                             )
@@ -245,7 +247,7 @@ fun PerfilScreen(
                             ProfileField(
                                 icon = Icons.Default.CreditCard,
                                 label = "DNI",
-                                value = uiState.dni,
+                                value = uiState.usuario?.dni ?: "",
                                 onValueChange = { },
                                 editable = false
                             )
@@ -355,7 +357,7 @@ fun PerfilScreen(
                             
                             // Fecha de registro
                             val formatter = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
-                            val fechaRegistro = uiState.fechaRegistro?.toDate()?.let { formatter.format(it) } ?: "-"
+                            val fechaRegistro = uiState.usuario?.fechaRegistro?.toDate()?.let { formatter.format(it) } ?: "-"
                             
                             ProfileField(
                                 icon = Icons.Default.DateRange,
@@ -366,7 +368,7 @@ fun PerfilScreen(
                             )
                             
                             // Último acceso
-                            val ultimoAcceso = uiState.ultimoAcceso?.toDate()?.let { formatter.format(it) } ?: "-"
+                            val ultimoAcceso = uiState.usuario?.ultimoAcceso?.toDate()?.let { formatter.format(it) } ?: "-"
                             
                             ProfileField(
                                 icon = Icons.Default.AccessTime,

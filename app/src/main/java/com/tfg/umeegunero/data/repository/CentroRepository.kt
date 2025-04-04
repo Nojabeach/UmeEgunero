@@ -19,7 +19,7 @@ import timber.log.Timber
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.util.FirestoreCache
 import com.tfg.umeegunero.util.ErrorHandler
 

@@ -7,7 +7,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
 import com.tfg.umeegunero.data.model.InfoArchivo
-import com.tfg.umeegunero.data.model.Resultado
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -15,8 +15,10 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.util.UUID
 import javax.inject.Inject
@@ -37,10 +39,10 @@ class StorageRepository @Inject constructor(
      * @param uri URI del archivo local a subir
      * @param ruta Ruta en Firebase Storage donde se almacenará el archivo
      * @param nombreArchivo Nombre que tendrá el archivo en el servidor (opcional)
-     * @return Flow con el resultado de la operación, incluyendo la URL del archivo subido
+     * @return Flow<Result<String>> con la URL pública del archivo subido
      */
-    fun subirArchivo(uri: Uri, ruta: String, nombreArchivo: String? = null): Flow<Resultado<String>> = flow {
-        emit(Resultado.Cargando())
+    fun subirArchivo(uri: Uri, ruta: String, nombreArchivo: String? = null): Flow<Result<String>> = flow {
+        emit(Result.Loading())
         
         try {
             // Obtener el tipo MIME del archivo
@@ -63,14 +65,14 @@ class StorageRepository @Inject constructor(
             // Obtener URL de descarga
             val downloadUrl = fileRef.downloadUrl.await().toString()
             
-            emit(Resultado.Exito(downloadUrl))
+            emit(Result.Success(downloadUrl))
         } catch (e: Exception) {
             Timber.e(e, "Error al subir archivo")
-            emit(Resultado.Error("Error al subir archivo: ${e.message}"))
+            emit(Result.Error(e))
         }
     }.catch { e ->
         Timber.e(e, "Exception en subirArchivo")
-        emit(Resultado.Error("Error al subir archivo: ${e.message}"))
+        emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
     /**
@@ -79,15 +81,15 @@ class StorageRepository @Inject constructor(
      * @param ruta Ruta en Firebase Storage donde se almacenará el archivo
      * @param nombreArchivo Nombre que tendrá el archivo en el servidor
      * @param tipoMime Tipo MIME del archivo
-     * @return Flow con el resultado de la operación, incluyendo la URL del archivo subido
+     * @return Flow<Result<String>> con la URL pública del archivo subido
      */
     fun subirArchivo(
         inputStream: InputStream,
         ruta: String,
         nombreArchivo: String,
         tipoMime: String
-    ): Flow<Resultado<String>> = flow {
-        emit(Resultado.Cargando())
+    ): Flow<Result<String>> = flow {
+        emit(Result.Loading())
         
         try {
             // Crear referencia al archivo en Storage
@@ -105,10 +107,10 @@ class StorageRepository @Inject constructor(
             // Obtener URL de descarga
             val downloadUrl = fileRef.downloadUrl.await().toString()
             
-            emit(Resultado.Exito(downloadUrl))
+            emit(Result.Success(downloadUrl))
         } catch (e: Exception) {
             Timber.e(e, "Error al subir archivo desde stream")
-            emit(Resultado.Error("Error al subir archivo: ${e.message}"))
+            emit(Result.Error(e))
         } finally {
             try {
                 inputStream.close()
@@ -118,16 +120,16 @@ class StorageRepository @Inject constructor(
         }
     }.catch { e ->
         Timber.e(e, "Exception en subirArchivo(InputStream)")
-        emit(Resultado.Error("Error al subir archivo: ${e.message}"))
+        emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
     /**
      * Elimina un archivo de Firebase Storage
      * @param url URL completa del archivo a eliminar
-     * @return Flow con el resultado de la operación
+     * @return Flow<Result<Unit>> con el resultado de la operación
      */
-    fun eliminarArchivo(url: String): Flow<Resultado<Boolean>> = flow {
-        emit(Resultado.Cargando())
+    fun eliminarArchivo(url: String): Flow<Result<Unit>> = flow {
+        emit(Result.Loading())
         
         try {
             // Convertir URL a gsReference si es necesario
@@ -136,24 +138,24 @@ class StorageRepository @Inject constructor(
             // Eliminar archivo
             fileRef.delete().await()
             
-            emit(Resultado.Exito(true))
+            emit(Result.Success(Unit))
         } catch (e: Exception) {
             Timber.e(e, "Error al eliminar archivo")
-            emit(Resultado.Error("Error al eliminar archivo: ${e.message}"))
+            emit(Result.Error(e))
         }
     }.catch { e ->
         Timber.e(e, "Exception en eliminarArchivo")
-        emit(Resultado.Error("Error al eliminar archivo: ${e.message}"))
+        emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
     /**
      * Descarga un archivo de Firebase Storage al almacenamiento local
      * @param url URL completa del archivo a descargar
      * @param nombreArchivo Nombre que tendrá el archivo descargado localmente
-     * @return Flow con el resultado de la operación, incluyendo el File descargado
+     * @return Flow<Result<File>> con el archivo local descargado
      */
-    fun descargarArchivo(url: String, nombreArchivo: String): Flow<Resultado<File>> = flow {
-        emit(Resultado.Cargando())
+    fun descargarArchivo(url: String, nombreArchivo: String): Flow<Result<File>> = flow {
+        emit(Result.Loading())
         
         try {
             // Convertir URL a gsReference si es necesario
@@ -163,25 +165,30 @@ class StorageRepository @Inject constructor(
             val localFile = File(context.cacheDir, nombreArchivo)
             
             // Descargar archivo
-            fileRef.getFile(localFile).await()
+            fileRef.getBytes(10L * 1024 * 1024).await()
             
-            emit(Resultado.Exito(localFile))
+            // Guardar en archivo local
+            FileOutputStream(localFile).use { outputStream ->
+                outputStream.write(fileRef.getBytes(10L * 1024 * 1024).await())
+            }
+            
+            emit(Result.Success(localFile))
         } catch (e: Exception) {
             Timber.e(e, "Error al descargar archivo")
-            emit(Resultado.Error("Error al descargar archivo: ${e.message}"))
+            emit(Result.Error(e))
         }
     }.catch { e ->
         Timber.e(e, "Exception en descargarArchivo")
-        emit(Resultado.Error("Error al descargar archivo: ${e.message}"))
+        emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
     /**
      * Obtiene información sobre un archivo en Firebase Storage
      * @param url URL completa del archivo
-     * @return Flow con el resultado de la operación, incluyendo la información del archivo
+     * @return Flow<Result<InfoArchivo>> con la información del archivo
      */
-    fun obtenerInfoArchivo(url: String): Flow<Resultado<InfoArchivo>> = flow {
-        emit(Resultado.Cargando())
+    fun obtenerInfoArchivo(url: String): Flow<Result<InfoArchivo>> = flow {
+        emit(Result.Loading())
         
         try {
             // Convertir URL a gsReference si es necesario
@@ -202,14 +209,14 @@ class StorageRepository @Inject constructor(
                 }
             )
             
-            emit(Resultado.Exito(infoArchivo))
+            emit(Result.Success(infoArchivo))
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener información del archivo")
-            emit(Resultado.Error("Error al obtener información del archivo: ${e.message}"))
+            emit(Result.Error(e))
         }
     }.catch { e ->
         Timber.e(e, "Exception en obtenerInfoArchivo")
-        emit(Resultado.Error("Error al obtener información del archivo: ${e.message}"))
+        emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
     /**
@@ -283,6 +290,21 @@ class StorageRepository @Inject constructor(
                 // Si falló y no es una ruta relativa, propagamos el error
                 throw e
             }
+        }
+    }
+    
+    /**
+     * Obtiene la URL de descarga directa de un archivo
+     * @param url URL o ruta del archivo
+     * @return URL de descarga pública del archivo
+     */
+    suspend fun obtenerUrlDescarga(url: String): String {
+        return try {
+            val fileRef = obtenerReferenciaDesdeUrl(url)
+            fileRef.downloadUrl.await().toString()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener URL de descarga")
+            throw e
         }
     }
 } 

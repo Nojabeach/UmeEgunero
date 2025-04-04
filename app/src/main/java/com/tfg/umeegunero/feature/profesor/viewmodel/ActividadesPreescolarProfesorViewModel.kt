@@ -6,7 +6,7 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.ActividadPreescolar
 import com.tfg.umeegunero.data.model.CategoriaActividad
 import com.tfg.umeegunero.data.model.EstadoActividad
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.ActividadPreescolarRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
@@ -146,7 +146,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al cargar clases: ${clasesResult.exception.message}",
+                                error = "Error al cargar clases: ${clasesResult.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -226,7 +226,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al cargar alumnos: ${alumnosResult.exception.message}",
+                                error = "Error al cargar alumnos: ${alumnosResult.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -277,7 +277,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al cargar actividades: ${actividadesResult.exception.message}",
+                                error = "Error al cargar actividades: ${actividadesResult.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -434,7 +434,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al cargar actividad: ${actividadResult.exception.message}",
+                                error = "Error al cargar actividad: ${actividadResult.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -532,7 +532,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al guardar actividad: ${resultado.exception.message}",
+                                error = "Error al guardar actividad: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -581,7 +581,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al eliminar actividad: ${resultado.exception.message}",
+                                error = "Error al eliminar actividad: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -645,7 +645,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al marcar actividad: ${resultado.exception.message}",
+                                error = "Error al marcar actividad: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -734,7 +734,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al crear actividad: ${resultado.exception.message}",
+                                error = "Error al crear actividad: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -783,7 +783,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al actualizar actividad: ${resultado.exception.message}",
+                                error = "Error al actualizar actividad: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }

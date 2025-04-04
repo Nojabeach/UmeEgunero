@@ -5,12 +5,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.model.EntregaTarea
 import com.tfg.umeegunero.data.model.EstadoTarea
-import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.model.TipoUsuario
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -18,6 +18,7 @@ import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.tfg.umeegunero.util.Result
 
 /**
  * Repositorio para gestionar las tareas en Firestore
@@ -30,6 +31,10 @@ class TareaRepository @Inject constructor(
         private const val COLLECTION_TAREAS = "tareas"
         private const val COLLECTION_ENTREGAS = "entregasTareas"
     }
+
+    // Cache local de tareas
+    private val _tareasLocal = MutableStateFlow<List<Tarea>>(emptyList())
+    val tareasLocal: Flow<List<Tarea>> = _tareasLocal.asStateFlow()
 
     /**
      * Obtiene todas las tareas asociadas a un profesor
@@ -388,6 +393,40 @@ class TareaRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al marcar tarea como revisada por familiar")
             return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Sincroniza las tareas desde Firestore y actualiza la caché local
+     * @param usuarioId ID del usuario (alumno o profesor)
+     * @param esProfesor Indica si el usuario es profesor
+     */
+    suspend fun actualizarTareasLocales(usuarioId: String, esProfesor: Boolean) {
+        try {
+            Timber.d("Sincronizando tareas para usuario $usuarioId (profesor: $esProfesor)")
+            
+            val tareasResult = if (esProfesor) {
+                obtenerTareasPorProfesor(usuarioId)
+            } else {
+                obtenerTareasPorAlumno(usuarioId)
+            }
+            
+            // Actualizar la caché local si el resultado es éxito
+            when (tareasResult) {
+                is Result.Success -> {
+                    val tareas = tareasResult.data
+                    _tareasLocal.value = tareas
+                    Timber.d("Se sincronizaron ${tareas.size} tareas")
+                }
+                is Result.Error -> {
+                    Timber.e(tareasResult.exception, "Error al obtener tareas: ${tareasResult.exception?.message}")
+                }
+                is Result.Loading -> {
+                    Timber.d("Sincronización de tareas en progreso")
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al sincronizar tareas")
         }
     }
 } 

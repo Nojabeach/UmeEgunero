@@ -1,755 +1,489 @@
 package com.tfg.umeegunero.feature.admin.screen
 
-import androidx.compose.foundation.layout.*
+import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Centro
-import com.tfg.umeegunero.data.model.Contacto
-import com.tfg.umeegunero.data.model.Direccion
-import com.tfg.umeegunero.feature.admin.viewmodel.EditCentroViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
-import androidx.compose.ui.tooling.preview.Preview
-import android.content.res.Configuration
-import android.net.Uri
-import android.content.Intent
-import androidx.compose.ui.platform.LocalContext
-import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
-import androidx.navigation.compose.rememberNavController
-import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.foundation.lazy.LazyColumn
-import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
+import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError
 
-/**
- * Pantalla para editar un centro educativo existente
- */
+// Clase para gestionar el estado de la pantalla
+class EditCentroState(private val viewModel: AdminViewModel, private val centroId: String, private val onNavigateBack: () -> Unit) {
+    // Estados del formulario
+    var currentStep by mutableStateOf(0)
+    val totalSteps = 3
+    
+    // Datos del formulario
+    var nombre by mutableStateOf("")
+    var direccion by mutableStateOf("")
+    var telefono by mutableStateOf("")
+    var email by mutableStateOf("")
+    var latitud by mutableStateOf("")
+    var longitud by mutableStateOf("")
+    
+    // Estados de validación
+    var nombreError by mutableStateOf("")
+    var direccionError by mutableStateOf("")
+    var telefonoError by mutableStateOf("")
+    var emailError by mutableStateOf("")
+    var latitudError by mutableStateOf("")
+    var longitudError by mutableStateOf("")
+    
+    // Estado de carga
+    var isLoading by mutableStateOf(true)
+    
+    // Cargar datos iniciales
+    fun loadCentro(onComplete: () -> Unit = {}) {
+        isLoading = true
+        viewModel.getCentro(centroId) { centro ->
+            if (centro != null) {
+                nombre = centro.nombre
+                direccion = centro.direccion
+                telefono = centro.telefono ?: ""
+                email = centro.email ?: ""
+                latitud = centro.latitud.toString()
+                longitud = centro.longitud.toString()
+                isLoading = false
+                onComplete()
+            } else {
+                isLoading = false
+                onNavigateBack()
+            }
+        }
+    }
+    
+    // Funciones de validación
+    fun validateStep0(): Boolean {
+        var isValid = true
+        
+        if (nombre.isEmpty()) {
+            nombreError = "El nombre es obligatorio"
+            isValid = false
+        } else {
+            nombreError = ""
+        }
+        
+        return isValid
+    }
+    
+    fun validateStep1(): Boolean {
+        var isValid = true
+        
+        if (direccion.isEmpty()) {
+            direccionError = "La dirección es obligatoria"
+            isValid = false
+        } else {
+            direccionError = ""
+        }
+        
+        if (telefono.isNotEmpty() && !telefono.matches(Regex("^[0-9]{9}$"))) {
+            telefonoError = "Formato inválido (9 dígitos)"
+            isValid = false
+        } else {
+            telefonoError = ""
+        }
+        
+        if (email.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            emailError = "Email inválido"
+            isValid = false
+        } else {
+            emailError = ""
+        }
+        
+        return isValid
+    }
+    
+    fun validateStep2(): Boolean {
+        var isValid = true
+        
+        if (latitud.isNotEmpty()) {
+            try {
+                val lat = latitud.toDouble()
+                if (lat < -90 || lat > 90) {
+                    latitudError = "Latitud debe estar entre -90 y 90"
+                    isValid = false
+                } else {
+                    latitudError = ""
+                }
+            } catch (e: NumberFormatException) {
+                latitudError = "Formato numérico inválido"
+                isValid = false
+            }
+        }
+        
+        if (longitud.isNotEmpty()) {
+            try {
+                val lng = longitud.toDouble()
+                if (lng < -180 || lng > 180) {
+                    longitudError = "Longitud debe estar entre -180 y 180"
+                    isValid = false
+                } else {
+                    longitudError = ""
+                }
+            } catch (e: NumberFormatException) {
+                longitudError = "Formato numérico inválido"
+                isValid = false
+            }
+        }
+        
+        return isValid
+    }
+    
+    fun validateForm(): Boolean {
+        return validateStep0() && validateStep1() && validateStep2()
+    }
+    
+    fun nextStep() {
+        if (currentStep < totalSteps - 1) {
+            when (currentStep) {
+                0 -> {
+                    if (validateStep0()) {
+                        currentStep += 1
+                    }
+                }
+                1 -> {
+                    if (validateStep1()) {
+                        currentStep += 1
+                    }
+                }
+            }
+        }
+    }
+    
+    fun previousStep() {
+        if (currentStep > 0) {
+            currentStep -= 1
+        }
+    }
+    
+    fun actualizarCentro(context: android.content.Context, onCentroUpdated: () -> Unit) {
+        if (validateForm()) {
+            val centro = Centro(
+                id = centroId,
+                nombre = nombre,
+                direccion = direccion,
+                telefono = telefono,
+                email = email,
+                latitud = latitud.toDoubleOrNull() ?: 0.0,
+                longitud = longitud.toDoubleOrNull() ?: 0.0
+            )
+            
+            isLoading = true
+            
+            viewModel.actualizarCentro(centro) { success ->
+                isLoading = false
+                
+                if (success) {
+                    Toast.makeText(context, "Centro actualizado correctamente", Toast.LENGTH_SHORT).show()
+                    onCentroUpdated()
+                } else {
+                    Toast.makeText(context, "Error al actualizar el centro", Toast.LENGTH_LONG).show()
+                }
+            }
+        } else {
+            Toast.makeText(context, "Por favor, corrija los errores del formulario", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditCentroScreen(
-    navController: NavController,
     centroId: String,
-    viewModel: EditCentroViewModel = hiltViewModel()
+    viewModel: AdminViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit = {},
+    onCentroUpdated: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val scrollState = rememberScrollState()
     
-    LaunchedEffect(key1 = Unit) {
-        viewModel.loadCentro()
+    // Crear estado de la pantalla
+    val state = remember { EditCentroState(viewModel, centroId, onNavigateBack) }
+    
+    // Cargar datos iniciales
+    DisposableEffect(key1 = centroId) {
+        state.loadCentro()
+        onDispose { }
     }
-    
-    LaunchedEffect(key1 = uiState.success) {
-        if (uiState.success) {
-            navController.popBackStack()
-        }
-    }
-    
+
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(text = "Editar Centro") },
+                title = { Text("Editar Centro") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver atrás",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            contentDescription = "Volver"
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         }
     ) { paddingValues ->
-        if (uiState.isLoading) {
-            Box(
+        if (state.isLoading) {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentAlignment = Alignment.Center
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "Cargando datos del centro...")
             }
         } else {
-            EditCentroContent(
-                uiState = uiState,
-                onUpdateNombre = viewModel::updateNombre,
-                onUpdateCalle = viewModel::updateCalle,
-                onUpdateNumero = viewModel::updateNumero,
-                onUpdateCodigoPostal = viewModel::updateCodigoPostal,
-                onUpdateCiudad = viewModel::updateCiudad,
-                onUpdateProvincia = viewModel::updateProvincia,
-                onUpdateTelefono = viewModel::updateTelefono,
-                onUpdateAdminEmail = viewModel::updateAdminEmail,
-                onUpdateAdminPassword = viewModel::updateAdminPassword,
-                onUpdateLatitud = viewModel::updateLatitud,
-                onUpdateLongitud = viewModel::updateLongitud,
-                onSeleccionarCiudad = viewModel::seleccionarCiudad,
-                onGuardar = viewModel::updateCentro,
-                onNavigateBack = { navController.popBackStack() },
-                onAddAdminCentro = viewModel::addAdminCentro,
-                onRemoveAdminCentro = viewModel::removeAdminCentro,
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-            )
-        }
-    }
-}
-
-@Composable
-private fun EditCentroContent(
-    uiState: AddCentroUiState,
-    onUpdateNombre: (String) -> Unit,
-    onUpdateCalle: (String) -> Unit,
-    onUpdateNumero: (String) -> Unit,
-    onUpdateCodigoPostal: (String) -> Unit,
-    onUpdateCiudad: (String) -> Unit,
-    onUpdateProvincia: (String) -> Unit,
-    onUpdateTelefono: (String) -> Unit,
-    onUpdateAdminEmail: (Int, String) -> Unit,
-    onUpdateAdminPassword: (Int, String) -> Unit,
-    onUpdateLatitud: (Double?) -> Unit,
-    onUpdateLongitud: (Double?) -> Unit,
-    onSeleccionarCiudad: (com.tfg.umeegunero.data.model.Ciudad) -> Unit,
-    onGuardar: () -> Unit,
-    onNavigateBack: () -> Unit,
-    onAddAdminCentro: () -> Unit,
-    onRemoveAdminCentro: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val scrollState = rememberScrollState()
-    val focusManager = LocalFocusManager.current
-    val provinciasLista = listOf("Álava", "Albacete", "Alicante", "Almería", "Asturias", "Ávila", "Badajoz", "Barcelona", "Burgos", "Cáceres", "Cádiz", "Cantabria", "Castellón", "Ciudad Real", "Córdoba", "Cuenca", "Girona", "Granada", "Guadalajara", "Guipúzcoa", "Huelva", "Huesca", "Islas Baleares", "Jaén", "La Coruña", "La Rioja", "Las Palmas", "León", "Lérida", "Lugo", "Madrid", "Málaga", "Murcia", "Navarra", "Orense", "Palencia", "Pontevedra", "Salamanca", "Santa Cruz de Tenerife", "Segovia", "Sevilla", "Soria", "Tarragona", "Teruel", "Toledo", "Valencia", "Valladolid", "Vizcaya", "Zamora", "Zaragoza")
-    var expandedProvincia by remember { mutableStateOf(false) }
-    var passwordVisible by remember { mutableStateOf(false) }
-    
-    Column(
-        modifier = modifier
-            .verticalScroll(scrollState)
-            .padding(16.dp)
-    ) {
-        // Título
-        Text(
-            text = "Editar Centro Educativo",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
-        
-        // Datos básicos
-        Text(
-            text = "Datos Básicos",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        // Nombre del centro
-        OutlinedTextField(
-            value = uiState.nombre,
-            onValueChange = onUpdateNombre,
-            label = { Text("Nombre del centro *") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.School,
-                    contentDescription = null
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            isError = uiState.nombreError != null,
-            supportingText = uiState.nombreError?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Dirección
-        Text(
-            text = "Dirección",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        // Calle
-        OutlinedTextField(
-            value = uiState.calle,
-            onValueChange = onUpdateCalle,
-            label = { Text("Calle *") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            isError = uiState.calleError != null,
-            supportingText = uiState.calleError?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Número
-        OutlinedTextField(
-            value = uiState.numero,
-            onValueChange = onUpdateNumero,
-            label = { Text("Número *") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Pin,
-                    contentDescription = null
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            isError = uiState.numeroError != null,
-            supportingText = uiState.numeroError?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Next
-            )
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Código Postal
-        OutlinedTextField(
-            value = uiState.codigoPostal,
-            onValueChange = onUpdateCodigoPostal,
-            label = { Text("Código Postal *") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Pin,
-                    contentDescription = null
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            isError = uiState.codigoPostalError != null,
-            supportingText = uiState.codigoPostalError?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Next
-            )
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Ciudad
-        OutlinedTextField(
-            value = uiState.ciudad,
-            onValueChange = onUpdateCiudad,
-            label = { Text("Ciudad *") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.LocationCity,
-                    contentDescription = null
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            isError = uiState.ciudadError != null,
-            supportingText = uiState.ciudadError?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-        
-        // Mostrar sugerencias de ciudades si hay
-        if (uiState.ciudadesSugeridas.isNotEmpty()) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    .padding(16.dp)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(8.dp)
-                ) {
+                // Indicador de progreso
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "Ciudades sugeridas",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        text = "Paso ${state.currentStep + 1} de ${state.totalSteps}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
-                    uiState.ciudadesSugeridas.forEach { ciudad ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { onSeleccionarCiudad(ciudad) }
-                        ) {
-                            Text(
-                                text = "${ciudad.nombre}, ${ciudad.provincia}",
-                                modifier = Modifier.padding(8.dp)
-                            )
-                        }
-                        Divider()
-                    }
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Provincia
-        Box(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = uiState.provincia,
-                onValueChange = onUpdateProvincia,
-                label = { Text("Provincia *") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.LocationCity,
-                        contentDescription = null
-                    )
-                },
-                trailingIcon = {
-                    IconButton(onClick = { expandedProvincia = !expandedProvincia }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Desplegar provincias"
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                isError = uiState.provinciaError != null,
-                supportingText = uiState.provinciaError?.let { { Text(it) } },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
-            
-            DropdownMenu(
-                expanded = expandedProvincia,
-                onDismissRequest = { expandedProvincia = false },
-                modifier = Modifier.fillMaxWidth(0.9f)
-            ) {
-                provinciasLista.forEach { provincia ->
-                    DropdownMenuItem(
-                        text = { Text(provincia) },
-                        onClick = {
-                            onUpdateProvincia(provincia)
-                            expandedProvincia = false
-                        }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { (state.currentStep + 1).toFloat() / state.totalSteps },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Coordenadas geográficas
-        Text(
-            text = "Coordenadas Geográficas",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        // Latitud
-        OutlinedTextField(
-            value = uiState.latitud?.toString() ?: "",
-            onValueChange = { 
-                try {
-                    // Si había un valor de 0.0 y es el comienzo de una edición, borrarlo completamente
-                    val newValue = if (uiState.latitud == 0.0 && it.isNotEmpty()) it else it
-                    val latValue = if (newValue.isBlank()) null else newValue.toDouble()
-                    onUpdateLatitud(latValue)
-                } catch (e: NumberFormatException) {
-                    // Intentar limpiar el texto para que sea un número válido
-                    val cleanText = it.replace(",", ".")
-                    try {
-                        val latValue = if (cleanText.isBlank()) null else cleanText.toDouble()
-                        onUpdateLatitud(latValue)
-                    } catch (e: NumberFormatException) {
-                        // Seguimos permitiendo la entrada del texto para que pueda seguir editando
-                        if (it.isEmpty()) {
-                            onUpdateLatitud(null)
-                        }
-                    }
-                }
-            },
-            label = { Text("Latitud") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Place,
-                    contentDescription = null
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal,
-                imeAction = ImeAction.Next
-            ),
-            supportingText = { Text("Ej: 40.416775 (Madrid)") }
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Longitud
-        OutlinedTextField(
-            value = uiState.longitud?.toString() ?: "",
-            onValueChange = { 
-                try {
-                    // Si había un valor de 0.0 y es el comienzo de una edición, borrarlo completamente
-                    val newValue = if (uiState.longitud == 0.0 && it.isNotEmpty()) it else it
-                    val longValue = if (newValue.isBlank()) null else newValue.toDouble()
-                    onUpdateLongitud(longValue)
-                } catch (e: NumberFormatException) {
-                    // Intentar limpiar el texto para que sea un número válido
-                    val cleanText = it.replace(",", ".")
-                    try {
-                        val longValue = if (cleanText.isBlank()) null else cleanText.toDouble()
-                        onUpdateLongitud(longValue)
-                    } catch (e: NumberFormatException) {
-                        // Seguimos permitiendo la entrada del texto para que pueda seguir editando
-                        if (it.isEmpty()) {
-                            onUpdateLongitud(null)
-                        }
-                    }
-                }
-            },
-            label = { Text("Longitud") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Place,
-                    contentDescription = null
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal,
-                imeAction = ImeAction.Next
-            ),
-            supportingText = { Text("Ej: -3.703790 (Madrid)") }
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Contacto
-        Text(
-            text = "Contacto",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        // Teléfono
-        OutlinedTextField(
-            value = uiState.telefono,
-            onValueChange = onUpdateTelefono,
-            label = { Text("Teléfono") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Phone,
-                    contentDescription = null
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            isError = uiState.telefonoError != null,
-            supportingText = uiState.telefonoError?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Phone,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-            )
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Sección de Administradores
-        Text(
-            text = "Administradores del Centro",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        if (uiState.adminCentroError != null) {
-            Text(
-                text = uiState.adminCentroError,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-        
-        // Lista de administradores
-        uiState.adminCentro.forEachIndexed { index, admin ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    // Título del administrador
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                
+                // Contenido según el paso actual
+                when (state.currentStep) {
+                    0 -> {
+                        // Paso 1: Nombre del centro
                         Text(
-                            text = if (index == 0) "Administrador Principal" else "Administrador Adicional ${index}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            text = "Información Básica",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
                         )
                         
-                        // Botón para eliminar administrador (solo para administradores secundarios)
-                        if (index > 0) {
-                            IconButton(
-                                onClick = { onRemoveAdminCentro(index) }
-                            ) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        OutlinedTextFieldWithError(
+                            value = state.nombre,
+                            onValueChange = { state.nombre = it },
+                            label = "Nombre del Centro",
+                            errorMessage = state.nombreError,
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Eliminar administrador",
-                                    tint = MaterialTheme.colorScheme.error
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null
                                 )
-                            }
-                        }
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Next
+                            )
+                        )
                     }
                     
-                    // Email
-                    OutlinedTextField(
-                        value = admin.email,
-                        onValueChange = { onUpdateAdminEmail(index, it) },
-                        label = { Text("Email *") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Email,
-                                contentDescription = null
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = admin.emailError != null,
-                        supportingText = admin.emailError?.let { { Text(it) } },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next
+                    1 -> {
+                        // Paso 2: Datos de contacto
+                        Text(
+                            text = "Datos de Contacto",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
                         )
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Contraseña
-                    var passwordVisible by remember { mutableStateOf(false) }
-                    OutlinedTextField(
-                        value = admin.password,
-                        onValueChange = { onUpdateAdminPassword(index, it) },
-                        label = { Text("Contraseña") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = null
-                            )
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        OutlinedTextFieldWithError(
+                            value = state.direccion,
+                            onValueChange = { state.direccion = it },
+                            label = "Dirección",
+                            errorMessage = state.direccionError,
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
                                 Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null
                                 )
-                            }
-                        },
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = admin.passwordError != null,
-                        supportingText = {
-                            if (admin.passwordError != null) {
-                                Text(admin.passwordError)
-                            } else {
-                                Text("Deje en blanco para mantener la contraseña actual")
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Next
+                            )
                         )
-                    )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        OutlinedTextFieldWithError(
+                            value = state.telefono,
+                            onValueChange = { state.telefono = it },
+                            label = "Teléfono",
+                            errorMessage = state.telefonoError,
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = null
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Phone,
+                                imeAction = ImeAction.Next
+                            )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        OutlinedTextFieldWithError(
+                            value = state.email,
+                            onValueChange = { state.email = it },
+                            label = "Email",
+                            errorMessage = state.emailError,
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Email,
+                                    contentDescription = null
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Done
+                            )
+                        )
+                    }
+                    
+                    2 -> {
+                        // Paso 3: Ubicación
+                        Text(
+                            text = "Ubicación",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "Coordenadas (opcional)",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        OutlinedTextFieldWithError(
+                            value = state.latitud,
+                            onValueChange = { state.latitud = it },
+                            label = "Latitud",
+                            errorMessage = state.latitudError,
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Next
+                            )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        OutlinedTextFieldWithError(
+                            value = state.longitud,
+                            onValueChange = { state.longitud = it },
+                            label = "Longitud",
+                            errorMessage = state.longitudError,
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Done
+                            )
+                        )
+                    }
                 }
-            }
-        }
-        
-        // Botón para añadir un nuevo administrador
-        if (uiState.adminCentro.size < 3) { // Limitar a 3 administradores
-            Button(
-                onClick = onAddAdminCentro,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Botones de navegación
                 Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Añadir administrador",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Añadir Administrador")
+                    if (state.currentStep > 0) {
+                        TextButton(
+                            onClick = { state.previousStep() }
+                        ) {
+                            Text("Anterior")
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(64.dp))
+                    }
+                    
+                    if (state.currentStep < state.totalSteps - 1) {
+                        Button(
+                            onClick = { state.nextStep() }
+                        ) {
+                            Text("Siguiente")
+                        }
+                    } else {
+                        Button(
+                            onClick = { state.actualizarCentro(context, onCentroUpdated) }
+                        ) {
+                            Text("Actualizar")
+                        }
+                    }
                 }
             }
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Botones de acción
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            OutlinedButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Cancelar")
+            
+            // Indicador de carga durante la actualización
+            if (state.isLoading) {
+                LoadingIndicator(message = "Actualizando centro...")
             }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Button(
-                onClick = onGuardar,
-                modifier = Modifier.weight(1f),
-                enabled = !uiState.isLoading &&
-                        uiState.nombre.isNotBlank() &&
-                        uiState.calle.isNotBlank() &&
-                        uiState.numero.isNotBlank() &&
-                        uiState.codigoPostal.isNotBlank() &&
-                        uiState.ciudad.isNotBlank() &&
-                        uiState.provincia.isNotBlank() &&
-                        (uiState.adminCentro.isEmpty() || uiState.adminCentro[0].email.isNotBlank())
-            ) {
-                Text("Guardar")
-            }
-        }
-    }
-}
-
-private fun isFormValid(state: AddCentroUiState): Boolean {
-    return state.nombre.isNotBlank() && state.nombreError == null &&
-           state.calle.isNotBlank() && state.calleError == null &&
-           state.numero.isNotBlank() && state.numeroError == null &&
-           state.codigoPostal.isNotBlank() && state.codigoPostalError == null &&
-           state.ciudad.isNotBlank() && state.ciudadError == null &&
-           state.provincia.isNotBlank() && state.provinciaError == null &&
-           (state.telefono.isBlank() || state.telefonoError == null)
-}
-
-@Preview(showBackground = true)
-@Composable
-fun EditCentroScreenPreview() {
-    UmeEguneroTheme {
-        // Simplemente mostrar un formulario básico para el preview
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Editar Centro Educativo",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            OutlinedTextField(
-                value = "IES Valle Inclán",
-                onValueChange = { },
-                label = { Text("Nombre del centro") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedTextField(
-                value = "Calle Principal",
-                onValueChange = { },
-                label = { Text("Dirección") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedTextField(
-                value = "28001 Madrid",
-                onValueChange = { },
-                label = { Text("Código Postal y Ciudad") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun EditCentroScreenDarkPreview() {
-    UmeEguneroTheme(darkTheme = true) {
-        // Simplemente mostrar un formulario básico para el preview
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Editar Centro Educativo",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            OutlinedTextField(
-                value = "IES Valle Inclán",
-                onValueChange = { },
-                label = { Text("Nombre del centro") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedTextField(
-                value = "Calle Principal",
-                onValueChange = { },
-                label = { Text("Dirección") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedTextField(
-                value = "28001 Madrid",
-                onValueChange = { },
-                label = { Text("Código Postal y Ciudad") },
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 } 

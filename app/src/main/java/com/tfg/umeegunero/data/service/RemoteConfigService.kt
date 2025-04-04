@@ -12,11 +12,20 @@ import javax.inject.Singleton
  * Servicio para acceder a los valores de Firebase Remote Config
  */
 @Singleton
-class RemoteConfigService @Inject constructor(
-    private val remoteConfig: FirebaseRemoteConfig
-) {
+class RemoteConfigService @Inject constructor() {
+    
+    private lateinit var remoteConfig: FirebaseRemoteConfig
+    
     companion object {
         const val SMTP_PASSWORD_KEY = "smtp_password"
+    }
+    
+    /**
+     * Inicializa el servicio con la instancia de RemoteConfig
+     */
+    fun initialize(config: FirebaseRemoteConfig) {
+        this.remoteConfig = config
+        Timber.d("RemoteConfigService inicializado")
     }
     
     /**
@@ -25,6 +34,11 @@ class RemoteConfigService @Inject constructor(
     suspend fun getSMTPPassword(): String {
         return withContext(Dispatchers.IO) {
             try {
+                if (!::remoteConfig.isInitialized) {
+                    Timber.e("RemoteConfig no ha sido inicializado")
+                    return@withContext ""
+                }
+                
                 // Nos aseguramos de tener la configuración más reciente
                 remoteConfig.fetchAndActivate().await()
                 val password = remoteConfig.getString(SMTP_PASSWORD_KEY)

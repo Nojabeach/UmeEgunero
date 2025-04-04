@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.repository.CentroRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,7 +54,7 @@ class ListCentrosViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = "Error al cargar los centros: ${result.exception.message}"
+                            error = "Error al cargar los centros: ${result.exception?.message}"
                         )
                         Timber.e(result.exception, "Error al cargar centros")
                     }
@@ -95,7 +95,7 @@ class ListCentrosViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = "Error al eliminar el centro: ${result.exception.message}"
+                            error = "Error al eliminar el centro: ${result.exception?.message}"
                         )
                         Timber.e(result.exception, "Error al eliminar centro")
                     }

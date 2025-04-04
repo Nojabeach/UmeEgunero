@@ -3,12 +3,12 @@ package com.tfg.umeegunero.data.repository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
+import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDateTime
 import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.Result
 
 /**
  * Repositorio para gestionar las operaciones relacionadas con el calendario
@@ -55,9 +55,9 @@ class CalendarioRepository @Inject constructor(
             val docRef = eventosCollection.document()
             val eventoWithId = evento.copy(id = docRef.id)
             docRef.set(eventoWithId).await()
-            Result.success(eventoWithId)
+            Result.Success(eventoWithId)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e)
         }
     }
 
@@ -69,9 +69,9 @@ class CalendarioRepository @Inject constructor(
     suspend fun deleteEvento(eventoId: String): Result<Unit> {
         return try {
             eventosCollection.document(eventoId).delete().await()
-            Result.success(Unit)
+            Result.Success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e)
         }
     }
 
@@ -83,9 +83,9 @@ class CalendarioRepository @Inject constructor(
     suspend fun updateEvento(evento: Evento): Result<Evento> {
         return try {
             eventosCollection.document(evento.id).set(evento).await()
-            Result.success(evento)
+            Result.Success(evento)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(e)
         }
     }
 

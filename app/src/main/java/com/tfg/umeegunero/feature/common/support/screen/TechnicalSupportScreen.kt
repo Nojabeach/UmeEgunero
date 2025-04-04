@@ -18,11 +18,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tfg.umeegunero.data.model.EmailSoporteConfig
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.tfg.umeegunero.data.model.EmailSoporteConstants
+import com.tfg.umeegunero.feature.common.support.viewmodel.SupportViewModel
+import com.tfg.umeegunero.util.EmailSender
+import kotlinx.coroutines.launch
 
 @Composable
 fun TechnicalSupportScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: SupportViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     var showEmailDialog by remember { mutableStateOf(false) }
@@ -33,6 +38,7 @@ fun TechnicalSupportScreen(
     var showSuccessDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -253,19 +259,23 @@ fun TechnicalSupportScreen(
                             $message
                         """.trimIndent()
 
-                        EmailSender.SendMailTask(
-                            userEmail = email,
-                            subject = selectedTopic,
-                            message = emailMessage,
-                            onSuccess = {
+                        coroutineScope.launch {
+                            val result = viewModel.sendEmail(
+                                from = EmailSoporteConstants.EMAIL_SOPORTE,
+                                to = EmailSoporteConstants.EMAIL_DESTINATARIO,
+                                subject = selectedTopic,
+                                messageBody = emailMessage,
+                                senderName = name
+                            )
+                            
+                            if (result) {
                                 showEmailDialog = false
                                 showSuccessDialog = true
-                            },
-                            onFailure = { e ->
-                                errorMessage = e.message ?: "Error desconocido"
+                            } else {
+                                errorMessage = "No se pudo enviar el email. Inténtalo más tarde."
                                 showErrorDialog = true
                             }
-                        ).execute()
+                        }
                     },
                     enabled = name.isNotBlank() && email.isNotBlank() && 
                              selectedTopic.isNotBlank() && message.isNotBlank()

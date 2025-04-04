@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,7 +60,7 @@ class ListProfesoresViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar profesores: ${result.exception.message}",
+                                error = "Error al cargar profesores: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }

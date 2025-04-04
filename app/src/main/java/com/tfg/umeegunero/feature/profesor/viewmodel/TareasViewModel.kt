@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.TareaRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -89,7 +89,7 @@ class TareasViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar clases: ${clasesResult.exception.message}",
+                                error = "Error al cargar clases: ${clasesResult.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -137,7 +137,7 @@ class TareasViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar tareas: ${tareasResult.exception.message}",
+                                error = "Error al cargar tareas: ${tareasResult.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -195,7 +195,7 @@ class TareasViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al crear tarea: ${resultado.exception.message}",
+                                error = "Error al crear tarea: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -321,7 +321,7 @@ class TareasViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al eliminar tarea: ${resultado.exception.message}",
+                                error = "Error al eliminar tarea: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -381,7 +381,7 @@ class TareasViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al actualizar tarea: ${resultado.exception.message}",
+                                error = "Error al actualizar tarea: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }

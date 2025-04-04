@@ -4,7 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EntregaTarea
 import com.tfg.umeegunero.data.model.EstadoTarea
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.repository.TareaRepository
 import io.mockk.coEvery

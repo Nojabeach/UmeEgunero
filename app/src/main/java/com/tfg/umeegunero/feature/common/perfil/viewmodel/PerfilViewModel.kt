@@ -6,12 +6,13 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -23,20 +24,14 @@ import javax.inject.Inject
  */
 data class PerfilUiState(
     val isLoading: Boolean = false,
+    val isEditing: Boolean = false,
     val error: String? = null,
-    val mensaje: String? = null,
+    val success: String? = null,
     
-    // Datos personales
-    val dni: String = "",
+    // Datos del perfil
     val nombre: String = "",
     val apellidos: String = "",
-    val email: String = "",
     val telefono: String = "",
-    val fechaRegistro: Timestamp? = null,
-    val ultimoAcceso: Timestamp? = null,
-    val tipoUsuario: TipoUsuario = TipoUsuario.FAMILIAR,
-    
-    // Dirección
     val direccionCalle: String = "",
     val direccionNumero: String = "",
     val direccionPiso: String = "",
@@ -44,7 +39,7 @@ data class PerfilUiState(
     val direccionCiudad: String = "",
     val direccionProvincia: String = "",
     
-    // Datos originales para cancelar edición
+    // Datos para detectar cambios
     val nombreOriginal: String = "",
     val apellidosOriginal: String = "",
     val telefonoOriginal: String = "",
@@ -53,7 +48,12 @@ data class PerfilUiState(
     val direccionPisoOriginal: String = "",
     val direccionCPOriginal: String = "",
     val direccionCiudadOriginal: String = "",
-    val direccionProvinciaOriginal: String = ""
+    val direccionProvinciaOriginal: String = "",
+    
+    // Datos adicionales
+    val usuario: Usuario? = null,
+    val direccion: Direccion = Direccion(),
+    val fotoPerfil: String? = null
 )
 
 /**
@@ -75,61 +75,52 @@ class PerfilViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                usuarioRepository.getUsuarioActual().collectLatest { result ->
+                usuarioRepository.getUsuarioActual().collectLatest<Result<Usuario>> { result ->
                     when (result) {
-                        is Result.Success -> {
-                            result.data?.let { usuario ->
-                                actualizarPerfil(usuario)
-                            } ?: run {
-                                _uiState.update {
-                                    it.copy(
-                                        isLoading = false,
-                                        error = "No se encontró información del usuario"
-                                    )
-                                }
+                        is Result.Success<*> -> {
+                            val usuario = result.data as? Usuario
+                            if (usuario != null) {
+                                _uiState.update { it.copy(
+                                    usuario = usuario,
+                                    isLoading = false,
+                                    nombre = usuario.nombre,
+                                    apellidos = usuario.apellidos,
+                                    telefono = usuario.telefono ?: "",
+                                    direccion = usuario.direccion ?: Direccion(),
+                                    fotoPerfil = null // La foto de perfil no existe en el modelo Usuario
+                                ) }
                             }
                         }
                         is Result.Error -> {
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    error = "Error al cargar el perfil: ${result.exception.message}"
-                                )
-                            }
-                            Timber.e(result.exception, "Error al cargar perfil")
+                            _uiState.update { it.copy(
+                                isLoading = false,
+                                error = result.exception?.message ?: "Error al cargar los datos del usuario"
+                            ) }
                         }
-                        is Result.Loading -> {
-                            // Este estado ya se maneja al iniciar
+                        is Result.Loading<*> -> {
+                            _uiState.update { it.copy(isLoading = true) }
                         }
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Error inesperado: ${e.message}"
-                    )
-                }
-                Timber.e(e, "Error inesperado al cargar perfil")
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = e.message ?: "Error al cargar los datos del usuario"
+                ) }
             }
         }
     }
     
     /**
-     * Actualiza el estado UI con los datos del usuario
+     * Actualiza el estado según los datos del usuario
      */
     private fun actualizarPerfil(usuario: Usuario) {
-        _uiState.update { currentState ->
-            currentState.copy(
+        _uiState.update {
+            it.copy(
                 isLoading = false,
-                dni = usuario.dni,
                 nombre = usuario.nombre,
                 apellidos = usuario.apellidos,
-                email = usuario.email,
-                telefono = usuario.telefono,
-                fechaRegistro = usuario.fechaRegistro,
-                ultimoAcceso = usuario.ultimoAcceso,
-                tipoUsuario = usuario.perfiles.firstOrNull()?.tipo ?: TipoUsuario.FAMILIAR,
+                telefono = usuario.telefono ?: "",
                 
                 // Dirección
                 direccionCalle = usuario.direccion?.calle ?: "",
@@ -142,13 +133,18 @@ class PerfilViewModel @Inject constructor(
                 // Guardar valores originales
                 nombreOriginal = usuario.nombre,
                 apellidosOriginal = usuario.apellidos,
-                telefonoOriginal = usuario.telefono,
+                telefonoOriginal = usuario.telefono ?: "",
                 direccionCalleOriginal = usuario.direccion?.calle ?: "",
                 direccionNumeroOriginal = usuario.direccion?.numero ?: "",
                 direccionPisoOriginal = usuario.direccion?.piso ?: "",
                 direccionCPOriginal = usuario.direccion?.codigoPostal ?: "",
                 direccionCiudadOriginal = usuario.direccion?.ciudad ?: "",
-                direccionProvinciaOriginal = usuario.direccion?.provincia ?: ""
+                direccionProvinciaOriginal = usuario.direccion?.provincia ?: "",
+                
+                // Actualizar datos adicionales
+                usuario = usuario,
+                direccion = usuario.direccion ?: Direccion(),
+                fotoPerfil = null
             )
         }
     }
@@ -239,7 +235,7 @@ class PerfilViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        mensaje = "Cambios guardados correctamente",
+                        success = "Cambios guardados correctamente",
                         
                         // Actualizar valores originales
                         nombreOriginal = it.nombre,
@@ -297,6 +293,6 @@ class PerfilViewModel @Inject constructor(
      * Limpia el mensaje actual
      */
     fun clearMensaje() {
-        _uiState.update { it.copy(mensaje = null) }
+        _uiState.update { it.copy(success = null) }
     }
 } 

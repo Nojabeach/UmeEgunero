@@ -6,7 +6,7 @@ import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.model.EstadoNotificacion
 import com.tfg.umeegunero.data.model.Notificacion
 import com.tfg.umeegunero.data.model.NotificacionForm
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.TipoDestino
 import com.tfg.umeegunero.data.model.TipoNotificacion
 import javax.inject.Inject
@@ -35,7 +35,7 @@ class NotificacionRepository @Inject constructor(
      * @return Flow con el resultado de la operación conteniendo la lista de notificaciones
      */
     fun getNotificacionesUsuario(usuarioId: String, limit: Long = 50): Flow<Result<List<Notificacion>>> = flow {
-        emit(Result.Loading)
+        emit(Result.Loading())
         try {
             val query = notificacionesCollection
                 .whereEqualTo("usuarioDestinatarioId", usuarioId)
@@ -59,7 +59,7 @@ class NotificacionRepository @Inject constructor(
      * @return Flow con el resultado de la operación conteniendo la lista de notificaciones del sistema
      */
     fun getNotificacionesSistema(limit: Long = 20): Flow<Result<List<Notificacion>>> = flow {
-        emit(Result.Loading)
+        emit(Result.Loading())
         try {
             val query = notificacionesCollection
                 .whereEqualTo("tipo", TipoNotificacion.SISTEMA.name)
@@ -85,7 +85,7 @@ class NotificacionRepository @Inject constructor(
      * @return Flow con el resultado de la operación conteniendo la lista de notificaciones del centro
      */
     fun getNotificacionesCentro(centroId: String, limit: Long = 30): Flow<Result<List<Notificacion>>> = flow {
-        emit(Result.Loading)
+        emit(Result.Loading())
         try {
             val query = notificacionesCollection
                 .whereEqualTo("centroId", centroId)

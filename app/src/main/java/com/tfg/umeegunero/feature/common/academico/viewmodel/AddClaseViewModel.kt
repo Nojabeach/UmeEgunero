@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Clase
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.ClaseRepository
@@ -97,7 +97,7 @@ class AddClaseViewModel @Inject constructor(
                 is Result.Error -> {
                     Timber.e(resultado.exception, "Error al obtener el centro del curso")
                     _uiState.update {
-                        it.copy(error = "Error al obtener información del curso: ${resultado.exception.message}")
+                        it.copy(error = "Error al obtener información del curso: ${resultado.exception?.message}")
                     }
                 }
                 is Result.Loading -> {
@@ -143,7 +143,7 @@ class AddClaseViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoadingProfesores = false,
-                                error = "Error al cargar profesores: ${resultado.exception.message}"
+                                error = "Error al cargar profesores: ${resultado.exception?.message}"
                             )
                         }
                     }
@@ -196,7 +196,7 @@ class AddClaseViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = "Error al cargar datos de la clase: ${result.exception.message}"
+                            error = "Error al cargar datos de la clase: ${result.exception?.message}"
                         )
                     }
                 }
@@ -327,7 +327,7 @@ class AddClaseViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = "Error al guardar clase: ${resultado.exception.message}"
+                                error = "Error al guardar clase: ${resultado.exception?.message}"
                             )
                         }
                     }

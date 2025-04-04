@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Curso
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -83,7 +83,7 @@ class ListClasesViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            error = "Error al cargar clases: ${result.exception.message}"
+                            error = "Error al cargar clases: ${result.exception?.message}"
                         )
                     }
                 }
@@ -135,7 +135,7 @@ class ListClasesViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            error = "Error al eliminar clase: ${result.exception.message}"
+                            error = "Error al eliminar clase: ${result.exception?.message}"
                         )
                     }
                 }

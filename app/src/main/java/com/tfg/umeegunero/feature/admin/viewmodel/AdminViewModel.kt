@@ -38,52 +38,131 @@ class AdminViewModel @Inject constructor(
      * @param onComplete Callback para cuando la operación es exitosa o falla
      */
     fun agregarCentro(centro: Centro, onComplete: (Boolean) -> Unit) {
-        _isLoading.value = true
-        _error.value = null
-        
         viewModelScope.launch {
+            _isLoading.value = true
             try {
-                // Crear nuevo documento con ID autogenerado
-                val docRef = db.collection("centros").document()
-                
-                // Asignar ID generado al modelo antes de guardarlo
-                val centroConId = centro.copy(id = docRef.id)
-                
-                // Guardar centro en Firestore
-                docRef.set(centroConId).await()
-                
-                // Éxito, notificar al caller
-                onComplete(true)
-                
-                // Actualizar la lista de centros si es necesario
-                getCentros()
-            } catch (e: Exception) {
-                Timber.e(e, "Error al agregar centro")
-                _error.value = "Error al agregar centro: ${e.message}"
-                onComplete(false)
-            } finally {
+                db.collection("centros")
+                    .document(centro.id.ifEmpty { db.collection("centros").document().id })
+                    .set(centro)
+                    .await()
                 _isLoading.value = false
+                onComplete(true)
+            } catch (e: Exception) {
+                _isLoading.value = false
+                _error.value = "Error al agregar centro: ${e.message}"
+                Timber.e(e, "Error al agregar centro")
+                onComplete(false)
             }
         }
     }
-    
-    fun getCentros() {
-        _isLoading.value = true
-        
+
+    /**
+     * Obtiene un centro por su ID.
+     * 
+     * @param centroId ID del centro a obtener
+     * @param onComplete Callback con el centro obtenido o null si no existe
+     */
+    fun getCentro(centroId: String, onComplete: (Centro?) -> Unit) {
         viewModelScope.launch {
+            _isLoading.value = true
             try {
-                val snapshot = db.collection("centros").get().await()
-                val centrosList = snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(Centro::class.java)
+                val document = db.collection("centros").document(centroId).get().await()
+                if (document.exists()) {
+                    val centro = document.toObject(Centro::class.java)
+                    _isLoading.value = false
+                    onComplete(centro)
+                } else {
+                    _isLoading.value = false
+                    onComplete(null)
                 }
-                _centros.value = centrosList
             } catch (e: Exception) {
-                Timber.e(e, "Error al obtener centros")
-                _error.value = "Error al obtener centros: ${e.message}"
-            } finally {
                 _isLoading.value = false
+                _error.value = "Error al obtener centro: ${e.message}"
+                Timber.e(e, "Error al obtener centro")
+                onComplete(null)
             }
         }
+    }
+
+    /**
+     * Actualiza un centro existente en la base de datos.
+     * 
+     * @param centro Centro a actualizar (debe tener ID válido)
+     * @param onComplete Callback para cuando la operación es exitosa o falla
+     */
+    fun actualizarCentro(centro: Centro, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            
+            if (centro.id.isEmpty()) {
+                _error.value = "Error: ID de centro inválido"
+                _isLoading.value = false
+                onComplete(false)
+                return@launch
+            }
+            
+            try {
+                db.collection("centros")
+                    .document(centro.id)
+                    .set(centro)
+                    .await()
+                _isLoading.value = false
+                onComplete(true)
+            } catch (e: Exception) {
+                _isLoading.value = false
+                _error.value = "Error al actualizar centro: ${e.message}"
+                Timber.e(e, "Error al actualizar centro")
+                onComplete(false)
+            }
+        }
+    }
+
+    /**
+     * Elimina un centro de la base de datos.
+     * 
+     * @param centroId ID del centro a eliminar
+     * @param onComplete Callback para cuando la operación es exitosa o falla
+     */
+    fun eliminarCentro(centroId: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                db.collection("centros")
+                    .document(centroId)
+                    .delete()
+                    .await()
+                _isLoading.value = false
+                onComplete(true)
+            } catch (e: Exception) {
+                _isLoading.value = false
+                _error.value = "Error al eliminar centro: ${e.message}"
+                Timber.e(e, "Error al eliminar centro")
+                onComplete(false)
+            }
+        }
+    }
+
+    /**
+     * Obtiene todos los centros.
+     */
+    fun getCentros() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val snapshot = db.collection("centros").get().await()
+                val listaCentros = snapshot.toObjects(Centro::class.java)
+                _centros.value = listaCentros
+                _isLoading.value = false
+            } catch (e: Exception) {
+                _isLoading.value = false
+                _error.value = "Error al obtener centros: ${e.message}"
+                Timber.e(e, "Error al obtener centros")
+            }
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 }
 

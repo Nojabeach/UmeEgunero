@@ -1,136 +1,160 @@
 package com.tfg.umeegunero.notification
 
+import android.content.Intent
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * Servicio para recibir y procesar mensajes de Firebase Cloud Messaging
+ * Servicio para procesar mensajes de Firebase Cloud Messaging (FCM).
+ *
+ * Este servicio maneja:
+ * - Recepción de mensajes y notificaciones de FCM
+ * - Actualización del token de FCM
+ * - Procesamiento de diferentes tipos de notificaciones
  */
 @AndroidEntryPoint
 class UmeEguneroMessagingService : FirebaseMessagingService() {
-    
-    @Inject
-    lateinit var notificationManager: NotificationManager
-    
+
     @Inject
     lateinit var preferenciasRepository: PreferenciasRepository
     
-    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    @Inject
+    lateinit var notificationManager: AppNotificationManager
+    
+    private val serviceJob = SupervisorJob()
+    private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
     
     /**
-     * Se llama cuando se recibe un nuevo token de FCM
+     * Llamado cuando se recibe un nuevo token de FCM
      */
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Timber.d("Nuevo token FCM recibido: $token")
+        Timber.d("Nuevo token FCM recibido")
         
-        // Guardar el token en las preferencias
-        coroutineScope.launch {
-            try {
-                preferenciasRepository.guardarFcmToken(token)
-                
-                // Aquí podrías enviar el token al servidor backend
-                // para asociarlo con el usuario actual
-            } catch (e: Exception) {
-                Timber.e(e, "Error al guardar token FCM")
-            }
+        // Guardar el token en DataStore
+        serviceScope.launch {
+            preferenciasRepository.guardarFcmToken(token)
+            Timber.d("Token FCM guardado en preferencias")
         }
     }
     
     /**
-     * Se llama cuando se recibe un mensaje de FCM
+     * Llamado cuando se recibe un mensaje de FCM
      */
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-        Timber.d("Mensaje recibido de: ${remoteMessage.from}")
+        Timber.d("Mensaje FCM recibido de: ${remoteMessage.from}")
         
-        // Verificar si el mensaje contiene datos
-        remoteMessage.data.isNotEmpty().let {
-            Timber.d("Datos del mensaje: ${remoteMessage.data}")
+        try {
+            // Procesar datos del mensaje
+            remoteMessage.data.let { data ->
+                Timber.d("Datos del mensaje: $data")
+                
+                // Determinar tipo de notificación
+                when (data["tipo"]) {
+                    "tarea" -> procesarNotificacionTarea(data)
+                    "evento" -> procesarNotificacionEvento(data)
+                    "chat" -> procesarNotificacionChat(data)
+                    else -> procesarNotificacionGeneral(data)
+                }
+            }
             
-            // Procesar los datos según el tipo de notificación
-            handleMessage(remoteMessage)
-        }
-        
-        // Verificar si el mensaje contiene notificación
-        remoteMessage.notification?.let {
-            Timber.d("Mensaje de notificación: ${it.body}")
-            
-            // Mostrar la notificación directamente
-            notificationManager.showNotification(
-                it.title ?: "UmeEgunero",
-                it.body ?: "Tienes una nueva notificación",
-                remoteMessage.messageId.hashCode()
-            )
+            // Procesar notificación si está presente
+            remoteMessage.notification?.let { notification ->
+                Timber.d("Notificación: ${notification.title} - ${notification.body}")
+                mostrarNotificacion(
+                    notification.title ?: "Notificación",
+                    notification.body ?: "Tienes una nueva notificación"
+                )
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al procesar el mensaje FCM")
         }
     }
     
     /**
-     * Procesa el mensaje según su tipo
+     * Procesa notificaciones relacionadas con el chat
      */
-    private fun handleMessage(remoteMessage: RemoteMessage) {
-        try {
-            val data = remoteMessage.data
-            val type = data["type"] ?: "general"
-            val title = data["title"] ?: "UmeEgunero"
-            val message = data["message"] ?: "Tienes una nueva notificación"
-            
-            when (type) {
-                "tarea_nueva" -> {
-                    val tareaId = data["tareaId"] ?: ""
-                    if (tareaId.isNotEmpty()) {
-                        // Aquí podrías cargar la tarea desde el repositorio
-                        // y mostrar una notificación más específica
-                    }
-                }
-                "tarea_calificada" -> {
-                    val tareaId = data["tareaId"] ?: ""
-                    val calificacion = data["calificacion"] ?: ""
-                    val notificationMessage = if (calificacion.isNotEmpty()) {
-                        "$message (Calificación: $calificacion)"
-                    } else {
-                        message
-                    }
-                    
-                    notificationManager.showNotification(
-                        title,
-                        notificationMessage,
-                        "tarea_calificada_${tareaId}".hashCode(),
-                        NotificationManager.CHANNEL_ID_TAREAS
-                    )
-                }
-                "recordatorio" -> {
-                    notificationManager.showNotification(
-                        title,
-                        message,
-                        "recordatorio_${remoteMessage.messageId}".hashCode(),
-                        NotificationManager.CHANNEL_ID_TAREAS
-                    )
-                }
-                else -> {
-                    // Notificación general
-                    notificationManager.showNotification(
-                        title,
-                        message,
-                        remoteMessage.messageId.hashCode()
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al procesar mensaje FCM")
-        }
+    private fun procesarNotificacionChat(data: Map<String, String>) {
+        val titulo = data["titulo"] ?: "Nuevo mensaje"
+        val mensaje = data["mensaje"] ?: "Has recibido un nuevo mensaje"
+        val channelId = AppNotificationManager.CHANNEL_ID_GENERAL
+        val notificationId = data["chatId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+        
+        mostrarNotificacion(titulo, mensaje, channelId, notificationId)
+        
+        // Enviar broadcast para actualizar la UI si la app está abierta
+        sendBroadcast(Intent(ACTION_NUEVO_MENSAJE_CHAT).apply {
+            putExtra("chatId", data["chatId"])
+            putExtra("remitente", data["remitente"])
+        })
     }
     
-    // Constantes para los tipos de notificaciones
+    /**
+     * Procesa notificaciones relacionadas con tareas
+     */
+    private fun procesarNotificacionTarea(data: Map<String, String>) {
+        val titulo = data["titulo"] ?: "Nueva tarea"
+        val mensaje = data["mensaje"] ?: "Se te ha asignado una nueva tarea"
+        val channelId = AppNotificationManager.CHANNEL_ID_TAREAS
+        val notificationId = data["tareaId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+        
+        mostrarNotificacion(titulo, mensaje, channelId, notificationId)
+    }
+    
+    /**
+     * Procesa notificaciones relacionadas con eventos
+     */
+    private fun procesarNotificacionEvento(data: Map<String, String>) {
+        val titulo = data["titulo"] ?: "Nuevo evento"
+        val mensaje = data["mensaje"] ?: "Se ha programado un nuevo evento"
+        val channelId = AppNotificationManager.CHANNEL_ID_GENERAL
+        val notificationId = data["eventoId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+        
+        mostrarNotificacion(titulo, mensaje, channelId, notificationId)
+    }
+    
+    /**
+     * Procesa notificaciones generales
+     */
+    private fun procesarNotificacionGeneral(data: Map<String, String>) {
+        val titulo = data["titulo"] ?: "Notificación"
+        val mensaje = data["mensaje"] ?: "Tienes una nueva notificación"
+        val channelId = AppNotificationManager.CHANNEL_ID_GENERAL
+        val notificationId = System.currentTimeMillis().toInt()
+        
+        mostrarNotificacion(titulo, mensaje, channelId, notificationId)
+    }
+    
+    /**
+     * Muestra una notificación
+     */
+    private fun mostrarNotificacion(
+        titulo: String,
+        mensaje: String,
+        channelId: String = AppNotificationManager.CHANNEL_ID_GENERAL,
+        notificationId: Int = System.currentTimeMillis().toInt()
+    ) {
+        notificationManager.showNotification(titulo, mensaje, channelId, notificationId)
+    }
+    
+    /**
+     * Limpia recursos al destruir el servicio
+     */
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceJob.cancel()
+    }
+    
     companion object {
-        const val CHANNEL_ID_TAREAS = "channel_tareas"
-        const val CHANNEL_ID_GENERAL = "channel_general"
+        const val ACTION_NUEVO_MENSAJE_CHAT = "com.tfg.umeegunero.NUEVO_MENSAJE_CHAT"
     }
 } 

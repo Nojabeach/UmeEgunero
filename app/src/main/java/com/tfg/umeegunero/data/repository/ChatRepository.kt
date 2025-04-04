@@ -14,7 +14,7 @@ import com.tfg.umeegunero.data.local.entity.ConversacionEntity
 import com.tfg.umeegunero.data.model.AttachmentType
 import com.tfg.umeegunero.data.model.InteractionStatus
 import com.tfg.umeegunero.data.model.Mensaje
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.feature.profesor.screen.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

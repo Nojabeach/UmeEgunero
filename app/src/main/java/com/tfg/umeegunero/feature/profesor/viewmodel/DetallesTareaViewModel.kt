@@ -3,7 +3,7 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.EntregaTarea
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
@@ -90,7 +90,7 @@ class DetallesTareaViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = "Error al cargar la tarea: ${resultado.exception.message}"
+                                error = "Error al cargar la tarea: ${resultado.exception?.message}"
                             ) 
                         }
                     }
@@ -153,7 +153,7 @@ class DetallesTareaViewModel @Inject constructor(
                             _uiState.update { 
                                 it.copy(
                                     isLoading = false,
-                                    error = "Error al cargar alumnos: ${resultadoAlumnos.exception.message}"
+                                    error = "Error al cargar alumnos: ${resultadoAlumnos.exception?.message}"
                                 ) 
                             }
                         }
@@ -167,7 +167,7 @@ class DetallesTareaViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            error = "Error al cargar entregas: ${resultadoEntregas.exception.message}"
+                            error = "Error al cargar entregas: ${resultadoEntregas.exception?.message}"
                         ) 
                     }
                 }
@@ -233,7 +233,7 @@ class DetallesTareaViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = "Error al calificar entrega: ${resultado.exception.message}"
+                                error = "Error al calificar entrega: ${resultado.exception?.message}"
                             ) 
                         }
                     }

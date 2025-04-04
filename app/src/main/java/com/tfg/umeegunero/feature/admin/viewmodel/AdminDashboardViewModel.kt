@@ -7,7 +7,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.ErrorHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -170,7 +170,7 @@ class AdminDashboardViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        val errorMsg = errorHandler.procesarError(result.exception)
+                        val errorMsg = procesarErrorThrowable(result.exception)
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -182,7 +182,7 @@ class AdminDashboardViewModel @Inject constructor(
                     else -> {}
                 }
             } catch (e: Exception) {
-                val errorMsg = errorHandler.procesarError(e)
+                val errorMsg = procesarErrorThrowable(e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -231,7 +231,7 @@ class AdminDashboardViewModel @Inject constructor(
                             usuarios.addAll(result.data)
                         }
                         is Result.Error -> {
-                            val errorMsg = errorHandler.procesarError(result.exception)
+                            val errorMsg = procesarErrorThrowable(result.exception)
                             _uiState.update {
                                 it.copy(
                                     isLoadingUsuarios = false,
@@ -253,7 +253,7 @@ class AdminDashboardViewModel @Inject constructor(
                 }
                 
             } catch (e: Exception) {
-                val errorMsg = errorHandler.procesarError(e)
+                val errorMsg = procesarErrorThrowable(e)
                 _uiState.update {
                     it.copy(
                         isLoadingUsuarios = false,
@@ -285,14 +285,14 @@ class AdminDashboardViewModel @Inject constructor(
                             _uiState.update { it.copy(currentUser = userResult.data) }
                         }
                         is Result.Error -> {
-                            val errorMsg = errorHandler.procesarError(userResult.exception)
+                            val errorMsg = procesarErrorThrowable(userResult.exception)
                             Timber.e(userResult.exception, "Error al cargar perfil de usuario: $errorMsg")
                         }
                         else -> { /* Ignorar estado loading */ }
                     }
                 }
             } catch (e: Exception) {
-                val errorMsg = errorHandler.procesarError(e)
+                val errorMsg = procesarErrorThrowable(e)
                 Timber.e(e, "Error al cargar el usuario actual: $errorMsg")
             }
         }
@@ -326,7 +326,7 @@ class AdminDashboardViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        val errorMsg = errorHandler.procesarError(result.exception)
+                        val errorMsg = procesarErrorThrowable(result.exception)
                         _uiState.update {
                             it.copy(
                                 error = errorMsg,
@@ -338,7 +338,7 @@ class AdminDashboardViewModel @Inject constructor(
                     else -> {}
                 }
             } catch (e: Exception) {
-                val errorMsg = errorHandler.procesarError(e)
+                val errorMsg = procesarErrorThrowable(e)
                 _uiState.update {
                     it.copy(
                         error = errorMsg,
@@ -378,7 +378,7 @@ class AdminDashboardViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        val errorMsg = errorHandler.procesarError(result.exception)
+                        val errorMsg = procesarErrorThrowable(result.exception)
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -390,7 +390,7 @@ class AdminDashboardViewModel @Inject constructor(
                     else -> { /* Ignorar estado loading */ }
                 }
             } catch (e: Exception) {
-                val errorMsg = errorHandler.procesarError(e)
+                val errorMsg = procesarErrorThrowable(e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -425,7 +425,7 @@ class AdminDashboardViewModel @Inject constructor(
                 authRepository.signOut()
                 _uiState.update { it.copy(navigateToWelcome = true, currentUser = null) }
             } catch (e: Exception) {
-                val errorMsg = errorHandler.procesarError(e)
+                val errorMsg = procesarErrorThrowable(e)
                 Timber.e(e, "Error al cerrar sesión: $errorMsg")
                 _uiState.update { 
                     it.copy(error = errorMsg)
@@ -486,7 +486,7 @@ class AdminDashboardViewModel @Inject constructor(
                     Timber.e(result.exception, "Error al resetear contraseña")
                     _uiState.update { it.copy(
                         isLoading = false, 
-                        error = "Error al resetear contraseña: ${result.exception.message}"
+                        error = "Error al resetear contraseña: ${result.exception?.message}"
                     ) }
                 }
                 is Result.Loading -> {
@@ -518,13 +518,21 @@ class AdminDashboardViewModel @Inject constructor(
                     Timber.e(result.exception, "Error al actualizar estado de usuario")
                     _uiState.update { it.copy(
                         isLoading = false, 
-                        error = "Error al actualizar estado de usuario: ${result.exception.message}"
+                        error = "Error al actualizar estado de usuario: ${result.exception?.message}"
                     ) }
                 }
                 is Result.Loading -> {
                     // Ignorar estado loading
                 }
             }
+        }
+    }
+
+    private fun procesarErrorThrowable(exception: Throwable?): String {
+        return if (exception is Exception) {
+            errorHandler.procesarError(exception)
+        } else {
+            errorHandler.procesarError(Exception(exception?.message ?: "Error desconocido"))
         }
     }
 }

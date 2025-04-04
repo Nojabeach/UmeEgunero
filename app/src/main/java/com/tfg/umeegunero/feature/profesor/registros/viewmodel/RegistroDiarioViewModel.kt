@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.RegistroActividad
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,7 +110,7 @@ class RegistroDiarioViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(isLoading = false, error = result.exception.message) }
+                    _uiState.update { it.copy(isLoading = false, error = result.exception?.message) }
                 }
                 is Result.Loading -> {
                     _uiState.update { it.copy(isLoading = true) }
@@ -288,7 +288,7 @@ class RegistroDiarioViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(isLoading = false, error = result.exception.message) }
+                    _uiState.update { it.copy(isLoading = false, error = result.exception?.message) }
                 }
                 is Result.Loading -> {
                     _uiState.update { it.copy(isLoading = true) }

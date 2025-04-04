@@ -12,7 +12,7 @@ import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -135,7 +135,7 @@ class AsistenciaViewModel @Inject constructor(
                     }
                     is Result.Error -> {
                         _uiState.update { it.copy(
-                            error = "Error al cargar clase: ${claseResult.exception.message}",
+                            error = "Error al cargar clase: ${claseResult.exception?.message}",
                             isLoading = false
                         )}
                         Timber.e(claseResult.exception, "Error al cargar clase")
@@ -214,7 +214,7 @@ class AsistenciaViewModel @Inject constructor(
                     }
                     is Result.Error -> {
                         _uiState.update { it.copy(
-                            error = "Error al guardar asistencia: ${resultado.exception.message}",
+                            error = "Error al guardar asistencia: ${resultado.exception?.message}",
                             isLoading = false
                         )}
                         Timber.e(resultado.exception, "Error al guardar asistencia")

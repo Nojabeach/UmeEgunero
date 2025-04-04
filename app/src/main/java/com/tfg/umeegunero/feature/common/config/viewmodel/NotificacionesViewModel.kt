@@ -3,7 +3,7 @@ package com.tfg.umeegunero.feature.common.config.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
-import com.tfg.umeegunero.notification.NotificationManager
+import com.tfg.umeegunero.notification.AppNotificationManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +31,7 @@ data class NotificacionesUiState(
 @HiltViewModel
 class NotificacionesViewModel @Inject constructor(
     private val preferenciasRepository: PreferenciasRepository,
-    private val notificationManager: NotificationManager
+    private val notificationManager: AppNotificationManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(NotificacionesUiState())

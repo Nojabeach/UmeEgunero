@@ -1,9 +1,7 @@
 package com.tfg.umeegunero.ui.components
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,11 +11,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,7 +26,7 @@ import androidx.compose.ui.unit.dp
  * @param value Valor actual del campo de texto
  * @param onValueChange Función de callback llamada cuando cambia el valor
  * @param label Etiqueta del campo de texto
- * @param placeholder Texto de sugerencia (placeholder)
+ * @param placeholder Placeholder del campo de texto
  * @param errorMessage Mensaje de error (si es null, no se muestra ningún error)
  * @param isError Indica si el campo tiene un error
  * @param enabled Indica si el campo está habilitado
@@ -39,8 +34,9 @@ import androidx.compose.ui.unit.dp
  * @param singleLine Indica si el campo debe ser de una sola línea
  * @param maxLines Número máximo de líneas
  * @param keyboardOptions Opciones de teclado como tipo y acciones
+ * @param keyboardActions Acciones de teclado
  * @param visualTransformation Transformación visual del texto (por ejemplo, para contraseñas)
- * @param trailingIcon Icono a mostrar al final del campo
+ * @param leadingIcon Icono a mostrar al inicio del campo
  * @param modifier Modificador para personalizar el componente
  */
 @Composable
@@ -56,10 +52,13 @@ fun OutlinedTextFieldWithError(
     singleLine: Boolean = true,
     maxLines: Int = 1,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
-    trailingIcon: @Composable (() -> Unit)? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hasError = isError || errorMessage != null
+    
     Column(
         modifier = modifier
     ) {
@@ -67,32 +66,32 @@ fun OutlinedTextFieldWithError(
             value = value,
             onValueChange = onValueChange,
             label = { Text(text = label) },
-            placeholder = { Text(text = placeholder) },
-            isError = isError || errorMessage != null,
+            placeholder = if (placeholder.isNotEmpty()) {
+                { Text(text = placeholder) }
+            } else null,
+            isError = hasError,
             enabled = enabled,
             readOnly = readOnly,
             singleLine = singleLine,
             maxLines = maxLines,
             keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
             visualTransformation = visualTransformation,
-            trailingIcon = trailingIcon,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                errorContainerColor = Color.Transparent,
-            ),
+            trailingIcon = if (hasError) {
+                {
+                    Icon(
+                        imageVector = Icons.Filled.Error,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            } else null,
+            leadingIcon = leadingIcon,
+            supportingText = if (errorMessage != null) {
+                { Text(text = errorMessage) }
+            } else null,
             modifier = Modifier.fillMaxWidth()
         )
-        
-        if (errorMessage != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 16.dp)
-            )
-        }
     }
 }
 
@@ -110,24 +109,26 @@ fun OutlinedTextFieldWithError(
     readOnly: Boolean = false,
     isError: Boolean = false,
     errorMessage: String = "",
+    error: String = "",
     leadingIcon: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardType: KeyboardType = KeyboardType.Text,
     imeAction: ImeAction = ImeAction.Next,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = true,
     maxLines: Int = 1,
-    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
-    placeholder: @Composable (() -> Unit)? = null
+    placeholder: String = ""
 ) {
+    val effectiveErrorMessage = if (errorMessage.isNotEmpty()) errorMessage else error
+    val hasError = isError || effectiveErrorMessage.isNotEmpty()
+    
     OutlinedTextFieldWithError(
         value = value,
         onValueChange = onValueChange,
         label = label,
-        placeholder = "",
-        errorMessage = if (isError) errorMessage else null,
-        isError = isError,
+        placeholder = placeholder,
+        errorMessage = if (effectiveErrorMessage.isNotEmpty()) effectiveErrorMessage else null,
+        isError = hasError,
         enabled = enabled,
         readOnly = readOnly,
         singleLine = singleLine,
@@ -136,16 +137,9 @@ fun OutlinedTextFieldWithError(
             keyboardType = keyboardType,
             imeAction = imeAction
         ),
+        keyboardActions = keyboardActions,
         visualTransformation = visualTransformation,
-        trailingIcon = if (isError && errorMessage.isNotEmpty()) {
-            {
-                Icon(
-                    imageVector = Icons.Filled.Error,
-                    contentDescription = "Error",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        } else trailingIcon,
+        leadingIcon = leadingIcon,
         modifier = modifier
     )
 } 

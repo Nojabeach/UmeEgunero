@@ -3,7 +3,7 @@ package com.tfg.umeegunero.feature.familiar.registros.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.RegistroActividad
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +53,7 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                                 _uiState.update { 
                                     it.copy(
                                         isLoading = false, 
-                                        error = result.exception.message ?: "Error desconocido"
+                                        error = result.exception?.message ?: "Error desconocido"
                                     ) 
                                 }
                             }
@@ -135,7 +135,7 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false, 
-                                error = result.exception.message ?: "Error desconocido"
+                                error = result.exception?.message ?: "Error desconocido"
                             ) 
                         }
                     }

@@ -43,6 +43,7 @@ import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.feature.profesor.viewmodel.CalendarioViewModel
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import com.tfg.umeegunero.util.toLocalDate
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -56,7 +57,7 @@ import java.util.*
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalendarioScreen(
+fun CalendarioProfesorScreen(
     navController: NavController,
     viewModel: CalendarioViewModel = hiltViewModel()
 ) {
@@ -560,7 +561,7 @@ fun TipoEventoChip(
 @Composable
 fun CalendarioScreenPreview() {
     UmeEguneroTheme {
-        CalendarioScreen(navController = rememberNavController())
+        CalendarioProfesorScreen(navController = rememberNavController())
     }
 }
 
@@ -568,6 +569,6 @@ fun CalendarioScreenPreview() {
 @Composable
 fun CalendarioScreenDarkPreview() {
     UmeEguneroTheme {
-        CalendarioScreen(navController = rememberNavController())
+        CalendarioProfesorScreen(navController = rememberNavController())
     }
 } 

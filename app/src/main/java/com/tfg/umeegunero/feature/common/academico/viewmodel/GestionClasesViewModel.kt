@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Clase
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,7 +79,7 @@ class GestionClasesViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar las clases: ${result.exception.message}",
+                                error = "Error al cargar las clases: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }
@@ -135,7 +135,7 @@ class GestionClasesViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al guardar la clase: ${result.exception.message}",
+                                error = "Error al guardar la clase: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }
@@ -191,7 +191,7 @@ class GestionClasesViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al eliminar la clase: ${result.exception.message}",
+                                error = "Error al eliminar la clase: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }

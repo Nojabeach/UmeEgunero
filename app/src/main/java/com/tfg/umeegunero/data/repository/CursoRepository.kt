@@ -6,7 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext

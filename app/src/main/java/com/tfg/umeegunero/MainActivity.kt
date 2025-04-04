@@ -4,7 +4,7 @@ package com.tfg.umeegunero
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -62,7 +62,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        
+        // Usamos WindowCompat en lugar de enableEdgeToEdge
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        
         setContent {
             UmeEguneroTheme {
                 Surface(
@@ -72,18 +75,16 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     val isDarkTheme = rememberDarkThemeState(preferenciasRepository)
                     
-                    // Usamos un estado para controlar la visibilidad de la pantalla de splash
+                    // Estado para controlar la visualización del splash
                     var showSplash by remember { mutableStateOf(true) }
                     
                     if (showSplash) {
-                        // Mostramos la animación de splash
                         SplashScreen(
-                            onSplashComplete = {
+                            onSplashComplete = { 
                                 showSplash = false
                             }
                         )
                     } else {
-                        // Una vez completada la animación, mostramos la navegación iniciando en Welcome
                         Navigation(
                             navController = navController,
                             startDestination = AppScreens.Welcome.route,

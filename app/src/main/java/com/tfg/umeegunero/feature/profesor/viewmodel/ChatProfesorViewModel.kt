@@ -8,7 +8,7 @@ import com.tfg.umeegunero.data.local.entity.ChatMensajeEntity
 import com.tfg.umeegunero.data.local.entity.ConversacionEntity
 import com.tfg.umeegunero.data.model.AttachmentType
 import com.tfg.umeegunero.data.model.InteractionStatus
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.feature.profesor.screen.ChatMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -123,7 +123,7 @@ class ChatProfesorViewModel @Inject constructor(
                         is Result.Success -> result.data
                         is Result.Error -> {
                             _uiState.value = _uiState.value.copy(
-                                error = "Error al crear conversación: ${result.exception.message}",
+                                error = "Error al crear conversación: ${result.exception?.message}",
                                 isLoading = false
                             )
                             null

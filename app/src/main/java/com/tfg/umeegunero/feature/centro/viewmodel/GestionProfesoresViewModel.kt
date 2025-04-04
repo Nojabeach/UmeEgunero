@@ -3,7 +3,7 @@ package com.tfg.umeegunero.feature.centro.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Clase
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.ClaseRepository
@@ -70,7 +70,7 @@ class GestionProfesoresViewModel @Inject constructor(
                     _uiState.update { it.copy(profesores = resultProfesores.data) }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(error = "Error al cargar profesores: ${resultProfesores.exception.message}") }
+                    _uiState.update { it.copy(error = "Error al cargar profesores: ${resultProfesores.exception?.message}") }
                     Timber.e(resultProfesores.exception, "Error al cargar profesores")
                 }
                 is Result.Loading -> {
@@ -86,7 +86,7 @@ class GestionProfesoresViewModel @Inject constructor(
                     _uiState.update { it.copy(clases = resultClases.data) }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(error = "Error al cargar clases: ${resultClases.exception.message}") }
+                    _uiState.update { it.copy(error = "Error al cargar clases: ${resultClases.exception?.message}") }
                     Timber.e(resultClases.exception, "Error al cargar clases")
                 }
                 is Result.Loading -> {
@@ -115,7 +115,7 @@ class GestionProfesoresViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { 
                         it.copy(
-                            error = "Error al cargar clases asignadas: ${resultClases.exception.message}",
+                            error = "Error al cargar clases asignadas: ${resultClases.exception?.message}",
                             isLoading = false
                         )
                     }

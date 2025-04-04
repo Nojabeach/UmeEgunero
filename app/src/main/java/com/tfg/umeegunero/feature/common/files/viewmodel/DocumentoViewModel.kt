@@ -1,183 +1,197 @@
 package com.tfg.umeegunero.feature.common.files.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.data.model.Resultado
+import com.tfg.umeegunero.data.model.InfoArchivo
 import com.tfg.umeegunero.data.repository.StorageRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import timber.log.Timber
-import java.io.File
 import javax.inject.Inject
+import java.io.File
 
 /**
- * Estado UI para la pantalla de visualización de documentos
- */
-data class DocumentoUiState(
-    val url: String = "",
-    val nombre: String? = null,
-    val tipoMime: String? = null,
-    val archivoLocal: File? = null,
-    val isDescargando: Boolean = false,
-    val error: String? = null,
-    val infoAdicional: Map<String, String> = emptyMap()
-)
-
-/**
- * ViewModel para la pantalla de visualización de documentos
+ * ViewModel para la gestión de documentos y archivos.
+ * Proporciona funcionalidades para descargar, visualizar y gestionar archivos desde Storage.
+ *
+ * @property storageRepository Repositorio para gestionar operaciones con Firebase Storage
  */
 @HiltViewModel
 class DocumentoViewModel @Inject constructor(
-    private val storageRepository: StorageRepository
+    private val storageRepository: StorageRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    
-    private val _uiState = MutableStateFlow(DocumentoUiState())
+
+    // Obtener la ruta del documento de los argumentos
+    private val rutaDocumento: String = checkNotNull(savedStateHandle["rutaDocumento"])
+    private val nombreDocumento: String? = savedStateHandle["nombreDocumento"]
+
+    // Estado observable para la información del archivo
+    private val _infoArchivo = MutableStateFlow<Result<InfoArchivo>>(Result.Loading())
+    val infoArchivo: StateFlow<Result<InfoArchivo>> = _infoArchivo.asStateFlow()
+
+    // Estado observable para la URL de descarga
+    private val _urlDescarga = MutableStateFlow<Result<String>>(Result.Loading())
+    val urlDescarga: StateFlow<Result<String>> = _urlDescarga.asStateFlow()
+
+    // Estado observable para el contenido descargado del archivo (para visualización directa)
+    private val _contenidoArchivo = MutableStateFlow<Result<ByteArray>>(Result.Loading())
+    val contenidoArchivo: StateFlow<Result<ByteArray>> = _contenidoArchivo.asStateFlow()
+
+    // Estado observable para saber si se está descargando el archivo
+    private val _descargando = MutableStateFlow(false)
+    val descargando: StateFlow<Boolean> = _descargando.asStateFlow()
+
+    // Estado para controlar errores generales
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    // Estado de la UI para la pantalla de documentos
+    data class DocumentoUiState(
+        val urlDescarga: String? = null,
+        val infoArchivo: InfoArchivo? = null,
+        val isLoading: Boolean = false,
+        val error: String? = null,
+        val url: String = "",
+        val nombre: String? = null,
+        val tipoMime: String? = null,
+        val isDescargando: Boolean = false,
+        val archivoLocal: File? = null,
+        val infoAdicional: Map<String, String> = emptyMap()
+    )
+
+    private val _uiState = MutableStateFlow(DocumentoUiState(isLoading = true))
     val uiState: StateFlow<DocumentoUiState> = _uiState.asStateFlow()
-    
-    /**
-     * Inicializa el ViewModel con la URL y nombre del documento
-     */
+
+    // Inicializar
     fun inicializar(url: String, nombre: String?) {
-        _uiState.update { 
-            it.copy(
-                url = url,
-                nombre = nombre ?: obtenerNombreDesdeUrl(url),
-                isDescargando = false,
-                error = null
-            ) 
-        }
-        
-        // Intenta obtener información adicional del archivo
-        obtenerInformacionArchivo()
+        obtenerInformacionDocumento(url)
+        obtenerUrlDescarga(url)
     }
-    
+
     /**
-     * Obtiene información adicional del archivo
-     */
-    private fun obtenerInformacionArchivo() {
-        viewModelScope.launch {
-            try {
-                val url = _uiState.value.url
-                if (url.isEmpty()) return@launch
-                
-                storageRepository.obtenerInfoArchivo(url).collectLatest { resultado ->
-                    when (resultado) {
-                        is Resultado.Cargando -> {
-                            // No actualizamos nada durante la carga
-                        }
-                        is Resultado.Exito -> {
-                            val infoArchivo = resultado.datos
-                            _uiState.update { 
-                                it.copy(
-                                    tipoMime = infoArchivo.tipo,
-                                    infoAdicional = infoArchivo.metadatos + mapOf(
-                                        "Tamaño" to formatearTamaño(infoArchivo.tamaño),
-                                        "Fecha de creación" to formatearFecha(infoArchivo.fechaCreacion)
-                                    )
-                                ) 
-                            }
-                        }
-                        is Resultado.Error -> {
-                            Timber.e("Error al obtener información del archivo: ${resultado.mensaje}")
-                            // No mostramos error al usuario, simplemente continuamos sin la información adicional
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener información del archivo")
-            }
-        }
-    }
-    
-    /**
-     * Descarga el archivo para visualización local
-     */
-    fun descargarArchivo() {
-        viewModelScope.launch {
-            try {
-                val url = _uiState.value.url
-                val nombre = _uiState.value.nombre ?: obtenerNombreDesdeUrl(url)
-                
-                if (url.isEmpty()) {
-                    _uiState.update { it.copy(error = "URL no válida") }
-                    return@launch
-                }
-                
-                _uiState.update { it.copy(isDescargando = true) }
-                
-                storageRepository.descargarArchivo(url, nombre).collectLatest { resultado ->
-                    when (resultado) {
-                        is Resultado.Cargando -> {
-                            // Ya actualizamos el estado de carga antes
-                        }
-                        is Resultado.Exito -> {
-                            val archivo = resultado.datos
-                            _uiState.update { 
-                                it.copy(
-                                    archivoLocal = archivo,
-                                    isDescargando = false
-                                ) 
-                            }
-                        }
-                        is Resultado.Error -> {
-                            _uiState.update { 
-                                it.copy(
-                                    error = "Error al descargar archivo: ${resultado.mensaje}",
-                                    isDescargando = false
-                                ) 
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al descargar archivo")
-                _uiState.update { 
-                    it.copy(
-                        error = "Error al descargar archivo: ${e.message}",
-                        isDescargando = false
-                    ) 
-                }
-            }
-        }
-    }
-    
-    /**
-     * Limpia el mensaje de error
+     * Limpia el error actual
      */
     fun limpiarError() {
-        _uiState.update { it.copy(error = null) }
+        _error.value = null
+        _uiState.value = _uiState.value.copy(error = null)
     }
-    
+
     /**
-     * Obtiene el nombre del archivo a partir de su URL
+     * Obtiene información metadata del documento desde Firebase Storage
      */
-    private fun obtenerNombreDesdeUrl(url: String): String {
-        return url.substringAfterLast("/").substringBefore("?")
-    }
-    
-    /**
-     * Formatea el tamaño del archivo para mostrar
-     */
-    private fun formatearTamaño(tamañoBytes: Long): String {
-        return when {
-            tamañoBytes < 1024 -> "$tamañoBytes B"
-            tamañoBytes < 1024 * 1024 -> "${tamañoBytes / 1024} KB"
-            tamañoBytes < 1024 * 1024 * 1024 -> "${tamañoBytes / (1024 * 1024)} MB"
-            else -> "${tamañoBytes / (1024 * 1024 * 1024)} GB"
+    private fun obtenerInformacionDocumento(url: String = rutaDocumento) {
+        viewModelScope.launch {
+            try {
+                _infoArchivo.value = Result.Loading()
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                
+                storageRepository.obtenerInfoArchivo(url).collect { result ->
+                    when (result) {
+                        is Result.Success<*> -> {
+                            val info = result.data as InfoArchivo
+                            _infoArchivo.value = Result.Success(info)
+                            _uiState.value = _uiState.value.copy(
+                                infoArchivo = info,
+                                isLoading = false
+                            )
+                        }
+                        is Result.Error -> {
+                            _infoArchivo.value = result
+                            _error.value = result.exception?.message ?: "Error al obtener información del archivo"
+                            _uiState.value = _uiState.value.copy(
+                                error = result.exception?.message ?: "Error al obtener información del archivo",
+                                isLoading = false
+                            )
+                        }
+                        is Result.Loading<*> -> {
+                            // Estado de carga ya actualizado
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _infoArchivo.value = Result.Error(e)
+                _error.value = e.message ?: "Error al obtener información del archivo"
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Error al obtener información del archivo",
+                    isLoading = false
+                )
+            }
         }
     }
-    
+
     /**
-     * Formatea la fecha para mostrar
+     * Obtiene la URL de descarga del documento desde Firebase Storage
      */
-    private fun formatearFecha(timestamp: Long): String {
-        val fecha = java.util.Date(timestamp)
-        val formato = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
-        return formato.format(fecha)
+    private fun obtenerUrlDescarga(url: String = rutaDocumento) {
+        viewModelScope.launch {
+            try {
+                _urlDescarga.value = Result.Loading()
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                
+                val urlDescarga = storageRepository.obtenerUrlDescarga(url)
+                _urlDescarga.value = Result.Success(urlDescarga)
+                _uiState.value = _uiState.value.copy(
+                    urlDescarga = urlDescarga,
+                    isLoading = false
+                )
+            } catch (e: Exception) {
+                _urlDescarga.value = Result.Error(e)
+                _error.value = e.message ?: "Error al obtener URL de descarga"
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Error al obtener URL de descarga",
+                    isLoading = false
+                )
+            }
+        }
+    }
+
+    /**
+     * Descarga el contenido del archivo para su visualización directa
+     */
+    fun descargarArchivo(nombreArchivo: String = nombreDocumento ?: "archivo") {
+        viewModelScope.launch {
+            try {
+                _descargando.value = true
+                _contenidoArchivo.value = Result.Loading()
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                
+                storageRepository.descargarArchivo(rutaDocumento, nombreArchivo).collect { result ->
+                    when (result) {
+                        is Result.Success<*> -> {
+                            // Convertir el archivo a bytes
+                            val file = result.data as File
+                            val bytes = file.readBytes()
+                            _contenidoArchivo.value = Result.Success(bytes)
+                            _uiState.value = _uiState.value.copy(isLoading = false)
+                        }
+                        is Result.Error -> {
+                            _contenidoArchivo.value = Result.Error(result.exception!!)
+                            _error.value = result.exception?.message ?: "Error al descargar el archivo"
+                            _uiState.value = _uiState.value.copy(
+                                error = result.exception?.message ?: "Error al descargar el archivo",
+                                isLoading = false
+                            )
+                        }
+                        is Result.Loading<*> -> {
+                            // Estado de carga ya actualizado
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _contenidoArchivo.value = Result.Error(e)
+                _error.value = e.message ?: "Error al descargar el archivo"
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Error al descargar el archivo",
+                    isLoading = false
+                )
+            } finally {
+                _descargando.value = false
+            }
+        }
     }
 } 

@@ -3,7 +3,7 @@ package com.tfg.umeegunero.data.repository
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Alumno
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext

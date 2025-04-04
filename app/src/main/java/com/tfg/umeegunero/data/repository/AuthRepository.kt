@@ -3,7 +3,7 @@ package com.tfg.umeegunero.data.repository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton

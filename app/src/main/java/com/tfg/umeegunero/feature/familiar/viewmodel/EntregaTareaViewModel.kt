@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EntregaTarea
 import com.tfg.umeegunero.data.model.EstadoTarea
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.repository.TareaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -72,7 +72,7 @@ class EntregaTareaViewModel @Inject constructor(
                 } else if (result is Result.Error) {
                     _uiState.update { 
                         it.copy(
-                            error = "Error al cargar la tarea: ${result.exception.message}",
+                            error = "Error al cargar la tarea: ${result.exception?.message}",
                             isLoading = false
                         ) 
                     }
@@ -147,7 +147,7 @@ class EntregaTareaViewModel @Inject constructor(
                 } else if (result is Result.Error) {
                     _uiState.update { 
                         it.copy(
-                            error = "Error al enviar la entrega: ${result.exception.message}",
+                            error = "Error al enviar la entrega: ${result.exception?.message}",
                             isLoading = false
                         ) 
                     }

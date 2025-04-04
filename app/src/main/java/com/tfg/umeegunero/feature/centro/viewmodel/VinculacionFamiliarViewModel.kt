@@ -2,7 +2,7 @@ package com.tfg.umeegunero.feature.centro.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
@@ -112,7 +112,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar alumnos: ${result.exception.message}",
+                                error = "Error al cargar alumnos: ${result.exception?.message}",
                                 isLoading = familiaresJob?.isActive ?: false
                             )
                         }
@@ -156,7 +156,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar familiares: ${result.exception.message}",
+                                error = "Error al cargar familiares: ${result.exception?.message}",
                                 isLoading = alumnosJob?.isActive ?: false
                             )
                         }
@@ -198,7 +198,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar familiares del alumno: ${result.exception.message}",
+                                error = "Error al cargar familiares del alumno: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -240,7 +240,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar alumnos del familiar: ${result.exception.message}",
+                                error = "Error al cargar alumnos del familiar: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -291,7 +291,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al vincular familiar: ${result.exception.message}",
+                                error = "Error al vincular familiar: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -340,7 +340,7 @@ class VinculacionFamiliarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al desvincular familiar: ${result.exception.message}",
+                                error = "Error al desvincular familiar: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }

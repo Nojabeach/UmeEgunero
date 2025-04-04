@@ -6,7 +6,7 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.ActividadPreescolar
 import com.tfg.umeegunero.data.model.CategoriaActividad
 import com.tfg.umeegunero.data.model.EstadoActividad
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.ActividadPreescolarRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
@@ -197,7 +197,7 @@ class ActividadesPreescolarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al cargar actividades: ${actividadesResult.exception.message}",
+                                error = "Error al cargar actividades: ${actividadesResult.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -371,7 +371,7 @@ class ActividadesPreescolarViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
-                                error = "Error al marcar actividad: ${resultado.exception.message}",
+                                error = "Error al marcar actividad: ${resultado.exception?.message}",
                                 isLoading = false
                             )
                         }

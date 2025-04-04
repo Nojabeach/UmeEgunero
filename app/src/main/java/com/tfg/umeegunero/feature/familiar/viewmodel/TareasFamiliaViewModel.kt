@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EstadoTarea
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
@@ -95,7 +95,7 @@ class TareasFamiliaViewModel @Inject constructor(
                 } else if (result is Result.Error) {
                     _uiState.update { 
                         it.copy(
-                            error = "Error al cargar información del usuario: ${result.exception.message}", 
+                            error = "Error al cargar información del usuario: ${result.exception?.message}", 
                             isLoading = false
                         ) 
                     }
@@ -130,7 +130,7 @@ class TareasFamiliaViewModel @Inject constructor(
                 } else if (result is Result.Error) {
                     _uiState.update { 
                         it.copy(
-                            error = "Error al cargar tareas: ${result.exception.message}", 
+                            error = "Error al cargar tareas: ${result.exception?.message}", 
                             isLoading = false
                         ) 
                     }
@@ -194,7 +194,7 @@ class TareasFamiliaViewModel @Inject constructor(
                 } else if (result is Result.Error) {
                     _uiState.update { 
                         it.copy(
-                            error = "Error al marcar la tarea como revisada: ${result.exception.message}",
+                            error = "Error al marcar la tarea como revisada: ${result.exception?.message}",
                             isLoading = false
                         ) 
                     }

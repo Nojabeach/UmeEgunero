@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Curso
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -108,7 +108,7 @@ class AddCursoViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { 
                         it.copy(
-                            error = "Error al cargar curso: ${result.exception.message}",
+                            error = "Error al cargar curso: ${result.exception?.message}",
                             isLoading = false
                         )
                     }
@@ -244,7 +244,7 @@ class AddCursoViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = "Error al guardar curso: ${result.exception.message}"
+                                error = "Error al guardar curso: ${result.exception?.message}"
                             )
                         }
                     }

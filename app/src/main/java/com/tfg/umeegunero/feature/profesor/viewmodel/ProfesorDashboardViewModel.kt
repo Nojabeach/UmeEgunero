@@ -8,7 +8,7 @@ import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -143,7 +143,7 @@ class ProfesorDashboardViewModel @Inject constructor(
                 val profesorResult = usuarioRepository.getUsuarioPorDni(userId)
 
                 when (profesorResult) {
-                    is Result.Success -> {
+                    is Result.Success<Usuario> -> {
                         val profesor = profesorResult.data
                         _uiState.update {
                             it.copy(
@@ -158,13 +158,15 @@ class ProfesorDashboardViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar datos del profesor: ${profesorResult.exception.message}",
+                                error = "Error al cargar datos del profesor: ${profesorResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(profesorResult.exception, "Error al cargar profesor")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -199,7 +201,7 @@ class ProfesorDashboardViewModel @Inject constructor(
                 val clasesResult = usuarioRepository.getClasesByProfesor(profesorId)
 
                 when (clasesResult) {
-                    is Result.Success -> {
+                    is Result.Success<List<Clase>> -> {
                         val clases = clasesResult.data
                         _uiState.update {
                             it.copy(
@@ -226,13 +228,15 @@ class ProfesorDashboardViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar clases: ${clasesResult.exception.message}",
+                                error = "Error al cargar clases: ${clasesResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(clasesResult.exception, "Error al cargar clases")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -268,7 +272,7 @@ class ProfesorDashboardViewModel @Inject constructor(
                 val alumnosResult = usuarioRepository.getAlumnosByClase(claseId)
 
                 when (alumnosResult) {
-                    is Result.Success -> {
+                    is Result.Success<List<Alumno>> -> {
                         val alumnos = alumnosResult.data
                         _uiState.update {
                             it.copy(
@@ -283,13 +287,15 @@ class ProfesorDashboardViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar alumnos: ${alumnosResult.exception.message}",
+                                error = "Error al cargar alumnos: ${alumnosResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(alumnosResult.exception, "Error al cargar alumnos")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -328,7 +334,7 @@ class ProfesorDashboardViewModel @Inject constructor(
                 val alumnosPendientesResult = usuarioRepository.getAlumnosSinRegistroHoy(alumnosIds, hoy)
 
                 when (alumnosPendientesResult) {
-                    is Result.Success -> {
+                    is Result.Success<List<Alumno>> -> {
                         _uiState.update {
                             it.copy(
                                 alumnosPendientes = alumnosPendientesResult.data,
@@ -342,7 +348,9 @@ class ProfesorDashboardViewModel @Inject constructor(
                         Timber.e(alumnosPendientesResult.exception, "Error al cargar alumnos pendientes")
                         _uiState.update { it.copy(isLoading = false) }
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error inesperado al cargar alumnos pendientes")
@@ -364,7 +372,7 @@ class ProfesorDashboardViewModel @Inject constructor(
                 val mensajesResult = usuarioRepository.getMensajesNoLeidos(profesorId)
 
                 when (mensajesResult) {
-                    is Result.Success -> {
+                    is Result.Success<List<Mensaje>> -> {
                         val mensajes = mensajesResult.data
                         _uiState.update {
                             it.copy(
@@ -377,13 +385,15 @@ class ProfesorDashboardViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar mensajes: ${mensajesResult.exception.message}",
+                                error = "Error al cargar mensajes: ${mensajesResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(mensajesResult.exception, "Error al cargar mensajes")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -431,7 +441,7 @@ class ProfesorDashboardViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al crear registro: ${resultadoCreacion.exception.message}",
+                                error = "Error al crear registro: ${resultadoCreacion.exception?.message}",
                                 isLoading = false
                             )
                         }

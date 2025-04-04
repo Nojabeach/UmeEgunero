@@ -1,27 +1,33 @@
 package com.tfg.umeegunero.data.repository
 
+import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.Timestamp
+import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.model.*
-import kotlinx.coroutines.tasks.await
-import javax.inject.Inject
-import javax.inject.Singleton
+import com.tfg.umeegunero.util.Result
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import timber.log.Timber
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 import java.util.Date
+import java.util.Calendar
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
-import timber.log.Timber
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.Query
-import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.Timestamp
 import java.io.IOException
 
 /**
@@ -40,6 +46,36 @@ open class UsuarioRepository @Inject constructor(
     val registrosCollection = firestore.collection("registrosActividad")
     val mensajesCollection = firestore.collection("mensajes")
     private val functions = Firebase.functions
+
+    companion object {
+        private const val COLLECTION_USUARIOS = "usuarios"
+        private const val COLLECTION_PROFESORES = "profesores"
+        private const val COLLECTION_ALUMNOS = "alumnos"
+        
+        /**
+         * Crea un mock del repositorio para pruebas y vistas previas
+         */
+        fun createMock(): UsuarioRepository {
+            // Creamos un mock usando Mockito o implementamos una versión simple
+            return object : UsuarioRepository(
+                FirebaseAuth.getInstance(),
+                FirebaseFirestore.getInstance()
+            ) {
+                override suspend fun getAlumnoPorId(alumnoId: String): Result<Alumno> {
+                    return Result.Success(
+                        Alumno(
+                            id = alumnoId,
+                            dni = "12345678A",
+                            nombre = "Alumno de Prueba",
+                            apellidos = "Apellidos de Prueba",
+                            curso = "1º ESO",
+                            clase = "1ºA"
+                        )
+                    )
+                }
+            }
+        }
+    }
 
     // AUTENTICACIÓN Y USUARIOS
 
@@ -147,30 +183,39 @@ open class UsuarioRepository @Inject constructor(
     }
 
     /**
-     * Obtiene el usuario actual logueado
+     * Obtiene el usuario actual autenticado
      */
-    fun getUsuarioActual(): Flow<Result<Usuario?>> = flow {
-        emit(Result.Loading)
-        try {
-            val currentUser = firebaseAuth.currentUser
-
-            if (currentUser != null) {
-                // Buscar el usuario en Firestore por email
-                val userQuery = usuariosCollection.whereEqualTo("email", currentUser.email).get().await()
-
-                if (!userQuery.isEmpty) {
-                    val userDoc = userQuery.documents.first()
-                    val usuario = userDoc.toObject(Usuario::class.java)
-                    emit(Result.Success(usuario))
+    fun getUsuarioActual(): Flow<Result<Usuario>> {
+        return flow {
+            emit(Result.Loading<Usuario>())
+            
+            val usuarioActual = try {
+                val user = firebaseAuth.currentUser
+                
+                if (user != null) {
+                    val usuarioFromFirestore = obtenerUsuarioPorId(user.uid)
+                    
+                    when (usuarioFromFirestore) {
+                        is Result.Success<*> -> {
+                            val usuario = usuarioFromFirestore.data as Usuario
+                            Result.Success<Usuario>(usuario)
+                        }
+                        is Result.Error -> {
+                            Result.Error(usuarioFromFirestore.exception ?: Exception("Error al obtener usuario de Firestore"))
+                        }
+                        else -> {
+                            Result.Error(Exception("Error inesperado al obtener usuario"))
+                        }
+                    }
                 } else {
-                    emit(Result.Success(null)) // Usuario autenticado pero no en Firestore
+                    Result.Error(Exception("No hay usuario autenticado"))
                 }
-            } else {
-                emit(Result.Success(null)) // No hay usuario logueado
+            } catch (e: Exception) {
+                Result.Error(e)
             }
-        } catch (e: Exception) {
-            emit(Result.Error(e))
-        }
+            
+            emit(usuarioActual)
+        }.flowOn(Dispatchers.IO)
     }
 
     /**
@@ -407,16 +452,21 @@ open class UsuarioRepository @Inject constructor(
             }
 
             // Obtener todos los registros del día de hoy para los alumnos especificados
-            val fechaInicio = Timestamp(Date(hoy.seconds * 1000).apply {
-                hours = 0
-                minutes = 0
-                seconds = 0
-            })
-            val fechaFin = Timestamp(Date(hoy.seconds * 1000).apply {
-                hours = 23
-                minutes = 59
-                seconds = 59
-            })
+            val calendarInicio = Calendar.getInstance().apply {
+                timeInMillis = hoy.seconds * 1000
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+            }
+            val fechaInicio = Timestamp(Date(calendarInicio.timeInMillis))
+            
+            val calendarFin = Calendar.getInstance().apply {
+                timeInMillis = hoy.seconds * 1000
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+            }
+            val fechaFin = Timestamp(Date(calendarFin.timeInMillis))
 
             val query = registrosCollection
                 .whereIn("alumnoId", alumnosIds)
@@ -1361,29 +1411,103 @@ open class UsuarioRepository @Inject constructor(
         }
     }
 
-    companion object {
-        /**
-         * Crea un mock del repositorio para pruebas y vistas previas
-         */
-        fun createMock(): UsuarioRepository {
-            // Creamos un mock usando Mockito o implementamos una versión simple
-            return object : UsuarioRepository(
-                FirebaseAuth.getInstance(),
-                FirebaseFirestore.getInstance()
-            ) {
-                override suspend fun getAlumnoPorId(alumnoId: String): Result<Alumno> {
-                    return Result.Success(
-                        Alumno(
-                            id = alumnoId,
-                            dni = "12345678A",
-                            nombre = "Alumno de Prueba",
-                            apellidos = "Apellidos de Prueba",
-                            curso = "1º ESO",
-                            clase = "1ºA"
-                        )
-                    )
-                }
-            }
+    /**
+     * Obtiene el usuario actual de Firebase Auth
+     * @return FirebaseUser o null si no hay usuario autenticado
+     */
+    fun getUsuarioActualAuth(): FirebaseUser? {
+        return firebaseAuth.currentUser
+    }
+
+    /**
+     * Verifica si el usuario actual es un profesor
+     * @return true si es profesor, false si es alumno o no está autenticado
+     */
+    suspend fun esProfesor(): Boolean {
+        val usuario = getUsuarioActualAuth() ?: return false
+        val usuarioId = usuario.uid
+        
+        return try {
+            val docSnapshot = firestore.collection(COLLECTION_PROFESORES)
+                .document(usuarioId)
+                .get()
+                .await()
+            
+            docSnapshot.exists()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al verificar si es profesor")
+            false
         }
+    }
+    
+    /**
+     * Obtiene el ID del centro educativo al que pertenece el usuario actual
+     * @return ID del centro o null si no se encuentra
+     */
+    suspend fun getCentroIdUsuarioActual(): String? {
+        val usuario = getUsuarioActualAuth() ?: return null
+        val usuarioId = usuario.uid
+        val esProfesor = esProfesor()
+        
+        return try {
+            val collection = if (esProfesor) COLLECTION_PROFESORES else COLLECTION_ALUMNOS
+            val docSnapshot = firestore.collection(collection)
+                .document(usuarioId)
+                .get()
+                .await()
+            
+            if (docSnapshot.exists()) {
+                docSnapshot.getString("centroId")
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener el centro del usuario")
+            null
+        }
+    }
+    
+    /**
+     * Obtiene el nombre completo del usuario
+     * @param usuarioId ID del usuario
+     * @return Nombre completo o cadena vacía si no se encuentra
+     */
+    suspend fun getNombreUsuario(usuarioId: String): String {
+        return try {
+            // Primero buscamos en la colección de profesores
+            var docSnapshot = firestore.collection(COLLECTION_PROFESORES)
+                .document(usuarioId)
+                .get()
+                .await()
+            
+            // Si no existe como profesor, buscamos en alumnos
+            if (!docSnapshot.exists()) {
+                docSnapshot = firestore.collection(COLLECTION_ALUMNOS)
+                    .document(usuarioId)
+                    .get()
+                    .await()
+            }
+            
+            if (docSnapshot.exists()) {
+                val nombre = docSnapshot.getString("nombre") ?: ""
+                val apellidos = docSnapshot.getString("apellidos") ?: ""
+                "$nombre $apellidos".trim()
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener nombre de usuario")
+            ""
+        }
+    }
+
+    /**
+     * Obtiene el rol del usuario actual
+     * @return "profesor", "alumno" o null si no está autenticado
+     */
+    suspend fun getRolUsuarioActual(): String? {
+        val usuario = getUsuarioActual() ?: return null
+        
+        return if (esProfesor()) "profesor" else "alumno"
     }
 }

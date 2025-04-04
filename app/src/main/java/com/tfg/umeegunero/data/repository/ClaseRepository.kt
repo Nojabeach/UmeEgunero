@@ -3,7 +3,7 @@ package com.tfg.umeegunero.data.repository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObject
 import com.tfg.umeegunero.data.model.Clase
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import javax.inject.Inject

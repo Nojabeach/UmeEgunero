@@ -3,7 +3,7 @@ package com.tfg.umeegunero.feature.auth.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -95,7 +95,7 @@ class RecuperarPasswordViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = result.exception.message ?: "Error al enviar el correo de recuperación"
+                                error = result.exception?.message ?: "Error al enviar el correo de recuperación"
                             )
                         }
                         Timber.e(result.exception, "Error al enviar email de recuperación")

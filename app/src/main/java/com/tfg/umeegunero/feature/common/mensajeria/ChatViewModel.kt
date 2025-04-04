@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.feature.common.mensajeria
 
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
@@ -11,31 +12,33 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Date
-import javax.inject.Inject
 import timber.log.Timber
+import javax.inject.Inject
 
 /**
  * Estado de la UI para la pantalla de chat
  */
 data class ChatUiState(
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val mensajes: List<Mensaje> = emptyList(),
+    val isLoading: Boolean = true,
     val usuario: Usuario? = null,
     val participante: Usuario? = null,
+    val participanteId: String = "",
+    val alumnoId: String? = null,
+    val mensajes: List<Mensaje> = emptyList(),
+    val conversacionId: String = "",
     val textoMensaje: String = "",
     val adjuntos: List<Uri> = emptyList(),
     val enviandoMensaje: Boolean = false,
-    val conversacionId: String = "",
-    val participanteId: String = "",
-    val alumnoId: String? = null
+    val error: String? = null
 )
 
 /**
@@ -89,15 +92,17 @@ class ChatViewModel @Inject constructor(
      */
     private suspend fun cargarUsuarioActual() {
         try {
-            val usuario = usuarioRepository.getUsuarioActual().collect { result ->
+            usuarioRepository.getUsuarioActual().collectLatest<Result<Usuario>> { result ->
                 when (result) {
-                    is com.tfg.umeegunero.data.model.Result.Success -> {
-                        _uiState.update { it.copy(usuario = result.data) }
+                    is Result.Success<*> -> {
+                        _uiState.update { it.copy(usuario = result.data as Usuario) }
                     }
-                    is com.tfg.umeegunero.data.model.Result.Error -> {
-                        _uiState.update { it.copy(error = "Error al cargar el usuario: ${result.exception.message}") }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(error = "Error al cargar el usuario: ${result.exception?.message}") }
                     }
-                    else -> {}
+                    is Result.Loading<*> -> {
+                        // Mantener estado de carga
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -112,11 +117,11 @@ class ChatViewModel @Inject constructor(
         try {
             val result = usuarioRepository.obtenerUsuarioPorId(participanteId)
             when (result) {
-                is com.tfg.umeegunero.data.model.Result.Success -> {
-                    _uiState.update { it.copy(participante = result.data) }
+                is Result.Success<*> -> {
+                    _uiState.update { it.copy(participante = result.data as Usuario) }
                 }
-                is com.tfg.umeegunero.data.model.Result.Error -> {
-                    _uiState.update { it.copy(error = "Error al cargar el participante: ${result.exception.message}") }
+                is Result.Error -> {
+                    _uiState.update { it.copy(error = "Error al cargar el participante: ${result.exception?.message}") }
                 }
                 else -> {}
             }
@@ -130,7 +135,7 @@ class ChatViewModel @Inject constructor(
      */
     private suspend fun cargarMensajes(conversacionId: String) {
         try {
-            mensajeRepository.obtenerMensajes(conversacionId).collect { mensajes ->
+            mensajeRepository.obtenerMensajes(conversacionId).collectLatest { mensajes ->
                 _uiState.update { it.copy(
                     mensajes = mensajes.sortedBy { mensaje -> mensaje.timestamp },
                     isLoading = false
@@ -288,11 +293,11 @@ class ChatViewModel @Inject constructor(
             val resultado = notificacionRepository.crearNotificacion(notificacion)
             
             when (resultado) {
-                is com.tfg.umeegunero.data.model.Result.Success -> {
+                is Result.Success<*> -> {
                     Timber.d("Notificación enviada al usuario $receptorId: ${notificacion.titulo}")
                 }
-                is com.tfg.umeegunero.data.model.Result.Error -> {
-                    Timber.e("Error al enviar notificación: ${resultado.exception.message}")
+                is Result.Error -> {
+                    Timber.e("Error al enviar notificación: ${resultado.exception?.message}")
                 }
                 else -> {}
             }

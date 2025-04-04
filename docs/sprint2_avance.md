@@ -1,48 +1,84 @@
 # Avance del Sprint 2 - UmeEgunero
 
-## Funcionalidades implementadas
+## Funcionalidades Implementadas
 
 ### Sistema de Notificaciones
-- Integración de Firebase Cloud Messaging (FCM) para envío y recepción de notificaciones
-- Servicio `UmeEguneroMessagingService` para manejo de mensajes FCM
-- Creación de canales de notificación para diferentes tipos de alertas:
-  - Canal de notificaciones de tareas
-  - Canal de notificaciones generales
-- Pantalla de configuración de notificaciones que permite:
-  - Habilitar/deshabilitar notificaciones por tipo
-  - Gestionar token FCM del dispositivo
-  - Ver información sobre preferencias de notificación
+- ✅ Integración de Firebase Cloud Messaging (FCM) para notificaciones push
+- ✅ Creación de `NotificationManager` para gestión centralizada
+- ✅ Creación de diferentes canales de notificación
+- ✅ Pantalla de configuración para gestionar preferencias
+- ✅ Servicio para gestionar mensajes FCM (`UmeEguneroMessagingService`)
 
 ### Gestión de Archivos
-- Implementación del repositorio `StorageRepository` para:
-  - Subir archivos a Firebase Storage
-  - Descargar archivos para visualización local
-  - Obtener información detallada de archivos
-  - Eliminar archivos
-- Modelo de datos `InfoArchivo` para representar metadatos de archivos
-- Visor de archivos completo con soporte para:
-  - Imágenes (visualización directa)
-  - Documentos PDF (visualización a través de visor)
-  - Archivos de video (reproducción con ExoPlayer)
-  - Archivos de audio (reproducción con ExoPlayer)
-  - Otros tipos de archivo (ofreciendo descarga)
-- Pantalla `DocumentoScreen` para visualizar archivos a pantalla completa con:
-  - Información detallada del archivo
-  - Opciones de descarga
-  - Visualización adaptada según tipo de archivo
+- ✅ Implementación de `StorageRepository` para manejo de archivos en Firebase Storage
+- ✅ Creación de modelo `InfoArchivo` para metadatos de archivos
+- ✅ Implementación de visualizador de archivos completo
+  - ✅ Soporte para imágenes
+  - ✅ Soporte para PDFs
+  - ✅ Soporte para vídeos
+  - ✅ Soporte para audio
+  - ✅ Soporte para otros tipos genéricos
 
 ### Infraestructura
-- Configuración de `FileProvider` para compartir archivos entre aplicaciones
-- Actualización del archivo de manifiesto para:
-  - Registrar el servicio de notificaciones
-  - Añadir permisos de notificaciones
-  - Configurar íconos y colores por defecto para notificaciones
-- Módulo Hilt para proveer dependencias de Firebase
-- Actualización de la aplicación principal para inicializar canales de notificación
+- ✅ Configuración de `FileProvider` para compartir archivos
+- ✅ Actualización del manifest para servicios y permisos de notificación
+- ✅ Módulo Hilt para proveer dependencias de Firebase
+- ✅ Actualización de la aplicación principal para inicializar canales
 
-## Próximos pasos
-1. Implementar el panel de calendario con eventos académicos
-2. Mejorar la interfaz de usuario para visualización de archivos adjuntos en tareas
-3. Añadir opciones avanzadas de notificación (programación, silencio temporal)
-4. Implementar sistema de recordatorios para eventos y tareas
-5. Desarrollar funcionalidades para profesores relacionadas con la compartición de archivos 
+## Mejoras de Infraestructura y Correcciones
+
+Durante el desarrollo se han identificado y corregido varios problemas técnicos:
+
+1. **Optimización del procesamiento de anotaciones (KAPT)**:
+   - Resolución de problemas de duplicación de clases durante la compilación
+   - Configuración mejorada de parámetros para Room y Hilt
+   - Implementación de modo estricto para KAPT
+
+2. **Implementación de utilidades centralizadas**:
+   - Creación de `ResultUtils.kt` para el manejo unificado de operaciones asíncronas
+   - Ampliación de `DateUtils.kt` con métodos de conversión entre `Timestamp` y tipos Java 8 Time
+   - Implementación de `TestUtils.kt` con funciones para generar objetos mock en pruebas y desarrollo
+
+3. **Documentación técnica**:
+   - Documentación de errores de compilación y sus soluciones
+   - Registro de problemas detectados durante el desarrollo
+   - Guía para la resolución de errores pendientes
+
+## Problemas Encontrados
+
+1. **Clases Duplicadas**: Se han identificado problemas de clases duplicadas durante la compilación en la fase de KAPT.
+   - Se ha documentado el problema en `docs/problemas_build.md`
+   - Se han realizado correcciones para eliminar duplicaciones en archivos como:
+     - `EventoWorker.kt` (quedando solo en `/data/worker/`)
+     - `AddCentroUiState.kt` (quedando solo en `/feature/admin/viewmodel/`)
+     - `EmailSender.kt` (quedando solo en `/util/`)
+   - Se han renombrado clases conflictivas como `TipoEvento` → `TipoEventoUI` en `CalendarioFamiliaScreen.kt`
+
+2. **Problemas de Caché de Gradle**: La caché de Gradle parece estar corrupta, afectando especialmente al procesamiento de anotaciones.
+   - Se han intentado varias técnicas de limpieza
+   - Se está considerando una reinstalación completa de las dependencias
+
+## Próximos Pasos
+
+1. **Calendario y Eventos**
+   - Implementar panel de calendario con vista mensual
+   - Integrar recordatorios y alarmas para eventos
+   - Mejorar sincronización con eventos del centro
+
+2. **Mejoras en la Gestión de Archivos**
+   - Mejorar UI para la carga y adjuntos de archivos
+   - Implementar opciones de previsualización mejoradas
+   - Añadir capacidad de edición de metadatos
+
+3. **Notificaciones Avanzadas**
+   - Implementar opciones de filtrado y categorización
+   - Añadir soporte para notificaciones programadas
+   - Mejorar interfaz de usuario para notificaciones recibidas
+
+4. **Sistema de Recordatorios**
+   - Implementar sistema de recordatorios para tareas pendientes
+   - Añadir opciones de periodicidad y repetición
+
+5. **Funcionalidades para Profesores**
+   - Implementar sistema de compartición de archivos con alumnos
+   - Crear herramientas de notificación para grupos específicos 

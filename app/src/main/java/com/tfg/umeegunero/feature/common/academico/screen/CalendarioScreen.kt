@@ -29,6 +29,7 @@ import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
+import com.tfg.umeegunero.util.toLocalDate
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter

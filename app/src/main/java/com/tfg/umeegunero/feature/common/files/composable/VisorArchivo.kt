@@ -39,9 +39,22 @@ import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.util.MimeTypes
-import com.tfg.umeegunero.feature.common.files.viewmodel.DocumentoUiState
 import timber.log.Timber
 import java.io.File
+
+/**
+ * Estado para la UI del visor de documentos
+ */
+data class DocumentoUiState(
+    val url: String = "",
+    val nombre: String? = null,
+    val tipoMime: String? = null,
+    val isLoading: Boolean = false,
+    val isDescargando: Boolean = false,
+    val error: String? = null,
+    val archivoLocal: File? = null,
+    val infoAdicional: Map<String, String> = emptyMap()
+)
 
 /**
  * Componente para visualizar diferentes tipos de archivos

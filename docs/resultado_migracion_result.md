@@ -63,6 +63,59 @@ Pendiente:
 - ⬜ Ejecutar pruebas integradas para verificar que la aplicación funciona correctamente
 - ⬜ Documentar el uso correcto de la clase `Result` para futuras implementaciones
 
+## Actualización del estado de la migración
+
+Después de aplicar varias correcciones, seguimos teniendo errores de compilación, pero hemos reducido su número. A continuación se detallan las correcciones realizadas y los errores pendientes:
+
+### Correcciones realizadas
+
+1. **Clase `Result.kt`**: Se corrigió la implementación del método `asResult()` y se aseguró que todos los métodos de la clase utilizan correctamente los constructores con paréntesis.
+
+2. **Referencias a `Result.Loading`**: Se actualizaron todas las referencias a `Result.Loading` para usar paréntesis `()` y se corrigieron los casos donde se utilizaba como objeto en lugar de como clase.
+
+3. **Manejo de excepciones**: Se corrigieron los problemas con el manejo de excepciones en varias clases, añadiendo verificaciones null-safe para evitar excepciones `NullPointerException`.
+
+4. **Problemas de tipo en `Evento.kt`**: Se corrigió el problema de tipo en la clase `Evento.kt` donde se usaba `destinatarios.sorted()` que devolvía un tipo incompatible.
+
+### Errores pendientes
+
+1. **Problemas de calendario y fechas**:
+   - Errores de tipo entre `Timestamp` y `TemporalAccessor` en `DetalleEventoScreen.kt`
+   - Conversión entre `LocalDateTime` y `Timestamp` en `CalendarioViewModel.kt`
+
+2. **Clases UI faltantes o referencias incompletas**:
+   - Referencias faltantes a `DocumentoUiState` en `VisorArchivo.kt`
+   - Propiedades no encontradas como `nombre` y `url` en `DocumentoScreen.kt`
+
+3. **Problemas con los ViewModels de mensajería**:
+   - Múltiples errores de referencia en `ChatViewModel.kt` y `ConversacionesViewModel.kt`
+   - Problemas con los flujos (`Flow`) y la recolección de datos
+
+4. **Problemas de navegación**:
+   - Referencias no resueltas en `Navigation.kt` relacionadas con el calendario
+   - Pantallas faltantes como `DetalleEventoScreen` y ViewModels como `CalendarioViewModel`
+
+### Próximos pasos
+
+Para completar la migración, se recomienda:
+
+1. Abordar los errores por módulos funcionales, comenzando por los más críticos
+2. Implementar las interfaces UI faltantes (como `DocumentoUiState`)
+3. Corregir los problemas de tipo en los conversores de fecha
+4. Revisar la navegación y asegurar que todas las rutas estén definidas correctamente
+
+La migración a `Result<T>` ha sido parcialmente completada. Es posible que se necesite establecer una versión estable del proyecto como punto de control antes de continuar con las otras correcciones.
+
+### Impacto en el proceso de desarrollo
+
+Esta migración pone de manifiesto la importancia de:
+- Mantener consistencia en el manejo de tipos genéricos
+- Asegurar que las clases de utilidad sean robustas y bien tipadas
+- Implementar patrones de manejo de errores coherentes en toda la aplicación
+- Utilizar herramientas de comprobación estática de tipos para detectar errores temprano
+
+A pesar de los errores pendientes, el avance realizado representa un paso importante hacia un código más mantenible y seguro en términos de tipos.
+
 ## Próximos Pasos
 
 1. **Corregir errores en UsuarioRepository y otros repositorios**:

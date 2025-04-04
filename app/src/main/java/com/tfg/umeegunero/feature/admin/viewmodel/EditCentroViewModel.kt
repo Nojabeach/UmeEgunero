@@ -8,7 +8,7 @@ import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.data.repository.CentroRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,7 +80,7 @@ class EditCentroViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     _uiState.update { it.copy(
-                        error = "Error al cargar el centro: ${result.exception.message}",
+                        error = "Error al cargar el centro: ${result.exception?.message}",
                         isLoading = false
                     )}
                     Timber.e(result.exception, "Error al cargar el centro")
@@ -146,7 +146,7 @@ class EditCentroViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     _uiState.update { it.copy(
-                        error = "Error al actualizar el centro: ${result.exception.message}",
+                        error = "Error al actualizar el centro: ${result.exception?.message}",
                         isLoading = false
                     )}
                     Timber.e(result.exception, "Error al actualizar el centro")

@@ -2,7 +2,7 @@ package com.tfg.umeegunero.feature.common.users.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.Perfil
@@ -173,7 +173,7 @@ class AddUserViewModel @Inject constructor(
                             it.copy(
                                 isLoading = false,
                                 success = false,
-                                error = result.exception.message ?: "Error al guardar usuario"
+                                error = result.exception?.message ?: "Error al guardar usuario"
                             )
                         }
                     }

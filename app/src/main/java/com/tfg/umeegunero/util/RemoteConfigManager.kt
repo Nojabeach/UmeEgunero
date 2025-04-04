@@ -4,9 +4,12 @@ import android.content.Context
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
 import com.tfg.umeegunero.R
-import com.tfg.umeegunero.feature.common.support.screen.EmailSender
+import com.tfg.umeegunero.data.service.RemoteConfigService
+import javax.inject.Inject
 
-class RemoteConfigManager private constructor() {
+class RemoteConfigManager @Inject constructor(
+    private val remoteConfigService: RemoteConfigService
+) {
     private lateinit var remoteConfig: FirebaseRemoteConfig
 
     fun initialize(context: Context) {
@@ -20,8 +23,8 @@ class RemoteConfigManager private constructor() {
 
         remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                // Inicializar EmailSender con la configuración
-                EmailSender.initialize(remoteConfig)
+                // Inicializar configuración remota
+                remoteConfigService.initialize(remoteConfig)
             }
         }
     }
@@ -30,9 +33,9 @@ class RemoteConfigManager private constructor() {
         @Volatile
         private var instance: RemoteConfigManager? = null
 
-        fun getInstance(): RemoteConfigManager {
+        fun getInstance(remoteConfigService: RemoteConfigService): RemoteConfigManager {
             return instance ?: synchronized(this) {
-                instance ?: RemoteConfigManager().also { instance = it }
+                instance ?: RemoteConfigManager(remoteConfigService).also { instance = it }
             }
         }
     }

@@ -16,6 +16,9 @@ import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_preferences")
 
+/**
+ * Repositorio para gestionar las preferencias del usuario mediante DataStore
+ */
 @Singleton
 class PreferenciasRepository @Inject constructor(
     @ApplicationContext private val context: Context
@@ -75,10 +78,15 @@ class PreferenciasRepository @Inject constructor(
     /**
      * Obtiene la configuración de notificaciones para tareas
      */
-    val notificacionesTareasHabilitadas: Flow<Boolean> = context.dataStore.data
+    val notificacionesTareasFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[notificacionesTareasKey] ?: true // Habilitado por defecto
         }
+    
+    /**
+     * Alias para compatibilidad con código existente
+     */
+    val notificacionesTareasHabilitadas: Flow<Boolean> = notificacionesTareasFlow
     
     /**
      * Configura las preferencias de notificaciones generales
@@ -92,8 +100,13 @@ class PreferenciasRepository @Inject constructor(
     /**
      * Obtiene la configuración de notificaciones generales
      */
-    val notificacionesGeneralHabilitadas: Flow<Boolean> = context.dataStore.data
+    val notificacionesGeneralFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[notificacionesGeneralKey] ?: true // Habilitado por defecto
         }
+    
+    /**
+     * Alias para compatibilidad con código existente
+     */
+    val notificacionesGeneralHabilitadas: Flow<Boolean> = notificacionesGeneralFlow
 } 

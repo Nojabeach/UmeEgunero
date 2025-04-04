@@ -8,7 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.model.RegistroActividad
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -297,7 +297,7 @@ class RegistroDiarioRepository @Inject constructor(
      * @return Flow de resultado con la lista de registros
      */
     fun obtenerRegistrosDiariosPorAlumno(alumnoId: String): Flow<Result<List<RegistroActividad>>> = flow {
-        emit(Result.Loading)
+        emit(Result.Loading())
         
         try {
             // Si hay conexión, intentamos obtener desde Firestore

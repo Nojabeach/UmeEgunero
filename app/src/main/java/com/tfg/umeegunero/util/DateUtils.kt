@@ -2,6 +2,11 @@ package com.tfg.umeegunero.util
 
 import com.google.firebase.Timestamp
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -117,4 +122,55 @@ fun timestampToDate(timestamp: Timestamp?): Date? {
  */
 fun dateToTimestamp(date: Date?): Timestamp? {
     return date?.let { Timestamp(it) }
+}
+
+/**
+ * Convierte un Timestamp de Firebase a un objeto LocalDateTime
+ * 
+ * @return LocalDateTime del timestamp actual
+ */
+fun Timestamp.toLocalDateTime(): LocalDateTime {
+    return LocalDateTime.ofInstant(
+        Instant.ofEpochMilli(this.seconds * 1000 + this.nanoseconds / 1000000),
+        ZoneId.systemDefault()
+    )
+}
+
+/**
+ * Convierte un LocalDateTime a un Timestamp de Firebase
+ * 
+ * @return Timestamp generado a partir del LocalDateTime actual
+ */
+fun LocalDateTime.toTimestamp(): Timestamp {
+    val instant = this.atZone(ZoneId.systemDefault()).toInstant()
+    return Timestamp(instant.epochSecond, instant.nano)
+}
+
+/**
+ * Convierte un Timestamp de Firebase a un objeto LocalDate
+ * 
+ * @return LocalDate del timestamp actual
+ */
+fun Timestamp.toLocalDate(): LocalDate {
+    return this.toLocalDateTime().toLocalDate()
+}
+
+/**
+ * Convierte un Timestamp de Firebase a un objeto LocalTime
+ * 
+ * @return LocalTime del timestamp actual
+ */
+fun Timestamp.toLocalTime(): LocalTime {
+    return this.toLocalDateTime().toLocalTime()
+}
+
+/**
+ * Convierte un LocalDate a un Timestamp de Firebase
+ * Establece la hora a 00:00:00
+ * 
+ * @return Timestamp generado a partir del LocalDate actual
+ */
+fun LocalDate.toTimestamp(): Timestamp {
+    val dateTime = this.atStartOfDay()
+    return dateTime.toTimestamp()
 } 

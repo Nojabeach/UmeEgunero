@@ -5,7 +5,7 @@ import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -323,9 +323,9 @@ class LoginViewModel @Inject constructor(
                     is Result.Error -> {
                         Timber.e(result.exception, "Error en el login")
                         val errorMessage = when {
-                            result.exception.message?.contains("password") == true -> 
+                            result.exception?.message?.contains("password") == true -> 
                                 "Contraseña incorrecta. Por favor, verifica tus credenciales."
-                            result.exception.message?.contains("email") == true -> 
+                            result.exception?.message?.contains("email") == true -> 
                                 "Email no encontrado. Por favor, verifica tus credenciales."
                             else -> "Error al iniciar sesión. Por favor, verifica tus credenciales."
                         }

@@ -2,23 +2,30 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.data.model.Result
-import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.toLocalDate
+import com.tfg.umeegunero.util.toTimestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.YearMonth
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -56,10 +63,10 @@ class CalendarioViewModel @Inject constructor(
         // Obtener ID del profesor actual
         viewModelScope.launch {
             try {
-                usuarioRepository.getUsuarioActual().collect { result ->
+                usuarioRepository.getUsuarioActual().collectLatest<Result<Usuario>> { result ->
                     when (result) {
-                        is Result.Success -> {
-                            result.data?.let { user ->
+                        is Result.Success<*> -> {
+                            (result.data as? Usuario)?.let { user ->
                                 profesorId = user.dni
                                 user.perfiles.find { it.tipo == TipoUsuario.PROFESOR }?.let { perfil ->
                                     centroId = perfil.centroId
@@ -70,10 +77,10 @@ class CalendarioViewModel @Inject constructor(
                         is Result.Error -> {
                             Timber.e(result.exception, "Error al obtener usuario actual")
                             _uiState.update { 
-                                it.copy(error = "Error al cargar datos de usuario: ${result.exception.message}")
+                                it.copy(error = "Error al cargar datos de usuario: ${result.exception?.message}")
                             }
                         }
-                        is Result.Loading -> {
+                        is Result.Loading<*> -> {
                             // Esperando datos
                         }
                     }
@@ -209,11 +216,13 @@ class CalendarioViewModel @Inject constructor(
         }
         
         // Crear objeto evento
+        val fechaHora = LocalDateTime.of(diaSeleccionado, java.time.LocalTime.of(8, 0))
+        val timestamp = fechaHora.toTimestamp()
         val nuevoEvento = Evento(
             id = "",  // Se asignará en el repositorio
             titulo = titulo,
             descripcion = descripcion,
-            fecha = LocalDateTime.of(diaSeleccionado, java.time.LocalTime.of(8, 0)),
+            fecha = timestamp,
             tipo = tipoEvento,
             creadorId = profesorId,
             centroId = centroId

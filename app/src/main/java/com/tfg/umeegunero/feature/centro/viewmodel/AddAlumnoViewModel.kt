@@ -7,7 +7,7 @@ import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -153,7 +153,7 @@ class AddAlumnoViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar los cursos: ${result.exception.message}",
+                                error = "Error al cargar los cursos: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }
@@ -198,7 +198,7 @@ class AddAlumnoViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar las clases: ${result.exception.message}",
+                                error = "Error al cargar las clases: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }
@@ -376,7 +376,7 @@ class AddAlumnoViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al guardar el alumno: ${result.exception.message}",
+                                error = "Error al guardar el alumno: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }

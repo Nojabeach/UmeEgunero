@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.CentroRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,7 +68,7 @@ class DetalleCentroViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false, 
-                                error = result.exception.message ?: "Error al cargar el centro"
+                                error = result.exception?.message ?: "Error al cargar el centro"
                             ) 
                         }
                         Timber.e(result.exception, "Error al cargar el centro")

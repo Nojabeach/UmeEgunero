@@ -3,9 +3,9 @@ package com.tfg.umeegunero.feature.familiar.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
-import com.tfg.umeegunero.data.model.Result
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.repository.TareaRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +16,7 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Estado de la UI para la pantalla de detalle de tarea
+ * Estado UI para la pantalla de detalle de tarea
  */
 data class DetalleTareaUiState(
     val tarea: Tarea? = null,
@@ -46,30 +46,36 @@ class DetalleTareaViewModel @Inject constructor(
             try {
                 val result = tareaRepository.obtenerTarea(tareaId)
                 
-                if (result is Result.Success) {
-                    val tarea = result.data
-                    
-                    if (tarea != null) {
+                when (result) {
+                    is Result.Success -> {
+                        val tarea = result.data
+                        
+                        if (tarea != null) {
+                            _uiState.update { 
+                                it.copy(
+                                    tarea = tarea,
+                                    isLoading = false
+                                ) 
+                            }
+                        } else {
+                            _uiState.update { 
+                                it.copy(
+                                    error = "No se encontró la tarea",
+                                    isLoading = false
+                                )
+                            }
+                        }
+                    }
+                    is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                tarea = tarea,
+                                error = "Error al cargar la tarea: ${result.exception?.message ?: "Error desconocido"}",
                                 isLoading = false
                             ) 
                         }
-                    } else {
-                        _uiState.update { 
-                            it.copy(
-                                error = "No se encontró la tarea",
-                                isLoading = false
-                            )
-                        }
                     }
-                } else if (result is Result.Error) {
-                    _uiState.update { 
-                        it.copy(
-                            error = "Error al cargar la tarea: ${result.exception.message}",
-                            isLoading = false
-                        ) 
+                    is Result.Loading -> {
+                        // No hacer nada, ya estamos en estado de carga
                     }
                 }
             } catch (e: Exception) {
@@ -101,27 +107,33 @@ class DetalleTareaViewModel @Inject constructor(
                     comentario = comentario
                 )
                 
-                if (result is Result.Success) {
-                    // Actualizar la tarea en el estado
-                    val tareaActualizada = _uiState.value.tarea?.copy(
-                        revisadaPorFamiliar = true,
-                        fechaRevision = Timestamp.now(),
-                        comentariosFamiliar = comentario
-                    )
-                    
-                    _uiState.update { 
-                        it.copy(
-                            tarea = tareaActualizada,
-                            mensaje = "Tarea marcada como revisada",
-                            isLoading = false
+                when (result) {
+                    is Result.Success -> {
+                        // Actualizar la tarea en el estado
+                        val tareaActualizada = _uiState.value.tarea?.copy(
+                            revisadaPorFamiliar = true,
+                            fechaRevision = Timestamp.now(),
+                            comentariosFamiliar = comentario
                         )
+                        
+                        _uiState.update { 
+                            it.copy(
+                                tarea = tareaActualizada,
+                                mensaje = "Tarea marcada como revisada",
+                                isLoading = false
+                            )
+                        }
                     }
-                } else if (result is Result.Error) {
-                    _uiState.update { 
-                        it.copy(
-                            error = "Error al marcar la tarea como revisada: ${result.exception.message}",
-                            isLoading = false
-                        ) 
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                error = "Error al marcar la tarea como revisada: ${result.exception?.message ?: "Error desconocido"}",
+                                isLoading = false
+                            ) 
+                        }
+                    }
+                    is Result.Loading -> {
+                        // No hacer nada, ya estamos en estado de carga
                     }
                 }
             } catch (e: Exception) {

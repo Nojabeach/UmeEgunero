@@ -6,7 +6,7 @@ import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -115,7 +115,7 @@ class GestionCursosYClasesViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar cursos: ${result.exception.message}",
+                                error = "Error al cargar cursos: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -159,7 +159,7 @@ class GestionCursosYClasesViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 clases = emptyList(),
-                                error = "Error al cargar clases: ${result.exception.message}",
+                                error = "Error al cargar clases: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -234,7 +234,7 @@ class GestionCursosYClasesViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al crear curso: ${result.exception.message}",
+                                error = "Error al crear curso: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -308,7 +308,7 @@ class GestionCursosYClasesViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al actualizar curso: ${result.exception.message}",
+                                error = "Error al actualizar curso: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }
@@ -354,7 +354,7 @@ class GestionCursosYClasesViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al eliminar curso: ${result.exception.message}",
+                                error = "Error al eliminar curso: ${result.exception?.message}",
                                 isLoading = false
                             )
                         }

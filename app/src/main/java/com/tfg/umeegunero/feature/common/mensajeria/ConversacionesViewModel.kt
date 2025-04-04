@@ -8,10 +8,13 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -74,22 +77,19 @@ class ConversacionesViewModel @Inject constructor(
                     var usuarioActual: Usuario? = null
                     
                     // Obtener el valor actual del flow
-                    usuarioResultFlow.collect { result ->
+                    usuarioResultFlow.collectLatest<Result<Usuario>> { result ->
                         when (result) {
-                            is com.tfg.umeegunero.data.model.Result.Success -> {
-                                usuarioActual = result.data
+                            is Result.Success<*> -> {
+                                usuarioActual = result.data as Usuario
                             }
-                            is com.tfg.umeegunero.data.model.Result.Error -> {
+                            is Result.Error -> {
                                 _uiState.update { state -> state.copy(
                                     isLoading = false,
-                                    error = "Error al cargar el usuario: ${result.exception.message}"
+                                    error = "Error al cargar el usuario: ${result.exception?.message}"
                                 ) }
                             }
-                            else -> {
-                                _uiState.update { state -> state.copy(
-                                    isLoading = false,
-                                    error = "Estado desconocido al cargar el usuario"
-                                ) }
+                            is Result.Loading<*> -> {
+                                // Mantener estado de carga
                             }
                         }
                     }
@@ -131,22 +131,19 @@ class ConversacionesViewModel @Inject constructor(
                     var usuarioActual: Usuario? = null
                     
                     // Obtener el valor actual del flow
-                    usuarioResultFlow.collect { result ->
+                    usuarioResultFlow.collectLatest<Result<Usuario>> { result ->
                         when (result) {
-                            is com.tfg.umeegunero.data.model.Result.Success -> {
-                                usuarioActual = result.data
+                            is Result.Success<*> -> {
+                                usuarioActual = result.data as Usuario
                             }
-                            is com.tfg.umeegunero.data.model.Result.Error -> {
+                            is Result.Error -> {
                                 _uiState.update { state -> state.copy(
                                     isLoading = false,
-                                    error = "Error al cargar el usuario: ${result.exception.message}"
+                                    error = "Error al cargar el usuario: ${result.exception?.message}"
                                 ) }
                             }
-                            else -> {
-                                _uiState.update { state -> state.copy(
-                                    isLoading = false,
-                                    error = "Estado desconocido al cargar el usuario"
-                                ) }
+                            is Result.Loading<*> -> {
+                                // Mantener estado de carga
                             }
                         }
                     }
@@ -203,7 +200,7 @@ class ConversacionesViewModel @Inject constructor(
                 // Obtener datos del participante
                 val participanteResult = usuarioRepository.obtenerUsuarioPorId(conversacion.participanteId)
                 val participante = when (participanteResult) {
-                    is com.tfg.umeegunero.data.model.Result.Success -> participanteResult.data
+                    is Result.Success<*> -> participanteResult.data as Usuario
                     else -> {
                         Timber.e("No se pudo obtener el participante ${conversacion.participanteId}")
                         continue // Saltar esta conversación si no podemos obtener el participante
@@ -218,9 +215,12 @@ class ConversacionesViewModel @Inject constructor(
                 if (conversacion.alumnoId != null) {
                     val alumnoResult = alumnoRepository.obtenerAlumnoPorId(conversacion.alumnoId)
                     nombreAlumno = when (alumnoResult) {
-                        is com.tfg.umeegunero.data.model.Result.Success -> {
+                        is Result.Success<*> -> {
                             val alumno = alumnoResult.data
-                            "${alumno?.nombre ?: ""} ${alumno?.apellidos ?: ""}"
+                            // Asumimos que alumno puede ser null o tener los campos asignados desde un Map
+                            val nombre = if (alumno is Map<*, *>) alumno["nombre"] as? String ?: "" else ""
+                            val apellidos = if (alumno is Map<*, *>) alumno["apellidos"] as? String ?: "" else ""
+                            "$nombre $apellidos"
                         }
                         else -> "Alumno"
                     }

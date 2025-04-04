@@ -7,7 +7,7 @@ import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Contacto
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.repository.CentroRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.CiudadRepository
 import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.data.model.Perfil
@@ -328,13 +328,14 @@ class AddCentroViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = "Error al cargar el centro: ${result.exception.message}"
+                                error = "Error al cargar el centro: ${result.exception?.message ?: "Error desconocido"}"
                             )
                         }
                     }
 
                     is Result.Loading -> {
-                        // No deberíamos llegar aquí si usamos withContext en el repositorio
+                        // Se mantiene el estado de carga
+                        _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {
@@ -469,7 +470,7 @@ class AddCentroViewModel @Inject constructor(
                     }
                     Timber.d("Centro eliminado correctamente junto con todos sus datos asociados: $centroId")
                 } else if (deleteResult is Result.Error) {
-                    throw deleteResult.exception
+                    throw deleteResult.exception ?: Exception("Error desconocido al eliminar el centro")
                 }
                 
             } catch (e: Exception) {
@@ -880,10 +881,10 @@ class AddCentroViewModel @Inject constructor(
                         }
                         is Result.Error -> {
                             // Si falla porque ya existe, lo manejamos graciosamente
-                            if (authResult.exception.message?.contains("The email address is already in use", ignoreCase = true) == true) {
+                            if (authResult.exception?.message?.contains("The email address is already in use", ignoreCase = true) == true) {
                                 Timber.d("El email ${admin.email} ya existe en Authentication, pero continuamos con la creación en Firestore")
                             } else {
-                                throw authResult.exception
+                                throw authResult.exception ?: Exception("Error desconocido en el proceso de autenticación")
                             }
                         }
                         else -> {}
@@ -928,11 +929,10 @@ class AddCentroViewModel @Inject constructor(
                             usuarioRepository.borrarUsuario(authSuccessUid)
                         }
                         Timber.e(saveResult.exception, "Error al guardar administrador en Firestore: ${admin.dni}")
-                        throw saveResult.exception
+                        throw saveResult.exception ?: Exception("Error desconocido al guardar administrador")
                     }
                     is Result.Loading -> {
-                        // No debería ocurrir
-                        throw Exception("Estado de carga inesperado al guardar administrador")
+                        // Continuamos con el estado de carga
                     }
                 }
             } catch (e: Exception) {

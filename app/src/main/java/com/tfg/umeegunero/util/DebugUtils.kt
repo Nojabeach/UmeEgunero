@@ -4,7 +4,7 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Perfil
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.UsuarioRepository
@@ -120,7 +120,7 @@ class DebugUtils @Inject constructor(
                     Log.d("DebugUtils", "Administrador creado correctamente en Firestore")
                 }
                 is Result.Error -> {
-                    Log.e("DebugUtils", "Error al guardar administrador en Firestore: ${savedResult.exception.message}")
+                    Log.e("DebugUtils", "Error al guardar administrador en Firestore: ${savedResult.exception?.message}")
                     // Intentar eliminar el usuario de Firebase Auth si falló en Firestore
                     try {
                         firebaseAuth.currentUser?.delete()?.await()
@@ -128,7 +128,7 @@ class DebugUtils @Inject constructor(
                     } catch (e: Exception) {
                         Log.e("DebugUtils", "Error al eliminar usuario de Firebase Auth: ${e.message}")
                     }
-                    throw savedResult.exception
+                    throw savedResult.exception ?: Exception("Error desconocido al guardar administrador")
                 }
                 else -> {
                     Log.e("DebugUtils", "Estado inesperado al guardar administrador")

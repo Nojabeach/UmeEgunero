@@ -8,7 +8,7 @@ import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -150,7 +150,7 @@ class FamiliarDashboardViewModel @Inject constructor(
 
                 // Procesamos el resultado que viene encapsulado en un tipo Result<T>
                 when (familiarResult) {
-                    is Result.Success -> {
+                    is Result.Success<Usuario> -> {
                         val familiar = familiarResult.data
                         _uiState.update {
                             it.copy(
@@ -179,13 +179,16 @@ class FamiliarDashboardViewModel @Inject constructor(
                         // Actualizamos el estado con el error y utilizamos Timber para logging
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar datos del familiar: ${familiarResult.exception.message}",
+                                error = "Error al cargar datos del familiar: ${familiarResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(familiarResult.exception, "Error al cargar familiar")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { 
+                        // Mantener estado de carga
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 // Capturamos cualquier excepción no manejada y actualizamos el estado
@@ -222,7 +225,7 @@ class FamiliarDashboardViewModel @Inject constructor(
                     val alumnoResult = usuarioRepository.getAlumnoPorDni(alumnoId)
 
                     when (alumnoResult) {
-                        is Result.Success -> {
+                        is Result.Success<Alumno> -> {
                             val alumno = alumnoResult.data
                             hijos.add(alumno)
 
@@ -233,7 +236,7 @@ class FamiliarDashboardViewModel @Inject constructor(
                         is Result.Error -> {
                             Timber.e(alumnoResult.exception, "Error al cargar hijo con ID: $alumnoId")
                         }
-                        else -> { /* Ignorar estado Loading */ }
+                        is Result.Loading -> { /* Continuar con la carga */ }
                     }
                 }
 
@@ -285,7 +288,7 @@ class FamiliarDashboardViewModel @Inject constructor(
                 for (profesorId in profesoresIds) {
                     val profesorResult = usuarioRepository.getUsuarioPorDni(profesorId)
 
-                    if (profesorResult is Result.Success) {
+                    if (profesorResult is Result.Success<Usuario>) {
                         // Guardamos en el mapa usando el ID como clave para acceso rápido
                         profesores[profesorId] = profesorResult.data
                     }
@@ -318,7 +321,7 @@ class FamiliarDashboardViewModel @Inject constructor(
                 val registrosResult = usuarioRepository.getRegistrosActividadByAlumno(alumnoId)
 
                 when (registrosResult) {
-                    is Result.Success -> {
+                    is Result.Success<List<RegistroActividad>> -> {
                         val registros = registrosResult.data
 
                         // Contamos cuántos registros no han sido vistos por el familiar
@@ -336,13 +339,15 @@ class FamiliarDashboardViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar registros: ${registrosResult.exception.message}",
+                                error = "Error al cargar registros: ${registrosResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(registrosResult.exception, "Error al cargar registros de actividad")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -374,7 +379,7 @@ class FamiliarDashboardViewModel @Inject constructor(
                 val mensajesResult = usuarioRepository.getMensajesNoLeidos(familiarId)
 
                 when (mensajesResult) {
-                    is Result.Success -> {
+                    is Result.Success<List<Mensaje>> -> {
                         val mensajes = mensajesResult.data
                         _uiState.update {
                             it.copy(
@@ -387,18 +392,20 @@ class FamiliarDashboardViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar mensajes: ${mensajesResult.exception.message}",
+                                error = "Error al cargar mensajes: ${mensajesResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(mensajesResult.exception, "Error al cargar mensajes")
                     }
-                    else -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
-                        error = "Error inesperado: ${e.message}",
+                        error = "Error al cargar mensajes: ${e.message}",
                         isLoading = false
                     )
                 }
@@ -422,7 +429,7 @@ class FamiliarDashboardViewModel @Inject constructor(
                 // Actualizar el estado del registro para indicar que ha sido visto por el familiar
                 val result = usuarioRepository.marcarRegistroComoVistoPorFamiliar(registroId)
 
-                if (result is Result.Success) {
+                if (result is Result.Success<Unit>) {
                     // Actualizamos los registros localmente sin tener que volver a cargarlos
                     // Esto mejora el rendimiento y proporciona actualizaciones instantáneas en la UI
                     val registrosActualizados = _uiState.value.registrosActividad.map { registro ->

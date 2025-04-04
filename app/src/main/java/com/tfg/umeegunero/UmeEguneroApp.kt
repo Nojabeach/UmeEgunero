@@ -1,121 +1,114 @@
 package com.tfg.umeegunero
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.google.firebase.BuildConfig
+import com.google.firebase.FirebaseApp
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.ktx.remoteConfig
+import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
+import com.tfg.umeegunero.data.worker.EventoWorker
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
-import com.tfg.umeegunero.notification.NotificationManager
-import com.tfg.umeegunero.util.DebugUtils
-import com.tfg.umeegunero.util.RemoteConfigManager
+import com.tfg.umeegunero.notification.AppNotificationManager
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 /**
- * Clase principal de la aplicación que extiende de [Application].
+ * Clase principal de la aplicación UmeEgunero.
  * 
- * Esta clase es responsable de inicializar los componentes globales de la aplicación:
- * - Configuración de Hilt para la inyección de dependencias
- * - Inicialización de Timber para el registro de logs
- * - Configuración de Firebase Remote Config
- * - Configuración de tareas periódicas en segundo plano con WorkManager
- * - Inicialización de recursos críticos de la aplicación
- *
- * Al utilizar la anotación [HiltAndroidApp], esta clase sirve como punto de entrada
- * para el contenedor de dependencias de Hilt a nivel de aplicación.
- *
- * @see SincronizacionWorker Para la implementación de tareas en segundo plano
- * @see RemoteConfigManager Para la gestión de configuraciones remotas
- * @see DebugUtils Utilidades para entornos de desarrollo
+ * Se encarga de inicializar componentes principales como Firebase,
+ * Timber para logging, y configurar canales de notificación.
  */
 @HiltAndroidApp
-class UmeEguneroApp : Application() {
+class UmeEguneroApp : Application(), Configuration.Provider {
 
-    /**
-     * Utilidades de depuración inyectadas por Hilt.
-     * Se utilizan para realizar operaciones específicas en entornos de desarrollo.
-     */
     @Inject
-    lateinit var debugUtils: DebugUtils
+    lateinit var notificationManager: AppNotificationManager
     
-    /**
-     * Gestor de notificaciones inyectado por Hilt
-     */
-    @Inject 
-    lateinit var notificationManager: NotificationManager
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+    
+    override fun getWorkManagerConfiguration(): Configuration {
+        return Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
+    }
 
-    /**
-     * Método llamado cuando se crea la aplicación.
-     *
-     * Inicializa los componentes fundamentales de la aplicación:
-     * 1. Timber para registro de logs en modo debug
-     * 2. Firebase Remote Config para configuraciones remotas
-     * 3. Comprueba y crea un administrador en caso de que no exista
-     * 4. Configura trabajos periódicos para la sincronización de datos
-     * 5. Inicializa los canales de notificación
-     */
     override fun onCreate() {
         super.onCreate()
         
-        // Inicializar Timber solo en debug
-        if (BuildConfig.DEBUG) {
-            Timber.plant(Timber.DebugTree())
+        // Inicializar Timber para logging
+        Timber.plant(Timber.DebugTree())
+        
+        // Inicializar Firebase
+        FirebaseApp.initializeApp(this)
+        
+        // Configurar Remote Config
+        val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
+        val configSettings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = 3600
         }
-
-        // Inicializar Remote Config
-        RemoteConfigManager.getInstance().initialize(this)
-
-        // Me aseguro de que haya un admin en el sistema
-        debugUtils.ensureAdminExists()
+        remoteConfig.setConfigSettingsAsync(configSettings)
         
         // Inicializar canales de notificación
-        notificationManager.initNotificationChannels()
+        notificationManager.createNotificationChannels()
         
-        // Configurar el trabajo periódico de sincronización
+        // Configurar tareas periódicas
         configurarSincronizacionPeriodica()
     }
-    
+
     /**
-     * Configura un trabajo periódico para sincronizar registros pendientes.
-     * 
-     * Este método utiliza WorkManager para crear una tarea programada que se ejecutará
-     * cada 15 minutos cuando el dispositivo tenga conexión a Internet. La tarea
-     * es responsable de sincronizar datos locales con el servidor para mantener
-     * la coherencia entre el dispositivo y el backend.
-     *
-     * Restricciones:
-     * - Requiere conexión a Internet para ejecutarse
-     * - Se programa cada 15 minutos
-     * - Reemplaza cualquier trabajo anterior con el mismo nombre
-     *
-     * @see SincronizacionWorker Implementación del trabajo de sincronización
-     * @see WorkManager API de Android para la programación de tareas en segundo plano
+     * Configura tareas periódicas para sincronización de datos y revisión de eventos
      */
     private fun configurarSincronizacionPeriodica() {
-        Timber.d("Configurando sincronización periódica")
-        
-        // Definimos las restricciones: necesitamos conexión a internet
+        // Restricciones: solo ejecutar con red
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
-        
-        // Creamos la solicitud de trabajo periódica (cada 15 minutos)
-        val sincronizacionRequest = PeriodicWorkRequestBuilder<SincronizacionWorker>(
-            15, TimeUnit.MINUTES
+            
+        // Tarea periódica de sincronización cada 15 minutos
+        val syncRequest = PeriodicWorkRequestBuilder<SincronizacionWorker>(
+            15, TimeUnit.MINUTES,  // Repetir cada 15 minutos
+            5, TimeUnit.MINUTES    // Flexibilidad de 5 minutos
         )
-            .setConstraints(constraints)
-            .build()
+        .setConstraints(constraints)
+        .build()
         
-        // Registramos el trabajo, reemplazando cualquier trabajo previo con el mismo nombre
-        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
-            SincronizacionWorker.WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            sincronizacionRequest
+        // Tarea periódica para revisar eventos cada hora
+        val eventosRequest = PeriodicWorkRequestBuilder<EventoWorker>(
+            1, TimeUnit.HOURS,     // Revisar cada hora
+            15, TimeUnit.MINUTES   // Flexibilidad de 15 minutos
         )
+        .build()
+        
+        // Registrar tareas con WorkManager
+        WorkManager.getInstance(this).apply {
+            enqueueUniquePeriodicWork(
+                SYNC_WORK_NAME,
+                androidx.work.ExistingPeriodicWorkPolicy.REPLACE,
+                syncRequest
+            )
+            
+            enqueueUniquePeriodicWork(
+                EVENTOS_WORK_NAME,
+                androidx.work.ExistingPeriodicWorkPolicy.REPLACE,
+                eventosRequest
+            )
+        }
+        
+        Timber.d("Sincronización periódica configurada")
+        Timber.d("Revisión periódica de eventos configurada")
+    }
+    
+    companion object {
+        private const val SYNC_WORK_NAME = "sincronizacion_periodica"
+        private const val EVENTOS_WORK_NAME = "revision_eventos"
     }
 } 

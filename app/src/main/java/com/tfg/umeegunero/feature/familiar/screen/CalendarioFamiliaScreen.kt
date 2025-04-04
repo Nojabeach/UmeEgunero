@@ -44,7 +44,7 @@ fun CalendarioFamiliaScreen(
                     add(Calendar.DAY_OF_MONTH, 2)
                 }.time,
                 ubicacion = "Salón de actos",
-                tipo = TipoEvento.REUNION,
+                tipo = TipoEventoUI.REUNION,
                 alumnoId = null
             ),
             Evento(
@@ -57,7 +57,7 @@ fun CalendarioFamiliaScreen(
                     add(Calendar.DAY_OF_MONTH, 5)
                 }.time,
                 ubicacion = "Museo de Ciencias Naturales",
-                tipo = TipoEvento.EXCURSION,
+                tipo = TipoEventoUI.EXCURSION,
                 alumnoId = "1"
             ),
             Evento(
@@ -70,7 +70,7 @@ fun CalendarioFamiliaScreen(
                     add(Calendar.DAY_OF_MONTH, 7)
                 }.time,
                 ubicacion = "Aula de ciencias",
-                tipo = TipoEvento.TAREA,
+                tipo = TipoEventoUI.TAREA,
                 alumnoId = "1"
             ),
             Evento(
@@ -83,7 +83,7 @@ fun CalendarioFamiliaScreen(
                     add(Calendar.DAY_OF_MONTH, 10)
                 }.time,
                 ubicacion = "Patio del colegio",
-                tipo = TipoEvento.EVENTO_ESPECIAL,
+                tipo = TipoEventoUI.EVENTO_ESPECIAL,
                 alumnoId = null
             )
         )
@@ -437,11 +437,11 @@ data class Evento(
     val descripcion: String,
     val fecha: Date,
     val ubicacion: String,
-    val tipo: TipoEvento,
+    val tipo: TipoEventoUI,
     val alumnoId: String? // null si es un evento general
 )
 
-enum class TipoEvento(val color: Color, val icon: ImageVector) {
+enum class TipoEventoUI(val color: Color, val icon: ImageVector) {
     REUNION(Color(0xFF1976D2), Icons.Default.People),
     EXCURSION(Color(0xFF388E3C), Icons.Default.Place),
     TAREA(Color(0xFFF57C00), Icons.Default.Assignment),

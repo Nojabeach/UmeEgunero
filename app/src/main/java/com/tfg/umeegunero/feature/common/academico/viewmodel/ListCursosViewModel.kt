@@ -3,7 +3,7 @@ package com.tfg.umeegunero.feature.common.academico.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Curso
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -94,7 +94,7 @@ class ListCursosViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            error = "Error al cargar cursos: ${result.exception.message}"
+                            error = "Error al cargar cursos: ${result.exception?.message}"
                         )
                     }
                 }
@@ -124,7 +124,7 @@ class ListCursosViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            error = "Error al eliminar curso: ${result.exception.message}"
+                            error = "Error al eliminar curso: ${result.exception?.message}"
                         )
                     }
                 }

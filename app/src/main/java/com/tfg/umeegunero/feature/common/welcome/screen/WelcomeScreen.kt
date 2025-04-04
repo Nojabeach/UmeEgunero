@@ -102,7 +102,7 @@ enum class WelcomeUserType {
 @Composable
 fun WelcomeScreen(
     onNavigateToLogin: (WelcomeUserType) -> Unit,
-    onNavigateToRegister: () -> Unit,
+    onNavigateToRegister: () -> Unit = {},
     onCloseApp: () -> Unit,
     onDemoRequested: () -> Unit = {},
     onNavigateToSupport: () -> Unit = {},

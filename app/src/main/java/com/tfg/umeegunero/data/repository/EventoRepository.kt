@@ -36,26 +36,52 @@ class EventoRepository @Inject constructor(
                 .await()
                 .documents
                 .mapNotNull { doc ->
-                    try {
-                        val id = doc.id
-                        val titulo = doc.getString("titulo") ?: ""
-                        val descripcion = doc.getString("descripcion") ?: ""
-                        val fechaTimestamp = doc.getTimestamp("fecha")
-                        val tipoString = doc.getString("tipo") ?: TipoEvento.OTRO.name
-                        val creadorId = doc.getString("creadorId") ?: ""
-                        val centroId = doc.getString("centroId") ?: ""
-
-                        val fecha = timestampToLocalDateTime(fechaTimestamp)
-                        val tipo = TipoEvento.valueOf(tipoString)
-
-                        Evento(id, titulo, descripcion, fecha, tipo, creadorId, centroId)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al convertir documento a Evento")
-                        null
-                    }
+                    Evento.fromMap(doc.data ?: mapOf(), doc.id)
                 }
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener eventos por centro")
+            emptyList()
+        }
+    }
+
+    /**
+     * Obtiene los eventos próximos para un usuario
+     * @param usuarioId ID del usuario
+     * @return Lista de eventos próximos ordenados por fecha
+     */
+    suspend fun obtenerEventosProximos(usuarioId: String): List<Evento> {
+        val ahora = Timestamp.now()
+        val unaSemanaFutura = Timestamp(Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000))
+        
+        return try {
+            // Obtener eventos públicos o donde el usuario es destinatario
+            val eventosSnapshot = firestore.collection(COLLECTION_EVENTOS)
+                .whereGreaterThanOrEqualTo("fecha", ahora)
+                .whereLessThanOrEqualTo("fecha", unaSemanaFutura)
+                .get()
+                .await()
+            
+            val eventos = mutableListOf<Evento>()
+            
+            for (doc in eventosSnapshot.documents) {
+                val data = doc.data ?: continue
+                val esPublico = data["publico"] as? Boolean ?: true
+                
+                // Si es público o el usuario está en la lista de destinatarios
+                if (esPublico) {
+                    Evento.fromMap(data, doc.id)?.let { eventos.add(it) }
+                } else {
+                    val destinatarios = data["destinatarios"] as? List<*> ?: emptyList<String>()
+                    if (destinatarios.contains(usuarioId)) {
+                        Evento.fromMap(data, doc.id)?.let { eventos.add(it) }
+                    }
+                }
+            }
+            
+            // Ordenar eventos por fecha (más próximos primero)
+            eventos.sortedBy { it.fecha.seconds }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener eventos próximos para el usuario $usuarioId")
             emptyList()
         }
     }
@@ -73,23 +99,7 @@ class EventoRepository @Inject constructor(
                 .await()
                 .documents
                 .mapNotNull { doc ->
-                    try {
-                        val id = doc.id
-                        val titulo = doc.getString("titulo") ?: ""
-                        val descripcion = doc.getString("descripcion") ?: ""
-                        val fechaTimestamp = doc.getTimestamp("fecha")
-                        val tipoString = doc.getString("tipo") ?: TipoEvento.OTRO.name
-                        val creadorId = doc.getString("creadorId") ?: ""
-                        val centroId = doc.getString("centroId") ?: ""
-
-                        val fecha = timestampToLocalDateTime(fechaTimestamp)
-                        val tipo = TipoEvento.valueOf(tipoString)
-
-                        Evento(id, titulo, descripcion, fecha, tipo, creadorId, centroId)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al convertir documento a Evento")
-                        null
-                    }
+                    Evento.fromMap(doc.data ?: mapOf(), doc.id)
                 }
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener eventos por profesor")
@@ -104,18 +114,7 @@ class EventoRepository @Inject constructor(
      */
     suspend fun crearEvento(evento: Evento): String {
         return try {
-            val fechaTimestamp = localDateTimeToTimestamp(evento.fecha)
-            
-            val eventoMap = hashMapOf(
-                "titulo" to evento.titulo,
-                "descripcion" to evento.descripcion,
-                "fecha" to fechaTimestamp,
-                "tipo" to evento.tipo.name,
-                "creadorId" to evento.creadorId,
-                "centroId" to evento.centroId
-            )
-            
-            val docRef = firestore.collection(COLLECTION_EVENTOS).add(eventoMap).await()
+            val docRef = firestore.collection(COLLECTION_EVENTOS).add(evento.toMap()).await()
             docRef.id
         } catch (e: Exception) {
             Timber.e(e, "Error al crear evento")
@@ -129,20 +128,9 @@ class EventoRepository @Inject constructor(
      */
     suspend fun actualizarEvento(evento: Evento) {
         try {
-            val fechaTimestamp = localDateTimeToTimestamp(evento.fecha)
-            
-            val eventoMap = hashMapOf(
-                "titulo" to evento.titulo,
-                "descripcion" to evento.descripcion,
-                "fecha" to fechaTimestamp,
-                "tipo" to evento.tipo.name,
-                "creadorId" to evento.creadorId,
-                "centroId" to evento.centroId
-            )
-            
             firestore.collection(COLLECTION_EVENTOS)
                 .document(evento.id)
-                .update(eventoMap as Map<String, Any>)
+                .update(evento.toMap())
                 .await()
         } catch (e: Exception) {
             Timber.e(e, "Error al actualizar evento")
@@ -183,5 +171,20 @@ class EventoRepository @Inject constructor(
     private fun localDateTimeToTimestamp(localDateTime: LocalDateTime): Timestamp {
         val instant = localDateTime.atZone(ZoneId.systemDefault()).toInstant()
         return Timestamp(Date.from(instant))
+    }
+
+    /**
+     * Actualiza la caché local de eventos desde Firestore
+     * @param centroId ID del centro educativo
+     */
+    suspend fun actualizarEventosLocales(centroId: String) {
+        try {
+            Timber.d("Sincronizando eventos para el centro $centroId")
+            val eventos = obtenerEventosPorCentro(centroId)
+            Timber.d("Se sincronizaron ${eventos.size} eventos")
+            // Aquí se podría implementar una caché local con Room
+        } catch (e: Exception) {
+            Timber.e(e, "Error al sincronizar eventos")
+        }
     }
 } 

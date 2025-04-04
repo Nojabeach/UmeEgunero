@@ -31,6 +31,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tfg.umeegunero.feature.common.files.composable.VisorArchivo
 import com.tfg.umeegunero.feature.common.files.viewmodel.DocumentoViewModel
+import com.tfg.umeegunero.feature.common.files.viewmodel.DocumentoViewModel.DocumentoUiState
 
 /**
  * Pantalla para visualizar documentos
@@ -67,7 +68,7 @@ fun DocumentoScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.nombre ?: "Documento") },
+                title = { Text(uiState.infoArchivo?.nombre ?: "Documento") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -89,7 +90,7 @@ fun DocumentoScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (uiState.url.isEmpty()) {
+            if (uiState.urlDescarga.isNullOrEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -100,8 +101,23 @@ fun DocumentoScreen(
                     )
                 }
             } else {
+                // Crear un DocumentoUiState para el VisorArchivo desde el del ViewModel
+                val visorState = com.tfg.umeegunero.feature.common.files.composable.DocumentoUiState(
+                    url = uiState.urlDescarga ?: "",
+                    nombre = uiState.infoArchivo?.nombre,
+                    tipoMime = uiState.infoArchivo?.tipo,
+                    isLoading = uiState.isLoading,
+                    isDescargando = false,
+                    error = uiState.error,
+                    archivoLocal = null,
+                    infoAdicional = mapOf(
+                        "Tamaño" to "${uiState.infoArchivo?.tamaño ?: 0} bytes",
+                        "Tipo" to (uiState.infoArchivo?.tipo ?: "Desconocido")
+                    )
+                )
+                
                 VisorArchivo(
-                    uiState = uiState,
+                    uiState = visorState,
                     onDescargar = { viewModel.descargarArchivo() },
                     modifier = Modifier.fillMaxSize()
                 )

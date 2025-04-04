@@ -1,7 +1,7 @@
 package com.tfg.umeegunero
 
 import android.content.SharedPreferences
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.Perfil

@@ -6,7 +6,7 @@ import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -164,7 +164,7 @@ class CentroDashboardViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = result.exception.message ?: "Error al cargar los cursos"
+                                error = result.exception?.message ?: "Error al cargar los cursos"
                             )
                         }
                         Timber.e(result.exception, "Error al cargar los cursos")

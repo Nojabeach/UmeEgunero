@@ -2,9 +2,12 @@ package com.tfg.umeegunero.feature.common.academico.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.data.repository.CalendarioRepository
+import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.toTimestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +19,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import javax.inject.Inject
-import kotlin.Result
 
 /**
  * Estado de UI para la pantalla de calendario
@@ -149,7 +151,7 @@ class CalendarioViewModel @Inject constructor(
                     id = "", // Será generado por Firestore
                     titulo = currentState.eventDescription.lines().firstOrNull() ?: "Evento",
                     descripcion = currentState.eventDescription,
-                    fecha = currentState.selectedDate.atStartOfDay(),
+                    fecha = currentState.selectedDate.atStartOfDay().toTimestamp(),
                     tipo = currentState.selectedEventType,
                     creadorId = calendarioRepository.obtenerUsuarioId(),
                     centroId = calendarioRepository.obtenerCentroId()
@@ -157,33 +159,33 @@ class CalendarioViewModel @Inject constructor(
 
                 val result = calendarioRepository.saveEvento(newEvent)
                 
-                when {
-                    result.isSuccess -> {
-                        val eventoGuardado = result.getOrNull()
-                        if (eventoGuardado != null) {
-                            _uiState.update { 
-                                it.copy(
-                                    eventos = it.eventos + eventoGuardado,
-                                    isLoading = false,
-                                    showEventDialog = false,
-                                    selectedEventType = null,
-                                    eventDescription = "",
-                                    isSuccess = true,
-                                    successMessage = "Evento guardado correctamente"
-                                ) 
-                            }
-                            Timber.d("Evento guardado: ${eventoGuardado.id}")
+                when (result) {
+                    is Result.Success -> {
+                        val eventoGuardado = result.data
+                        _uiState.update { 
+                            it.copy(
+                                eventos = it.eventos + eventoGuardado,
+                                isLoading = false,
+                                showEventDialog = false,
+                                selectedEventType = null,
+                                eventDescription = "",
+                                isSuccess = true,
+                                successMessage = "Evento guardado correctamente"
+                            ) 
                         }
+                        Timber.d("Evento guardado: ${eventoGuardado.id}")
                     }
-                    result.isFailure -> {
-                        val exception = result.exceptionOrNull()
+                    is Result.Error -> {
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = exception?.message ?: "Error al guardar el evento"
+                                error = result.exception?.message ?: "Error al guardar el evento"
                             ) 
                         }
-                        Timber.e(exception, "Error al guardar el evento")
+                        Timber.e(result.exception, "Error al guardar el evento")
+                    }
+                    is Result.Loading -> {
+                        // Ya estamos en estado de carga
                     }
                 }
             } catch (e: Exception) {
@@ -208,8 +210,8 @@ class CalendarioViewModel @Inject constructor(
             try {
                 val result = calendarioRepository.deleteEvento(eventoId)
                 
-                when {
-                    result.isSuccess -> {
+                when (result) {
+                    is Result.Success -> {
                         _uiState.update { 
                             it.copy(
                                 eventos = it.eventos.filter { it.id != eventoId },
@@ -220,15 +222,17 @@ class CalendarioViewModel @Inject constructor(
                         }
                         Timber.d("Evento eliminado: $eventoId")
                     }
-                    result.isFailure -> {
-                        val exception = result.exceptionOrNull()
+                    is Result.Error -> {
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = exception?.message ?: "Error al eliminar el evento"
+                                error = result.exception?.message ?: "Error al eliminar el evento"
                             ) 
                         }
-                        Timber.e(exception, "Error al eliminar el evento")
+                        Timber.e(result.exception, "Error al eliminar el evento")
+                    }
+                    is Result.Loading -> {
+                        // Ya estamos en estado de carga
                     }
                 }
             } catch (e: Exception) {
@@ -255,5 +259,12 @@ class CalendarioViewModel @Inject constructor(
      */
     fun clearSuccess() {
         _uiState.update { it.copy(isSuccess = false, successMessage = null) }
+    }
+
+    /**
+     * Alias para loadEventos - necesario para compatibilidad
+     */
+    fun cargarEventos() {
+        loadEventos()
     }
 } 
