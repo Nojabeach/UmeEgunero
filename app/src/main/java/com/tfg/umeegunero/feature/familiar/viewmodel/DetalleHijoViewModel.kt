@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,7 +64,7 @@ class DetalleHijoViewModel @Inject constructor(
                 val alumnoResult = usuarioRepository.getAlumnoPorDni(alumnoDni)
 
                 when (alumnoResult) {
-                    is Result.Success -> {
+                    is Result.Success<Alumno> -> {
                         val alumno = alumnoResult.data
                         _uiState.update {
                             it.copy(
@@ -81,13 +81,15 @@ class DetalleHijoViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar el alumno: ${alumnoResult.exception.message}",
+                                error = "Error al cargar el alumno: ${alumnoResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(alumnoResult.exception, "Error al cargar alumno")
                     }
-                    is Result.Loading -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { 
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -122,8 +124,16 @@ class DetalleHijoViewModel @Inject constructor(
                 for (profesorId in profesorIds) {
                     val profesorResult = usuarioRepository.getUsuarioPorDni(profesorId)
 
-                    if (profesorResult is Result.Success) {
-                        profesores.add(profesorResult.data)
+                    when (profesorResult) {
+                        is Result.Success<Usuario> -> {
+                            profesores.add(profesorResult.data)
+                        }
+                        is Result.Error -> {
+                            Timber.e(profesorResult.exception, "Error al cargar profesor: $profesorId")
+                        }
+                        is Result.Loading -> {
+                            // No actualizamos estado ya que es una operación secundaria
+                        }
                     }
                 }
 
@@ -148,9 +158,17 @@ class DetalleHijoViewModel @Inject constructor(
                 if (familiarId.isNotBlank()) {
                     val familiarResult = usuarioRepository.getUsuarioPorDni(familiarId)
 
-                    if (familiarResult is Result.Success) {
-                        _uiState.update {
-                            it.copy(familiar = familiarResult.data)
+                    when (familiarResult) {
+                        is Result.Success<Usuario> -> {
+                            _uiState.update {
+                                it.copy(familiar = familiarResult.data)
+                            }
+                        }
+                        is Result.Error -> {
+                            Timber.e(familiarResult.exception, "Error al cargar familiar")
+                        }
+                        is Result.Loading -> {
+                            // No actualizamos estado ya que es una operación secundaria
                         }
                     }
                 }

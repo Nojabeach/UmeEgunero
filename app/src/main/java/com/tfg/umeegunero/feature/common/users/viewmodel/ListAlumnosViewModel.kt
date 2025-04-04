@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,8 +45,10 @@ class ListAlumnosViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                when (val result = usuarioRepository.getUsersByType(TipoUsuario.ALUMNO)) {
-                    is Result.Success -> {
+                val result = usuarioRepository.getUsersByType(TipoUsuario.ALUMNO)
+                
+                when (result) {
+                    is Result.Success<List<Usuario>> -> {
                         val alumnos = result.data
                         _uiState.update { 
                             it.copy(
@@ -60,14 +62,14 @@ class ListAlumnosViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar alumnos: ${result.exception.message}",
+                                error = "Error al cargar alumnos: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }
                         Timber.e(result.exception, "Error al cargar alumnos")
                     }
                     is Result.Loading -> {
-                        // Este estado lo manejamos al inicio
+                        _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {

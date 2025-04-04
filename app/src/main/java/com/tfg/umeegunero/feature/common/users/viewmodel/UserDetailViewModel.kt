@@ -3,7 +3,7 @@ package com.tfg.umeegunero.feature.common.users.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,8 +43,10 @@ class UserDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                when (val result = usuarioRepository.getUsuarioById(userId)) {
-                    is Result.Success -> {
+                val result = usuarioRepository.getUsuarioById(userId)
+                
+                when (result) {
+                    is Result.Success<Usuario> -> {
                         _uiState.update { 
                             it.copy(
                                 usuario = result.data,
@@ -56,14 +58,14 @@ class UserDetailViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar usuario: ${result.exception.message}",
+                                error = "Error al cargar usuario: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }
                         Timber.e(result.exception, "Error al cargar usuario")
                     }
                     is Result.Loading -> {
-                        // Este estado ya lo manejamos al inicio
+                        _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {
@@ -89,7 +91,7 @@ class UserDetailViewModel @Inject constructor(
                 val result = usuarioRepository.borrarUsuarioByDni(dni)
                 
                 when (result) {
-                    is Result.Success -> {
+                    is Result.Success<Unit> -> {
                         _uiState.update { 
                             it.copy(
                                 usuario = null,
@@ -103,14 +105,14 @@ class UserDetailViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = result.exception.message ?: "Error al eliminar el usuario",
+                                error = result.exception?.message ?: "Error al eliminar el usuario",
                                 showDeleteConfirmation = false
                             ) 
                         }
                         Timber.e(result.exception, "Error al eliminar el usuario")
                     }
                     is Result.Loading -> {
-                        // No hacemos nada aquí
+                        _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {

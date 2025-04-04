@@ -3,7 +3,7 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -40,24 +40,37 @@ open class StudentDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
-            when (val result = usuarioRepository.getAlumnoPorId(alumnoId)) {
-                is Result.Success -> {
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            alumno = result.data
-                        )
+            try {
+                val result = usuarioRepository.getAlumnoPorId(alumnoId)
+                
+                when (result) {
+                    is Result.Success<Alumno> -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                alumno = result.data
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                error = result.exception?.message ?: "Error al cargar el alumno"
+                            )
+                        }
+                    }
+                    is Result.Loading -> { 
+                        _uiState.update { it.copy(isLoading = true) }
                     }
                 }
-                is Result.Error -> {
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            error = result.exception.message ?: "Error al cargar el alumno"
-                        )
-                    }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "Error inesperado al cargar el alumno"
+                    )
                 }
-                Result.Loading -> { /* No hacemos nada, ya estamos en estado de carga */ }
             }
         }
     }

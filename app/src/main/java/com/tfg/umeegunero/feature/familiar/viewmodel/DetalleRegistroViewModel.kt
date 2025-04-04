@@ -3,10 +3,12 @@ package com.tfg.umeegunero.feature.familiar.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.feature.familiar.screen.RegistroModel
 import com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroUiState
+import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.Usuario
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,7 +54,7 @@ class DetalleRegistroViewModel @Inject constructor(
                 val registroResult = usuarioRepository.getRegistroById(registroId)
 
                 when (registroResult) {
-                    is Result.Success -> {
+                    is Result.Success<RegistroActividad> -> {
                         val registroOriginal = registroResult.data
                         
                         // Convertir a nuestro modelo RegistroModel
@@ -85,13 +87,15 @@ class DetalleRegistroViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar el registro: ${registroResult.exception.message}",
+                                error = "Error al cargar el registro: ${registroResult.exception?.message}",
                                 isLoading = false
                             )
                         }
                         Timber.e(registroResult.exception, "Error al cargar registro")
                     }
-                    is Result.Loading -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { 
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -116,7 +120,7 @@ class DetalleRegistroViewModel @Inject constructor(
                 val profesorResult = usuarioRepository.getUsuarioPorDni(profesorId)
 
                 when (profesorResult) {
-                    is Result.Success -> {
+                    is Result.Success<Usuario> -> {
                         val profesor = profesorResult.data
                         _uiState.update {
                             it.copy(profesorNombre = "${profesor.nombre} ${profesor.apellidos}")
@@ -125,7 +129,9 @@ class DetalleRegistroViewModel @Inject constructor(
                     is Result.Error -> {
                         Timber.e(profesorResult.exception, "Error al cargar profesor")
                     }
-                    is Result.Loading -> { /* Ignorar estado Loading */ }
+                    is Result.Loading -> { 
+                        // No actualizamos el estado ya que es una operación secundaria
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error inesperado al cargar profesor")

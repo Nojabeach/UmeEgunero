@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.model.Result
+import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,7 +46,7 @@ class ListFamiliarViewModel @Inject constructor(
                 val result = usuarioRepository.getUsersByType(TipoUsuario.FAMILIAR)
                 
                 when (result) {
-                    is Result.Success -> {
+                    is Result.Success<List<Usuario>> -> {
                         _uiState.update { 
                             it.copy(
                                 familiares = result.data,
@@ -59,13 +59,13 @@ class ListFamiliarViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = result.exception.message ?: "Error al cargar los familiares"
+                                error = result.exception?.message ?: "Error al cargar los familiares"
                             ) 
                         }
                         Timber.e(result.exception, "Error al cargar los familiares")
                     }
                     is Result.Loading -> {
-                        // No hacemos nada aquí ya que hemos actualizado el estado de carga antes de la llamada
+                        _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {
@@ -91,7 +91,7 @@ class ListFamiliarViewModel @Inject constructor(
                 val result = usuarioRepository.borrarUsuarioByDni(dni)
                 
                 when (result) {
-                    is Result.Success -> {
+                    is Result.Success<Unit> -> {
                         // Recargar la lista de familiares después de eliminar
                         loadFamiliares()
                         Timber.d("Familiar eliminado con DNI: $dni")
@@ -100,13 +100,13 @@ class ListFamiliarViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = result.exception.message ?: "Error al eliminar el familiar"
+                                error = result.exception?.message ?: "Error al eliminar el familiar"
                             ) 
                         }
                         Timber.e(result.exception, "Error al eliminar el familiar")
                     }
                     is Result.Loading -> {
-                        // No hacemos nada aquí
+                        _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {
