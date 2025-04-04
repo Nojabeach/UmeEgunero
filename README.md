@@ -11,6 +11,55 @@ UmeEgunero es una aplicación Android desarrollada en Kotlin con Jetpack Compose
 - **Inyección de dependencias con Hilt**: Gestión eficiente de dependencias.
 - **Coroutines y Flow**: Para operaciones asíncronas y flujos de datos reactivos.
 
+## Sprint 1 - Configuración y Estabilización
+
+### Mejoras implementadas:
+
+1. **Configuración de Firebase**
+   - Integración correcta del plugin de Google Services
+   - Manejo robusto de la inicialización de Firebase
+   - Configuración de Remote Config
+
+2. **Optimización de código**
+   - Actualización de políticas WorkManager a versiones no obsoletas (REPLACE → UPDATE)
+   - Migración de componentes Divider a HorizontalDivider
+   - Actualización de iconos a versiones AutoMirrored
+
+3. **Pruebas**
+   - Implementación de pruebas unitarias básicas
+   - Configuración de entorno de test
+
+### Requisitos técnicos
+
+- Android Studio Hedgehog | 2023.1.1 o superior
+- Kotlin 1.9.22
+- Java JDK 17
+- Firebase (google-services.json en la carpeta app/)
+
+### Configuración del proyecto
+
+1. Clonar el repositorio
+2. Abrir en Android Studio
+3. Sincronizar el proyecto con los archivos Gradle
+4. Ejecutar la aplicación
+
+### Estructura del proyecto
+
+La aplicación sigue una arquitectura MVVM con Clean Architecture:
+
+- **app/src/main/java/com/tfg/umeegunero/**
+  - **data/**: Capa de datos y modelos
+  - **feature/**: Características organizadas por rol (profesor, familiar, admin)
+  - **ui/**: Componentes reutilizables de UI
+  - **util/**: Utilidades y clases auxiliares
+  - **navigation/**: Navegación y rutas de la aplicación
+
+## Próximos pasos
+
+- Mejoras en la interfaz de usuario
+- Optimización de rendimiento
+- Implementación de funcionalidades específicas por rol
+
 ## Sprint 1: Gestión de Tareas para Familiares
 
 El Sprint 1 se ha centrado en desarrollar las funcionalidades de gestión de tareas desde la perspectiva de los familiares:

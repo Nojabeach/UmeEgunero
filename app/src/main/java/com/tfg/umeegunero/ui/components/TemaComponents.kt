@@ -15,7 +15,7 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -95,7 +95,11 @@ fun TemaSelector(
                 )
             }
             
-            Divider()
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
             
             // Opción tema oscuro
             Row(
@@ -126,7 +130,11 @@ fun TemaSelector(
                 )
             }
             
-            Divider()
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
             
             // Opción tema sistema
             Row(

@@ -126,13 +126,13 @@ class UmeEguneroApp : Application(), Configuration.Provider {
         WorkManager.getInstance(this).apply {
             enqueueUniquePeriodicWork(
                 SYNC_WORK_NAME,
-                androidx.work.ExistingPeriodicWorkPolicy.REPLACE,
+                androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
                 syncRequest
             )
             
             enqueueUniquePeriodicWork(
                 EVENTOS_WORK_NAME,
-                androidx.work.ExistingPeriodicWorkPolicy.REPLACE,
+                androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
                 eventosRequest
             )
         }
@@ -142,7 +142,7 @@ class UmeEguneroApp : Application(), Configuration.Provider {
     }
     
     companion object {
-        private const val SYNC_WORK_NAME = "sincronizacion_periodica"
-        private const val EVENTOS_WORK_NAME = "revision_eventos"
+        internal const val SYNC_WORK_NAME = "sincronizacion_periodica"
+        internal const val EVENTOS_WORK_NAME = "revision_eventos"
     }
 } 
