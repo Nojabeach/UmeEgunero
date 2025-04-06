@@ -370,7 +370,7 @@ fun ChatProfesorScreen(
             Column {
                 // Barra de navegación normal
                 if (!isSearchActive) {
-                    TopAppBar(
+            TopAppBar(
                         title = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
@@ -417,14 +417,14 @@ fun ChatProfesorScreen(
                                 }
                             }
                         },
-                        navigationIcon = {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Volver"
-                                )
-                            }
-                        },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
                         actions = {
                             // Icono de búsqueda
                             IconButton(onClick = { 
@@ -473,7 +473,7 @@ fun ChatProfesorScreen(
                                 )
                             }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         )
                     )
@@ -512,7 +512,7 @@ fun ChatProfesorScreen(
                                 searchQuery = ""
                                 keyboardController?.hide()
                             }) {
-                                Icon(
+                Icon(
                                     imageVector = Icons.Default.ArrowBack,
                                     contentDescription = "Cerrar búsqueda"
                                 )
@@ -559,8 +559,8 @@ fun ChatProfesorScreen(
             }
         },
         bottomBar = {
-            Column(
-                modifier = Modifier
+        Column(
+            modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface)
             ) {
@@ -571,8 +571,8 @@ fun ChatProfesorScreen(
                     exit = shrinkVertically()
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant,
@@ -590,7 +590,7 @@ fun ChatProfesorScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
+                    Icon(
                                 imageVector = if (selectedImageUri != null) 
                                     Icons.Default.Image 
                                 else 
@@ -804,30 +804,30 @@ fun ChatProfesorScreen(
             // Mostrar mensaje de "No se encontraron resultados" si es necesario
             if (isSearchActive && searchQuery.isNotEmpty() && filteredMessages.isEmpty()) {
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
                             .padding(vertical = 32.dp),
-                        contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
+                        Icon(
                                 imageVector = Icons.Default.SearchOff,
-                                contentDescription = null,
+                            contentDescription = null,
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Text(
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
                                 text = "No se encontraron mensajes con \"$searchQuery\"",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                textAlign = TextAlign.Center
-                            )
+                            textAlign = TextAlign.Center
+                        )
                         }
                     }
                 }
@@ -884,14 +884,14 @@ fun ChatProfesorScreen(
                                 shape = RoundedCornerShape(16.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                             ) {
-                                Text(
+                        Text(
                                     text = formatDateHeader(date),
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                     }
                 }
             }
@@ -1033,13 +1033,13 @@ fun ChatProfesorScreen(
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        LazyColumn(
+                LazyColumn(
                             modifier = Modifier.heightIn(max = 300.dp)
                         ) {
                             items(messageTemplates) { template ->
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                                         .clickable {
                                             inputMessage = template
                                             showTemplatesDialog = false
@@ -1953,7 +1953,7 @@ private fun AttachmentPreview(
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator()
-                        } else {
+    } else {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -1981,8 +1981,8 @@ private fun AttachmentPreview(
                 
                 AttachmentType.PDF -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
                             .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -2079,21 +2079,21 @@ private fun AttachmentPreview(
                 
                 AttachmentType.LOCATION -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+        ) {
                         if (isLoading) {
                             CircularProgressIndicator()
                         } else {
-                            Box(
-                                modifier = Modifier
+            Box(
+                modifier = Modifier
                                     .fillMaxWidth()
                                     .height(180.dp)
                                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
+                contentAlignment = Alignment.Center
+            ) {
                                 Icon(
                                     imageVector = Icons.Default.LocationOn,
                                     contentDescription = null,
@@ -2104,7 +2104,7 @@ private fun AttachmentPreview(
                             
                             Spacer(modifier = Modifier.height(16.dp))
                             
-                            Text(
+                Text(
                                 text = "Centro Educativo UmeEgunero",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
@@ -2187,7 +2187,7 @@ private fun StatItem(
     value: String,
     label: String
 ) {
-    Column(
+            Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -2208,17 +2208,17 @@ private fun StatItem(
         
         Spacer(modifier = Modifier.height(4.dp))
         
-        Text(
+                    Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Text(
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
     }
 }
 
@@ -2232,19 +2232,19 @@ private fun PerformanceIndicator(
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium
             )
             
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -2273,8 +2273,8 @@ private fun ActivityBar(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
+                        Box(
+                            modifier = Modifier
                 .width(20.dp)
                 .fillMaxHeight(height)
                 .background(
@@ -2348,8 +2348,8 @@ fun HighlightedText(
                     .background(
                         if (isHighlighted) highlightColor.copy(alpha = 0.2f) else Color.Transparent
                     )
-            ) {
-                Text(
+                        ) {
+                            Text(
                     text = sectionText,
                     style = style,
                     color = color,
@@ -2500,7 +2500,7 @@ fun MessageItem(
                         
                         Text(
                             text = messageTime,
-                            style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodySmall,
                             color = if (isFromMe) 
                                 MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
                             else 

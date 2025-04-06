@@ -547,10 +547,11 @@ class FamiliarDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Limpia el error actual
+     * Limpia el mensaje de error actual
      * 
-     * Este método elimina cualquier mensaje de error del estado,
-     * típicamente después de que ha sido mostrado al usuario.
+     * Este método restablece el estado de error a null, generalmente
+     * después de que el error ha sido mostrado al usuario o cuando
+     * se inicia una nueva operación.
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }

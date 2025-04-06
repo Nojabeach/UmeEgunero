@@ -35,6 +35,8 @@ import com.google.firebase.firestore.DocumentId
  * @property anioAcademico Período académico al que corresponde el curso (ej. "2023-2024")
  * @property fechaCreacion Fecha de creación del curso
  * @property clases Lista de IDs de clases asociadas al curso
+ * @property numAlumnos Número de alumnos matriculados en el curso
+ * @property numProfesores Número de profesores asignados al curso
  * 
  * @see Centro Entidad relacionada que contiene el curso
  * @see Clase Entidad relacionada que representa los grupos dentro del curso
@@ -50,5 +52,7 @@ data class Curso(
     val centroId: String = "",
     val fechaCreacion: Timestamp = Timestamp.now(),
     val activo: Boolean = true,
-    val clases: List<String> = emptyList()
+    val clases: List<String> = emptyList(),
+    val numAlumnos: Int = 0,
+    val numProfesores: Int = 0
 ) 

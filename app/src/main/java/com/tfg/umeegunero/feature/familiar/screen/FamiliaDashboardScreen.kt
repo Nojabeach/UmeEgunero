@@ -49,6 +49,15 @@ import com.tfg.umeegunero.ui.components.charts.LineChart
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.launch
+
+/**
+ * Clase que representa una estadística para mostrar en el dashboard
+ */
+data class Estadistica(
+    val value: String,
+    val etiqueta: String
+)
 
 /**
  * Pantalla principal del dashboard para familiares
@@ -61,6 +70,9 @@ import java.util.*
  * 
  * @param navController Controlador de navegación
  * @param viewModel ViewModel que gestiona los datos del dashboard
+ * 
+ * @author Maitane (Estudiante 2º DAM)
+ * @version 2.0
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,14 +82,27 @@ fun FamiliaDashboardScreen(
 ) {
     // Recoger el estado desde el ViewModel
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     
-    // Estado para controlar las animaciones
-    var isDataLoaded by remember { mutableStateOf(false) }
+    // Variables para control de animaciones
+    var showContent by remember { mutableStateOf(false) }
+    val currentDate = remember { 
+        SimpleDateFormat("EEEE, d 'de' MMMM", Locale("es", "ES")).format(Date()) 
+    }
     
-    LaunchedEffect(uiState.hijos) {
-        // Marcamos como cargado si tenemos hijos
-        if (uiState.hijos.isNotEmpty()) {
-            isDataLoaded = true
+    // Efecto para mostrar contenido con animación
+    LaunchedEffect(Unit) {
+        showContent = true
+    }
+    
+    // Efecto para manejar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            scope.launch {
+                snackbarHostState.showSnackbar(message = it)
+                viewModel.clearError()
+            }
         }
     }
     
@@ -92,8 +117,8 @@ fun FamiliaDashboardScreen(
                     ) 
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    titleContentColor = MaterialTheme.colorScheme.onTertiary
                 ),
                 actions = {
                     // Notificaciones con badge para registros sin leer
@@ -114,7 +139,7 @@ fun FamiliaDashboardScreen(
                             Icon(
                                 imageVector = Icons.Default.Notifications,
                                 contentDescription = "Notificaciones",
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                tint = MaterialTheme.colorScheme.onTertiary
                             )
                         }
                     }
@@ -135,26 +160,16 @@ fun FamiliaDashboardScreen(
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Email,
+                                imageVector = Icons.AutoMirrored.Filled.Chat,
                                 contentDescription = "Mensajes",
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                tint = MaterialTheme.colorScheme.onTertiary
                             )
                         }
                     }
-                    
-                    // Perfil
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.Perfil.route)
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Perfil",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -162,259 +177,554 @@ fun FamiliaDashboardScreen(
                 .padding(paddingValues)
         ) {
             // Mostrar mensaje de carga mientras se obtienen los datos
-            if (uiState.isLoading && !isDataLoaded) {
+            if (uiState.isLoading && uiState.hijos.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
-            }
-            // Mostrar mensaje de error si hay algún problema
-            else if (uiState.error != null && uiState.hijos.isEmpty() && !isDataLoaded) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+            } 
+            // Mostrar contenido principal con animación
+            else {
+                AnimatedVisibility(
+                    visible = showContent,
+                    enter = fadeIn() + androidx.compose.animation.slideInVertically(
+                        initialOffsetY = { it / 2 },
+                        animationSpec = androidx.compose.animation.core.spring(
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                        )
+                    ),
+                    exit = fadeOut()
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Error,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = uiState.error ?: "Error desconocido",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.cargarDatosFamiliar() }) {
-                            Text("Reintentar")
+                    FamiliaDashboardContent(
+                        hijos = uiState.hijos,
+                        hijoActual = uiState.hijoSeleccionado,
+                        registrosActividad = uiState.registrosActividad,
+                        currentDate = currentDate,
+                        onSelectHijo = { viewModel.seleccionarHijo(it) },
+                        onVerTodosRegistros = { hijo ->
+                            viewModel.navegarAConsultaRegistroDiario(navController, hijo)
+                        },
+                        onNavigateToRegistro = { hijo ->
+                            viewModel.navegarAConsultaRegistroDiario(navController, hijo)
+                        },
+                        onNavigateToCalendario = {
+                            navController.navigate(AppScreens.CalendarioFamilia.route)
+                        },
+                        onNavigateToChat = {
+                            navController.navigate(AppScreens.ConversacionesFamilia.route)
+                        },
+                        onNavigateToTareas = {
+                            navController.navigate(AppScreens.TareasFamilia.route)
+                        },
+                        onNavigateToActividades = {
+                            navController.navigate(AppScreens.ActividadesPreescolar.route)
+                        },
+                        onNavigateToAsistencia = {
+                            navController.navigate(AppScreens.Dummy.createRoute("Asistencia"))
+                        },
+                        onNavigateToConfiguracion = {
+                            navController.navigate(AppScreens.Configuracion.route)
                         }
-                    }
+                    )
                 }
             }
-            // Mostrar contenido principal cuando esté disponible
-            else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+        }
+    }
+}
+
+/**
+ * Contenido principal del Dashboard Familiar con tarjetas informativas y opciones de gestión.
+ */
+@Composable
+private fun FamiliaDashboardContent(
+    hijos: List<Alumno>,
+    hijoActual: Alumno?,
+    registrosActividad: List<RegistroActividad>,
+    currentDate: String,
+    onSelectHijo: (String) -> Unit,
+    onVerTodosRegistros: (Alumno) -> Unit,
+    onNavigateToRegistro: (Alumno) -> Unit,
+    onNavigateToCalendario: () -> Unit,
+    onNavigateToChat: () -> Unit,
+    onNavigateToTareas: () -> Unit,
+    onNavigateToActividades: () -> Unit,
+    onNavigateToAsistencia: () -> Unit,
+    onNavigateToConfiguracion: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Tarjeta de fecha y bienvenida
+        item {
+            WelcomeCard(
+                nombreHijo = hijoActual?.nombre ?: "Tu familia",
+                currentDate = currentDate
+            )
+        }
+        
+        // Sección: Selección de hijos
+        item {
+            SelectorHijos(
+                hijos = hijos,
+                hijoActual = hijoActual,
+                onSelectHijo = onSelectHijo
+            )
+        }
+        
+        // Sección: Métricas destacadas - Solo si hay un hijo seleccionado
+        hijoActual?.let { hijo ->
+            item {
+                Text(
+                    text = "Métricas de ${hijo.nombre}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Estadísticas clave
+                val stats = generarEstadisticas(hijo, registrosActividad)
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(2.dp)
                 ) {
-                    // Sección: Selección de hijos
-                    item {
-                        SelectorHijos(
-                            hijos = uiState.hijos,
-                            hijoActual = uiState.hijoSeleccionado,
-                            onSelectHijo = { viewModel.seleccionarHijo(it) }
-                        )
-                    }
-                    
-                    // Sección: Métricas destacadas - Solo si hay un hijo seleccionado
-                    uiState.hijoSeleccionado?.let { hijo ->
-                        item {
-                            Text(
-                                text = "Métricas de ${hijo.nombre}",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            // Estadísticas clave
-                            val stats = generarEstadisticas(hijo, uiState.registrosActividad)
-                            StatsOverviewRow(
-                                stats = stats
-                            )
-                        }
-                        
-                        // Sección: Último registro diario
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = "Últimos registros",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        
-                                        TextButton(
-                                            onClick = { 
-                                                viewModel.navegarAConsultaRegistroDiario(
-                                                    navController, 
-                                                    hijo
-                                                ) 
-                                            }
-                                        ) {
-                                            Text("Ver todos")
-                                        }
-                                    }
-                                    
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    if (uiState.registrosActividad.isEmpty()) {
-                                        Card(
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(24.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = "No hay registros disponibles todavía",
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        // Mostrar los últimos 3 registros o menos
-                                        uiState.registrosActividad.take(3).forEach { registro ->
-                                            RegistroDiarioResumen(
-                                                registro = registro,
-                                                onClick = {
-                                                    viewModel.navegarAConsultaRegistroDiario(
-                                                        navController,
-                                                        hijo
-                                                    )
-                                                },
-                                                modifier = Modifier.padding(bottom = 8.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Sección: Acciones rápidas
-                    item {
-                        Text(
-                            text = "Acciones Rápidas",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            // Calendario
-                            item {
-                                AccionRapidaCard(
-                                    title = "Calendario",
-                                    icon = Icons.Default.CalendarToday,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    onClick = {
-                                        navController.navigate(AppScreens.CalendarioFamilia.route)
-                                    }
-                                )
-                            }
-                            
-                            // Chat
-                            item {
-                                AccionRapidaCard(
-                                    title = "Chat",
-                                    icon = Icons.AutoMirrored.Filled.Chat,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    onClick = {
-                                        navController.navigate(AppScreens.ConversacionesFamilia.route)
-                                    }
-                                )
-                            }
-                            
-                            // Tareas
-                            item {
-                                AccionRapidaCard(
-                                    title = "Tareas",
-                                    icon = Icons.AutoMirrored.Filled.Assignment,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                    onClick = {
-                                        navController.navigate(AppScreens.TareasFamilia.route)
-                                    }
-                                )
-                            }
-                            
-                            // Actividades Preescolar
-                            item {
-                                AccionRapidaCard(
-                                    title = "Actividades",
-                                    icon = Icons.Default.ChildCare,
-                                    color = Color(0xFF8E24AA), // Morado
-                                    onClick = {
-                                        navController.navigate(AppScreens.ActividadesPreescolar.route)
-                                    }
-                                )
-                            }
-                            
-                            // Asistencia
-                            item {
-                                AccionRapidaCard(
-                                    title = "Asistencia",
-                                    icon = Icons.Default.EventAvailable,
-                                    color = Color(0xFF00897B), // Verde azulado
-                                    onClick = {
-                                        // Pendiente de implementar
-                                        navController.navigate(AppScreens.Dummy.createRoute("Asistencia"))
-                                    }
-                                )
-                            }
-                            
-                            // Configuración
-                            item {
-                                AccionRapidaCard(
-                                    title = "Ajustes",
-                                    icon = Icons.Default.Settings,
-                                    color = Color(0xFF546E7A), // Gris azulado
-                                    onClick = {
-                                        navController.navigate(AppScreens.Configuracion.route)
+                            // Mostramos cada estadística individualmente
+                            val estadisticas = generarEstadisticas(hijo, registrosActividad)
+                            estadisticas.forEach { stat ->
+                                EstadisticaItem(
+                                    valor = stat.value,
+                                    etiqueta = stat.etiqueta,
+                                    icono = when(stat.etiqueta) {
+                                        "Asistencia" -> Icons.Default.EventAvailable
+                                        "Tareas" -> Icons.AutoMirrored.Filled.Assignment
+                                        "Comidas" -> Icons.Default.Restaurant
+                                        else -> Icons.Default.Star
+                                    },
+                                    color = when(stat.etiqueta) {
+                                        "Asistencia" -> MaterialTheme.colorScheme.primary
+                                        "Tareas" -> MaterialTheme.colorScheme.secondary
+                                        "Comidas" -> MaterialTheme.colorScheme.tertiary
+                                        else -> MaterialTheme.colorScheme.primary
                                     }
                                 )
                             }
                         }
-                    }
-                    
-                    // Espacio adicional al final
-                    item {
-                        Spacer(modifier = Modifier.height(50.dp))
                     }
                 }
             }
             
-            // Mostrar mensaje de error si surge durante la operación
-            if (uiState.error != null && isDataLoaded) {
-                Snackbar(
-                    action = {
-                        TextButton(onClick = { viewModel.clearError() }) {
-                            Text("OK")
+            // Sección: Último registro diario
+            item {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Últimos registros",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        TextButton(
+                            onClick = { onVerTodosRegistros(hijo) }
+                        ) {
+                            Text("Ver todos")
                         }
-                    },
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .align(Alignment.BottomCenter)
-                ) {
-                    Text(uiState.error!!)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    if (registrosActividad.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No hay registros disponibles todavía",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        // Mostrar los últimos 3 registros o menos con estilo renovado
+                        registrosActividad.take(3).forEach { registro ->
+                            RegistroDiarioCard(
+                                registro = registro,
+                                onClick = { onNavigateToRegistro(hijo) },
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+                    }
                 }
+            }
+        }
+        
+        // Sección: Acciones rápidas
+        item {
+            Text(
+                text = "Acciones Rápidas",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            // Opciones en grid
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                userScrollEnabled = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp)
+            ) {
+                item {
+                    AccionFamiliaItem(
+                        titulo = "Calendario",
+                        descripcion = "Eventos escolares",
+                        icono = Icons.Default.CalendarToday,
+                        color = MaterialTheme.colorScheme.primary,
+                        onClick = onNavigateToCalendario
+                    )
+                }
+                
+                item {
+                    AccionFamiliaItem(
+                        titulo = "Chat",
+                        descripcion = "Comunicación",
+                        icono = Icons.AutoMirrored.Filled.Chat,
+                        color = MaterialTheme.colorScheme.secondary,
+                        onClick = onNavigateToChat
+                    )
+                }
+                
+                item {
+                    AccionFamiliaItem(
+                        titulo = "Tareas",
+                        descripcion = "Seguimiento",
+                        icono = Icons.AutoMirrored.Filled.Assignment,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        onClick = onNavigateToTareas
+                    )
+                }
+                
+                item {
+                    AccionFamiliaItem(
+                        titulo = "Actividades",
+                        descripcion = "Preescolar",
+                        icono = Icons.Default.ChildCare,
+                        color = Color(0xFF8E24AA), // Morado
+                        onClick = onNavigateToActividades
+                    )
+                }
+            }
+        }
+        
+        // Espacio adicional al final
+        item {
+            Spacer(modifier = Modifier.height(50.dp))
+        }
+    }
+}
+
+/**
+ * Tarjeta de bienvenida con el nombre del hijo y fecha actual.
+ */
+@Composable
+fun WelcomeCard(
+    nombreHijo: String,
+    currentDate: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Información de bienvenida
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = nombreHijo,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                
+                Text(
+                    text = currentDate,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                )
+            }
+            
+            // Icono decorativo
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Home,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Componente para mostrar una estadística individual
+ */
+@Composable
+fun EstadisticaItem(
+    valor: String,
+    etiqueta: String,
+    icono: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(1f),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icono,
+                    contentDescription = etiqueta,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = valor,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            
+            Text(
+                text = etiqueta,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+/**
+ * Tarjeta para mostrar un registro diario.
+ */
+@Composable
+fun RegistroDiarioCard(
+    registro: RegistroActividad,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Formatear la fecha para visualización
+    val fecha = remember(registro.fecha) {
+        val timestamp = registro.fecha
+        val date = timestamp.toDate()
+        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Icono de la actividad
+            Icon(
+                imageVector = Icons.Default.Feed,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            
+            // Información del registro
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = fecha,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                
+                Text(
+                    text = "Profesor: ${registro.profesorNombre ?: "No especificado"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                
+                // Verificamos si hay observaciones disponibles
+                if (registro.observaciones != null && registro.observaciones.isNotBlank()) {
+                    Text(
+                        text = registro.observaciones,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                } else if (registro.observacionesGenerales.isNotBlank()) {
+                    Text(
+                        text = registro.observacionesGenerales,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+            
+            // Indicador de no leído
+            if (!registro.vistoPorFamiliar && !registro.visualizadoPorFamiliar) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Elemento para acción rápida en el dashboard de familia.
+ */
+@Composable
+fun AccionFamiliaItem(
+    titulo: String,
+    descripcion: String,
+    icono: ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Icono con fondo circular
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icono,
+                    contentDescription = titulo,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            // Textos
+            Column {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Text(
+                    text = descripcion,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -554,159 +864,21 @@ fun AlumnoPerfilItem(
 }
 
 /**
- * Componente que muestra un resumen del registro diario
- */
-@Composable
-fun RegistroDiarioResumen(
-    registro: RegistroActividad,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (!registro.visualizadoPorFamiliar) 
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            else 
-                MaterialTheme.colorScheme.surface
-        ),
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icono de registro
-            Card(
-                shape = CircleShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                ),
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Feed,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                // Fecha del registro
-                Text(
-                    text = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                        .format(registro.fecha.toDate()),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                // Resumen de comidas
-                val resumenComida = obtenerResumenComida(registro)
-                if (resumenComida.isNotEmpty()) {
-                    Text(
-                        text = resumenComida,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                
-                // Si hay observaciones generales, mostrarlas
-                if (registro.observacionesGenerales.isNotEmpty()) {
-                    Text(
-                        text = registro.observacionesGenerales,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            
-            // Indicador de nuevo
-            if (!registro.visualizadoPorFamiliar) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-            } else {
-                Spacer(modifier = Modifier.width(10.dp))
-            }
-        }
-    }
-}
-
-/**
- * Componente para tarjetas de acciones rápidas
- */
-@Composable
-fun AccionRapidaCard(
-    title: String,
-    icon: ImageVector,
-    color: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        onClick = onClick
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = color,
-                modifier = Modifier.size(24.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-/**
  * Función que genera las estadísticas a partir de los registros
  */
 @Composable
 fun generarEstadisticas(
     alumno: Alumno,
     registros: List<RegistroActividad>
-): List<StatItem> {
+): List<Estadistica> {
     val totalRegistros = registros.size
     
     // Registros de hoy
     val formatoFecha = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
     val hoy = formatoFecha.format(Date())
     val registrosHoy = registros.count { 
-        formatoFecha.format(it.fecha.toDate()) == hoy 
+        val fecha = it.fecha.toDate()
+        formatoFecha.format(fecha) == hoy 
     }
     
     // Porcentaje de comidas completas
@@ -727,23 +899,17 @@ fun generarEstadisticas(
     }
     
     return listOf(
-        StatItem(
-            title = "Registros",
-            value = "$totalRegistros",
-            icon = Icons.Default.AssignmentTurnedIn,
-            color = MaterialTheme.colorScheme.primary
+        Estadistica(
+            value = totalRegistros.toString(),
+            etiqueta = "Asistencia"
         ),
-        StatItem(
-            title = "Hoy",
-            value = "$registrosHoy",
-            icon = Icons.Default.Today,
-            color = MaterialTheme.colorScheme.secondary
+        Estadistica(
+            value = registrosHoy.toString(),
+            etiqueta = "Tareas"
         ),
-        StatItem(
-            title = "Comidas",
+        Estadistica(
             value = porcentajeComidas,
-            icon = Icons.Default.Restaurant,
-            color = MaterialTheme.colorScheme.tertiary
+            etiqueta = "Comidas"
         )
     )
 }

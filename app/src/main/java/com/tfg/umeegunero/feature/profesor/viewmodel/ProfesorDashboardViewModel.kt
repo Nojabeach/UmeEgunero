@@ -491,42 +491,53 @@ class ProfesorDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Limpia el error actual
+     * Limpia el mensaje de error actual
+     * 
+     * Este método restablece el estado de error a null, generalmente
+     * después de que el error ha sido mostrado al usuario o cuando
+     * se inicia una nueva operación.
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
 
     /**
-     * Cierra la sesión del usuario
+     * Cierra la sesión del usuario actual
+     * 
+     * Este método ejecuta el proceso de logout mediante el repositorio
+     * de autenticación y actualiza el estado para redirigir al usuario
+     * a la pantalla de bienvenida/login.
      */
     fun logout() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            
-            authRepository.signOut()
-            
-            _uiState.update { 
-                it.copy(
-                    isLoading = false,
-                    navigateToWelcome = true
-                )
+            try {
+                authRepository.signOut()
+                _uiState.update { it.copy(navigateToWelcome = true) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cerrar sesión")
+                _uiState.update { 
+                    it.copy(error = e.message ?: "Error al cerrar sesión")
+                }
             }
         }
     }
 
     /**
-     * Función para navegar a la pantalla de registro diario de un alumno
+     * Navega a la pantalla de registro diario de un alumno
+     * 
+     * @param navController Controlador de navegación para gestionar la navegación entre pantallas
+     * @param alumno Alumno para el que se va a registrar la actividad
+     * @param profesorId ID del profesor que realiza el registro
+     * @param claseId ID de la clase donde se registra la actividad
+     * @param claseNombre Nombre de la clase para mostrar en la pantalla de registro
      */
-    fun navegarARegistroDiario(navController: NavController, alumno: Alumno, profesorId: String, claseId: String, claseNombre: String) {
-        navController.navigate(
-            AppScreens.RegistroDiario.createRoute(
-                alumnoId = alumno.dni,
-                claseId = claseId,
-                profesorId = profesorId,
-                alumnoNombre = "${alumno.nombre} ${alumno.apellidos}",
-                claseNombre = claseNombre
-            )
-        )
+    fun navegarARegistroDiario(
+        navController: NavController,
+        alumno: Alumno,
+        profesorId: String,
+        claseId: String,
+        claseNombre: String
+    ) {
+        navController.navigate("registro_diario/${alumno.dni}/$profesorId/$claseId/${claseNombre.replace(" ", "_")}")
     }
 }
