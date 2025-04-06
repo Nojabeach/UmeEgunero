@@ -255,14 +255,14 @@ open class UsuarioRepository @Inject constructor(
     /**
      * Obtiene un usuario por su ID (DNI)
      */
-    suspend fun getUsuarioById(id: String): Result<Usuario> = obtenerUsuarioPorId(id)
+    suspend fun getUsuarioById(dni: String): Result<Usuario> = obtenerUsuarioPorId(dni)
 
     /**
      * Obtiene un usuario por su ID (DNI)
      */
-    suspend fun obtenerUsuarioPorId(id: String): Result<Usuario> = withContext(Dispatchers.IO) {
+    suspend fun obtenerUsuarioPorId(dni: String): Result<Usuario> = withContext(Dispatchers.IO) {
         try {
-            val userDoc = usuariosCollection.document(id).get().await()
+            val userDoc = usuariosCollection.document(dni).get().await()
 
             if (userDoc.exists()) {
                 val usuario = userDoc.toObject(Usuario::class.java)
@@ -1509,5 +1509,49 @@ open class UsuarioRepository @Inject constructor(
         val usuario = getUsuarioActual() ?: return null
         
         return if (esProfesor()) "profesor" else "alumno"
+    }
+
+    /**
+     * Obtiene el usuario actualmente autenticado
+     * @return Usuario actual o null si no hay sesión
+     */
+    suspend fun obtenerUsuarioActual(): Usuario? {
+        try {
+            val firebaseUser = getUsuarioActualAuth() ?: return null
+            
+            // Buscar usuario por uid
+            val usuarioDoc = usuariosCollection
+                .document(firebaseUser.uid)
+                .get()
+                .await()
+            
+            if (!usuarioDoc.exists()) return null
+            
+            return usuarioDoc.toObject(Usuario::class.java)?.copy(dni = usuarioDoc.id)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener usuario actual")
+            return null
+        }
+    }
+
+    /**
+     * Obtiene todos los usuarios de un centro específico
+     * @param centroId ID del centro
+     * @return Lista de usuarios del centro
+     */
+    suspend fun obtenerUsuariosPorCentro(centroId: String): List<Usuario> {
+        return try {
+            val snapshot = usuariosCollection
+                .whereEqualTo("centroId", centroId)
+                .get()
+                .await()
+            
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Usuario::class.java)?.copy(dni = doc.id)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener usuarios por centro")
+            emptyList()
+        }
     }
 }

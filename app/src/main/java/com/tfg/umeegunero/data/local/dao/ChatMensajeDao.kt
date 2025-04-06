@@ -58,13 +58,13 @@ interface ChatMensajeDao {
      * Marca un mensaje como leído.
      */
     @Query("UPDATE chat_mensajes SET leido = 1, fechaLeido = :timestamp WHERE id = :mensajeId")
-    suspend fun marcarMensajeComoLeido(mensajeId: String, timestamp: Long = System.currentTimeMillis())
+    suspend fun marcarComoLeido(mensajeId: String, timestamp: Long)
     
     /**
      * Marca todos los mensajes de una conversación como leídos.
      */
     @Query("UPDATE chat_mensajes SET leido = 1, fechaLeido = :timestamp WHERE conversacionId = :conversacionId AND receptorId = :usuarioId AND leido = 0")
-    suspend fun marcarTodosComoLeidos(conversacionId: String, usuarioId: String, timestamp: Long = System.currentTimeMillis())
+    suspend fun marcarTodosComoLeidos(conversacionId: String, usuarioId: String, timestamp: Long)
     
     /**
      * Obtiene el número de mensajes no leídos de todas las conversaciones para un usuario.
@@ -99,6 +99,6 @@ interface ChatMensajeDao {
     /**
      * Marca mensajes como sincronizados.
      */
-    @Query("UPDATE chat_mensajes SET sincronizado = 1 WHERE id IN (:mensajeIds)")
-    suspend fun marcarComoSincronizados(mensajeIds: List<String>)
+    @Query("UPDATE chat_mensajes SET sincronizado = 1 WHERE id = :mensajeId")
+    suspend fun marcarComoSincronizado(mensajeId: String)
 } 

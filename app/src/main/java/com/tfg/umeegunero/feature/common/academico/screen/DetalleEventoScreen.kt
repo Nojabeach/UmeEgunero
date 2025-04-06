@@ -1,11 +1,10 @@
 package com.tfg.umeegunero.feature.common.academico.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -15,131 +14,115 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.feature.common.academico.viewmodel.DetalleEventoViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
-import com.tfg.umeegunero.feature.common.academico.viewmodel.DetalleEventoUiState
-import com.tfg.umeegunero.util.toLocalDate
-import com.tfg.umeegunero.util.toLocalTime
-import java.time.format.DateTimeFormatter
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Pantalla para visualizar y editar los detalles de un evento
- *
+ * Pantalla para ver los detalles de un evento
+ * 
  * @param navController Controlador de navegación
- * @param eventoId ID del evento a visualizar/editar
- * @param onEventUpdated Callback ejecutado cuando el evento se actualiza
- * @param viewModel ViewModel para la pantalla
+ * @param eventoId ID del evento a mostrar
+ * @param viewModel ViewModel para gestionar los datos del evento
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleEventoScreen(
     navController: NavController,
     eventoId: String,
-    onEventUpdated: () -> Unit = {},
     viewModel: DetalleEventoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val dialogoConfirmacionVisible = remember { mutableStateOf(false) }
     
-    // Cargar evento cuando cambia el ID
+    // Cargar el evento al inicio
     LaunchedEffect(eventoId) {
-        viewModel.loadEvento(eventoId)
+        viewModel.cargarEvento(eventoId)
     }
     
-    // Mostrar mensajes de error en Snackbar
+    // Mostrar errores en el snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
             snackbarHostState.showSnackbar(message = it)
-            viewModel.clearError()
+            viewModel.limpiarError()
         }
     }
     
-    // Manejar navegación hacia atrás después de guardar
-    LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) {
-            onEventUpdated()
+    // Observar cambios en el estado de navegación
+    LaunchedEffect(uiState.navegarAtras) {
+        if (uiState.navegarAtras) {
             navController.popBackStack()
-            viewModel.clearSuccess()
+            viewModel.resetearNavegacion()
         }
     }
-    
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (uiState.isEditing) "Editar evento" else "Detalle del evento") },
+                title = { Text("Detalles del evento") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
+                            contentDescription = "Volver",
                         )
                     }
                 },
-                actions = {
-                    if (!uiState.isEditing) {
-                        // Botón para editar
-                        IconButton(onClick = { viewModel.startEditing() }) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Editar evento"
-                            )
-                        }
-                        
-                        // Botón para eliminar
-                        IconButton(onClick = { viewModel.showDeleteConfirmation() }) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Eliminar evento",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    } else {
-                        // Botón para guardar
-                        IconButton(onClick = { viewModel.saveEvento() }) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = "Guardar cambios"
-                            )
-                        }
-                        
-                        // Botón para cancelar
-                        IconButton(onClick = { viewModel.cancelEditing() }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Cancelar"
-                            )
-                        }
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    // Botón para editar
+                    IconButton(onClick = { viewModel.mostrarDialogoEdicion() }) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar evento"
+                        )
+                    }
+                    
+                    // Botón para eliminar
+                    IconButton(onClick = { dialogoConfirmacionVisible.value = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar evento"
+                        )
+                    }
+                }
             )
         }
     ) { paddingValues ->
-        
-        if (uiState.isLoading) {
+        if (uiState.cargando) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                LoadingIndicator(isLoading = true, message = "Cargando evento...")
+                LoadingIndicator(
+                    isLoading = true,
+                    message = "Cargando evento..."
+                )
             }
         } else if (uiState.evento != null) {
-            val evento = checkNotNull(uiState.evento)
+            val evento = uiState.evento!!
             
             Column(
                 modifier = Modifier
@@ -148,28 +131,160 @@ fun DetalleEventoScreen(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Contenido del evento
-                if (uiState.isEditing) {
-                    // Modo edición
-                    EditEventContent(
-                        uiState = uiState,
-                        onTituloChange = viewModel::updateTitulo,
-                        onDescripcionChange = viewModel::updateDescripcion,
-                        onTipoChange = viewModel::updateTipo,
-                        onFechaChange = viewModel::updateFecha,
-                        onTimeChange = viewModel::updateHora,
-                        onUbicacionChange = viewModel::updateUbicacion,
-                        onRecordatorioChange = viewModel::updateRecordatorio,
-                        onTiempoRecordatorioChange = viewModel::updateTiempoRecordatorio,
-                        onPublicoChange = viewModel::updatePublico
+                // Cabecera con tipo y título
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    color = evento.tipo.color.copy(alpha = 0.1f),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Indicador de tipo
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(evento.tipo.color.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(evento.tipo.color)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Título del evento
+                        Text(
+                            text = evento.titulo,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        // Tipo de evento
+                        Text(
+                            text = evento.tipo.nombre,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+                
+                // Sección de fecha y hora
+                ItemInfoEvento(
+                    icono = Icons.Default.CalendarMonth,
+                    titulo = "Fecha y hora",
+                    contenido = formatearFecha(evento.fecha)
+                )
+                
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                
+                // Sección de descripción
+                ItemInfoEvento(
+                    icono = Icons.Default.Description,
+                    titulo = "Descripción",
+                    contenido = evento.descripcion.ifEmpty { "Sin descripción" }
+                )
+                
+                if (evento.ubicacion.isNotEmpty()) {
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    
+                    // Sección de ubicación
+                    ItemInfoEvento(
+                        icono = Icons.Default.LocationOn,
+                        titulo = "Ubicación",
+                        contenido = evento.ubicacion
                     )
-                } else {
-                    // Modo visualización
-                    ViewEventContent(evento = evento)
+                }
+                
+                if (evento.recordatorio) {
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    
+                    // Sección de recordatorio
+                    ItemInfoEvento(
+                        icono = Icons.Default.Notifications,
+                        titulo = "Recordatorio",
+                        contenido = "${evento.tiempoRecordatorioMinutos} minutos antes"
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Información adicional
+                Text(
+                    text = "Información adicional",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Sección de creador
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = "Creado por: Profesor",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                
+                if (!evento.publico) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Group,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Text(
+                            text = "Evento privado (${evento.destinatarios.size} destinatarios)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
+            
+            // Diálogo de edición
+            if (uiState.dialogoEdicionVisible) {
+                DialogoEdicionEvento(
+                    evento = evento,
+                    onDismiss = { viewModel.ocultarDialogoEdicion() },
+                    onGuardar = { eventoModificado -> 
+                        viewModel.actualizarEvento(eventoModificado)
+                    }
+                )
+            }
         } else {
-            // No se encontró el evento
+            // Evento no encontrado
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -177,426 +292,282 @@ fun DetalleEventoScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "El evento no existe o ha sido eliminado",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = "Evento no encontrado",
+                    style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center
                 )
             }
         }
-    }
-    
-    // Mostrar diálogo de confirmación para eliminar evento
-    if (uiState.showDeleteConfirmation) {
-        AlertDialog(
-            onDismissRequest = { viewModel.hideDeleteConfirmation() },
-            title = { Text("Eliminar evento") },
-            text = { Text("¿Estás seguro de que quieres eliminar este evento? Esta acción no se puede deshacer.") },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.deleteEvento() },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Eliminar")
+        
+        // Diálogo de confirmación para eliminar
+        if (dialogoConfirmacionVisible.value) {
+            AlertDialog(
+                onDismissRequest = { dialogoConfirmacionVisible.value = false },
+                title = { Text("Eliminar evento") },
+                text = { Text("¿Estás seguro de que quieres eliminar este evento? Esta acción no se puede deshacer.") },
+                confirmButton = {
+                    Button(
+                        onClick = { 
+                            dialogoConfirmacionVisible.value = false
+                            viewModel.eliminarEvento()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Eliminar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { dialogoConfirmacionVisible.value = false }
+                    ) {
+                        Text("Cancelar")
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.hideDeleteConfirmation() }) {
-                    Text("Cancelar")
-                }
-            }
-        )
+            )
+        }
     }
 }
 
 /**
- * Componente para visualizar los detalles de un evento
+ * Componente que muestra un item de información del evento
  */
 @Composable
-private fun ViewEventContent(evento: Evento) {
-    val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM 'de' yyyy", Locale("es", "ES"))
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale("es", "ES"))
-    
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Tipo de evento (chip con color)
-        EventTypeChip(tipo = evento.tipo)
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Título
-        Text(
-            text = evento.titulo,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
+private fun ItemInfoEvento(
+    icono: androidx.compose.ui.graphics.vector.ImageVector,
+    titulo: String,
+    contenido: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icono,
+            contentDescription = null,
+            modifier = Modifier.padding(top = 2.dp)
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.width(16.dp))
         
-        // Fecha y hora
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                imageVector = Icons.Default.CalendarMonth,
-                contentDescription = "Fecha",
-                tint = MaterialTheme.colorScheme.primary
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = titulo,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
             )
             
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Column {
-                Text(
-                    text = dateFormatter.format(evento.fecha.toLocalDate()),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                
-                Text(
-                    text = timeFormatter.format(evento.fecha.toLocalTime()),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Ubicación (si existe)
-        if (evento.ubicacion.isNotEmpty()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = "Ubicación",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                Text(
-                    text = evento.ubicacion,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        
-        // Recordatorio (si está activado)
-        if (evento.recordatorio) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Recordatorio",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                Text(
-                    text = "Recordatorio ${evento.tiempoRecordatorioMinutos} minutos antes",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        
-        // Visibilidad
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                imageVector = if (evento.publico) Icons.Default.Public else Icons.Default.Lock,
-                contentDescription = "Visibilidad",
-                tint = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             
             Text(
-                text = if (evento.publico) "Evento público" else "Evento privado",
-                style = MaterialTheme.typography.bodyLarge
+                text = contenido,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Descripción
+    }
+}
+
+/**
+ * Diálogo para editar un evento
+ */
+@Composable
+private fun DialogoEdicionEvento(
+    evento: Evento,
+    onDismiss: () -> Unit,
+    onGuardar: (Evento) -> Unit
+) {
+    var titulo by remember { mutableStateOf(evento.titulo) }
+    var descripcion by remember { mutableStateOf(evento.descripcion) }
+    var tipoEvento by remember { mutableStateOf(evento.tipo) }
+    var ubicacion by remember { mutableStateOf(evento.ubicacion) }
+    var recordatorio by remember { mutableStateOf(evento.recordatorio) }
+    var tiempoRecordatorio by remember { mutableStateOf(evento.tiempoRecordatorioMinutos.toString()) }
+    
+    Dialog(
+        onDismissRequest = onDismiss
+    ) {
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.medium
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "Descripción",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Editar evento",
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
-                Text(
-                    text = evento.descripcion,
-                    style = MaterialTheme.typography.bodyLarge
+                // Campo para el título
+                OutlinedTextField(
+                    value = titulo,
+                    onValueChange = { titulo = it },
+                    label = { Text("Título") },
+                    modifier = Modifier.fillMaxWidth()
                 )
-            }
-        }
-    }
-}
-
-/**
- * Componente para editar los detalles de un evento
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EditEventContent(
-    uiState: DetalleEventoUiState,
-    onTituloChange: (String) -> Unit,
-    onDescripcionChange: (String) -> Unit,
-    onTipoChange: (TipoEvento) -> Unit,
-    onFechaChange: (String) -> Unit,
-    onTimeChange: (String) -> Unit,
-    onUbicacionChange: (String) -> Unit,
-    onRecordatorioChange: (Boolean) -> Unit,
-    onTiempoRecordatorioChange: (Int) -> Unit,
-    onPublicoChange: (Boolean) -> Unit
-) {
-    val evento = uiState.evento ?: return
-    
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Tipo de evento
-        Text(
-            text = "Tipo de evento",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(TipoEvento.values()) { tipo ->
-                val isSelected = uiState.tipoEvento == tipo
                 
-                SuggestionChip(
-                    onClick = { onTipoChange(tipo) },
-                    label = { Text(tipo.nombre) },
-                    modifier = Modifier.padding(end = 4.dp),
-                    icon = { 
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .background(tipo.color, RoundedCornerShape(4.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Selector de tipo de evento
+                Text(
+                    text = "Tipo de evento",
+                    style = MaterialTheme.typography.labelMedium
+                )
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TipoEvento.values().forEach { tipo ->
+                        FilterChip(
+                            selected = tipoEvento == tipo,
+                            onClick = { tipoEvento = tipo },
+                            label = { Text(tipo.nombre) },
+                            leadingIcon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            color = tipo.color,
+                                            shape = MaterialTheme.shapes.small
+                                        )
+                                )
+                            }
                         )
-                    },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                    )
-                )
-            }
-        }
-        
-        // Título
-        OutlinedTextField(
-            value = uiState.titulo,
-            onValueChange = onTituloChange,
-            label = { Text("Título") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            singleLine = true
-        )
-        
-        // Fecha
-        OutlinedTextField(
-            value = uiState.fechaTexto,
-            onValueChange = onFechaChange,
-            label = { Text("Fecha (dd/mm/yyyy)") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            singleLine = true,
-            leadingIcon = {
-                Icon(Icons.Default.CalendarMonth, contentDescription = "Fecha")
-            }
-        )
-        
-        // Hora
-        OutlinedTextField(
-            value = uiState.horaTexto,
-            onValueChange = onTimeChange,
-            label = { Text("Hora (hh:mm)") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            singleLine = true,
-            leadingIcon = {
-                Icon(Icons.Default.AccessTime, contentDescription = "Hora")
-            }
-        )
-        
-        // Ubicación
-        OutlinedTextField(
-            value = uiState.ubicacion,
-            onValueChange = onUbicacionChange,
-            label = { Text("Ubicación (opcional)") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            singleLine = true,
-            leadingIcon = {
-                Icon(Icons.Default.LocationOn, contentDescription = "Ubicación")
-            }
-        )
-        
-        // Recordatorio
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = uiState.recordatorio,
-                onCheckedChange = onRecordatorioChange
-            )
-            
-            Text(
-                text = "Activar recordatorio",
-                modifier = Modifier.weight(1f)
-            )
-        }
-        
-        // Tiempo de recordatorio (si está activado)
-        if (uiState.recordatorio) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Recordatorio",
-                    modifier = Modifier.width(120.dp)
-                )
-                
-                val opciones = listOf(5, 10, 15, 30, 60, 120, 1440) // 1440 = 1 día
-                val opcionesTexto = listOf("5 min", "10 min", "15 min", "30 min", "1 hora", "2 horas", "1 día")
-                
-                var expanded by remember { mutableStateOf(false) }
-                
-                val selectedIndex = opciones.indexOf(uiState.tiempoRecordatorioMinutos).let { 
-                    if (it >= 0) it else 2 // Valor por defecto: 15 min
+                    }
                 }
                 
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it }
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Campo para la descripción
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Campo para la ubicación
+                OutlinedTextField(
+                    value = ubicacion,
+                    onValueChange = { ubicacion = it },
+                    label = { Text("Ubicación (opcional)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Opción de recordatorio
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = opcionesTexto[selectedIndex],
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .width(150.dp),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    Checkbox(
+                        checked = recordatorio,
+                        onCheckedChange = { recordatorio = it }
                     )
                     
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                    Text(
+                        text = "Activar recordatorio",
+                        modifier = Modifier.clickable { recordatorio = !recordatorio }
+                    )
+                }
+                
+                if (recordatorio) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Campo para el tiempo de recordatorio
+                    OutlinedTextField(
+                        value = tiempoRecordatorio,
+                        onValueChange = { tiempoRecordatorio = it },
+                        label = { Text("Minutos antes") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Botones de acción
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss
                     ) {
-                        opcionesTexto.forEachIndexed { index, text ->
-                            DropdownMenuItem(
-                                text = { Text(text) },
-                                onClick = {
-                                    onTiempoRecordatorioChange(opciones[index])
-                                    expanded = false
-                                }
+                        Text("Cancelar")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = { 
+                            val eventoActualizado = evento.copy(
+                                titulo = titulo,
+                                descripcion = descripcion,
+                                tipo = tipoEvento,
+                                ubicacion = ubicacion,
+                                recordatorio = recordatorio,
+                                tiempoRecordatorioMinutos = tiempoRecordatorio.toIntOrNull() ?: 30
                             )
-                        }
+                            onGuardar(eventoActualizado)
+                        },
+                        enabled = titulo.isNotBlank()
+                    ) {
+                        Text("Guardar")
                     }
                 }
             }
         }
-        
-        // Visibilidad
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = uiState.publico,
-                onCheckedChange = onPublicoChange
-            )
-            
-            Text(
-                text = "Evento público",
-                modifier = Modifier.weight(1f)
-            )
-        }
-        
-        // Descripción
-        OutlinedTextField(
-            value = uiState.descripcion,
-            onValueChange = onDescripcionChange,
-            label = { Text("Descripción") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .padding(bottom = 16.dp),
-            maxLines = 10
-        )
     }
 }
 
 /**
- * Componente para mostrar el tipo de evento como un chip
+ * Formatea una fecha de Timestamp a un formato legible
  */
+private fun formatearFecha(timestamp: Timestamp): String {
+    val date = timestamp.toDate()
+    val formatoFecha = SimpleDateFormat("EEEE, d 'de' MMMM 'de' yyyy 'a las' HH:mm", Locale("es", "ES"))
+    return formatoFecha.format(date).capitalize()
+}
+
+/**
+ * Vista previa de la pantalla de detalle de evento
+ */
+@Preview
 @Composable
-fun EventTypeChip(tipo: TipoEvento) {
-    Surface(
-        modifier = Modifier.height(32.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = tipo.color.copy(alpha = 0.2f)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(tipo.color)
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Text(
-                text = tipo.nombre,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+fun DetalleEventoScreenPreview() {
+    UmeEguneroTheme {
+        val navController = rememberNavController()
+        val evento = Evento(
+            id = "1",
+            titulo = "Reunión de padres",
+            descripcion = "Reunión informativa sobre el próximo trimestre",
+            tipo = TipoEvento.REUNION,
+            ubicacion = "Sala de reuniones",
+            recordatorio = true,
+            tiempoRecordatorioMinutos = 30
+        )
+        
+        DetalleEventoScreen(
+            navController = navController,
+            eventoId = "1"
+        )
     }
 } 

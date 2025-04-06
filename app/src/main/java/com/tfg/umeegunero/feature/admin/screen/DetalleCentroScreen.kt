@@ -56,6 +56,43 @@ import com.tfg.umeegunero.ui.components.LoadingIndicator
 import androidx.compose.material3.HorizontalDivider
 
 /**
+ * Clase para gestionar el estado de la pantalla de detalle de centro
+ */
+class DetalleCentroState {
+    var centro by mutableStateOf<Centro?>(null)
+    var isLoading by mutableStateOf(true)
+    var showDeleteDialog by mutableStateOf(false)
+    var isDeleting by mutableStateOf(false)
+    
+    fun cargarCentro(viewModel: AdminViewModel, centroId: String) {
+        isLoading = true
+        viewModel.getCentro(centroId) { loadedCentro ->
+            centro = loadedCentro
+            isLoading = false
+        }
+    }
+    
+    fun eliminarCentro(
+        viewModel: AdminViewModel, 
+        centroId: String,
+        onSuccess: () -> Unit,
+        onError: () -> Unit
+    ) {
+        isDeleting = true
+        viewModel.eliminarCentro(centroId) { success ->
+            isDeleting = false
+            showDeleteDialog = false
+            
+            if (success) {
+                onSuccess()
+            } else {
+                onError()
+            }
+        }
+    }
+}
+
+/**
  * Pantalla de detalle de un centro educativo simplificada
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,44 +107,17 @@ fun DetalleCentroScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     
-    // Estados
-    var centro: Centro? by mutableStateOf(null)
-    var isLoading by mutableStateOf(true)
-    var showDeleteDialog by mutableStateOf(false)
-    var isDeleting by mutableStateOf(false)
+    // Estado de la pantalla
+    val state = DetalleCentroState()
     
     // Carga inicial del centro
-    val loadCentro = {
-        viewModel.getCentro(centroId) { loadedCentro ->
-            centro = loadedCentro
-            isLoading = false
-        }
-    }
-    
-    // Cargar el centro al iniciar
-    if (isLoading) {
-        loadCentro()
-    }
-    
-    // Función para eliminar un centro
-    val deleteCentro = {
-        isDeleting = true
-        viewModel.eliminarCentro(centroId) { success ->
-            isDeleting = false
-            showDeleteDialog = false
-            
-            if (success) {
-                Toast.makeText(context, "Centro eliminado correctamente", Toast.LENGTH_SHORT).show()
-                onDeleteSuccess()
-            } else {
-                Toast.makeText(context, "Error al eliminar el centro", Toast.LENGTH_LONG).show()
-            }
-        }
+    if (state.isLoading) {
+        state.cargarCentro(viewModel, centroId)
     }
     
     // Función para abrir la ubicación en Google Maps
     val openInMaps = { lat: Double, lon: Double ->
-        val uri = Uri.parse("geo:$lat,$lon?q=$lat,$lon(${centro?.nombre})")
+        val uri = Uri.parse("geo:$lat,$lon?q=$lat,$lon(${state.centro?.nombre})")
         val mapIntent = Intent(Intent.ACTION_VIEW, uri)
         mapIntent.setPackage("com.google.android.apps.maps")
         
@@ -142,7 +152,7 @@ fun DetalleCentroScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = centro?.nombre ?: "Detalle Centro",
+                        text = state.centro?.nombre ?: "Detalle Centro",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -159,7 +169,7 @@ fun DetalleCentroScreen(
                     // Botón de editar
                     IconButton(
                         onClick = { onNavigateToEdit(centroId) },
-                        enabled = !isLoading && centro != null
+                        enabled = !state.isLoading && state.centro != null
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
@@ -169,8 +179,8 @@ fun DetalleCentroScreen(
                     
                     // Botón de eliminar
                     IconButton(
-                        onClick = { showDeleteDialog = true },
-                        enabled = !isLoading && centro != null
+                        onClick = { state.showDeleteDialog = true },
+                        enabled = !state.isLoading && state.centro != null
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -181,7 +191,7 @@ fun DetalleCentroScreen(
             )
         }
     ) { paddingValues ->
-        if (isLoading) {
+        if (state.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -190,7 +200,7 @@ fun DetalleCentroScreen(
             ) {
                 CircularProgressIndicator()
             }
-        } else if (centro != null) {
+        } else if (state.centro != null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -231,7 +241,7 @@ fun DetalleCentroScreen(
                         
                         // Nombre
                         Text(
-                            text = centro?.nombre ?: "",
+                            text = state.centro?.nombre ?: "",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -253,7 +263,7 @@ fun DetalleCentroScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = centro?.direccion ?: "",
+                                text = state.centro?.direccion ?: "",
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
@@ -261,12 +271,12 @@ fun DetalleCentroScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         // Botón para ver en el mapa (si hay coordenadas)
-                        if (centro?.latitud != 0.0 || centro?.longitud != 0.0) {
+                        if (state.centro?.latitud != 0.0 || state.centro?.longitud != 0.0) {
                             Button(
                                 onClick = { 
                                     openInMaps(
-                                        centro?.latitud ?: 0.0, 
-                                        centro?.longitud ?: 0.0
+                                        state.centro?.latitud ?: 0.0, 
+                                        state.centro?.longitud ?: 0.0
                                     ) 
                                 },
                                 modifier = Modifier.align(Alignment.End)
@@ -313,7 +323,7 @@ fun DetalleCentroScreen(
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                         
                         // Teléfono con acción
-                        if (!centro?.telefono.isNullOrEmpty()) {
+                        if (!state.centro?.telefono.isNullOrEmpty()) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
@@ -326,12 +336,12 @@ fun DetalleCentroScreen(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = centro?.telefono ?: "",
+                                    text = state.centro?.telefono ?: "",
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Spacer(modifier = Modifier.weight(1f))
                                 TextButton(
-                                    onClick = { callPhone(centro?.telefono ?: "") }
+                                    onClick = { callPhone(state.centro?.telefono ?: "") }
                                 ) {
                                     Text("Llamar")
                                 }
@@ -341,7 +351,7 @@ fun DetalleCentroScreen(
                         }
                         
                         // Email con acción
-                        if (!centro?.email.isNullOrEmpty()) {
+                        if (!state.centro?.email.isNullOrEmpty()) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
@@ -354,14 +364,14 @@ fun DetalleCentroScreen(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = centro?.email ?: "",
+                                    text = state.centro?.email ?: "",
                                     style = MaterialTheme.typography.bodyLarge,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f)
                                 )
                                 TextButton(
-                                    onClick = { sendEmail(centro?.email ?: "") }
+                                    onClick = { sendEmail(state.centro?.email ?: "") }
                                 ) {
                                     Text("Email")
                                 }
@@ -371,7 +381,7 @@ fun DetalleCentroScreen(
                 }
                 
                 // Coordenadas
-                if (centro?.latitud != 0.0 || centro?.longitud != 0.0) {
+                if (state.centro?.latitud != 0.0 || state.centro?.longitud != 0.0) {
                     Card(
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -412,7 +422,7 @@ fun DetalleCentroScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = centro?.latitud.toString(),
+                                        text = state.centro?.latitud.toString(),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                 }
@@ -427,7 +437,7 @@ fun DetalleCentroScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = centro?.longitud.toString(),
+                                        text = state.centro?.longitud.toString(),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                 }
@@ -460,21 +470,33 @@ fun DetalleCentroScreen(
         }
         
         // Diálogo de confirmación para eliminar
-        if (showDeleteDialog) {
+        if (state.showDeleteDialog) {
             AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
+                onDismissRequest = { state.showDeleteDialog = false },
                 title = { Text("Eliminar Centro") },
                 text = { Text("¿Está seguro de que desea eliminar este centro? Esta acción no se puede deshacer.") },
                 confirmButton = {
                     Button(
-                        onClick = deleteCentro
+                        onClick = { 
+                            state.eliminarCentro(
+                                viewModel = viewModel,
+                                centroId = centroId,
+                                onSuccess = {
+                                    Toast.makeText(context, "Centro eliminado correctamente", Toast.LENGTH_SHORT).show()
+                                    onDeleteSuccess()
+                                },
+                                onError = {
+                                    Toast.makeText(context, "Error al eliminar el centro", Toast.LENGTH_LONG).show()
+                                }
+                            )
+                        }
                     ) {
                         Text("Eliminar")
                     }
                 },
                 dismissButton = {
                     TextButton(
-                        onClick = { showDeleteDialog = false }
+                        onClick = { state.showDeleteDialog = false }
                     ) {
                         Text("Cancelar")
                     }
@@ -483,7 +505,7 @@ fun DetalleCentroScreen(
         }
         
         // Indicador de carga durante la eliminación
-        if (isDeleting) {
+        if (state.isDeleting) {
             LoadingIndicator(message = "Eliminando centro...")
         }
     }

@@ -3,9 +3,11 @@ package com.tfg.umeegunero.di
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
 import com.tfg.umeegunero.data.local.dao.ConversacionDao
 import com.tfg.umeegunero.data.local.database.AppDatabase
+import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
 import dagger.Module
@@ -93,8 +95,10 @@ object AppModule {
     fun provideChatRepository(
         chatMensajeDao: ChatMensajeDao,
         conversacionDao: ConversacionDao,
-        firestore: FirebaseFirestore
+        firestore: FirebaseFirestore,
+        storage: FirebaseStorage,
+        authRepository: AuthRepository
     ): ChatRepository {
-        return ChatRepository(chatMensajeDao, conversacionDao, firestore)
+        return ChatRepository(chatMensajeDao, conversacionDao, firestore, storage, authRepository)
     }
 } 

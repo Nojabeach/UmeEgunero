@@ -28,7 +28,13 @@ import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioUiState
 import com.tfg.umeegunero.ui.components.LoadingIndicator
+import com.tfg.umeegunero.ui.components.calendar.SelectorVistaCalendario
+import com.tfg.umeegunero.ui.components.calendar.TipoVistaCalendario
+import com.tfg.umeegunero.ui.components.calendar.VistaCalendarioDiario
+import com.tfg.umeegunero.ui.components.calendar.VistaCalendarioSemanal
+import com.tfg.umeegunero.ui.components.ErrorScreen
 import com.tfg.umeegunero.util.toLocalDate
 import java.time.LocalDate
 import java.time.YearMonth
@@ -39,9 +45,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import android.content.res.Configuration
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.navigation.compose.rememberNavController
+import com.tfg.umeegunero.navigation.NavItem
+import com.tfg.umeegunero.navigation.AppScreens
 
 /**
  * Pantalla de gestión del calendario escolar
+ * 
+ * Esta pantalla permite visualizar y gestionar los eventos del calendario escolar
+ * con diferentes vistas (mensual, semanal, diaria) y añadir nuevos eventos.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +62,7 @@ fun CalendarioScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var tipoVistaActual by remember { mutableStateOf(TipoVistaCalendario.MENSUAL) }
     
     // Efecto para cargar los eventos al inicio
     LaunchedEffect(Unit) {
@@ -76,295 +88,95 @@ fun CalendarioScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Calendario Escolar") },
+                title = { Text("Calendario") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            contentDescription = "Volver"
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
                 actions = {
-                    // Botón para añadir evento
                     IconButton(onClick = { viewModel.showEventDialog() }) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Añadir evento",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            contentDescription = "Añadir evento"
                         )
                     }
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.showEventDialog() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Añadir evento")
-            }
-        }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                LoadingIndicator(
-                    isLoading = true,
-                    message = "Cargando eventos..."
-                )
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp)
-            ) {
-                // Sección superior con controles de navegación del mes
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { viewModel.updateCurrentMonth(uiState.currentMonth.minusMonths(1)) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ChevronLeft,
-                            contentDescription = "Mes anterior"
-                        )
-                    }
-                    
-                    Text(
-                        text = uiState.currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale("es", "ES"))),
-                        style = MaterialTheme.typography.titleLarge
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Mostrar indicador de carga cuando sea necesario
+            if (uiState.isLoading) {
+                LoadingIndicator()
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Selector del tipo de vista (mensual, semanal, diaria)
+                    SelectorVistaCalendario(
+                        vistaActual = tipoVistaActual,
+                        onCambioVista = { tipoVistaActual = it }
                     )
                     
-                    IconButton(
-                        onClick = { viewModel.updateCurrentMonth(uiState.currentMonth.plusMonths(1)) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "Mes siguiente"
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Cabecera con los días de la semana
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    val dayNames = listOf("Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb")
-                    dayNames.forEach { day ->
-                        Text(
-                            text = day,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Cuadrícula del calendario
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(7),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(350.dp)
-                ) {
-                    val firstOfMonth = uiState.currentMonth.atDay(1)
-                    val dayOfWeek = firstOfMonth.dayOfWeek.value % 7 // Domingo como primer día (0)
+                    Spacer(modifier = Modifier.height(8.dp))
                     
-                    val daysFromPreviousMonth = if (dayOfWeek > 0) dayOfWeek else 0
-                    val previousMonth = uiState.currentMonth.minusMonths(1)
-                    
-                    val daysInPreviousMonth = previousMonth.lengthOfMonth()
-                    val daysInCurrentMonth = uiState.currentMonth.lengthOfMonth()
-                    
-                    val previousMonthDays = (daysInPreviousMonth - daysFromPreviousMonth + 1..daysInPreviousMonth).map { day ->
-                        CalendarDay(previousMonth.atDay(day), isCurrentMonth = false)
-                    }
-                    
-                    val currentMonthDays = (1..daysInCurrentMonth).map { day ->
-                        CalendarDay(uiState.currentMonth.atDay(day), isCurrentMonth = true)
-                    }
-                    
-                    val nextMonth = uiState.currentMonth.plusMonths(1)
-                    val remainingDays = 42 - (previousMonthDays.size + currentMonthDays.size)
-                    
-                    val nextMonthDays = (1..remainingDays).map { day ->
-                        CalendarDay(nextMonth.atDay(day), isCurrentMonth = false)
-                    }
-                    
-                    val allDays = previousMonthDays + currentMonthDays + nextMonthDays
-                    
-                    items(allDays) { day ->
-                        // Verificar si hay eventos para este día
-                        val dayEvents = uiState.eventos.filter { evento ->
-                            evento.fecha.toLocalDate() == day.date
-                        }
-                        
-                        val isSelected = day.date == uiState.selectedDate
-                        val isToday = day.date == LocalDate.now()
-                        
-                        // Día del calendario
-                        Box(
-                            modifier = Modifier
-                                .aspectRatio(1f)
-                                .padding(2.dp)
-                                .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = when {
-                                        isSelected -> MaterialTheme.colorScheme.primary
-                                        isToday -> MaterialTheme.colorScheme.secondary
-                                        else -> Color.LightGray
-                                    }
-                                )
-                                .background(
-                                    color = when {
-                                        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                        day.isCurrentMonth -> Color.White
-                                        else -> Color.LightGray.copy(alpha = 0.2f)
-                                    }
-                                )
-                                .clickable {
-                                    viewModel.updateSelectedDate(day.date)
+                    // Contenido según el tipo de vista seleccionado
+                    when (tipoVistaActual) {
+                        TipoVistaCalendario.MENSUAL -> {
+                            VistaCalendarioMensual(
+                                uiState = uiState,
+                                onDateSelected = { viewModel.updateSelectedDate(it) },
+                                onPrevMonth = {
+                                    val prevMonth = uiState.currentMonth.minusMonths(1)
+                                    viewModel.updateCurrentMonth(prevMonth)
                                 },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(4.dp)
-                            ) {
-                                // Número del día
-                                Text(
-                                    text = day.date.dayOfMonth.toString(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (day.isCurrentMonth) {
-                                        MaterialTheme.colorScheme.onSurface
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                    }
-                                )
-                                
-                                // Indicador de eventos
-                                if (dayEvents.isNotEmpty()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(
-                                                color = dayEvents.first().tipo.color,
-                                                shape = MaterialTheme.shapes.small
-                                            )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Sección inferior con eventos del día seleccionado
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Eventos para ${uiState.selectedDate.format(DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", Locale("es", "ES")))}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        val eventosDelDia = uiState.eventos.filter { it.fecha.toLocalDate() == uiState.selectedDate }
-                        
-                        if (eventosDelDia.isEmpty()) {
-                            Text(
-                                text = "No hay eventos programados para este día",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                onNextMonth = {
+                                    val nextMonth = uiState.currentMonth.plusMonths(1)
+                                    viewModel.updateCurrentMonth(nextMonth)
+                                },
+                                navController = navController
                             )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.height(200.dp)
-                            ) {
-                                items(eventosDelDia) { evento ->
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = evento.tipo.color.copy(alpha = 0.1f)
-                                        )
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(12.dp)
-                                                    .background(
-                                                        color = evento.tipo.color,
-                                                        shape = MaterialTheme.shapes.small
-                                                    )
-                                            )
-                                            
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            
-                                            Column(
-                                                modifier = Modifier.weight(1f)
-                                            ) {
-                                                Text(
-                                                    text = evento.tipo.nombre,
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                                
-                                                Text(
-                                                    text = evento.descripcion,
-                                                    style = MaterialTheme.typography.bodySmall
-                                                )
-                                            }
-                                            
-                                            IconButton(
-                                                onClick = {
-                                                    viewModel.deleteEvento(evento.id)
-                                                }
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Delete,
-                                                    contentDescription = "Eliminar evento",
-                                                    tint = MaterialTheme.colorScheme.error
-                                                )
-                                            }
-                                        }
+                        }
+                        TipoVistaCalendario.SEMANAL -> {
+                            VistaCalendarioSemanal(
+                                fechaActual = uiState.selectedDate,
+                                eventos = uiState.eventos,
+                                onFechaSeleccionada = { 
+                                    viewModel.updateSelectedDate(it)
+                                    if (it.month != uiState.currentMonth.month) {
+                                        viewModel.updateCurrentMonth(YearMonth.from(it))
                                     }
+                                },
+                                onSemanaAnterior = { viewModel.updateSelectedDate(uiState.selectedDate.minusWeeks(1)) },
+                                onSemanaSiguiente = { viewModel.updateSelectedDate(uiState.selectedDate.plusWeeks(1)) },
+                                onClickEvento = { evento -> 
+                                    navController.navigate(AppScreens.DetalleEvento.createRoute(evento.id))
                                 }
-                            }
+                            )
+                        }
+                        TipoVistaCalendario.DIARIA -> {
+                            VistaCalendarioDiario(
+                                fechaActual = uiState.selectedDate,
+                                eventos = uiState.eventos,
+                                onCambioFecha = { 
+                                    viewModel.updateSelectedDate(it)
+                                    if (it.month != uiState.currentMonth.month) {
+                                        viewModel.updateCurrentMonth(YearMonth.from(it))
+                                    }
+                                },
+                                onClickEvento = { evento -> 
+                                    navController.navigate(AppScreens.DetalleEvento.createRoute(evento.id))
+                                }
+                            )
                         }
                     }
                 }
@@ -373,79 +185,67 @@ fun CalendarioScreen(
         
         // Diálogo para añadir un nuevo evento
         if (uiState.showEventDialog) {
-            Dialog(
-                onDismissRequest = { viewModel.hideEventDialog() }
-            ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    shape = MaterialTheme.shapes.medium
+            Dialog(onDismissRequest = { viewModel.hideEventDialog() }) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    tonalElevation = 8.dp,
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
                             .padding(16.dp)
+                            .fillMaxWidth()
                     ) {
                         Text(
-                            text = "Nuevo evento para ${uiState.selectedDate.format(DateTimeFormatter.ofPattern("d 'de' MMMM", Locale("es", "ES")))}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            text = "Nuevo evento",
+                            style = MaterialTheme.typography.titleLarge
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         // Selector de tipo de evento
-                        Text(
-                            text = "Tipo de evento",
-                            style = MaterialTheme.typography.labelMedium
-                        )
+                        Text("Tipo de evento", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(modifier = Modifier.height(8.dp))
                         
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             TipoEvento.values().forEach { tipo ->
+                                val isSelected = uiState.selectedEventType == tipo
                                 FilterChip(
-                                    selected = uiState.selectedEventType == tipo,
+                                    selected = isSelected,
                                     onClick = { viewModel.updateSelectedEventType(tipo) },
-                                    label = { Text(tipo.nombre) },
+                                    label = { Text(tipo.name.replaceFirstChar { it.uppercase() }) },
                                     leadingIcon = {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .background(
-                                                    color = tipo.color,
-                                                    shape = MaterialTheme.shapes.small
-                                                )
-                                        )
+                                        if (isSelected) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null
+                                            )
+                                        }
                                     }
                                 )
                             }
                         }
                         
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         
-                        // Campo para la descripción
-                        TextField(
+                        // Campo para descripción del evento
+                        OutlinedTextField(
                             value = uiState.eventDescription,
                             onValueChange = { viewModel.updateEventDescription(it) },
-                            label = { Text("Descripción del evento") },
+                            label = { Text("Descripción") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        // Botones de acción
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            TextButton(
-                                onClick = { viewModel.hideEventDialog() }
-                            ) {
+                            TextButton(onClick = { viewModel.hideEventDialog() }) {
                                 Text("Cancelar")
                             }
                             
@@ -453,7 +253,7 @@ fun CalendarioScreen(
                             
                             Button(
                                 onClick = { viewModel.saveEvento() },
-                                enabled = uiState.selectedEventType != null && uiState.eventDescription.isNotEmpty()
+                                enabled = uiState.selectedEventType != null && uiState.eventDescription.isNotBlank()
                             ) {
                                 Text("Guardar")
                             }
@@ -466,13 +266,269 @@ fun CalendarioScreen(
 }
 
 /**
- * Clase que representa un día en el calendario
+ * Vista mensual del calendario
+ */
+@Composable
+fun VistaCalendarioMensual(
+    uiState: CalendarioUiState,
+    onDateSelected: (LocalDate) -> Unit,
+    onPrevMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    navController: NavController
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Sección superior con controles de navegación del mes
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPrevMonth) {
+                Icon(
+                    imageVector = Icons.Default.ChevronLeft,
+                    contentDescription = "Mes anterior"
+                )
+            }
+            
+            Text(
+                text = uiState.currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale("es", "ES"))),
+                style = MaterialTheme.typography.titleLarge
+            )
+            
+            IconButton(onClick = onNextMonth) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Mes siguiente"
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Cabecera con los días de la semana
+        Row(modifier = Modifier.fillMaxWidth()) {
+            val dayNames = listOf("Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb")
+            dayNames.forEach { day ->
+                Text(
+                    text = day,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Cuadrícula del calendario
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(7),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(350.dp)
+        ) {
+            val firstOfMonth = uiState.currentMonth.atDay(1)
+            val dayOfWeek = firstOfMonth.dayOfWeek.value % 7 // Domingo como primer día (0)
+            
+            val daysFromPreviousMonth = if (dayOfWeek > 0) dayOfWeek else 0
+            val previousMonth = uiState.currentMonth.minusMonths(1)
+            
+            val daysInPreviousMonth = previousMonth.lengthOfMonth()
+            val daysInCurrentMonth = uiState.currentMonth.lengthOfMonth()
+            
+            val previousMonthDays = (daysInPreviousMonth - daysFromPreviousMonth + 1..daysInPreviousMonth).map { day ->
+                CalendarDay(previousMonth.atDay(day), isCurrentMonth = false)
+            }
+            
+            val currentMonthDays = (1..daysInCurrentMonth).map { day ->
+                CalendarDay(uiState.currentMonth.atDay(day), isCurrentMonth = true)
+            }
+            
+            val nextMonth = uiState.currentMonth.plusMonths(1)
+            val remainingDays = 42 - (previousMonthDays.size + currentMonthDays.size)
+            
+            val nextMonthDays = (1..remainingDays).map { day ->
+                CalendarDay(nextMonth.atDay(day), isCurrentMonth = false)
+            }
+            
+            val allDays = previousMonthDays + currentMonthDays + nextMonthDays
+            
+            items(allDays) { day ->
+                // Verificar si hay eventos para este día
+                val dayEvents = uiState.eventos.filter { evento ->
+                    evento.fecha.toLocalDate() == day.date
+                }
+                
+                val isSelected = day.date == uiState.selectedDate
+                val isToday = day.date == LocalDate.now()
+                
+                // Día del calendario
+                Box(
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .padding(2.dp)
+                        .border(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.primary
+                                isToday -> MaterialTheme.colorScheme.secondary
+                                else -> Color.LightGray
+                            }
+                        )
+                        .background(
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                day.isCurrentMonth -> Color.White
+                                else -> Color.LightGray.copy(alpha = 0.2f)
+                            }
+                        )
+                        .clickable {
+                            onDateSelected(day.date)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(4.dp)
+                    ) {
+                        Text(
+                            text = day.date.dayOfMonth.toString(),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                                color = if (!day.isCurrentMonth) Color.Gray else Color.Unspecified
+                            )
+                        )
+                        
+                        // Indicador de eventos
+                        if (dayEvents.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = MaterialTheme.shapes.small
+                                    )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Lista de eventos del día seleccionado
+        Text(
+            text = "Eventos del ${uiState.selectedDate.format(DateTimeFormatter.ofPattern("d 'de' MMMM", Locale("es", "ES")))}",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        val selectedDateEvents = uiState.eventos.filter { 
+            it.fecha.toLocalDate() == uiState.selectedDate 
+        }
+        
+        if (selectedDateEvents.isEmpty()) {
+            Text(
+                text = "No hay eventos para este día",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                items(selectedDateEvents) { evento ->
+                    EventoItem(
+                        evento = evento,
+                        onClick = { 
+                            navController.navigate(AppScreens.DetalleEvento.createRoute(evento.id))
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Un día en el calendario
  */
 data class CalendarDay(
     val date: LocalDate,
     val isCurrentMonth: Boolean
 )
 
+/**
+ * Item para mostrar un evento en la lista
+ */
+@Composable
+fun EventoItem(
+    evento: Evento,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Indicador del tipo de evento
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .background(
+                        color = when (evento.tipo) {
+                            TipoEvento.EXAMEN -> Color(0xFFE57373) // Rojo claro
+                            TipoEvento.ESCOLAR -> Color(0xFF81C784) // Verde claro
+                            TipoEvento.REUNION -> Color(0xFF64B5F6) // Azul claro
+                            TipoEvento.FESTIVO -> Color(0xFFFFD54F) // Amarillo
+                            else -> Color.Gray
+                        },
+                        shape = MaterialTheme.shapes.small
+                    )
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = evento.descripcion,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Text(
+                    text = evento.tipo.name.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+            
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Ver detalles"
+            )
+        }
+    }
+}
+
+/**
+ * Vista previa de la pantalla de calendario
+ */
 @Preview(showBackground = true)
 @Composable
 fun CalendarioScreenPreview() {
@@ -483,6 +539,9 @@ fun CalendarioScreenPreview() {
     }
 }
 
+/**
+ * Vista previa de la pantalla de calendario en modo oscuro
+ */
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun CalendarioScreenDarkPreview() {

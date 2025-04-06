@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.feature.common.mensajeria
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,7 +10,8 @@ import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.TipoNotificacion
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.repository.MensajeRepository
+import com.tfg.umeegunero.data.model.local.MensajeEntity
+import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
@@ -38,7 +40,8 @@ data class ChatUiState(
     val textoMensaje: String = "",
     val adjuntos: List<Uri> = emptyList(),
     val enviandoMensaje: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val esFamiliar: Boolean = false
 )
 
 /**
@@ -47,10 +50,11 @@ data class ChatUiState(
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
-    private val mensajeRepository: MensajeRepository,
+    private val chatRepository: ChatRepository,
     private val notificacionRepository: NotificacionRepository
 ) : ViewModel() {
 
+    private val TAG = "ChatViewModel"
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
@@ -77,7 +81,9 @@ class ChatViewModel @Inject constructor(
                 cargarMensajes(conversacionId)
                 
                 // Marcar mensajes como leídos
-                marcarMensajesComoLeidos(conversacionId)
+                if (conversacionId.isNotEmpty()) {
+                    marcarMensajesComoLeidos(conversacionId)
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     error = "Error al cargar la conversación: ${e.message}",
@@ -95,13 +101,22 @@ class ChatViewModel @Inject constructor(
             usuarioRepository.getUsuarioActual().collectLatest<Result<Usuario>> { result ->
                 when (result) {
                     is Result.Success<*> -> {
-                        _uiState.update { it.copy(usuario = result.data as Usuario) }
+                        val usuario = result.data as Usuario
+                        val esFamiliar = usuario.perfiles.any { it.tipo == TipoUsuario.FAMILIAR }
+                        
+                        _uiState.update { it.copy(
+                            usuario = usuario,
+                            esFamiliar = esFamiliar
+                        ) }
                     }
                     is Result.Error -> {
                         _uiState.update { it.copy(error = "Error al cargar el usuario: ${result.exception?.message}") }
                     }
                     is Result.Loading<*> -> {
                         // Mantener estado de carga
+                    }
+                    else -> {
+                        // No hacer nada para otros casos
                     }
                 }
             }
@@ -134,18 +149,41 @@ class ChatViewModel @Inject constructor(
      * Carga los mensajes de la conversación
      */
     private suspend fun cargarMensajes(conversacionId: String) {
+        if (conversacionId.isEmpty()) {
+            _uiState.update { it.copy(mensajes = emptyList(), isLoading = false) }
+            return
+        }
+        
         try {
-            mensajeRepository.obtenerMensajes(conversacionId).collectLatest { mensajes ->
-                _uiState.update { it.copy(
-                    mensajes = mensajes.sortedBy { mensaje -> mensaje.timestamp },
-                    isLoading = false
-                ) }
+            val mensajesEntities = chatRepository.getMensajesByConversacionId(conversacionId)
+            
+            // Convertir entidades a modelo Mensaje
+            val mensajes = mensajesEntities.map { entity ->
+                Mensaje(
+                    id = entity.id,
+                    emisorId = entity.emisorId,
+                    receptorId = entity.receptorId,
+                    timestamp = Timestamp(java.util.Date(entity.timestamp)),
+                    texto = entity.texto,
+                    leido = entity.leido,
+                    fechaLeido = entity.fechaLeido?.let { timestamp -> Timestamp(java.util.Date(timestamp)) },
+                    conversacionId = entity.conversacionId,
+                    alumnoId = entity.alumnoId,
+                    tipoMensaje = entity.tipoAdjunto ?: "TEXTO",
+                    adjuntos = entity.adjuntos
+                )
             }
+            
+            _uiState.update { it.copy(
+                mensajes = mensajes.sortedBy { mensaje -> mensaje.timestamp },
+                isLoading = false
+            ) }
         } catch (e: Exception) {
             _uiState.update { it.copy(
                 error = "Error al cargar los mensajes: ${e.message}",
                 isLoading = false
             ) }
+            Log.e(TAG, "Error al cargar mensajes", e)
         }
     }
 
@@ -156,13 +194,11 @@ class ChatViewModel @Inject constructor(
         val currentUser = _uiState.value.usuario ?: return
         
         try {
-            _uiState.value.mensajes
-                .filter { !it.leido && it.receptorId == currentUser.dni }
-                .forEach { mensaje ->
-                    mensajeRepository.marcarMensajeComoLeido(mensaje.id)
-                }
+            // Marcar todos los mensajes de la conversación como leídos
+            chatRepository.marcarTodosComoLeidos(conversacionId, currentUser.dni)
         } catch (e: Exception) {
             _uiState.update { it.copy(error = "Error al marcar mensajes como leídos: ${e.message}") }
+            Log.e(TAG, "Error al marcar mensajes como leídos", e)
         }
     }
 
@@ -188,65 +224,69 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * Envía un mensaje
+     * Envía un mensaje en la conversación actual
      */
-    fun enviarMensaje() {
-        val currentState = _uiState.value
-        val texto = currentState.textoMensaje.trim()
+    fun sendMessage(text: String) {
+        if (text.isBlank() || _uiState.value.conversacionId.isEmpty()) return
         
-        if (texto.isEmpty() && currentState.adjuntos.isEmpty()) {
-            return
-        }
-        
-        val usuario = currentState.usuario ?: return
-        val conversacionId = currentState.conversacionId
-        val receptorId = currentState.participanteId
-        val alumnoId = currentState.alumnoId
-        
-        _uiState.update { it.copy(enviandoMensaje = true) }
+        // actualizar estado
+        _uiState.update { it.copy(textoMensaje = "", enviandoMensaje = true) }
         
         viewModelScope.launch {
             try {
-                // Enviar mensaje
-                val mensaje = Mensaje(
-                    id = "",
-                    emisorId = usuario.dni,
-                    receptorId = receptorId,
-                    timestamp = Timestamp.now(),
-                    texto = texto,
+                // Preparar mensaje
+                val mensaje = MensajeEntity(
+                    id = "",  // Se generará en el repositorio
+                    emisorId = _uiState.value.usuario?.dni ?: "",
+                    receptorId = _uiState.value.participanteId,
+                    timestamp = System.currentTimeMillis(),
+                    texto = text,
                     leido = false,
                     fechaLeido = null,
-                    alumnoId = alumnoId,
-                    adjuntos = emptyList() // Los adjuntos se subirán después
+                    conversacionId = _uiState.value.conversacionId,
+                    alumnoId = _uiState.value.alumnoId,
+                    tipoAdjunto = "TEXTO",
+                    adjuntos = emptyList()
                 )
                 
-                val mensajeId = mensajeRepository.enviarMensaje(conversacionId, mensaje)
+                // Enviar mensaje usando ChatRepository
+                val result = chatRepository.enviarMensaje(mensaje)
                 
-                // Subir adjuntos si hay
-                if (currentState.adjuntos.isNotEmpty()) {
-                    val adjuntosUrls = mensajeRepository.subirAdjuntos(
-                        mensajeId,
-                        currentState.adjuntos
-                    )
-                    
-                    // Actualizar el mensaje con las URLs de los adjuntos
-                    mensajeRepository.actualizarAdjuntosMensaje(mensajeId, adjuntosUrls)
+                when (result) {
+                    is Result.Success -> {
+                        // Enviar notificación
+                        enviarNotificacion(
+                            _uiState.value.participanteId, 
+                            text, 
+                            _uiState.value.alumnoId
+                        )
+                        
+                        // Recargar mensajes
+                        cargarMensajes(_uiState.value.conversacionId)
+                        
+                        // Limpiar adjuntos
+                        _uiState.update { it.copy(
+                            adjuntos = emptyList(),
+                            enviandoMensaje = false
+                        ) }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = "Error al enviar el mensaje: ${result.exception?.message}",
+                            enviandoMensaje = false
+                        ) }
+                        Log.e(TAG, "Error al enviar mensaje", result.exception)
+                    }
+                    else -> {
+                        _uiState.update { it.copy(enviandoMensaje = false) }
+                    }
                 }
-                
-                // Enviar notificación
-                enviarNotificacion(receptorId, texto, alumnoId)
-                
-                // Limpiar el estado
-                _uiState.update { it.copy(
-                    textoMensaje = "",
-                    adjuntos = emptyList(),
-                    enviandoMensaje = false
-                ) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     error = "Error al enviar el mensaje: ${e.message}",
                     enviandoMensaje = false
                 ) }
+                Log.e(TAG, "Error al enviar mensaje", e)
             }
         }
     }

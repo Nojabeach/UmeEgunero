@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.google.firebase.Timestamp
@@ -50,6 +51,22 @@ import com.tfg.umeegunero.ui.theme.ProfesorColor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Send
 
 /**
  * Pantalla principal para el chat entre usuarios
@@ -59,17 +76,17 @@ import java.util.*
 fun ChatScreen(
     conversacionId: String,
     participanteId: String,
-    viewModel: ChatViewModel = hiltViewModel(),
-    esFamiliar: Boolean = false,
-    onNavigateBack: () -> Unit
+    alumnoId: String? = null,
+    onBack: () -> Unit,
+    viewModel: ChatViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     
     // Inicializar ViewModel
-    LaunchedEffect(conversacionId, participanteId) {
-        viewModel.inicializar(conversacionId, participanteId)
+    LaunchedEffect(key1 = conversacionId) {
+        viewModel.inicializar(conversacionId, participanteId, alumnoId)
     }
     
     // Mostrar errores en Snackbar
@@ -107,7 +124,7 @@ fun ChatScreen(
                                 .size(36.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (esFamiliar) ProfesorColor else FamiliarColor,
+                                    if (uiState.esFamiliar) ProfesorColor else FamiliarColor,
                                     CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -167,7 +184,7 @@ fun ChatScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -190,89 +207,57 @@ fun ChatScreen(
             if (uiState.isLoading) {
                 LoadingIndicator(fullScreen = true)
             } else {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Lista de mensajes
-                    LazyColumn(
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    // Espacio para la lista de mensajes
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        state = mensajesListState,
-                        reverseLayout = true,
-                        contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        // Mensajes en orden cronológico inverso (más reciente abajo)
-                        items(uiState.mensajes.sortedByDescending { it.timestamp }) { mensaje ->
-                            MensajeItem(
-                                mensaje = mensaje,
-                                esEmisor = mensaje.emisorId == uiState.usuario?.dni
+                        if (uiState.mensajes.isEmpty() && !uiState.isLoading) {
+                            // Sin mensajes
+                            Text(
+                                text = "No hay mensajes aún. ¡Envía el primero!",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(16.dp)
                             )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                        
-                        // Si no hay mensajes, mostrar indicación
-                        if (uiState.mensajes.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "No hay mensajes. ¡Envía el primero!",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            // Lista de mensajes
+                            LazyColumn(
+                                reverseLayout = true,
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(uiState.mensajes.sortedByDescending { it.timestamp }) { mensaje ->
+                                    MessageItem(
+                                        message = mensaje,
+                                        isSentByMe = mensaje.emisorId == uiState.usuario?.dni,
+                                        onLongClick = { /* TODO: Acciones adicionales */ }
                                     )
                                 }
                             }
                         }
                         
-                        // Indicador de inicio de conversación
-                        if (uiState.mensajes.isNotEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.clip(RoundedCornerShape(16.dp)),
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                                    ) {
-                                        Text(
-                                            text = "Inicio de conversación",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.align(Alignment.Center)
+                            )
                         }
                     }
                     
-                    // Área de adjuntos
-                    AnimatedVisibility(
-                        visible = uiState.adjuntos.isNotEmpty(),
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
-                        AdjuntosPreview(
-                            adjuntos = uiState.adjuntos,
-                            onRemoveAdjunto = { viewModel.eliminarAdjunto(it) }
-                        )
-                    }
-                    
-                    // Barra de entrada de mensaje
-                    MensajeInputBar(
-                        texto = uiState.textoMensaje,
-                        onTextoChange = { viewModel.actualizarTextoMensaje(it) },
-                        onEnviar = { viewModel.enviarMensaje() },
-                        onAdjuntoClick = { uri -> viewModel.añadirAdjunto(uri) },
-                        enviando = uiState.enviandoMensaje
+                    // Input de mensaje
+                    ChatBottomBar(
+                        value = uiState.textoMensaje,
+                        onValueChange = { viewModel.actualizarTextoMensaje(it) },
+                        onSendClick = { viewModel.sendMessage(uiState.textoMensaje) }
                     )
                 }
             }
@@ -283,89 +268,96 @@ fun ChatScreen(
 /**
  * Item que representa un mensaje individual
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MensajeItem(
-    mensaje: Mensaje,
-    esEmisor: Boolean
+fun MessageItem(
+    message: Mensaje,
+    isSentByMe: Boolean,
+    onLongClick: () -> Unit = {}
 ) {
-    val backgroundColor = if (esEmisor) {
-        MaterialTheme.colorScheme.primaryContainer
+    val chatBubbleShape = RoundedCornerShape(
+        topStart = 16.dp,
+        topEnd = 16.dp,
+        bottomStart = if (isSentByMe) 16.dp else 4.dp,
+        bottomEnd = if (isSentByMe) 4.dp else 16.dp
+    )
+    
+    val backgroundColor = if (isSentByMe) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
     } else {
         MaterialTheme.colorScheme.surfaceVariant
     }
     
-    val textColor = if (esEmisor) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+    val contentColor = if (isSentByMe) {
+        MaterialTheme.colorScheme.onPrimary
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     
-    val alignment = if (esEmisor) Alignment.End else Alignment.Start
-    
-    val dateFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val timeString = remember(mensaje.timestamp) {
-        mensaje.timestamp?.toDate()?.let { dateFormatter.format(it) } ?: ""
-    }
+    val alignment = if (isSentByMe) Arrangement.End else Arrangement.Start
     
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = alignment
+        horizontalAlignment = if (isSentByMe) Alignment.End else Alignment.Start,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // Contenido del mensaje
-        Surface(
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (esEmisor) 16.dp else 4.dp,
-                bottomEnd = if (esEmisor) 4.dp else 16.dp
-            ),
-            color = backgroundColor
+        Row(
+            horizontalArrangement = alignment,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
+            Surface(
+                color = backgroundColor,
+                shape = chatBubbleShape,
                 modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .padding(12.dp)
+                    .widthIn(max = 340.dp)
+                    .padding(end = if (isSentByMe) 0.dp else 60.dp, start = if (isSentByMe) 60.dp else 0.dp)
+                    .combinedClickable(
+                        onClick = { },
+                        onLongClick = onLongClick
+                    )
             ) {
-                Text(
-                    text = mensaje.texto,
-                    color = textColor,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                
-                // Mostrar adjuntos si hay
-                if (mensaje.adjuntos?.isNotEmpty() == true) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        mensaje.adjuntos.forEach { url ->
-                            AdjuntoItem(url = url)
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                // Información del mensaje (hora y estado)
-                Row(
-                    modifier = Modifier.align(Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = timeString,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = textColor.copy(alpha = 0.7f)
+                        text = message.texto,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor
                     )
                     
-                    if (esEmisor) {
-                        Icon(
-                            imageVector = if (mensaje.leido) Icons.Default.DoneAll else Icons.Default.Done,
-                            contentDescription = if (mensaje.leido) "Leído" else "Enviado",
-                            modifier = Modifier.size(14.dp),
-                            tint = if (mensaje.leido) MaterialTheme.colorScheme.primary else textColor.copy(alpha = 0.7f)
+                    // Adjunto (si hay)
+                    if (message.adjuntos?.isNotEmpty() == true) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Adjunto: ${message.adjuntos.first()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = contentColor.copy(alpha = 0.7f)
                         )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    // Hora y estado de lectura
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                        val messageTime = message.timestamp.toDate()
+                        
+                        Text(
+                            text = timeFormat.format(messageTime),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = contentColor.copy(alpha = 0.7f)
+                        )
+                        
+                        if (isSentByMe) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = if (message.leido) Icons.Filled.DoneAll else Icons.Filled.Done,
+                                contentDescription = if (message.leido) "Leído" else "Enviado",
+                                tint = if (message.leido) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.7f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -584,5 +576,46 @@ fun AdjuntoItem(url: String) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+// Sección del input para mensajes
+@Composable
+fun ChatBottomBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onSendClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        tonalElevation = 3.dp,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = { Text(text = "Mensaje") },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
+                maxLines = 3
+            )
+            
+            IconButton(
+                onClick = onSendClick,
+                enabled = value.isNotBlank()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Enviar mensaje"
+                )
+            }
+        }
     }
 } 

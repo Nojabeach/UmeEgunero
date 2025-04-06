@@ -186,6 +186,15 @@ sealed class AppScreens(val route: String) {
         fun createRoute(eventoId: String) = "detalle_evento/$eventoId"
     }
     
+    /**
+     * Pantalla de detalle de día con eventos
+     * @param fecha Fecha del día a mostrar
+     */
+    object DetalleDiaEvento : AppScreens("detalle_dia_evento/{fecha}") {
+        const val Fecha = "fecha"
+        fun createRoute(fecha: String) = "detalle_dia_evento/$fecha"
+    }
+    
     /** Pantalla de estadísticas y análisis de datos */
     object Estadisticas : AppScreens("estadisticas")
     
@@ -476,5 +485,26 @@ sealed class AppScreens(val route: String) {
      */
     object Dummy : AppScreens("dummy/{title}") {
         fun createRoute(title: String) = "dummy/$title"
+    }
+
+    /**
+     * Sección: Pantallas de mensajería
+     */
+    /** Pantalla de bandeja de entrada de mensajes */
+    object BandejaEntrada : AppScreens("bandeja_entrada")
+    
+    /**
+     * Pantalla para componer un nuevo mensaje
+     * @param mensajeId ID de mensaje opcional para responder
+     */
+    object ComponerMensaje : AppScreens("componer_mensaje?mensajeId={mensajeId}") {
+        const val MensajeId = "mensajeId"
+        fun createRoute(mensajeId: String? = null): String {
+            return if (mensajeId != null) {
+                "componer_mensaje?mensajeId=$mensajeId"
+            } else {
+                "componer_mensaje"
+            }
+        }
     }
 } 

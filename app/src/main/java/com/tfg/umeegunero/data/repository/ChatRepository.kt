@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.data.repository
 
+import android.net.Uri
 import android.util.Log
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -7,25 +8,40 @@ import androidx.paging.PagingData
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
 import com.tfg.umeegunero.data.local.dao.ConversacionDao
 import com.tfg.umeegunero.data.local.entity.ChatMensajeEntity
 import com.tfg.umeegunero.data.local.entity.ConversacionEntity
 import com.tfg.umeegunero.data.model.AttachmentType
+import com.tfg.umeegunero.data.model.ChatMessage
 import com.tfg.umeegunero.data.model.InteractionStatus
-import com.tfg.umeegunero.data.model.Mensaje
+import com.tfg.umeegunero.data.model.local.MensajeEntity
 import com.tfg.umeegunero.util.Result
-import com.tfg.umeegunero.feature.profesor.screen.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import timber.log.Timber
+
+/**
+ * Representa información resumida de una conversación
+ */
+data class ConversacionInfo(
+    val conversacionId: String,
+    val participanteId: String,
+    val ultimoMensaje: String,
+    val fechaUltimoMensaje: Long,
+    val mensajesNoLeidos: Int,
+    val alumnoId: String? = null,
+    val participanteNombre: String? = null
+)
 
 /**
  * Repositorio para gestionar los mensajes de chat y conversaciones.
@@ -35,7 +51,9 @@ import javax.inject.Singleton
 class ChatRepository @Inject constructor(
     private val chatMensajeDao: ChatMensajeDao,
     private val conversacionDao: ConversacionDao,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val storage: FirebaseStorage,
+    private val authRepository: AuthRepository
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val TAG = "ChatRepository"
@@ -143,10 +161,43 @@ class ChatRepository @Inject constructor(
     }
     
     /**
-     * Obtiene los mensajes de una conversación como Flow.
+     * Obtiene los mensajes de una conversación
      */
-    fun getMensajesByConversacionId(conversacionId: String): Flow<List<ChatMensajeEntity>> {
-        return chatMensajeDao.getMensajesByConversacionId(conversacionId)
+    suspend fun getMensajesByConversacionId(conversacionId: String): List<MensajeEntity> {
+        return try {
+            val querySnapshot = firestore.collection("mensajes")
+                .whereEqualTo("conversacionId", conversacionId)
+                .orderBy("timestamp", Query.Direction.ASCENDING)
+                .get()
+                .await()
+            
+            val mensajes = querySnapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                
+                // Convertir los adjuntos
+                val adjuntosList = (data["adjuntos"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                
+                // Crear entidad de mensaje
+                MensajeEntity(
+                    id = doc.id,
+                    emisorId = data["emisorId"] as? String ?: "",
+                    receptorId = data["receptorId"] as? String ?: "",
+                    timestamp = (data["timestamp"] as? Timestamp)?.toDate()?.time ?: System.currentTimeMillis(),
+                    texto = data["texto"] as? String ?: "",
+                    leido = data["leido"] as? Boolean ?: false,
+                    fechaLeido = (data["fechaLeido"] as? Timestamp)?.toDate()?.time,
+                    conversacionId = data["conversacionId"] as? String ?: "",
+                    alumnoId = data["alumnoId"] as? String,
+                    tipoAdjunto = data["tipoMensaje"] as? String,
+                    adjuntos = adjuntosList
+                )
+            }
+            
+            mensajes
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener mensajes de la conversación $conversacionId")
+            emptyList()
+        }
     }
     
     /**
@@ -167,83 +218,66 @@ class ChatRepository @Inject constructor(
     /**
      * Envía un nuevo mensaje.
      */
-    suspend fun enviarMensaje(
+    suspend fun enviarMensaje(mensaje: MensajeEntity): Result<String> {
+        return try {
+            // Crear mensaje en Firestore
+            val mensajeData = mapOf(
+                "emisorId" to mensaje.emisorId,
+                "receptorId" to mensaje.receptorId,
+                "timestamp" to Timestamp(java.util.Date(mensaje.timestamp)),
+                "texto" to mensaje.texto,
+                "leido" to false,
+                "conversacionId" to mensaje.conversacionId,
+                "alumnoId" to mensaje.alumnoId,
+                "tipoMensaje" to (mensaje.tipoAdjunto ?: "TEXTO"),
+                "adjuntos" to mensaje.adjuntos
+            )
+            
+            // Crear documento
+            val docRef = firestore.collection("mensajes").document()
+            docRef.set(mensajeData).await()
+            
+            // Actualizar conversación
+            actualizarConversacionConNuevoMensaje(
+                conversacionId = mensaje.conversacionId,
+                emisorId = mensaje.emisorId,
+                receptorId = mensaje.receptorId,
+                texto = mensaje.texto,
+                timestamp = mensaje.timestamp
+            )
+            
+            Result.Success(docRef.id)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al enviar mensaje", e)
+            Result.Error(Exception(e.message ?: "Error desconocido al enviar mensaje"))
+        }
+    }
+    
+    /**
+     * Actualiza la conversación con un nuevo mensaje
+     */
+    private suspend fun actualizarConversacionConNuevoMensaje(
         conversacionId: String,
         emisorId: String,
         receptorId: String,
         texto: String,
-        tipoAdjunto: String? = null,
-        urlAdjunto: String? = null
-    ): Result<ChatMensajeEntity> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val mensajeId = UUID.randomUUID().toString()
-                val timestamp = System.currentTimeMillis()
-                
-                val mensaje = ChatMensajeEntity(
-                    id = mensajeId,
-                    emisorId = emisorId,
-                    receptorId = receptorId,
-                    timestamp = timestamp,
-                    texto = texto,
-                    leido = false,
-                    conversacionId = conversacionId,
-                    tipoAdjunto = tipoAdjunto,
-                    urlAdjunto = urlAdjunto
-                )
-                
-                // Guardar en Room
-                chatMensajeDao.insertMensaje(mensaje)
-                
-                // Actualizar último mensaje en la conversación
-                conversacionDao.actualizarUltimoMensaje(
-                    conversacionId = conversacionId,
-                    mensajeId = mensajeId,
-                    mensajeTexto = texto,
-                    mensajeTimestamp = timestamp,
-                    emisorId = emisorId
-                )
-                
-                // Actualizar contador de no leídos
-                conversacionDao.actualizarContadorNoLeidos(conversacionId, receptorId)
-                
-                // Guardar en Firestore
-                val mensajeMap = mapOf(
-                    "id" to mensajeId,
-                    "emisorId" to emisorId,
-                    "receptorId" to receptorId,
-                    "timestamp" to Timestamp(java.util.Date(timestamp)),
-                    "texto" to texto,
-                    "leido" to false,
-                    "conversacionId" to conversacionId,
-                    "tipoAdjunto" to tipoAdjunto,
-                    "urlAdjunto" to urlAdjunto
-                )
-                
-                firestore.collection("mensajes")
-                    .document(mensajeId)
-                    .set(mensajeMap)
-                    .await()
-                
-                // Actualizar también el documento de la conversación
-                val updateMap = mapOf(
-                    "ultimoMensajeId" to mensajeId,
-                    "ultimoMensajeTexto" to texto,
-                    "ultimoMensajeTimestamp" to Timestamp(java.util.Date(timestamp)),
-                    "ultimoMensajeEmisorId" to emisorId,
-                    "updatedAt" to Timestamp.now()
-                )
-                
-                firestore.collection("conversaciones")
-                    .document(conversacionId)
-                    .update(updateMap)
-                    .await()
-                
-                Result.Success(mensaje)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error al enviar mensaje", e)
-                Result.Error(Exception(e.message ?: "Error desconocido al enviar mensaje"))
-            }
+        timestamp: Long
+    ) {
+        try {
+            val updates = mapOf(
+                "ultimoMensaje" to texto,
+                "fechaUltimoMensaje" to Timestamp(java.util.Date(timestamp)),
+                "ultimoEmisorId" to emisorId,
+                "${receptorId}_noLeidos" to FieldValue.increment(1)
+            )
+            
+            firestore.collection("conversaciones")
+                .document(conversacionId)
+                .update(updates)
+                .await()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al actualizar conversación con nuevo mensaje", e)
+            throw e
         }
     }
     
@@ -256,13 +290,17 @@ class ChatRepository @Inject constructor(
                 val timestamp = System.currentTimeMillis()
                 
                 // Actualizar en Room
-                chatMensajeDao.marcarMensajeComoLeido(mensajeId, timestamp)
+                chatMensajeDao.marcarComoLeido(mensajeId, timestamp)
                 
                 // Obtener mensaje para conocer la conversación
                 val mensaje = chatMensajeDao.getMensajeById(mensajeId)
                 mensaje?.let {
                     // Actualizar contadores
-                    conversacionDao.actualizarContadorNoLeidos(it.conversacionId, it.receptorId)
+                    if (it.receptorId == it.conversacionId) {
+                        conversacionDao.resetearNoLeidosP1(it.conversacionId, it.receptorId)
+                    } else {
+                        conversacionDao.resetearNoLeidosP2(it.conversacionId, it.receptorId)
+                    }
                     
                     // Actualizar en Firestore
                     val updateMap = mapOf(
@@ -295,8 +333,15 @@ class ChatRepository @Inject constructor(
                 // Actualizar en Room
                 chatMensajeDao.marcarTodosComoLeidos(conversacionId, usuarioId, timestamp)
                 
-                // Actualizar contadores
-                conversacionDao.actualizarContadorNoLeidos(conversacionId, usuarioId)
+                // Resetear contadores
+                val conversacion = conversacionDao.getConversacionById(conversacionId)
+                if (conversacion != null) {
+                    if (conversacion.participante1Id == usuarioId) {
+                        conversacionDao.resetearNoLeidosP1(conversacionId, usuarioId)
+                    } else if (conversacion.participante2Id == usuarioId) {
+                        conversacionDao.resetearNoLeidosP2(conversacionId, usuarioId)
+                    }
+                }
                 
                 // Obtener IDs de mensajes no leídos para actualizar en Firestore
                 val mensajesNoLeidos = firestore.collection("mensajes")
@@ -344,34 +389,28 @@ class ChatRepository @Inject constructor(
     }
     
     /**
-     * Elimina una conversación y todos sus mensajes.
+     * Desactiva una conversación.
      */
-    suspend fun eliminarConversacion(conversacionId: String): Result<Unit> {
+    suspend fun desactivarConversacion(conversacionId: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                // Eliminar en Room
-                chatMensajeDao.eliminarMensajesDeConversacion(conversacionId)
-                conversacionDao.eliminarConversacion(conversacionId)
+                // Desactivar en Room
+                conversacionDao.desactivarConversacion(conversacionId)
                 
-                // Eliminar en Firestore
-                val mensajesRef = firestore.collection("mensajes")
-                    .whereEqualTo("conversacionId", conversacionId)
-                    .get()
+                // Desactivar en Firestore
+                val updateMap = mapOf(
+                    "activa" to false
+                )
+                
+                firestore.collection("conversaciones")
+                    .document(conversacionId)
+                    .update(updateMap)
                     .await()
-                
-                val batch = firestore.batch()
-                
-                mensajesRef.documents.forEach { doc ->
-                    batch.delete(doc.reference)
-                }
-                
-                batch.delete(firestore.collection("conversaciones").document(conversacionId))
-                batch.commit().await()
                 
                 Result.Success(Unit)
             } catch (e: Exception) {
-                Log.e(TAG, "Error al eliminar conversación", e)
-                Result.Error(Exception(e.message ?: "Error al eliminar conversación"))
+                Log.e(TAG, "Error al desactivar conversación", e)
+                Result.Error(Exception(e.message ?: "Error al desactivar conversación"))
             }
         }
     }
@@ -387,11 +426,8 @@ class ChatRepository @Inject constructor(
                 
                 if (mensajesNoSincronizados.isNotEmpty()) {
                     val batch = firestore.batch()
-                    val mensajesIds = mutableListOf<String>()
                     
                     mensajesNoSincronizados.forEach { mensaje ->
-                        mensajesIds.add(mensaje.id)
-                        
                         val mensajeRef = firestore.collection("mensajes").document(mensaje.id)
                         
                         val mensajeMap = mapOf(
@@ -408,10 +444,12 @@ class ChatRepository @Inject constructor(
                         )
                         
                         batch.set(mensajeRef, mensajeMap)
+                        
+                        // Marcar como sincronizado
+                        chatMensajeDao.marcarComoSincronizado(mensaje.id)
                     }
                     
                     batch.commit().await()
-                    chatMensajeDao.marcarComoSincronizados(mensajesIds)
                 }
                 
                 // Sincronizar conversaciones no sincronizadas a Firestore
@@ -419,11 +457,8 @@ class ChatRepository @Inject constructor(
                 
                 if (conversacionesNoSincronizadas.isNotEmpty()) {
                     val batch = firestore.batch()
-                    val conversacionesIds = mutableListOf<String>()
                     
                     conversacionesNoSincronizadas.forEach { conversacion ->
-                        conversacionesIds.add(conversacion.id)
-                        
                         val conversacionRef = firestore.collection("conversaciones").document(conversacion.id)
                         
                         val conversacionMap = mapOf(
@@ -432,45 +467,42 @@ class ChatRepository @Inject constructor(
                             "participante2Id" to conversacion.participante2Id,
                             "nombreParticipante1" to conversacion.nombreParticipante1,
                             "nombreParticipante2" to conversacion.nombreParticipante2,
-                            "ultimoMensajeId" to conversacion.ultimoMensajeId,
-                            "ultimoMensajeTexto" to conversacion.ultimoMensajeTexto,
-                            "ultimoMensajeTimestamp" to conversacion.ultimoMensajeTimestamp?.let { Timestamp(java.util.Date(it)) },
-                            "ultimoMensajeEmisorId" to conversacion.ultimoMensajeEmisorId,
+                            "ultimoMensaje" to conversacion.ultimoMensaje,
+                            "ultimoMensajeTimestamp" to conversacion.ultimoMensajeTimestamp,
                             "alumnoId" to conversacion.alumnoId,
-                            "createdAt" to Timestamp(java.util.Date(conversacion.createdAt)),
-                            "updatedAt" to Timestamp(java.util.Date(conversacion.updatedAt))
+                            "activa" to conversacion.activa
                         )
                         
                         batch.set(conversacionRef, conversacionMap)
+                        
+                        // Marcar como sincronizada
+                        conversacionDao.marcarComoSincronizada(conversacion.id)
                     }
                     
                     batch.commit().await()
-                    conversacionDao.marcarComoSincronizadas(conversacionesIds)
                 }
                 
                 // Traer nuevos mensajes de Firestore
-                // Comentando esta línea que causa error con .flow
-                // val ultimoMensajeTimestamp = chatMensajeDao.getMensajesPaginados("").flow
-                
                 firestore.collection("mensajes")
                     .orderBy("timestamp", Query.Direction.DESCENDING)
                     .limit(50) // Limitar la cantidad de mensajes por vez
                     .get()
                     .await()
                     .documents.forEach { doc ->
-                        val mensaje = doc.toObject(Mensaje::class.java)
-                        mensaje?.let {
+                        val data = doc.data
+                        data?.let {
                             val entity = ChatMensajeEntity(
-                                id = it.id,
-                                emisorId = it.emisorId,
-                                receptorId = it.receptorId,
-                                timestamp = it.timestamp.toDate().time,
-                                texto = it.texto,
-                                leido = it.leido,
-                                fechaLeido = it.fechaLeido?.toDate()?.time,
-                                alumnoId = it.alumnoId,
-                                conversacionId = it.conversacionId,
-                                tipoAdjunto = it.adjuntos?.firstOrNull(),
+                                id = doc.id,
+                                emisorId = it["emisorId"] as String? ?: "",
+                                receptorId = it["receptorId"] as String? ?: "",
+                                timestamp = (it["timestamp"] as? Timestamp)?.toDate()?.time ?: System.currentTimeMillis(),
+                                texto = it["texto"] as String? ?: "",
+                                leido = it["leido"] as Boolean? ?: false,
+                                fechaLeido = (it["fechaLeido"] as? Timestamp)?.toDate()?.time,
+                                conversacionId = it["conversacionId"] as String? ?: "",
+                                alumnoId = it["alumnoId"] as String?,
+                                tipoAdjunto = it["tipoAdjunto"] as String?,
+                                urlAdjunto = it["urlAdjunto"] as String?,
                                 sincronizado = true
                             )
                             chatMensajeDao.insertMensaje(entity)
@@ -480,8 +512,6 @@ class ChatRepository @Inject constructor(
                 // Actualizar contadores de no leídos
                 val conversaciones = conversacionDao.getConversacionesNoSincronizadas()
                 conversaciones.forEach { conversacion ->
-                    val updateMap = mutableMapOf<String, Any>()
-                    
                     // Contar mensajes no leídos para participante1
                     val noLeidosP1 = firestore.collection("mensajes")
                         .whereEqualTo("conversacionId", conversacion.id)
@@ -501,13 +531,17 @@ class ChatRepository @Inject constructor(
                         .documents.size
                     
                     // Actualizar en Room
-                    if (noLeidosP1 > 0) {
-                        conversacionDao.actualizarContadorNoLeidos(conversacion.id, conversacion.participante1Id)
-                    }
+                    conversacionDao.actualizarContadorNoLeidos(
+                        conversacionId = conversacion.id, 
+                        usuarioId = conversacion.participante1Id, 
+                        contador = noLeidosP1
+                    )
                     
-                    if (noLeidosP2 > 0) {
-                        conversacionDao.actualizarContadorNoLeidos(conversacion.id, conversacion.participante2Id)
-                    }
+                    conversacionDao.actualizarContadorNoLeidos(
+                        conversacionId = conversacion.id, 
+                        usuarioId = conversacion.participante2Id, 
+                        contador = noLeidosP2
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error al sincronizar conversaciones", e)
@@ -519,20 +553,6 @@ class ChatRepository @Inject constructor(
      * Convierte una entidad ChatMensajeEntity a un modelo ChatMessage para la UI.
      */
     fun ChatMensajeEntity.toChatMessage(): ChatMessage {
-        val attachmentType = when (this.tipoAdjunto) {
-            "IMAGE" -> AttachmentType.IMAGE
-            "PDF" -> AttachmentType.PDF
-            "AUDIO" -> AttachmentType.AUDIO
-            "LOCATION" -> AttachmentType.LOCATION
-            else -> null
-        }
-        
-        val interactionStatus = try {
-            InteractionStatus.valueOf(this.interaccionEstado)
-        } catch (e: Exception) {
-            InteractionStatus.NONE
-        }
-        
         return ChatMessage(
             id = this.id,
             senderId = this.emisorId,
@@ -540,9 +560,19 @@ class ChatRepository @Inject constructor(
             timestamp = this.timestamp,
             isRead = this.leido,
             readTimestamp = this.fechaLeido,
-            attachmentType = attachmentType,
+            attachmentType = when (this.tipoAdjunto) {
+                "IMAGE" -> AttachmentType.IMAGE
+                "PDF" -> AttachmentType.PDF
+                "AUDIO" -> AttachmentType.AUDIO
+                "LOCATION" -> AttachmentType.LOCATION
+                else -> null
+            },
             attachmentUrl = this.urlAdjunto,
-            interactionStatus = interactionStatus,
+            interactionStatus = try {
+                InteractionStatus.valueOf(this.interaccionEstado)
+            } catch (e: Exception) {
+                InteractionStatus.NONE
+            },
             isTranslated = this.estaTraducido,
             originalText = this.textoOriginal
         )
@@ -551,11 +581,11 @@ class ChatRepository @Inject constructor(
     /**
      * Convierte un modelo ChatMessage a una entidad ChatMensajeEntity.
      */
-    fun ChatMessage.toEntity(conversacionId: String): ChatMensajeEntity {
+    fun ChatMessage.toEntity(conversacionId: String, receptorId: String): ChatMensajeEntity {
         return ChatMensajeEntity(
             id = this.id,
             emisorId = this.senderId,
-            receptorId = "", // Necesita ser completado
+            receptorId = receptorId,
             timestamp = this.timestamp,
             texto = this.text,
             leido = this.isRead,
@@ -567,5 +597,146 @@ class ChatRepository @Inject constructor(
             estaTraducido = this.isTranslated,
             textoOriginal = this.originalText
         )
+    }
+    
+    /**
+     * Actualiza el último mensaje de una conversación.
+     */
+    suspend fun actualizarUltimoMensaje(
+        conversacionId: String,
+        texto: String, 
+        timestamp: Long
+    ) {
+        withContext(Dispatchers.IO) {
+            try {
+                // Actualizar en Room
+                conversacionDao.actualizarUltimoMensaje(
+                    conversacionId = conversacionId,
+                    texto = texto,
+                    timestamp = timestamp
+                )
+                
+                // Actualizar en Firestore
+                val updates = mapOf(
+                    "ultimoMensaje" to texto,
+                    "ultimoMensajeTimestamp" to timestamp
+                )
+                
+                firestore.collection("conversaciones")
+                    .document(conversacionId)
+                    .update(updates)
+                    .await()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error al actualizar último mensaje", e)
+                throw e
+            }
+        }
+    }
+    
+    /**
+     * Obtiene las conversaciones de un usuario
+     */
+    suspend fun getConversacionesByUsuarioId(usuarioId: String): List<ConversacionInfo> {
+        return try {
+            val querySnapshot = firestore.collection("conversaciones")
+                .whereArrayContains("participantes", usuarioId)
+                .get()
+                .await()
+            
+            val conversaciones = querySnapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                
+                // Obtener participantes y encontrar al otro usuario
+                val participantes = data["participantes"] as? List<*>
+                val otroParticipanteId = participantes
+                    ?.filterIsInstance<String>()
+                    ?.firstOrNull { it != usuarioId } ?: return@mapNotNull null
+                
+                ConversacionInfo(
+                    conversacionId = doc.id,
+                    participanteId = otroParticipanteId,
+                    ultimoMensaje = data["ultimoMensaje"] as? String ?: "",
+                    fechaUltimoMensaje = (data["fechaUltimoMensaje"] as? Timestamp)?.toDate()?.time ?: 0L,
+                    mensajesNoLeidos = (data["${usuarioId}_noLeidos"] as? Number)?.toInt() ?: 0,
+                    alumnoId = data["alumnoId"] as? String
+                )
+            }
+            
+            conversaciones.sortedByDescending { it.fechaUltimoMensaje }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al obtener conversaciones del usuario $usuarioId", e)
+            emptyList()
+        }
+    }
+    
+    /**
+     * Crea una nueva conversación o devuelve una existente
+     */
+    suspend fun obtenerOCrearConversacion(
+        usuarioId: String,
+        otroUsuarioId: String,
+        alumnoId: String? = null
+    ): Result<String> {
+        return try {
+            // Buscar conversación existente
+            val claveConversacion = if (alumnoId != null) {
+                // Conversación sobre un alumno
+                listOf(usuarioId, otroUsuarioId).sorted().joinToString(":") + ":$alumnoId"
+            } else {
+                // Conversación directa
+                listOf(usuarioId, otroUsuarioId).sorted().joinToString(":")
+            }
+            
+            val query = firestore.collection("conversaciones")
+                .whereEqualTo("claveConversacion", claveConversacion)
+                .get()
+                .await()
+            
+            // Si existe, devolver su ID
+            if (!query.isEmpty) {
+                val conversacionId = query.documents.first().id
+                return Result.Success(conversacionId)
+            }
+            
+            // Crear nueva conversación
+            val conversacionData = mapOf(
+                "participantes" to listOf(usuarioId, otroUsuarioId),
+                "claveConversacion" to claveConversacion,
+                "fechaCreacion" to Timestamp.now(),
+                "ultimoMensaje" to "",
+                "fechaUltimoMensaje" to Timestamp.now(),
+                "ultimoEmisorId" to "",
+                "${usuarioId}_noLeidos" to 0,
+                "${otroUsuarioId}_noLeidos" to 0,
+                "alumnoId" to alumnoId
+            )
+            
+            val docRef = firestore.collection("conversaciones").document()
+            docRef.set(conversacionData).await()
+            
+            Result.Success(docRef.id)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al obtener o crear conversación", e)
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Sube un archivo adjunto al storage
+     */
+    suspend fun subirAdjunto(uri: Uri, conversacionId: String): Result<String> {
+        return try {
+            val extension = uri.lastPathSegment?.substringAfterLast(".") ?: "jpg"
+            val fileName = "mensajes/${conversacionId}/${UUID.randomUUID()}.$extension"
+            
+            val fileRef = storage.reference.child(fileName)
+            fileRef.putFile(uri).await()
+            
+            val downloadUrl = fileRef.downloadUrl.await()
+            Result.Success(downloadUrl.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al subir adjunto", e)
+            Result.Error(e)
+        }
     }
 } 

@@ -1,16 +1,23 @@
 package com.tfg.umeegunero.data.repository
 
 import android.net.Uri
+import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.model.Mensaje
+import com.tfg.umeegunero.data.model.TipoDestinatario
+import com.tfg.umeegunero.util.Result
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import java.util.UUID
@@ -18,26 +25,23 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Modelo de datos para representar una conversación con información resumida
+ * Repositorio para la gestión de mensajes.
+ * Esta clase será reemplazada gradualmente por ChatRepository.
+ * @deprecated Use ChatRepository instead
  */
-data class ConversacionInfo(
-    val conversacionId: String,
-    val participanteId: String,
-    val ultimoMensaje: String,
-    val fechaUltimoMensaje: Timestamp?,
-    val mensajesNoLeidos: Int,
-    val alumnoId: String? = null
-)
-
-/**
- * Repositorio para gestionar mensajes y conversaciones
- */
+@Deprecated("Use ChatRepository instead")
 @Singleton
 class MensajeRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val authRepository: AuthRepository,
     private val storage: FirebaseStorage
 ) {
+    private val TAG = "MensajeRepository"
+    
+    companion object {
+        private const val COLLECTION_MENSAJES = "mensajes"
+    }
+    
     // Referencia a colecciones
     private val conversacionesRef = firestore.collection("conversaciones")
     private val mensajesRef = firestore.collection("mensajes")
@@ -51,32 +55,30 @@ class MensajeRepository @Inject constructor(
     /**
      * Obtiene los mensajes de una conversación como flujo
      */
-    fun obtenerMensajes(conversacionId: String): Flow<List<Mensaje>> {
-        // Utilizar cache si existe
-        if (!mensajesPorConversacion.containsKey(conversacionId)) {
-            mensajesPorConversacion[conversacionId] = MutableStateFlow(emptyList())
+    fun obtenerMensajes(conversacionId: String): Flow<List<Mensaje>> = flow {
+        try {
+            val mensajes = mutableListOf<Mensaje>()
             
-            // Escuchar cambios en tiempo real
-            mensajesRef
+            // Obtener mensajes de Firestore
+            val querySnapshot = firestore.collection("mensajes")
                 .whereEqualTo("conversacionId", conversacionId)
                 .orderBy("timestamp", Query.Direction.ASCENDING)
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null) {
-                        Timber.e(error, "Error al obtener mensajes")
-                        return@addSnapshotListener
-                    }
-                    
-                    if (snapshot != null) {
-                        val mensajes = snapshot.documents.mapNotNull { doc ->
-                            doc.toObject(Mensaje::class.java)?.copy(id = doc.id)
-                        }
-                        
-                        mensajesPorConversacion[conversacionId]?.value = mensajes
-                    }
+                .get()
+                .await()
+            
+            // Convertir documentos a objetos Mensaje
+            for (document in querySnapshot.documents) {
+                val mensaje = toMensaje(document)
+                if (mensaje != null) {
+                    mensajes.add(mensaje)
                 }
+            }
+            
+            emit(mensajes)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al obtener mensajes", e)
+            emit(emptyList())
         }
-        
-        return mensajesPorConversacion[conversacionId]!!.asStateFlow()
     }
     
     /**
@@ -115,7 +117,7 @@ class MensajeRepository @Inject constructor(
                                     conversacionId = doc.id,
                                     participanteId = participanteId,
                                     ultimoMensaje = ultimoMensaje,
-                                    fechaUltimoMensaje = fechaUltimoMensaje,
+                                    fechaUltimoMensaje = fechaUltimoMensaje?.toDate()?.time ?: 0L,
                                     mensajesNoLeidos = mensajesNoLeidos,
                                     alumnoId = alumnoId
                                 )
@@ -134,33 +136,171 @@ class MensajeRepository @Inject constructor(
     }
     
     /**
-     * Envía un mensaje en una conversación
+     * Obtiene mensajes recibidos por un usuario
+     * @param usuarioId ID del usuario
+     * @return Flow con la lista de mensajes
+     */
+    fun getMensajesRecibidos(usuarioId: String): Flow<List<Mensaje>> = callbackFlow {
+        val listenerRegistration = firestore.collection(COLLECTION_MENSAJES)
+            .whereEqualTo("destinatarioId", usuarioId)
+            .orderBy("fechaEnvio", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "Error al obtener mensajes recibidos")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val mensajes = snapshot?.documents?.mapNotNull { doc ->
+                    Mensaje.fromSnapshot(doc)
+                } ?: emptyList()
+                
+                trySend(mensajes)
+            }
+        
+        awaitClose { listenerRegistration.remove() }
+    }
+    
+    /**
+     * Obtiene mensajes enviados por un usuario
+     * @param usuarioId ID del usuario
+     * @return Flow con la lista de mensajes
+     */
+    fun getMensajesEnviados(usuarioId: String): Flow<List<Mensaje>> = callbackFlow {
+        val listenerRegistration = firestore.collection(COLLECTION_MENSAJES)
+            .whereEqualTo("remitente", usuarioId)
+            .orderBy("fechaEnvio", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "Error al obtener mensajes enviados")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val mensajes = snapshot?.documents?.mapNotNull { doc ->
+                    Mensaje.fromSnapshot(doc)
+                } ?: emptyList()
+                
+                trySend(mensajes)
+            }
+        
+        awaitClose { listenerRegistration.remove() }
+    }
+    
+    /**
+     * Obtiene mensajes destacados de un usuario
+     * @param usuarioId ID del usuario
+     * @return Flow con la lista de mensajes
+     */
+    fun getMensajesDestacados(usuarioId: String): Flow<List<Mensaje>> = callbackFlow {
+        val listenerRegistration = firestore.collection(COLLECTION_MENSAJES)
+            .whereEqualTo("destinatarioId", usuarioId)
+            .whereEqualTo("destacado", true)
+            .orderBy("fechaEnvio", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "Error al obtener mensajes destacados")
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val mensajes = snapshot?.documents?.mapNotNull { doc ->
+                    Mensaje.fromSnapshot(doc)
+                } ?: emptyList()
+                
+                trySend(mensajes)
+            }
+        
+        awaitClose { listenerRegistration.remove() }
+    }
+    
+    /**
+     * Obtiene un mensaje específico
+     * @param mensajeId ID del mensaje
+     * @return Mensaje encontrado o null
+     */
+    suspend fun getMensaje(mensajeId: String): Mensaje? {
+        return try {
+            val doc = firestore.collection(COLLECTION_MENSAJES)
+                .document(mensajeId)
+                .get()
+                .await()
+            
+            Mensaje.fromSnapshot(doc)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener mensaje")
+            null
+        }
+    }
+    
+    /**
+     * Envía un nuevo mensaje
+     * @param mensaje Mensaje a enviar
      * @return ID del mensaje creado
      */
-    suspend fun enviarMensaje(conversacionId: String, mensaje: Mensaje): String {
-        try {
-            // Si el mensaje ya tiene ID, lo actualizamos
-            if (mensaje.id.isNotEmpty()) {
-                mensajesRef.document(mensaje.id).set(mensaje).await()
-                return mensaje.id
-            }
+    suspend fun enviarMensaje(mensaje: Mensaje): String {
+        return try {
+            val docRef = firestore.collection(COLLECTION_MENSAJES)
+                .add(mensaje.toMap())
+                .await()
             
-            // Crear nuevo mensaje
-            val nuevoMensajeRef = mensajesRef.document()
-            val nuevoMensaje = mensaje.copy(
-                id = nuevoMensajeRef.id,
-                conversacionId = conversacionId
-            )
-            
-            // Guardar mensaje
-            nuevoMensajeRef.set(nuevoMensaje).await()
-            
-            // Actualizar conversación
-            actualizarConversacionConNuevoMensaje(conversacionId, nuevoMensaje)
-            
-            return nuevoMensajeRef.id
+            docRef.id
         } catch (e: Exception) {
             Timber.e(e, "Error al enviar mensaje")
+            throw e
+        }
+    }
+    
+    /**
+     * Marca un mensaje como leído
+     * @param mensajeId ID del mensaje
+     */
+    suspend fun marcarMensajeComoLeido(mensajeId: String) {
+        try {
+            val updateData = mapOf(
+                "leido" to true,
+                "fechaLeido" to Timestamp.now()
+            )
+            
+            firestore.collection(COLLECTION_MENSAJES)
+                .document(mensajeId)
+                .update(updateData)
+                .await()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al marcar mensaje como leído")
+            throw e
+        }
+    }
+    
+    /**
+     * Destaca/desmarca un mensaje
+     * @param mensajeId ID del mensaje
+     * @param destacado Indica si se debe destacar o desmarcar
+     */
+    suspend fun toggleMensajeDestacado(mensajeId: String, destacado: Boolean) {
+        try {
+            firestore.collection(COLLECTION_MENSAJES)
+                .document(mensajeId)
+                .update("destacado", destacado)
+                .await()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar estado destacado del mensaje")
+            throw e
+        }
+    }
+    
+    /**
+     * Elimina un mensaje
+     * @param mensajeId ID del mensaje
+     */
+    suspend fun eliminarMensaje(mensajeId: String) {
+        try {
+            firestore.collection(COLLECTION_MENSAJES)
+                .document(mensajeId)
+                .delete()
+                .await()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar mensaje")
             throw e
         }
     }
@@ -196,30 +336,6 @@ class MensajeRepository @Inject constructor(
             conversacionRef.update(updates).await()
         } catch (e: Exception) {
             Timber.e(e, "Error al actualizar conversación")
-            throw e
-        }
-    }
-    
-    /**
-     * Marca un mensaje como leído
-     */
-    suspend fun marcarMensajeComoLeido(mensajeId: String) {
-        try {
-            val mensajeRef = mensajesRef.document(mensajeId)
-            val mensajeDoc = mensajeRef.get().await()
-            
-            if (!mensajeDoc.exists()) {
-                throw Exception("El mensaje no existe")
-            }
-            
-            mensajeRef.update(
-                mapOf(
-                    "leido" to true,
-                    "fechaLeido" to Timestamp.now()
-                )
-            ).await()
-        } catch (e: Exception) {
-            Timber.e(e, "Error al marcar mensaje como leído")
             throw e
         }
     }
@@ -417,6 +533,46 @@ class MensajeRepository @Inject constructor(
             fileName.substringAfterLast(".")
         } else {
             "bin" // Si no hay extensión, usar "bin" por defecto
+        }
+    }
+    
+    /**
+     * Convierte un DocumentSnapshot a un objeto Mensaje
+     */
+    private fun toMensaje(doc: DocumentSnapshot): Mensaje? {
+        return try {
+            val data = doc.data ?: return null
+            
+            val adjuntosData = data["adjuntos"]
+            val adjuntosList = when (adjuntosData) {
+                is List<*> -> adjuntosData.filterIsInstance<String>()
+                else -> null
+            }
+            
+            Mensaje(
+                id = doc.id,
+                emisorId = data["emisorId"] as? String ?: "",
+                receptorId = data["receptorId"] as? String ?: "",
+                timestamp = data["timestamp"] as? Timestamp ?: Timestamp.now(),
+                texto = data["texto"] as? String ?: "",
+                leido = data["leido"] as? Boolean ?: false,
+                fechaLeido = data["fechaLeido"] as? Timestamp,
+                conversacionId = data["conversacionId"] as? String ?: "",
+                alumnoId = data["alumnoId"] as? String,
+                adjuntos = adjuntosList,
+                tipoMensaje = data["tipoMensaje"] as? String ?: "TEXTO",
+                remitente = data["remitente"] as? String ?: "",
+                remitenteNombre = data["remitenteNombre"] as? String ?: "",
+                destinatarioId = data["destinatarioId"] as? String ?: "",
+                destinatarioNombre = data["destinatarioNombre"] as? String ?: "",
+                asunto = data["asunto"] as? String ?: "",
+                contenido = data["contenido"] as? String ?: "",
+                fechaEnvio = data["fechaEnvio"] as? Timestamp ?: Timestamp.now(),
+                destacado = data["destacado"] as? Boolean ?: false
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al convertir documento a Mensaje", e)
+            null
         }
     }
 } 

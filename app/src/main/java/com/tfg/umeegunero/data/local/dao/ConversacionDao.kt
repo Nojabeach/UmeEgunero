@@ -37,8 +37,8 @@ interface ConversacionDao {
     /**
      * Obtiene una conversación específica por su ID.
      */
-    @Query("SELECT * FROM conversaciones WHERE id = :conversacionId")
-    suspend fun getConversacionById(conversacionId: String): ConversacionEntity?
+    @Query("SELECT * FROM conversaciones WHERE id = :id")
+    suspend fun getConversacionById(id: String): ConversacionEntity?
     
     /**
      * Obtiene una conversación entre dos usuarios.
@@ -66,8 +66,8 @@ interface ConversacionDao {
      */
     @Query("""
         SELECT * FROM conversaciones 
-        WHERE (participante1Id = :usuarioId OR participante2Id = :usuarioId) 
-        AND tieneNoLeidos = 1 AND ultimoMensajeEmisorId != :usuarioId
+        WHERE (participante1Id = :usuarioId AND noLeidosParticipante1 > 0) 
+        OR (participante2Id = :usuarioId AND noLeidosParticipante2 > 0)
         ORDER BY ultimoMensajeTimestamp DESC
     """)
     fun getConversacionesConNoLeidos(usuarioId: String): Flow<List<ConversacionEntity>>
@@ -77,21 +77,11 @@ interface ConversacionDao {
      */
     @Query("""
         UPDATE conversaciones
-        SET ultimoMensajeId = :mensajeId,
-            ultimoMensajeTexto = :mensajeTexto,
-            ultimoMensajeTimestamp = :mensajeTimestamp,
-            ultimoMensajeEmisorId = :emisorId,
-            updatedAt = :timestamp
+        SET ultimoMensaje = :texto,
+            ultimoMensajeTimestamp = :timestamp
         WHERE id = :conversacionId
     """)
-    suspend fun actualizarUltimoMensaje(
-        conversacionId: String,
-        mensajeId: String,
-        mensajeTexto: String,
-        mensajeTimestamp: Long,
-        emisorId: String,
-        timestamp: Long = System.currentTimeMillis()
-    )
+    suspend fun actualizarUltimoMensaje(conversacionId: String, texto: String, timestamp: Long)
     
     /**
      * Actualiza el contador de mensajes no leídos.
@@ -99,23 +89,63 @@ interface ConversacionDao {
     @Transaction
     @Query("""
         UPDATE conversaciones
-        SET cantidadNoLeidos = (
-            SELECT COUNT(*) FROM chat_mensajes
-            WHERE conversacionId = :conversacionId AND receptorId = :receptorId AND leido = 0
-        ),
-        tieneNoLeidos = (
-            SELECT COUNT(*) FROM chat_mensajes
-            WHERE conversacionId = :conversacionId AND receptorId = :receptorId AND leido = 0
-        ) > 0
-        WHERE id = :conversacionId
+        SET noLeidosParticipante1 = noLeidosParticipante1 + 1
+        WHERE id = :conversacionId AND participante1Id = :receptorId
     """)
-    suspend fun actualizarContadorNoLeidos(conversacionId: String, receptorId: String)
+    suspend fun incrementarNoLeidosP1(conversacionId: String, receptorId: String)
+    
+    @Transaction
+    @Query("""
+        UPDATE conversaciones
+        SET noLeidosParticipante2 = noLeidosParticipante2 + 1
+        WHERE id = :conversacionId AND participante2Id = :receptorId
+    """)
+    suspend fun incrementarNoLeidosP2(conversacionId: String, receptorId: String)
+    
+    @Transaction
+    @Query("""
+        UPDATE conversaciones
+        SET noLeidosParticipante1 = 0
+        WHERE id = :conversacionId AND participante1Id = :usuarioId
+    """)
+    suspend fun resetearNoLeidosP1(conversacionId: String, usuarioId: String)
+    
+    @Transaction
+    @Query("""
+        UPDATE conversaciones
+        SET noLeidosParticipante2 = 0
+        WHERE id = :conversacionId AND participante2Id = :usuarioId
+    """)
+    suspend fun resetearNoLeidosP2(conversacionId: String, usuarioId: String)
     
     /**
-     * Elimina una conversación por su ID.
+     * Obtiene conversaciones que necesitan ser sincronizadas.
      */
-    @Query("DELETE FROM conversaciones WHERE id = :conversacionId")
-    suspend fun eliminarConversacion(conversacionId: String)
+    @Query("SELECT * FROM conversaciones WHERE sincronizada = 0")
+    suspend fun getConversacionesNoSincronizadas(): List<ConversacionEntity>
+    
+    /**
+     * Marca conversaciones como sincronizadas.
+     */
+    @Query("UPDATE conversaciones SET sincronizada = 1 WHERE id = :conversacionId")
+    suspend fun marcarComoSincronizada(conversacionId: String)
+    
+    /**
+     * Desactiva una conversación.
+     */
+    @Query("UPDATE conversaciones SET activa = 0 WHERE id = :conversacionId")
+    suspend fun desactivarConversacion(conversacionId: String)
+    
+    /**
+     * Actualiza el contador de mensajes no leídos.
+     */
+    @Transaction
+    @Query("""
+        UPDATE conversaciones
+        SET noLeidosParticipante1 = :contador
+        WHERE id = :conversacionId AND participante1Id = :usuarioId
+    """)
+    suspend fun actualizarContadorNoLeidos(conversacionId: String, usuarioId: String, contador: Int = 0)
     
     /**
      * Busca conversaciones por el nombre del otro participante.
@@ -132,21 +162,8 @@ interface ConversacionDao {
      * Obtiene el número total de mensajes no leídos para un usuario.
      */
     @Query("""
-        SELECT SUM(cantidadNoLeidos) FROM conversaciones
-        WHERE (participante1Id = :usuarioId OR participante2Id = :usuarioId)
-        AND ultimoMensajeEmisorId != :usuarioId
+        SELECT SUM(CASE WHEN participante1Id = :usuarioId THEN noLeidosParticipante1 ELSE noLeidosParticipante2 END) FROM conversaciones
+        WHERE participante1Id = :usuarioId OR participante2Id = :usuarioId
     """)
     fun getTotalMensajesNoLeidos(usuarioId: String): Flow<Int>
-    
-    /**
-     * Obtiene conversaciones que necesitan ser sincronizadas.
-     */
-    @Query("SELECT * FROM conversaciones WHERE sincronizado = 0")
-    suspend fun getConversacionesNoSincronizadas(): List<ConversacionEntity>
-    
-    /**
-     * Marca conversaciones como sincronizadas.
-     */
-    @Query("UPDATE conversaciones SET sincronizado = 1 WHERE id IN (:conversacionIds)")
-    suspend fun marcarComoSincronizadas(conversacionIds: List<String>)
 } 

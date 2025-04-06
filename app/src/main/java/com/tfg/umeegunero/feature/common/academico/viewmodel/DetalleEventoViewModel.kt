@@ -23,30 +23,21 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 /**
- * Estado UI para la pantalla de detalle de evento
+ * Estado de la UI para la pantalla de detalle de evento
  */
 data class DetalleEventoUiState(
     val evento: Evento? = null,
-    val isLoading: Boolean = false,
+    val cargando: Boolean = false,
     val error: String? = null,
-    val isSuccess: Boolean = false,
-    val isEditing: Boolean = false,
-    val showDeleteConfirmation: Boolean = false,
-    
-    // Campos para edición
-    val titulo: String = "",
-    val descripcion: String = "",
-    val tipoEvento: TipoEvento = TipoEvento.OTRO,
-    val fechaTexto: String = "",
-    val horaTexto: String = "",
-    val ubicacion: String = "",
-    val recordatorio: Boolean = false,
-    val tiempoRecordatorioMinutos: Int = 30,
-    val publico: Boolean = true
+    val dialogoEdicionVisible: Boolean = false,
+    val navegarAtras: Boolean = false,
+    val mensajeExito: String? = null
 )
 
 /**
  * ViewModel para la pantalla de detalle de evento
+ * 
+ * Gestiona la carga, edición y eliminación de un evento del calendario
  */
 @HiltViewModel
 class DetalleEventoViewModel @Inject constructor(
@@ -62,48 +53,42 @@ class DetalleEventoViewModel @Inject constructor(
     /**
      * Carga un evento por su ID
      */
-    fun loadEvento(eventoId: String) {
+    fun cargarEvento(eventoId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(cargando = true) }
             
+            // Simulamos la carga desde el repositorio
             try {
-                // Este método es simulado, en una implementación real
-                // buscaría el evento en Firestore por su ID
-                val eventosList = calendarioRepository.getEventosByMonth(
-                    LocalDate.now().year,
-                    LocalDate.now().monthValue
+                // En una implementación real, esto consultaría al repositorio con el ID
+                val eventos = calendarioRepository.getEventosByMonth(
+                    java.time.LocalDate.now().year,
+                    java.time.LocalDate.now().monthValue
                 )
                 
-                val evento = eventosList.find { it.id == eventoId }
+                val eventoEncontrado = eventos.find { it.id == eventoId }
                 
-                if (evento != null) {
+                if (eventoEncontrado != null) {
                     _uiState.update { 
                         it.copy(
-                            evento = evento,
-                            isLoading = false,
-                            titulo = evento.titulo,
-                            descripcion = evento.descripcion,
-                            tipoEvento = evento.tipo,
-                            fechaTexto = evento.fecha.toLocalDate().format(dateFormatter),
-                            horaTexto = evento.fecha.toLocalTime().format(timeFormatter),
-                            ubicacion = evento.ubicacion,
-                            recordatorio = evento.recordatorio,
-                            tiempoRecordatorioMinutos = evento.tiempoRecordatorioMinutos,
-                            publico = evento.publico
+                            evento = eventoEncontrado,
+                            cargando = false,
+                            error = null
                         ) 
                     }
+                    Timber.d("Evento cargado: ${eventoEncontrado.id}")
                 } else {
                     _uiState.update { 
                         it.copy(
-                            isLoading = false,
-                            error = "No se encontró el evento"
+                            cargando = false,
+                            error = "Evento no encontrado" 
                         ) 
                     }
+                    Timber.e("Evento con ID $eventoId no encontrado")
                 }
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
+                        cargando = false,
                         error = e.message ?: "Error al cargar el evento"
                     ) 
                 }
@@ -113,253 +98,88 @@ class DetalleEventoViewModel @Inject constructor(
     }
     
     /**
-     * Inicia el modo de edición
+     * Actualiza un evento existente
      */
-    fun startEditing() {
-        _uiState.update { it.copy(isEditing = true) }
-    }
-    
-    /**
-     * Cancela el modo de edición
-     */
-    fun cancelEditing() {
-        // Restaurar valores originales del evento
-        _uiState.value.evento?.let { evento ->
-            _uiState.update { 
-                it.copy(
-                    isEditing = false,
-                    titulo = evento.titulo,
-                    descripcion = evento.descripcion,
-                    tipoEvento = evento.tipo,
-                    fechaTexto = evento.fecha.toLocalDate().format(dateFormatter),
-                    horaTexto = evento.fecha.toLocalTime().format(timeFormatter),
-                    ubicacion = evento.ubicacion,
-                    recordatorio = evento.recordatorio,
-                    tiempoRecordatorioMinutos = evento.tiempoRecordatorioMinutos,
-                    publico = evento.publico
-                ) 
-            }
-        }
-    }
-    
-    /**
-     * Actualiza el título del evento
-     */
-    fun updateTitulo(titulo: String) {
-        _uiState.update { it.copy(titulo = titulo) }
-    }
-    
-    /**
-     * Actualiza la descripción del evento
-     */
-    fun updateDescripcion(descripcion: String) {
-        _uiState.update { it.copy(descripcion = descripcion) }
-    }
-    
-    /**
-     * Actualiza el tipo de evento
-     */
-    fun updateTipo(tipo: TipoEvento) {
-        _uiState.update { it.copy(tipoEvento = tipo) }
-    }
-    
-    /**
-     * Actualiza la fecha del evento
-     */
-    fun updateFecha(fecha: String) {
-        _uiState.update { it.copy(fechaTexto = fecha) }
-    }
-    
-    /**
-     * Actualiza la hora del evento
-     */
-    fun updateHora(hora: String) {
-        _uiState.update { it.copy(horaTexto = hora) }
-    }
-    
-    /**
-     * Actualiza la ubicación del evento
-     */
-    fun updateUbicacion(ubicacion: String) {
-        _uiState.update { it.copy(ubicacion = ubicacion) }
-    }
-    
-    /**
-     * Actualiza si el evento tiene recordatorio
-     */
-    fun updateRecordatorio(recordatorio: Boolean) {
-        _uiState.update { it.copy(recordatorio = recordatorio) }
-    }
-    
-    /**
-     * Actualiza el tiempo de recordatorio en minutos
-     */
-    fun updateTiempoRecordatorio(minutos: Int) {
-        _uiState.update { it.copy(tiempoRecordatorioMinutos = minutos) }
-    }
-    
-    /**
-     * Actualiza si el evento es público
-     */
-    fun updatePublico(publico: Boolean) {
-        _uiState.update { it.copy(publico = publico) }
-    }
-    
-    /**
-     * Guarda los cambios del evento
-     */
-    fun saveEvento() {
+    fun actualizarEvento(evento: Evento) {
         viewModelScope.launch {
-            val currentState = _uiState.value
-            
-            if (currentState.titulo.isBlank()) {
-                _uiState.update { it.copy(error = "El título no puede estar vacío") }
-                return@launch
-            }
-            
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(cargando = true) }
             
             try {
-                // Parsear fecha y hora
-                val fecha = try {
-                    LocalDate.parse(currentState.fechaTexto, dateFormatter)
-                } catch (e: Exception) {
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            error = "Formato de fecha inválido. Use dd/mm/yyyy"
-                        ) 
-                    }
-                    return@launch
-                }
+                val resultado = calendarioRepository.updateEvento(evento)
                 
-                val hora = try {
-                    LocalTime.parse(currentState.horaTexto, timeFormatter)
-                } catch (e: Exception) {
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            error = "Formato de hora inválido. Use hh:mm"
-                        ) 
-                    }
-                    return@launch
-                }
-                
-                val fechaHora = LocalDateTime.of(fecha, hora)
-                
-                // Crear evento actualizado
-                val eventoActualizado = currentState.evento?.copy(
-                    titulo = currentState.titulo,
-                    descripcion = currentState.descripcion,
-                    fecha = fechaHora.toTimestamp(),
-                    tipo = currentState.tipoEvento,
-                    ubicacion = currentState.ubicacion,
-                    recordatorio = currentState.recordatorio,
-                    tiempoRecordatorioMinutos = currentState.tiempoRecordatorioMinutos,
-                    publico = currentState.publico
-                )
-                
-                if (eventoActualizado != null) {
-                    val result = calendarioRepository.updateEvento(eventoActualizado)
-                    
-                    when (result) {
-                        is Result.Success -> {
-                            _uiState.update { 
-                                it.copy(
-                                    evento = eventoActualizado,
-                                    isLoading = false,
-                                    isEditing = false,
-                                    isSuccess = true
-                                ) 
-                            }
-                            Timber.d("Evento actualizado: ${eventoActualizado.id}")
-                        }
-                        is Result.Error -> {
-                            _uiState.update { 
-                                it.copy(
-                                    isLoading = false,
-                                    error = result.exception?.message ?: "Error al actualizar el evento"
-                                ) 
-                            }
-                            Timber.e(result.exception, "Error al actualizar el evento")
-                        }
-                        is Result.Loading -> {
-                            // Ya estamos en estado de carga
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Error inesperado al guardar el evento"
-                    ) 
-                }
-                Timber.e(e, "Error inesperado al guardar el evento")
-            }
-        }
-    }
-    
-    /**
-     * Muestra el diálogo de confirmación para eliminar evento
-     */
-    fun showDeleteConfirmation() {
-        _uiState.update { it.copy(showDeleteConfirmation = true) }
-    }
-    
-    /**
-     * Oculta el diálogo de confirmación para eliminar evento
-     */
-    fun hideDeleteConfirmation() {
-        _uiState.update { it.copy(showDeleteConfirmation = false) }
-    }
-    
-    /**
-     * Elimina el evento
-     */
-    fun deleteEvento() {
-        viewModelScope.launch {
-            val currentState = _uiState.value
-            val evento = currentState.evento ?: return@launch
-            
-            _uiState.update { 
-                it.copy(
-                    isLoading = true,
-                    error = null,
-                    showDeleteConfirmation = false
-                ) 
-            }
-            
-            try {
-                val result = calendarioRepository.deleteEvento(evento.id)
-                
-                when (result) {
+                when (resultado) {
                     is Result.Success -> {
                         _uiState.update { 
                             it.copy(
-                                isLoading = false,
-                                isSuccess = true
+                                evento = evento,
+                                cargando = false,
+                                dialogoEdicionVisible = false,
+                                mensajeExito = "Evento actualizado correctamente"
                             ) 
                         }
-                        Timber.d("Evento eliminado: ${evento.id}")
+                        Timber.d("Evento actualizado: ${evento.id}")
                     }
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                isLoading = false,
-                                error = result.exception?.message ?: "Error al eliminar el evento"
+                                cargando = false,
+                                error = resultado.exception?.message ?: "Error al actualizar el evento"
                             ) 
                         }
-                        Timber.e(result.exception, "Error al eliminar el evento")
+                        Timber.e(resultado.exception, "Error al actualizar el evento")
                     }
-                    is Result.Loading -> {
-                        // Ya estamos en estado de carga
-                    }
+                    is Result.Loading -> { /* Estado ya actualizado */ }
                 }
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
+                        cargando = false,
+                        error = e.message ?: "Error inesperado al actualizar el evento"
+                    ) 
+                }
+                Timber.e(e, "Error inesperado al actualizar el evento")
+            }
+        }
+    }
+    
+    /**
+     * Elimina el evento actual
+     */
+    fun eliminarEvento() {
+        val eventoActual = _uiState.value.evento ?: return
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(cargando = true) }
+            
+            try {
+                val resultado = calendarioRepository.deleteEvento(eventoActual.id)
+                
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update { 
+                            it.copy(
+                                cargando = false,
+                                navegarAtras = true,
+                                mensajeExito = "Evento eliminado correctamente"
+                            ) 
+                        }
+                        Timber.d("Evento eliminado: ${eventoActual.id}")
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                cargando = false,
+                                error = resultado.exception?.message ?: "Error al eliminar el evento"
+                            ) 
+                        }
+                        Timber.e(resultado.exception, "Error al eliminar el evento")
+                    }
+                    is Result.Loading -> { /* Estado ya actualizado */ }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        cargando = false,
                         error = e.message ?: "Error inesperado al eliminar el evento"
                     ) 
                 }
@@ -369,16 +189,30 @@ class DetalleEventoViewModel @Inject constructor(
     }
     
     /**
-     * Limpia el mensaje de error
+     * Muestra el diálogo de edición
      */
-    fun clearError() {
+    fun mostrarDialogoEdicion() {
+        _uiState.update { it.copy(dialogoEdicionVisible = true) }
+    }
+    
+    /**
+     * Oculta el diálogo de edición
+     */
+    fun ocultarDialogoEdicion() {
+        _uiState.update { it.copy(dialogoEdicionVisible = false) }
+    }
+    
+    /**
+     * Limpia los mensajes de error
+     */
+    fun limpiarError() {
         _uiState.update { it.copy(error = null) }
     }
     
     /**
-     * Limpia el estado de éxito
+     * Resetea el estado de navegación
      */
-    fun clearSuccess() {
-        _uiState.update { it.copy(isSuccess = false) }
+    fun resetearNavegacion() {
+        _uiState.update { it.copy(navegarAtras = false) }
     }
 } 

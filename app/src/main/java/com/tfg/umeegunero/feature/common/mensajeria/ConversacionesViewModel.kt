@@ -6,6 +6,7 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
+import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
@@ -32,7 +33,7 @@ data class ConversacionResumen(
     val alumnoId: String?,
     val nombreAlumno: String?,
     val ultimoMensaje: String,
-    val fechaUltimoMensaje: Timestamp,
+    val fechaUltimoMensaje: Long,
     val mensajesNoLeidos: Int
 )
 
@@ -55,7 +56,8 @@ data class ConversacionesUiState(
 class ConversacionesViewModel @Inject constructor(
     private val mensajeRepository: MensajeRepository,
     private val usuarioRepository: UsuarioRepository,
-    private val alumnoRepository: AlumnoRepository
+    private val alumnoRepository: AlumnoRepository,
+    private val chatRepository: ChatRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ConversacionesUiState())
@@ -162,9 +164,8 @@ class ConversacionesViewModel @Inject constructor(
                 
                 // Cargar las conversaciones del usuario
                 usuario?.dni?.let { usuarioDni ->
-                    mensajeRepository.obtenerConversaciones(usuarioDni).collect { conversacionesInfo ->
-                        procesarConversaciones(conversacionesInfo, usuario)
-                    }
+                    val conversacionesInfo = chatRepository.getConversacionesByUsuarioId(usuarioDni)
+                    procesarConversaciones(conversacionesInfo, usuario)
                 }
                 
             } catch (e: Exception) {
@@ -235,7 +236,7 @@ class ConversacionesViewModel @Inject constructor(
                     alumnoId = conversacion.alumnoId,
                     nombreAlumno = nombreAlumno,
                     ultimoMensaje = conversacion.ultimoMensaje,
-                    fechaUltimoMensaje = conversacion.fechaUltimoMensaje ?: Timestamp.now(),
+                    fechaUltimoMensaje = conversacion.fechaUltimoMensaje,
                     mensajesNoLeidos = conversacion.mensajesNoLeidos
                 )
                 
@@ -246,14 +247,14 @@ class ConversacionesViewModel @Inject constructor(
             }
         }
         
-        // Ordenar por fecha y actualizar estado
-        val conversacionesOrdenadas = resumenList.sortedByDescending { 
-            it.fechaUltimoMensaje.seconds
+        // Ordenar por fecha más reciente
+        val listaOrdenada = resumenList.sortedByDescending { 
+            it.fechaUltimoMensaje
         }
         
         _uiState.update { state -> state.copy(
             isLoading = false,
-            conversaciones = conversacionesOrdenadas,
+            conversaciones = listaOrdenada,
             error = null
         ) }
     }

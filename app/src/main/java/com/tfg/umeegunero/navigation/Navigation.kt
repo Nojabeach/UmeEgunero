@@ -20,6 +20,10 @@ import com.tfg.umeegunero.feature.common.academico.screen.CalendarioScreen
 import com.tfg.umeegunero.feature.common.academico.screen.DetalleEventoScreen
 import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioViewModel
 import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
+import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.DetalleDiaEventoScreen
+import com.tfg.umeegunero.feature.common.comunicacion.screen.BandejaEntradaScreen
+import com.tfg.umeegunero.feature.common.comunicacion.screen.ComponerMensajeScreen
+import java.time.LocalDate
 
 /**
  * Navegación principal de la aplicación
@@ -172,12 +176,51 @@ fun Navigation(
             
             DetalleEventoScreen(
                 eventoId = eventoId,
-                navController = navController,
-                onEventUpdated = {
-                    navController.navigate(AppScreens.Calendario.route) {
-                        popUpTo(AppScreens.Calendario.route) { inclusive = true }
-                    }
+                navController = navController
+            )
+        }
+
+        // Detalle de día con eventos
+        composable(
+            route = AppScreens.DetalleDiaEvento.route,
+            arguments = listOf(
+                navArgument(AppScreens.DetalleDiaEvento.Fecha) {
+                    type = NavType.StringType
                 }
+            )
+        ) { backStackEntry ->
+            val fechaString = backStackEntry.arguments?.getString(AppScreens.DetalleDiaEvento.Fecha) ?: LocalDate.now().toString()
+            val fecha = LocalDate.parse(fechaString)
+            
+            DetalleDiaEventoScreen(
+                navController = navController,
+                fecha = fecha
+            )
+        }
+        
+        // Pantalla de bandeja de entrada de mensajes
+        composable(route = AppScreens.BandejaEntrada.route) {
+            BandejaEntradaScreen(
+                navController = navController
+            )
+        }
+        
+        // Pantalla para componer un nuevo mensaje
+        composable(
+            route = AppScreens.ComponerMensaje.route,
+            arguments = listOf(
+                navArgument(AppScreens.ComponerMensaje.MensajeId) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val mensajeId = backStackEntry.arguments?.getString(AppScreens.ComponerMensaje.MensajeId)
+            
+            ComponerMensajeScreen(
+                navController = navController,
+                mensajeIdRespuesta = mensajeId
             )
         }
     }
