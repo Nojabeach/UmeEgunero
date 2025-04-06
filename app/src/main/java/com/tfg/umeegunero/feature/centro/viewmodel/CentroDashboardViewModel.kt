@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,16 +35,20 @@ import javax.inject.Inject
  * @property currentUser Usuario administrador del centro actual
  * @property cursos Lista de cursos pertenecientes al centro educativo
  * @property navigateToWelcome Flag para controlar la navegación a la pantalla de bienvenida
+ * @property nombreCentro Nombre del centro educativo a mostrar en el dashboard
+ * @property centroId ID del centro educativo asociado al usuario actual
  *
  * @author Maitane (Estudiante 2º DAM)
- * @version 1.1
+ * @version 1.2
  */
 data class CentroDashboardUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val currentUser: Usuario? = null,
     val cursos: List<Curso> = emptyList(),
-    val navigateToWelcome: Boolean = false
+    val navigateToWelcome: Boolean = false,
+    val nombreCentro: String = "Centro Educativo",
+    val centroId: String = ""
 )
 
 /**
@@ -61,15 +67,17 @@ data class CentroDashboardUiState(
  * @property cursoRepository Repositorio para acceder a los datos de cursos
  * @property usuarioRepository Repositorio para acceder a los datos de usuarios
  * @property authRepository Repositorio para gestionar la autenticación
+ * @property centroRepository Repositorio para acceder a los datos de centros
  * 
  * @author Maitane (Estudiante 2º DAM)
- * @version 1.1
+ * @version 1.2
  */
 @HiltViewModel
 class CentroDashboardViewModel @Inject constructor(
     private val cursoRepository: CursoRepository,
     private val usuarioRepository: UsuarioRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val centroRepository: CentroRepository
 ) : ViewModel() {
     // Estado mutable internamente para modificaciones dentro del ViewModel
     private val _uiState = MutableStateFlow(CentroDashboardUiState())
@@ -84,6 +92,12 @@ class CentroDashboardViewModel @Inject constructor(
     val cursos = _uiState.asStateFlow().map { it.cursos }
     
     /**
+     * Propiedad derivada que expone el nombre del centro educativo
+     * para facilitar su uso en la UI
+     */
+    val nombreCentro = _uiState.asStateFlow().map { it.nombreCentro }
+    
+    /**
      * Inicialización del ViewModel
      * 
      * Carga automáticamente los datos necesarios para el dashboard al crearse
@@ -91,7 +105,6 @@ class CentroDashboardViewModel @Inject constructor(
      */
     init {
         loadCurrentUser()
-        loadCursos()
     }
     
     /**
@@ -108,6 +121,8 @@ class CentroDashboardViewModel @Inject constructor(
      */
     private fun loadCurrentUser() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
             try {
                 // Intentar obtener el usuario directamente del repositorio de usuario
                 // usando el ID del usuario autenticado actualmente
@@ -118,16 +133,65 @@ class CentroDashboardViewModel @Inject constructor(
                     // usando algún campo identificador como el email o ID
                     when (val userResult = usuarioRepository.getUsuarioByEmail(currentFirebaseUser.email)) {
                         is Result.Success -> {
-                            _uiState.update { it.copy(currentUser = userResult.data) }
+                            val usuario = userResult.data
+                            // Buscar el perfil ADMIN_CENTRO para obtener el centroId
+                            val perfilCentro = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                            val centroId = perfilCentro?.centroId ?: ""
+                            
+                            if (centroId.isNotEmpty()) {
+                                // Cargar los datos del centro
+                                when (val centroResult = centroRepository.getCentroById(centroId)) {
+                                    is Result.Success -> {
+                                        val centro = centroResult.data
+                                        _uiState.update { it.copy(
+                                            currentUser = usuario,
+                                            nombreCentro = centro.nombre,
+                                            centroId = centroId,
+                                            isLoading = false
+                                        ) }
+                                        
+                                        // Una vez que tenemos el centroId, cargamos los cursos
+                                        loadCursos(centroId)
+                                    }
+                                    is Result.Error -> {
+                                        Timber.e(centroResult.exception, "Error al cargar datos del centro")
+                                        _uiState.update { it.copy(
+                                            error = "No se pudo cargar la información del centro",
+                                            isLoading = false
+                                        ) }
+                                    }
+                                    else -> { /* Ignorar estado loading */ }
+                                }
+                            } else {
+                                // No hay perfil de centro o no tiene centroId
+                                _uiState.update { it.copy(
+                                    currentUser = usuario,
+                                    error = "El usuario no tiene un centro asignado",
+                                    isLoading = false
+                                ) }
+                            }
                         }
                         is Result.Error -> {
                             Timber.e(userResult.exception, "Error al cargar perfil de usuario")
+                            _uiState.update { it.copy(
+                                error = "Error al cargar el perfil de usuario",
+                                isLoading = false
+                            ) }
                         }
                         else -> { /* Ignorar estado loading */ }
                     }
+                } else {
+                    _uiState.update { it.copy(
+                        error = "No hay usuario autenticado",
+                        isLoading = false
+                    ) }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar el usuario actual")
+                _uiState.update { it.copy(
+                    error = e.message ?: "Error al cargar datos del usuario",
+                    isLoading = false
+                ) }
             }
         }
     }
@@ -144,14 +208,16 @@ class CentroDashboardViewModel @Inject constructor(
      * - Asignar profesores y alumnos
      * - Estructurar el contenido académico
      * - Generar informes y estadísticas
+     * 
+     * @param centroId ID del centro del cual cargar los cursos
      */
-    private fun loadCursos() {
+    private fun loadCursos(centroId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                // En producción, se debería filtrar por centro del usuario
-                when (val result = cursoRepository.getAllCursos()) {
+                // Filtrar cursos por centro del usuario
+                when (val result = cursoRepository.getCursosByCentro(centroId)) {
                     is Result.Success -> {
                         _uiState.update { 
                             it.copy(

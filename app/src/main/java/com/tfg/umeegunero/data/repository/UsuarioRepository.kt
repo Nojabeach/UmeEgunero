@@ -29,6 +29,8 @@ import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.Timestamp
 import java.io.IOException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 
 /**
  * Repositorio para gestionar usuarios y operaciones relacionadas
@@ -144,9 +146,10 @@ open class UsuarioRepository @Inject constructor(
         try {
             Timber.d("Intentando login en Firebase Auth para email: $email")
             val authResult = firebaseAuth.signInWithEmailAndPassword(email, password).await()
-            val uid = authResult.user?.uid ?: throw Exception("Error al iniciar sesión: UID no disponible")
-            Timber.d("Login exitoso en Firebase Auth, UID: $uid")
-
+            val uid = authResult.user?.uid ?: throw Exception("UID de usuario nulo en Firebase Auth")
+            
+            Timber.d("Login exitoso en Firebase Auth con UID: $uid, email: ${authResult.user?.email}")
+            
             // Actualizar último acceso del usuario
             Timber.d("Buscando usuario en Firestore por email: $email")
             val userQuery = usuariosCollection.whereEqualTo("email", email).get().await()
@@ -154,6 +157,7 @@ open class UsuarioRepository @Inject constructor(
             if (!userQuery.isEmpty) {
                 val userDoc = userQuery.documents.first()
                 Timber.d("Usuario encontrado en Firestore con DNI: ${userDoc.id}")
+                Timber.d("Datos del usuario: ${userDoc.data}")
                 
                 // Actualizar último acceso
                 userDoc.reference.update("ultimoAcceso", Timestamp.now()).await()
@@ -166,6 +170,12 @@ open class UsuarioRepository @Inject constructor(
                 firebaseAuth.signOut()
                 return@withContext Result.Error(Exception("Usuario no encontrado en la base de datos"))
             }
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Timber.e(e, "Error de autenticación para email: $email (credenciales inválidas)")
+            return@withContext Result.Error(Exception("Credenciales incorrectas. Por favor verifica tu email y contraseña."))
+        } catch (e: FirebaseAuthInvalidUserException) {
+            Timber.e(e, "Error de autenticación para email: $email (usuario inválido)")
+            return@withContext Result.Error(Exception("Usuario no encontrado. Por favor verifica tu email."))
         } catch (e: FirebaseAuthException) {
             Timber.e(e, "Error de autenticación para email: $email")
             return@withContext Result.Error(Exception("Error de autenticación: ${e.message}"))

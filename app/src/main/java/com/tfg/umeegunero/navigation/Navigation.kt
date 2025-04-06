@@ -98,7 +98,7 @@ fun Navigation(
                 onLoginSuccess = { _ ->
                     val route = when(userType) {
                         TipoUsuario.ADMIN_APP -> AppScreens.AdminDashboard.route
-                        TipoUsuario.ADMIN_CENTRO -> AppScreens.Welcome.route // Temporal
+                        TipoUsuario.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
                         TipoUsuario.PROFESOR -> AppScreens.Welcome.route // Temporal
                         TipoUsuario.FAMILIAR -> AppScreens.Welcome.route // Temporal
                         else -> AppScreens.Welcome.route
@@ -145,6 +145,14 @@ fun Navigation(
         // Pantalla de administración
         composable(route = AppScreens.AdminDashboard.route) {
             AdminDashboardScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantalla del dashboard del centro educativo
+        composable(route = AppScreens.CentroDashboard.route) {
+            com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
             )

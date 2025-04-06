@@ -256,27 +256,28 @@ class LoginViewModel @Inject constructor(
             }
 
             try {
-                Timber.d("Iniciando proceso de login para email: $email")
+                Timber.d("Iniciando proceso de login para email: $email y tipo de usuario: $userType")
                 val result = usuarioRepository.iniciarSesion(email, password)
 
                 when (result) {
                     is Result.Success -> {
                         val usuarioId = result.data
-                        Timber.d("Login exitoso en Firebase Auth, obteniendo datos de usuario...")
+                        Timber.d("Login exitoso en Firebase Auth, obteniendo datos de usuario con ID: $usuarioId")
 
                         // Obtener datos completos del usuario
                         val usuarioResult = usuarioRepository.getUsuarioPorDni(usuarioId)
                         if (usuarioResult is Result.Success) {
                             val usuario = usuarioResult.data
-                            Timber.d("Datos de usuario obtenidos: ${usuario.email}")
+                            Timber.d("Datos de usuario obtenidos: ${usuario.email}, nombre: ${usuario.nombre}")
 
                             // Verificar que el usuario tiene el tipo adecuado de perfil
                             val tipoUsuarioFirebase = userType
 
                             val perfiles = usuario.perfiles
-                            Timber.d("Perfiles del usuario: ${perfiles.map { it.tipo }}")
+                            Timber.d("Perfiles del usuario (${perfiles.size}): ${perfiles.map { it.tipo }}")
                             
                             val tienePerfil = perfiles.any { it.tipo == tipoUsuarioFirebase }
+                            Timber.d("¿Tiene perfil $tipoUsuarioFirebase? $tienePerfil")
 
                             if (tienePerfil) {
                                 // Si el usuario seleccionó recordar usuario, guardamos el email
