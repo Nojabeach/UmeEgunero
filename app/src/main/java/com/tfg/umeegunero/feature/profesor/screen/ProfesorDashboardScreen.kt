@@ -705,7 +705,7 @@ fun ProfesorHomeContent(
                     icon = Icons.AutoMirrored.Filled.Assignment,
                     color = Color(0xFF007AFF),
                     onClick = {
-                        navController.navigate(AppScreens.ProfesorTareas.route)
+                        navController.navigate(AppScreens.TareasProfesor.route)
                     }
                 )
             }
@@ -716,7 +716,7 @@ fun ProfesorHomeContent(
                     icon = Icons.AutoMirrored.Filled.Chat,
                     color = Color(0xFF5856D6),
                     onClick = {
-                        navController.navigate(AppScreens.ChatProfesor.route)
+                        navController.navigate(AppScreens.ConversacionesProfesor.route)
                     }
                 )
             }
@@ -727,7 +727,7 @@ fun ProfesorHomeContent(
                     icon = Icons.Default.ChildCare,
                     color = Color(0xFF8E24AA),
                     onClick = {
-                        navController.navigate(AppScreens.ActividadesPreescolarProfesor.route)
+                        navController.navigate(AppScreens.ActividadesPreescolar.route)
                     }
                 )
             }
@@ -749,7 +749,7 @@ fun ProfesorHomeContent(
                     icon = Icons.Default.CalendarToday,
                     color = Color(0xFFFF2D55),
                     onClick = {
-                        navController.navigate(AppScreens.ProfesorCalendario.route)
+                        navController.navigate(AppScreens.CalendarioProfesor.route)
                     }
                 )
             }

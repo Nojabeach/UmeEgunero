@@ -37,6 +37,8 @@ import com.tfg.umeegunero.navigation.AppScreens
 
 /**
  * Dashboard del profesor con Hilt
+ * Se encarga de mostrar las opciones principales para el profesor
+ * y navegar a las diferentes pantallas de la aplicación.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +51,7 @@ fun HiltProfesorDashboardScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Profesor Dashboard (Temporal)", fontSize = 24.sp)
+        Text("Profesor Dashboard", fontSize = 24.sp)
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = {
             navController.navigate(AppScreens.TareasProfesor.route)
@@ -100,7 +102,7 @@ fun ProfesorHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .clickable {
-                        navController.navigate(AppScreens.Dummy.createRoute("Alumnos Pendientes"))
+                        navController.navigate(AppScreens.AsistenciaProfesor.route)
                     }
             )
             
@@ -112,7 +114,7 @@ fun ProfesorHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .clickable {
-                        navController.navigate(AppScreens.Dummy.createRoute("Registro de Asistencia"))
+                        navController.navigate(AppScreens.AsistenciaProfesor.route)
                     }
             )
         }
@@ -132,7 +134,7 @@ fun ProfesorHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .clickable {
-                        navController.navigate(AppScreens.Dummy.createRoute("Tareas Pendientes"))
+                        navController.navigate(AppScreens.TareasProfesor.route)
                     }
             )
             
@@ -144,7 +146,7 @@ fun ProfesorHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .clickable {
-                        navController.navigate(AppScreens.Dummy.createRoute("Calendario de Eventos"))
+                        navController.navigate(AppScreens.CalendarioProfesor.route)
                     }
             )
         }
@@ -165,7 +167,7 @@ fun ProfesorHomeContent(
                 text = "Registrar Asistencia",
                 icon = Icons.Default.CheckCircle,
                 onClick = {
-                    navController.navigate(AppScreens.Dummy.createRoute("Registrar Asistencia"))
+                    navController.navigate(AppScreens.AsistenciaProfesor.route)
                 }
             )
             
@@ -173,7 +175,7 @@ fun ProfesorHomeContent(
                 text = "Enviar Mensaje a Padres",
                 icon = Icons.AutoMirrored.Filled.Chat,
                 onClick = {
-                    navController.navigate(AppScreens.Dummy.createRoute("Mensajes a Padres"))
+                    navController.navigate(AppScreens.ConversacionesProfesor.route)
                 }
             )
             

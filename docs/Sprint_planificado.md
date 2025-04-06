@@ -2,39 +2,26 @@
 
 ## Objetivos Principales
 
-El próximo sprint se enfocará en completar funcionalidades pendientes, desarrollar características avanzadas para cada perfil de usuario y preparar la aplicación para un lanzamiento estable. Se dará prioridad a la completitud de dashboards, eliminación de pantallas temporales y optimización del rendimiento general.
+El próximo sprint se enfocará en completar las funcionalidades pendientes de los dashboards de Profesor y Familiar, desarrollar el sistema de gamificación educativa, implementar el módulo de comunicaciones oficiales y optimizar el rendimiento general de la aplicación para su lanzamiento estable.
 
 ## Duración
 
-- **Inicio**: Por definir
-- **Finalización**: Por definir (3 semanas después del inicio)
+- **Inicio**: 10 de Febrero de 2024
+- **Finalización**: 2 de Marzo de 2024
 - **Duración total**: 3 semanas
+
+## Estado Actual
+
+Se ha logrado completar la compilación exitosa de todos los dashboards existentes, eliminando errores en las referencias a `EstadoComida` y `Spring`, y actualizando las importaciones necesarias. Tanto el Dashboard de Centro como el de Administrador están completamente funcionales, mientras que los Dashboards de Profesor y Familiar requieren algunos ajustes finales detallados en este plan de sprint.
 
 ## Funcionalidades a Implementar
 
-### 1. Finalización de Dashboards
-
-#### Dashboard de Administrador de Aplicación
-- **Implementar módulo de estadísticas globales de uso**
-  - Gráficos de actividad por perfil
-  - Tendencias de uso
-  - Métricas clave de rendimiento
-- **Completar panel de administración de centros**
-  - Vista unificada de todos los centros
-  - Indicadores de estado y actividad
-  - Funciones de filtrado y búsqueda avanzada
-
-#### Dashboard de Administrador de Centro
-- **Completar CentroDashboardScreen**
-  - Corregir errores en `CentroDashboardViewModel.kt`
-  - Implementar visualización jerárquica de cursos y clases
-  - Añadir indicadores de rendimiento académico
-- **Panel de gestión de profesores**
-  - Visualización de asignaciones actuales
-  - Herramientas de planificación de horarios
-  - Gestión de suplencias y ausencias
+### 1. Finalización de Dashboards Pendientes
 
 #### Dashboard de Profesor
+- **Reemplazar todas las referencias a DummyScreen**
+  - Eliminar referencias en HiltProfesorDashboardScreen
+  - Implementar pantallas reales para cada opción (Alumnos Pendientes, Asistencia, Tareas, Eventos)
 - **Mejorar sistema de registro de actividades**
   - Añadir plantillas predefinidas
   - Incorporar sistema de etiquetas personalizables
@@ -43,6 +30,9 @@ El próximo sprint se enfocará en completar funcionalidades pendientes, desarro
   - Sistema de rúbricas configurable
   - Evaluación cualitativa y cuantitativa
   - Generación automática de informes
+- **Coherencia visual con otros dashboards**
+  - Aplicar mismos principios de Material Design 3
+  - Utilizar componentes y patrones consistentes con el resto de la aplicación
 
 #### Dashboard de Familiar
 - **Optimizar visualización de múltiples alumnos**
@@ -53,6 +43,10 @@ El próximo sprint se enfocará en completar funcionalidades pendientes, desarro
   - Solicitud de tutorías
   - Confirmación de eventos
   - Feedback sobre actividades
+- **Mejorar visualización de estadísticas**
+  - Gráficos de progreso académico
+  - Resumen de asistencia y actividades
+  - Indicadores de desempeño
 
 ### 2. Sistema de Gamificación Educativa
 
@@ -68,6 +62,10 @@ El próximo sprint se enfocará en completar funcionalidades pendientes, desarro
   - Interfaz para profesores para crear desafíos
   - Seguimiento de participación
   - Notificaciones de logros alcanzados
+- **Integración con actividades existentes**
+  - Vincular puntos con completitud de tareas
+  - Gamificar registro de asistencia
+  - Recompensas por participación en actividades
 
 ### 3. Módulo de Comunicaciones Oficiales
 
@@ -83,23 +81,23 @@ El próximo sprint se enfocará en completar funcionalidades pendientes, desarro
   - Constructor visual de formularios
   - Análisis estadístico de resultados
   - Exportación de datos recopilados
+- **Notificaciones inteligentes**
+  - Priorización de comunicaciones
+  - Configuración de canales de notificación
+  - Agrupación contextual de mensajes
 
 ### 4. Optimización y Corrección de Errores
 
-- **Reemplazar pantallas temporales**
-  - Implementar funcionalidades reales para reemplazar todas las referencias a DummyScreens, especialmente en:
-    - Dashboard de Profesores (HiltProfesorDashboardScreen)
-    - Dashboard de Familias
-    - Pantallas de gestión académica
-  - Asegurar coherencia con el resto de la aplicación
-
+- **Mejorar rendimiento general**
+  - Optimizar tiempos de carga en dashboards
+  - Reducir consumo de memoria en visualizaciones complejas
+  - Implementar carga diferida de componentes pesados
 - **Completar funcionalidades menores pendientes**
   - Finalizar la funcionalidad de adjuntos en mensajes
   - Implementar acciones adicionales en la interfaz de chat
   - Optimizar la manipulación de archivos
-
 - **Corregir errores conocidos**
-  - Solucionar problemas de navegación
+  - Solucionar problemas de navegación anidada
   - Optimizar consultas a Firestore
   - Mejorar gestión de tipos en conversiones
 
@@ -137,7 +135,7 @@ El próximo sprint se enfocará en completar funcionalidades pendientes, desarro
   - Estandarizar versiones entre módulos
 - **Modernización de APIs deprecadas**
   - Migrar `toObject()` a las API KTX recomendadas
-  - Reemplazar componentes Compose deprecados
+  - Reemplazar componentes Compose deprecados (como `Divider` por `HorizontalDivider`)
   - Actualizar métodos de autenticación de Firebase
 
 ## Riesgos Identificados
@@ -164,8 +162,8 @@ El próximo sprint se enfocará en completar funcionalidades pendientes, desarro
 
 1. **Documentación técnica**
    - Actualización de diagramas de arquitectura
-   - Documentación de nuevas API y componentes
-   - Guías de migración para código legacy
+   - Documentación del sistema de gamificación
+   - Guías para el módulo de comunicaciones oficiales
 
 2. **Manuales de usuario**
    - Guías específicas por perfil de usuario
@@ -179,6 +177,8 @@ El próximo sprint se enfocará en completar funcionalidades pendientes, desarro
 
 ## Conclusión
 
-Este sprint representa un punto crítico en el desarrollo de UmeEgunero, enfocándose en completar las funcionalidades pendientes, mejorar la experiencia de usuario y preparar la aplicación para un lanzamiento estable. La priorización se ha realizado considerando el impacto en la experiencia de usuario y la completitud de las características clave para cada perfil.
+Este sprint representa una fase crítica en el desarrollo de UmeEgunero, enfocándose en completar la experiencia de todos los perfiles de usuario, añadir elementos de gamificación para incrementar el engagement, y optimizar el rendimiento general para asegurar una experiencia fluida.
 
-Al finalizar este sprint, la aplicación debe estar en condiciones de ser utilizada por usuarios reales en un entorno de producción controlado, permitiendo recopilar feedback valioso para futuras iteraciones mientras se proporciona valor inmediato a los stakeholders. 
+Con los dashboards de Centro y Administrador ya completados, este sprint se centra en finalizar los dashboards de Profesor y Familiar, implementar el sistema de gamificación educativa y el módulo de comunicaciones oficiales. Al finalizar este sprint, la aplicación estará lista para un lanzamiento controlado, proporcionando una experiencia completa y de alta calidad a todos los usuarios.
+
+El éxito de este sprint sentará las bases para futuras mejoras y expansiones de la plataforma, permitiendo una adopción gradual en entornos educativos reales mientras se recoge feedback valioso para iteraciones futuras. 
