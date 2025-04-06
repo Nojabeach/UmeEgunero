@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -258,7 +259,7 @@ fun FAQCategoryCard(category: FAQCategory) {
                     category.items.forEachIndexed { index, faq ->
                         FAQItem(faq)
                         if (index < category.items.size - 1) {
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         }
                     }
                 }
@@ -402,7 +403,7 @@ private fun getCategorias(): List<FAQCategory> {
         ),
         FAQCategory(
             title = "Soporte Técnico",
-            icon = Icons.Default.Help,
+            icon = Icons.AutoMirrored.Filled.Help,
             items = listOf(
                 FAQItem(
                     "¿Qué hago si la app no funciona correctamente?",

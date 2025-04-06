@@ -36,6 +36,7 @@ import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de registro de asistencia
@@ -232,7 +233,7 @@ fun AsistenciaScreen(
                                 }
                             )
                             
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }

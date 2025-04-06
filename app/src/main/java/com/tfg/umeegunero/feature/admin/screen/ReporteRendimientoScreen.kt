@@ -23,6 +23,10 @@ import com.tfg.umeegunero.feature.admin.viewmodel.ReporteRendimientoViewModel
 import com.tfg.umeegunero.ui.components.charts.LineChart
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.Assignment
 
 /**
  * Pantalla de Reporte de Rendimiento Académico.
@@ -210,7 +214,7 @@ fun ReporteRendimientoScreen(
                     valor = "78%",
                     comparacion = "+5%",
                     positivo = true,
-                    icon = Icons.Default.Assignment,
+                    icon = Icons.AutoMirrored.Filled.Assignment,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.weight(1f)
                 )
@@ -236,7 +240,7 @@ fun ReporteRendimientoScreen(
                         tendencia = "+0.3"
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     AreaRendimientoItem(
                         area = "Lenguaje",
@@ -245,7 +249,7 @@ fun ReporteRendimientoScreen(
                         tendencia = "+0.5"
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     AreaRendimientoItem(
                         area = "Ciencias",
@@ -254,7 +258,7 @@ fun ReporteRendimientoScreen(
                         tendencia = "+0.1"
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     AreaRendimientoItem(
                         area = "Idiomas",
@@ -263,7 +267,7 @@ fun ReporteRendimientoScreen(
                         tendencia = "+0.7"
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     AreaRendimientoItem(
                         area = "Arte y Música",
@@ -447,7 +451,7 @@ fun ReporteRendimientoScreen(
                         icono = Icons.Default.Calculate
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     RecomendacionItem(
                         titulo = "Programa de asistencia",
@@ -455,7 +459,7 @@ fun ReporteRendimientoScreen(
                         icono = Icons.Default.EventAvailable
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     RecomendacionItem(
                         titulo = "Metodologías actualizadas",
@@ -632,7 +636,7 @@ fun AreaRendimientoItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.TrendingUp,
+                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                 contentDescription = null,
                 tint = Color(0xFF4CAF50),
                 modifier = Modifier.size(20.dp)

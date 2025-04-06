@@ -33,6 +33,8 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.Send
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -330,7 +332,7 @@ fun EntregaTareaScreen(
                                 }
                                 
                                 if (index < archivosSeleccionados.size - 1) {
-                                    Divider(
+                                    HorizontalDivider(
                                         modifier = Modifier.padding(vertical = 4.dp),
                                         color = MaterialTheme.colorScheme.outlineVariant
                                     )
@@ -375,7 +377,7 @@ fun EntregaTareaScreen(
                     enabled = true // En una implementación real, verificaríamos si hay archivos o comentario
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = null
                     )
                     Spacer(modifier = Modifier.width(8.dp))

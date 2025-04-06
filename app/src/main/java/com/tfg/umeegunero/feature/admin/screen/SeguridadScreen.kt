@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de configuración de seguridad para el administrador del sistema.
@@ -131,7 +132,7 @@ fun SeguridadScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -156,7 +157,7 @@ fun SeguridadScreen(
                         )
                     }
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -223,7 +224,7 @@ fun SeguridadScreen(
                         )
                     }
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -290,7 +291,7 @@ fun SeguridadScreen(
                         )
                     }
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -388,7 +389,7 @@ fun SeguridadScreen(
                         )
                     }
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -413,7 +414,7 @@ fun SeguridadScreen(
                         )
                     }
                     
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),

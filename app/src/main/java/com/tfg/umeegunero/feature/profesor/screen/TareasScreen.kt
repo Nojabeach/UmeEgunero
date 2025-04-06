@@ -41,6 +41,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de gestión de tareas para profesores
@@ -207,7 +208,7 @@ fun TareasScreen(
                                 }
                             )
                             
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }

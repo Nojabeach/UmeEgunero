@@ -53,6 +53,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de detalle de un centro educativo simplificada
@@ -224,7 +225,9 @@ fun DetalleCentroScreen(
                             )
                         }
                         
-                        Divider(modifier = Modifier.padding(vertical = 12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                         
                         // Nombre
                         Text(
@@ -234,6 +237,8 @@ fun DetalleCentroScreen(
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
+                        
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                         
                         // Dirección con icono
                         Row(
@@ -303,7 +308,9 @@ fun DetalleCentroScreen(
                             )
                         }
                         
-                        Divider(modifier = Modifier.padding(vertical = 12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                         
                         // Teléfono con acción
                         if (!centro?.telefono.isNullOrEmpty()) {
@@ -390,7 +397,9 @@ fun DetalleCentroScreen(
                                 )
                             }
                             
-                            Divider(modifier = Modifier.padding(vertical = 12.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                             
                             Row(
                                 modifier = Modifier.fillMaxWidth()

@@ -211,11 +211,6 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.activity:activity-compose:1.8.2")
 
-    // ExoPlayer (legacy) - usado en VisorArchivo
-    implementation("com.google.android.exoplayer:exoplayer-core:2.19.1")
-    implementation("com.google.android.exoplayer:exoplayer-dash:2.19.1")
-    implementation("com.google.android.exoplayer:exoplayer-ui:2.19.1")
-
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

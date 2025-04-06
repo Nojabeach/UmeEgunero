@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FilePresent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,15 +32,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ui.StyledPlayerView
-import com.google.android.exoplayer2.util.MimeTypes
 import timber.log.Timber
 import java.io.File
 
@@ -235,27 +237,38 @@ private fun VisualizadorPdf(archivo: File) {
 private fun VisualizadorVideo(url: String) {
     val context = LocalContext.current
     
-    // Creación del ExoPlayer (en una aplicación real, esto debería estar en un ViewModel)
-    val exoPlayer = ExoPlayer.Builder(context).build().apply {
-        setMediaItem(MediaItem.fromUri(url))
-        prepare()
-        playWhenReady = true
-        repeatMode = Player.REPEAT_MODE_ONE
+    // Creación del ExoPlayer con androidx.media3
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(url))
+            prepare()
+            playWhenReady = true
+            repeatMode = Player.REPEAT_MODE_ONE
+        }
     }
     
-    // Visualizador de video usando ExoPlayer
+    // Limpiar recursos cuando el composable se desmonte
+    DisposableEffect(key1 = Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+    
+    // Visualizador de video usando androidx.media3
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        StyledPlayerView(context).apply {
-            player = exoPlayer
-            useController = true
-            this.layoutParams = android.view.ViewGroup.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = true
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -263,11 +276,20 @@ private fun VisualizadorVideo(url: String) {
 private fun VisualizadorAudio(url: String) {
     val context = LocalContext.current
     
-    // Creación del ExoPlayer para audio
-    val exoPlayer = ExoPlayer.Builder(context).build().apply {
-        setMediaItem(MediaItem.fromUri(url))
-        prepare()
-        playWhenReady = true
+    // Creación del ExoPlayer para audio con androidx.media3
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(url))
+            prepare()
+            playWhenReady = true
+        }
+    }
+    
+    // Limpiar recursos cuando el composable se desmonte
+    DisposableEffect(key1 = Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
     }
     
     // Visualizador de audio
@@ -287,12 +309,17 @@ private fun VisualizadorAudio(url: String) {
             Spacer(modifier = Modifier.height(16.dp))
             
             // Controles de audio
-            StyledPlayerView(context).apply {
-                player = exoPlayer
-                useController = true
-                controllerShowTimeoutMs = 0 // Siempre visible
-                // No usar showBuffering que es privado
-            }
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = exoPlayer
+                        useController = true
+                        controllerShowTimeoutMs = 0 // Siempre visible
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

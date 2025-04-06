@@ -3,6 +3,10 @@ package com.tfg.umeegunero.navigation
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -120,14 +124,14 @@ fun NavigationDrawerContent(
                 )
                 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Assignment, contentDescription = "Tareas") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Assignment, contentDescription = "Tareas") },
                     label = { Text("Tareas") },
                     selected = false,
                     onClick = { onItemClick(AppScreens.TareasProfesor.route) }
                 )
                 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Message, contentDescription = "Mensajes") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Message, contentDescription = "Mensajes") },
                     label = { Text("Mensajes") },
                     selected = false,
                     onClick = { onItemClick(AppScreens.ConversacionesProfesor.route) }
@@ -142,7 +146,7 @@ fun NavigationDrawerContent(
         
         // Cerrar sesión al final
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar Sesión") },
+            icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Cerrar Sesión") },
             label = { Text("Cerrar Sesión") },
             selected = false,
             onClick = { onLogout() }

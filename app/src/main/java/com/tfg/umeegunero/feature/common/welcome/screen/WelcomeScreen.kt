@@ -18,6 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -871,9 +874,9 @@ fun OnboardingCarousel() {
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Anterior",
-                    tint = MaterialTheme.colorScheme.primary
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Atrás",
+                    tint = MaterialTheme.colorScheme.onBackground
                 )
             }
             
@@ -943,9 +946,9 @@ fun OnboardingCarousel() {
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
-                    contentDescription = "Siguiente",
-                    tint = MaterialTheme.colorScheme.primary
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Siguiente pantalla",
+                    tint = Color.White
                 )
             }
         }

@@ -21,6 +21,8 @@ import androidx.navigation.NavController
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.feature.common.config.viewmodel.NotificacionesViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 /**
  * Pantalla de configuración de notificaciones
@@ -50,7 +52,11 @@ fun NotificacionesScreen(
                 title = { Text("Configuración de notificaciones") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -92,7 +98,8 @@ fun NotificacionesScreen(
                     onCambiarEstado = { viewModel.setNotificacionesGeneral(it) }
                 )
                 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                // Separador
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 
                 // Registración del dispositivo
                 Column(

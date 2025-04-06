@@ -31,6 +31,7 @@ import com.tfg.umeegunero.feature.profesor.viewmodel.DetallesTareaViewModel
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de detalle de tarea para profesores
@@ -159,7 +160,7 @@ fun DetalleTareaScreen(
                             onClick = { viewModel.seleccionarEntrega(alumnoEntrega) }
                         )
                         
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }

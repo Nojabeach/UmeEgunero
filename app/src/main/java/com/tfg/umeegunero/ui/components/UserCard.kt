@@ -31,6 +31,7 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.util.formatDate
 import com.google.firebase.Timestamp
+import androidx.compose.material3.HorizontalDivider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -175,8 +176,9 @@ fun UserCard(
                             .fillMaxWidth()
                             .padding(top = 16.dp)
                     ) {
-                        Divider(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))

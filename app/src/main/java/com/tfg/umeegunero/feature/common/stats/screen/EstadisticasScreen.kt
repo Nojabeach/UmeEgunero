@@ -9,8 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -500,7 +500,7 @@ fun EstadisticasScreen(
                     val infoItems = listOf(
                         Triple(Icons.Default.Schedule, "Tiempo promedio por sesión", "8.2 minutos"),
                         Triple(Icons.Default.DateRange, "Días activos por mes", "18.4 días"),
-                        Triple(Icons.Default.KeyboardReturn, "Tasa de retorno", "76%"),
+                        Triple(Icons.Default.Refresh, "Tasa de retorno", "76%"),
                         Triple(Icons.Default.Storage, "Almacenamiento utilizado", "427 GB")
                     )
                     
@@ -534,9 +534,8 @@ fun EstadisticasScreen(
                         }
                         
                         if (infoItems.last() != Triple(icon, label, value)) {
-                            Divider(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
                     }
