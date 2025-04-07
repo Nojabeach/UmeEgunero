@@ -42,6 +42,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.BorderStroke
 
 /**
  * Pantalla principal del dashboard para administradores de centro educativo.

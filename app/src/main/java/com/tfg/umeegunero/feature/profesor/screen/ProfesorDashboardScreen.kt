@@ -161,1618 +161,252 @@ fun calcularEdad(fechaNacimiento: String?): Int {
 }
 
 /**
- * Dashboard principal para profesores del sistema UmeEgunero.
- * 
- * Esta pantalla actúa como centro de operaciones para los profesores, permitiéndoles:
- * 
- * - Visualizar y gestionar los alumnos asignados a sus clases
- * - Acceder rápidamente a la creación de registros diarios de actividad
- * - Monitorear alumnos que requieren atención prioritaria
- * - Comunicarse con los familiares mediante el sistema de chat
- * - Gestionar asistencias, tareas y calendario
- * 
- * La interfaz está organizada en secciones mediante pestañas y tarjetas informativas
- * para facilitar el acceso a la información más relevante. Incluye además un cajón
- * de navegación lateral para acceder a todas las funcionalidades disponibles.
- * 
- * Los datos se cargan dinámicamente desde el ViewModel, que gestiona la comunicación
- * con los repositorios de datos.
- *
- * @param navController Controlador de navegación para la aplicación
- * @param onLogout Callback ejecutado cuando el profesor cierra sesión
- * @param onNavigateToRegistroActividad Callback para navegar a la pantalla de registro de actividad
- * @param onNavigateToDetalleAlumno Callback para navegar a los detalles de un alumno
- * @param onNavigateToChat Callback para navegar al chat con un familiar
- * @param alumnosPendientes Lista de alumnos que requieren atención prioritaria
- * @param alumnos Lista completa de alumnos asignados al profesor
- * @param mensajesNoLeidos Mensajes pendientes de leer, con información del remitente
- * @param totalMensajesNoLeidos Contador total de mensajes no leídos
- * @param isLoading Indicador de carga de datos
- * @param error Mensaje de error, si existe
- * @param selectedTab Índice de la pestaña seleccionada
- * @param onTabSelected Callback cuando se cambia de pestaña
- * @param onCrearRegistroActividad Callback para crear un nuevo registro de actividad
- * @param onErrorDismissed Callback para descartar un error mostrado
- * @param viewModel ViewModel que gestiona los datos y la lógica de negocio
- * 
- * @see ProfesorDashboardViewModel
- * @see RegistroActividadScreen
- * @see AlumnoScreen
+ * Pantalla principal del dashboard para profesores.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesorDashboardScreen(
     navController: NavController,
-    onLogout: () -> Unit,
-    onNavigateToRegistroActividad: (String) -> Unit = {},
-    onNavigateToDetalleAlumno: (String) -> Unit = {},
-    onNavigateToChat: (String, String) -> Unit = { _, _ -> },
-    alumnosPendientes: List<Alumno> = emptyList(),
-    alumnos: List<Alumno> = emptyList(),
-    mensajesNoLeidos: List<Triple<String, String, Boolean>> = emptyList(),
-    totalMensajesNoLeidos: Int = 0,
-    isLoading: Boolean = false,
-    error: String? = null,
-    selectedTab: Int = 0,
-    onTabSelected: (Int) -> Unit = {},
-    onCrearRegistroActividad: (String) -> Unit = {},
-    onErrorDismissed: () -> Unit = {},
     viewModel: ProfesorDashboardViewModel = hiltViewModel()
 ) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-
-    // Mostrar error si existe
-    error?.let {
-        // Aquí podrías mostrar un Snackbar o un diálogo con el error
-        // y llamar a onErrorDismissed cuando se cierre
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        // Imagen de perfil del profesor
-                        Image(
-                            painter = painterResource(id = R.drawable.app_icon),
-                            contentDescription = "Foto de perfil",
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Laura Martínez",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "Profesora • Aula 2B",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                HorizontalDivider()
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Elementos del menú
-                val menuItems = listOf(
-                    "Inicio" to Icons.Default.Home,
-                    "Mis Alumnos" to Icons.Default.Person,
-                    "Actividad" to Icons.AutoMirrored.Filled.List,
-                    "Mensajes" to Icons.AutoMirrored.Filled.Chat,
-                    "Configuración" to Icons.Default.Settings
-                )
-
-                menuItems.forEachIndexed { index, (title, icon) ->
-                    NavigationDrawerItem(
-                        label = { Text(text = title) },
-                        selected = selectedTab == index,
-                        onClick = {
-                            onTabSelected(index)
-                            scope.launch {
-                                drawerState.close()
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = title
-                            )
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                HorizontalDivider()
-
-                // Botón de cerrar sesión
-                NavigationDrawerItem(
-                    label = { Text(text = "Cerrar Sesión") },
-                    selected = false,
-                    onClick = onLogout,
-                    icon = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Cerrar Sesión"
-                        )
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            when (selectedTab) {
-                                0 -> "Panel de Profesor"
-                                1 -> "Mis Alumnos"
-                                2 -> "Actividad"
-                                3 -> "Mensajes"
-                                4 -> "Configuración"
-                                else -> "Panel de Profesor"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Menú"
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { /* Mostrar notificaciones */ }) {
-                            BadgedBox(badge = { 
-                                if (totalMensajesNoLeidos > 0) {
-                                    Badge { Text(totalMensajesNoLeidos.toString()) }
-                                }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = "Notificaciones"
-                                )
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color(0xFF34C759), // Verde iOS para profesor
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White,
-                        actionIconContentColor = Color.White
-                    )
-                )
+    val uiState by viewModel.uiState.collectAsState()
+    
+    Scaffold { paddingValues ->
+        ProfesorDashboardContent(
+            alumnosPendientes = uiState.alumnosPendientes,
+            onCrearRegistroActividad = { dni ->
+                navController.navigate("${AppScreens.RegistroActividad.route}/$dni")
             },
-            bottomBar = {
-                NavigationBar {
-                    val items = listOf(
-                        "Inicio" to Icons.Default.Home,
-                        "Alumnos" to Icons.Default.Person,
-                        "Actividad" to Icons.AutoMirrored.Filled.List,
-                        "Mensajes" to Icons.AutoMirrored.Filled.Chat
-                    )
-
-                    items.forEachIndexed { index, (title, icon) ->
-                        NavigationBarItem(
-                            icon = {
-                                if (index == 3 && totalMensajesNoLeidos > 0) {
-                                    BadgedBox(badge = { Badge { Text(totalMensajesNoLeidos.toString()) } }) {
-                                        Icon(icon, contentDescription = title)
-                                    }
-                                } else {
-                                    Icon(icon, contentDescription = title)
-                                }
-                            },
-                            label = { Text(title) },
-                            selected = selectedTab == index,
-                            onClick = { onTabSelected(index) }
-                        )
-                    }
-                }
-            },
-            floatingActionButton = {
-                if (selectedTab == 0 && alumnosPendientes.isNotEmpty()) {
-                    FloatingActionButton(
-                        onClick = { 
-                            // Crear nuevo registro para el primer alumno pendiente
-                            alumnosPendientes.firstOrNull()?.let { alumno ->
-                                onCrearRegistroActividad(alumno.dni)
-                            }
-                        },
-                        containerColor = Color(0xFF34C759)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Añadir registro",
-                            tint = Color.White
-                        )
-                    }
-                }
-            }
-        ) { paddingValues ->
-            ProfesorDashboardContent(
-                selectedTab = selectedTab,
-                paddingValues = paddingValues,
-                alumnosPendientes = alumnosPendientes,
-                alumnos = alumnos,
-                mensajesNoLeidos = mensajesNoLeidos,
-                isLoading = isLoading,
-                onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
-                onNavigateToChat = onNavigateToChat,
-                onCrearRegistroActividad = onCrearRegistroActividad,
-                navController = navController,
-                viewModel = viewModel
-            )
-        }
+            navController = navController,
+            modifier = Modifier.padding(paddingValues)
+        )
     }
 }
 
+/**
+ * Contenido principal del Dashboard de Profesor
+ */
 @Composable
 fun ProfesorDashboardContent(
-    selectedTab: Int,
-    paddingValues: PaddingValues,
-    alumnosPendientes: List<Alumno> = emptyList(),
-    alumnos: List<Alumno> = emptyList(),
-    mensajesNoLeidos: List<Triple<String, String, Boolean>> = emptyList(),
-    isLoading: Boolean = false,
-    onNavigateToDetalleAlumno: (String) -> Unit = {},
-    onNavigateToChat: (String, String) -> Unit = { _, _ -> },
-    onCrearRegistroActividad: (String) -> Unit = {},
+    alumnosPendientes: List<Alumno>,
+    onCrearRegistroActividad: (String) -> Unit,
     navController: NavController,
-    viewModel: ProfesorDashboardViewModel
+    modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-    ) {
-        when (selectedTab) {
-            0 -> ProfesorHomeContent(
-                alumnosPendientes = alumnosPendientes,
-                onCrearRegistroActividad = onCrearRegistroActividad,
-                navController = navController
-            )
-            1 -> AlumnosTab(
-                alumnos = alumnos,
-                onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
-                onNavigateToChat = onNavigateToChat,
-                onRegistroDiario = { alumno ->
-                    // Obtener valores del viewModel
-                    val profesorId = viewModel.uiState.value.profesor?.documentId ?: ""
-                    val claseId = viewModel.uiState.value.claseActual?.id ?: ""
-                    val claseNombre = viewModel.uiState.value.claseActual?.nombre ?: "Sin clase"
-                    
-                    viewModel.navegarARegistroDiario(
-                        navController = navController,
-                        alumno = alumno,
-                        profesorId = profesorId,
-                        claseId = claseId,
-                        claseNombre = claseNombre
-                    )
-                },
-                isLoading = isLoading
-            )
-            2 -> HistorialContent()
-            3 -> MensajesContent(
-                mensajes = mensajesNoLeidos,
-                onNavigateToChat = onNavigateToChat
-            )
-            4 -> ConfiguracionProfesorContent()
-            else -> ProfesorHomeContent(
-                alumnosPendientes = alumnosPendientes,
-                onCrearRegistroActividad = onCrearRegistroActividad,
-                navController = navController
-            )
-        }
-        
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
-    }
-}
-
-@Composable
-fun ProfesorHomeContent(
-    alumnosPendientes: List<Alumno> = emptyList(),
-    onCrearRegistroActividad: (String) -> Unit = {},
-    navController: NavController
-) {
-    val today = LocalDate.now()
-    val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
-    val formattedDate = remember { today.format(formatter).replaceFirstChar { it.uppercase() } }
-
-    val scrollState = rememberScrollState()
-
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(scrollState)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Encabezado con fecha
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.CalendarToday,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = formattedDate,
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Sección de aula
-        Text(
-            text = "Tu aula: 2B - Educación Infantil",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = "15 alumnos a tu cargo",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Estado del día
+        // Bienvenida y fecha
+        WelcomeCard()
+        
+        // Accesos rápidos
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            elevation = CardDefaults.cardElevation(0.dp)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Estado del día",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Acciones Rápidas",
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    StatusItem(
-                        count = 15,
-                        total = 15,
-                        title = "Comidas",
-                        icon = Icons.Default.Fastfood
-                    )
-
-                    StatusItem(
-                        count = 10,
-                        total = 15,
-                        title = "Siestas",
-                        icon = Icons.Default.Check
-                    )
-
-                    StatusItem(
-                        count = 8,
-                        total = 15,
-                        title = "Informes",
-                        icon = Icons.AutoMirrored.Filled.List
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Estadísticas de rendimiento
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Rendimiento semanal",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Text(
-                        text = "Ver más",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { /* Navegar a pantalla de estadísticas detalladas */ }
-                    )
-                }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Gráfico de rendimiento
-                GraficoRendimiento()
-                
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-                
-                // Estadísticas de actividad
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    EstadisticaItem(
-                        valor = "93%",
-                        titulo = "Asistencia",
-                        color = Color(0xFF34C759)
+                    // Nuevo Registro
+                    SimpleActionButton(
+                        text = "Nuevo Registro",
+                        color = Color(0xFF34C759),
+                        onClick = { onCrearRegistroActividad("") }
                     )
                     
-                    EstadisticaItem(
-                        valor = "86%",
-                        titulo = "Actividades",
-                        color = Color(0xFF5856D6)
-                    )
-                    
-                    EstadisticaItem(
-                        valor = "80%",
-                        titulo = "Participación",
-                        color = Color(0xFFFF9500)
+                    // Clonar Registro
+                    SimpleActionButton(
+                        text = "Clonar Registro",
+                        color = Color(0xFF2196F3),
+                        onClick = { 
+                            navController.navigate("${AppScreens.RegistroActividad.route}/") 
+                        }
                     )
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Acciones rápidas
-        Text(
-            text = "Acciones rápidas",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Tarjetas de acción rápida
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.height(180.dp),
-            userScrollEnabled = false
-        ) {
-            item {
-                AccionRapidaItem(
-                    title = "Asistencia",
-                    icon = Icons.Default.CheckCircle,
-                    color = Color(0xFF34C759),
-                    onClick = {
-                        navController.navigate(AppScreens.AsistenciaProfesor.route)
-                    }
-                )
-            }
-            
-            item {
-                AccionRapidaItem(
-                    title = "Tareas",
-                    icon = Icons.AutoMirrored.Filled.Assignment,
-                    color = Color(0xFF007AFF),
-                    onClick = {
-                        navController.navigate(AppScreens.TareasProfesor.route)
-                    }
-                )
-            }
-            
-            item {
-                AccionRapidaItem(
-                    title = "Comunicación",
-                    icon = Icons.AutoMirrored.Filled.Chat,
-                    color = Color(0xFF5856D6),
-                    onClick = {
-                        navController.navigate(AppScreens.ConversacionesProfesor.route)
-                    }
-                )
-            }
-            
-            item {
-                AccionRapidaItem(
-                    title = "Actividades Preescolar",
-                    icon = Icons.Default.ChildCare,
-                    color = Color(0xFF8E24AA),
-                    onClick = {
-                        navController.navigate(AppScreens.ActividadesPreescolar.route)
-                    }
-                )
-            }
-            
-            item {
-                AccionRapidaItem(
-                    title = "Comedor",
-                    icon = Icons.Default.Fastfood,
-                    color = Color(0xFFFF9500),
-                    onClick = {
-                        // Navegar a comedor
-                    }
-                )
-            }
-            
-            item {
-                AccionRapidaItem(
-                    title = "Calendario",
-                    icon = Icons.Default.CalendarToday,
-                    color = Color(0xFFFF2D55),
-                    onClick = {
-                        navController.navigate(AppScreens.CalendarioProfesor.route)
-                    }
-                )
-            }
-
-            // Tarjeta de Evaluación
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .clickable { navController.navigate("evaluacion") },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(
-                                    color = Color(0xFF5856D6),
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.School,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Evaluación Académica",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            Text(
-                                text = "Califica y evalúa el progreso de tus alumnos",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowRight,
-                            contentDescription = "Ir a evaluación",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Sección de alumnos pendientes
+        
+        // Alumnos que requieren atención
         if (alumnosPendientes.isNotEmpty()) {
-            Text(
-                text = "Alumnos pendientes de registro",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            ) {
-                alumnosPendientes.forEach { alumno ->
-                    AlumnoPendienteItem(
-                        nombre = "${alumno.nombre} ${alumno.apellidos}",
-                        onClick = { onCrearRegistroActividad(alumno.dni) }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun StatusItem(
-    count: Int,
-    total: Int,
-    title: String,
-    icon: ImageVector
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(32.dp)
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "$count/$total",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-}
-
-@Composable
-fun AlumnoPendienteItem(
-    nombre: String,
-    onClick: () -> Unit = {}
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Avatar
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = nombre.first().toString(),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Text(
-            text = nombre,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-
-        IconButton(onClick = onClick) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Crear registro",
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
-
-@Composable
-fun AlumnosTab(
-    alumnos: List<Alumno>,
-    onNavigateToDetalleAlumno: (String) -> Unit,
-    onNavigateToChat: (String, String) -> Unit,
-    onRegistroDiario: (Alumno) -> Unit,
-    isLoading: Boolean,
-    modifier: Modifier = Modifier
-) {
-    if (isLoading) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    if (alumnos.isEmpty()) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "No tienes alumnos asignados",
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Contacta con el administrador del centro para asignar alumnos a tu clase",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        return
-    }
-
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(vertical = 16.dp)
-    ) {
-        items(alumnos) { alumno ->
-            AlumnoItem(
-                alumno = alumno,
-                onNavigateToDetalleAlumno = onNavigateToDetalleAlumno,
-                onNavigateToChat = onNavigateToChat,
-                onRegistroDiario = onRegistroDiario
-            )
-        }
-    }
-}
-
-@Composable
-fun AlumnoItem(
-    alumno: Alumno,
-    onNavigateToDetalleAlumno: (String) -> Unit,
-    onNavigateToChat: (String, String) -> Unit,
-    onRegistroDiario: (Alumno) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onNavigateToDetalleAlumno(alumno.dni) },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Imagen de perfil (reemplazar con la real cuando esté disponible)
-            Image(
-                painter = painterResource(id = R.drawable.app_icon),
-                contentDescription = "Foto de ${alumno.nombre}",
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Información del alumno
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${alumno.nombre} ${alumno.apellidos}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Edad: ${calcularEdad(alumno.fechaNacimiento)} años",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Acciones
-            Row {
-                // Botón de chat
-                IconButton(onClick = { onNavigateToChat(alumno.dni, "${alumno.nombre} ${alumno.apellidos}") }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Chat,
-                        contentDescription = "Chat con la familia de ${alumno.nombre}",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                
-                // Botón de registro diario
-                IconButton(onClick = { onRegistroDiario(alumno) }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Assignment,
-                        contentDescription = "Registro diario de ${alumno.nombre}",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun HistorialContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Historial de Actividades",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        
-        // Selector de fecha
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Hoy, ${
-                        SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
-                            .format(Date())
-                    }",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = "Seleccionar fecha",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-        
-        // Lista de actividades
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Actividades de la mañana
-            item {
-                Text(
-                    text = "Mañana",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-            
-            items(3) { index ->
-                ActividadItem(
-                    hora = when(index) {
-                        0 -> "08:30"
-                        1 -> "10:15"
-                        else -> "11:45"
-                    },
-                    descripcion = when(index) {
-                        0 -> "Llegada y control de asistencia"
-                        1 -> "Actividad de lectura en grupo"
-                        else -> "Juegos en el patio"
-                    },
-                    completada = index != 2
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-            
-            // Actividades de la tarde
-            item {
-                Text(
-                    text = "Tarde",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-            
-            items(2) { index ->
-                ActividadItem(
-                    hora = when(index) {
-                        0 -> "14:30"
-                        else -> "16:00"
-                    },
-                    descripcion = when(index) {
-                        0 -> "Siesta y control de descanso"
-                        else -> "Actividades psicomotrices"
-                    },
-                    completada = index == 0
-                )
-                if (index < 1) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ActividadItem(
-    hora: String,
-    descripcion: String,
-    completada: Boolean
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Hora
-        Text(
-            text = hora,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(50.dp)
-        )
-        
-        // Estado (completada o pendiente)
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(
-                    if (completada) 
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    else 
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.2f), 
-                    CircleShape
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
                 ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (completada) Icons.Default.Check else Icons.Default.CalendarToday,
-                contentDescription = null,
-                tint = if (completada) 
-                    MaterialTheme.colorScheme.primary 
-                else 
-                    MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        // Descripción
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = descripcion,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (completada) 
-                    MaterialTheme.colorScheme.onSurface 
-                else 
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                textDecoration = if (completada) TextDecoration.None else TextDecoration.None
-            )
-            
-            if (completada) {
-                Text(
-                    text = "Completada",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            } else {
-                Text(
-                    text = "Pendiente",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun MensajesContent(
-    mensajes: List<Triple<String, String, Boolean>> = emptyList(),
-    onNavigateToChat: (String, String) -> Unit = { _, _ -> }
-) {
-    var searchQuery by remember { mutableStateOf("") }
-    val filteredMensajes = remember(mensajes, searchQuery) {
-        if (searchQuery.isEmpty()) {
-            mensajes
-        } else {
-            mensajes.filter { (nombre, mensaje, _) ->
-                nombre.contains(searchQuery, ignoreCase = true) ||
-                mensaje.contains(searchQuery, ignoreCase = true)
-            }
-        }
-    }
-    
-    var selectedFilter by remember { mutableStateOf(MensajesFiltro.TODOS) }
-    
-    val mensajesFiltrados = remember(filteredMensajes, selectedFilter) {
-        when (selectedFilter) {
-            MensajesFiltro.TODOS -> filteredMensajes
-            MensajesFiltro.NO_LEIDOS -> filteredMensajes.filter { (_, _, noLeido) -> noLeido }
-            MensajesFiltro.LEIDOS -> filteredMensajes.filter { (_, _, noLeido) -> !noLeido }
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Mensajes",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        
-        // Barra de búsqueda
-        TextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            placeholder = { Text("Buscar mensajes") },
-            leadingIcon = { 
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Buscar"
-                )
-            },
-            trailingIcon = { 
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Limpiar búsqueda"
-                        )
-                    }
-                }
-            },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
-            shape = RoundedCornerShape(8.dp),
-            singleLine = true
-        )
-        
-        // Filtros de mensajes
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            MensajesFiltro.values().forEach { filtro ->
-                FilterChip(
-                    selected = selectedFilter == filtro,
-                    onClick = { selectedFilter = filtro },
-                    label = { 
-                        Text(
-                            when (filtro) {
-                                MensajesFiltro.TODOS -> "Todos"
-                                MensajesFiltro.NO_LEIDOS -> "No leídos"
-                                MensajesFiltro.LEIDOS -> "Leídos"
-                            }
-                        )
-                    },
-                    leadingIcon = if (selectedFilter == filtro) {
-                        {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(FilterChipDefaults.IconSize)
-                            )
-                        }
-                    } else null
-                )
-            }
-        }
-
-        // Lista de chats
-        if (mensajesFiltrados.isEmpty()) {
-            // Mensaje cuando no hay resultados
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Chat,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    Text(
+                        text = "Alumnos pendientes de registro",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "${alumnosPendientes.size} alumnos sin registrar hoy",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
+                    // Mostrar algunos alumnos
                     Text(
-                        text = if (searchQuery.isNotEmpty()) 
-                            "No se encontraron resultados para \"$searchQuery\"" 
-                        else if (selectedFilter == MensajesFiltro.NO_LEIDOS)
-                            "No tienes mensajes sin leer"
-                        else
-                            "No tienes mensajes",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(mensajesFiltrados) { (emisorId, texto, noLeido) ->
-                    ChatItemMejorado(
-                        nombre = emisorId, // Idealmente aquí mostrarías el nombre real del emisor
-                        ultimoMensaje = texto,
-                        fecha = "Hoy, 10:30", // Esto debería venir de los datos reales
-                        noLeido = noLeido,
-                        onClick = { onNavigateToChat(emisorId, "") }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
-            }
-        }
-        
-        // Botón para iniciar nuevo chat
-        Button(
-            onClick = { /* Navegar a lista de contactos para iniciar chat */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF34C759)
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Nuevo mensaje")
-        }
-    }
-}
-
-@Composable
-fun ChatItemMejorado(
-    nombre: String,
-    ultimoMensaje: String,
-    fecha: String,
-    noLeido: Boolean,
-    onClick: () -> Unit = {}
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (noLeido) 
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
-            else 
-                MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(
-                        color = if (noLeido) 
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) 
-                        else 
-                            MaterialTheme.colorScheme.secondaryContainer,
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = nombre.first().toString().uppercase(),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (noLeido) 
-                        MaterialTheme.colorScheme.primary 
-                    else 
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = nombre,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (noLeido) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        text = "Pulse el botón para crear un nuevo registro",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     
-                    Text(
-                        text = fecha,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (noLeido) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = ultimoMensaje,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (noLeido) 
-                            MaterialTheme.colorScheme.onSurface 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                     
-                    if (noLeido) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        )
+                    Button(
+                        onClick = { onCrearRegistroActividad("") },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("Crear registro")
                     }
                 }
             }
         }
-    }
-}
-
-enum class MensajesFiltro {
-    TODOS, NO_LEIDOS, LEIDOS
-}
-
-@Composable
-fun ConfiguracionProfesorContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Configuración",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
         
-        // Sección de perfil
+        // Tareas pendientes y próximos eventos
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Imagen de perfil
-                    Image(
-                        painter = painterResource(id = R.drawable.app_icon),
-                        contentDescription = "Foto de perfil",
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    // Información del profesor
-                    Column {
-                        Text(
-                            text = "Laura Martínez",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Text(
-                            text = "Profesora • Aula 2B",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Botón para editar perfil
-                Button(
-                    onClick = { /* Navegar a editar perfil */ },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF34C759)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Editar perfil")
-                }
-            }
-        }
-        
-        // Opciones de configuración
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Preferencias",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Próximas actividades",
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
                 
-                // Opción 1: Notificaciones
-                ConfiguracionItem(
-                    icon = Icons.Default.Notifications,
-                    title = "Notificaciones",
-                    subtitle = "Configura las alertas que recibes",
-                    onClick = { /* Navegar a configuración de notificaciones */ }
-                )
-                
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                
-                // Opción 2: Tema
-                ConfiguracionItem(
-                    icon = Icons.Default.Settings,
-                    title = "Tema de la aplicación",
-                    subtitle = "Personaliza la apariencia",
-                    onClick = { /* Abrir selector de tema */ }
-                )
-                
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                
-                // Opción 3: Idioma
-                ConfiguracionItem(
-                    icon = Icons.AutoMirrored.Filled.Chat,
-                    title = "Idioma",
-                    subtitle = "Español",
-                    onClick = { /* Abrir selector de idioma */ }
-                )
-            }
-        }
-        
-        // Ajustes de clase
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
                 Text(
-                    text = "Ajustes de Clase",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                
-                // Opción 1: Gestión de clase
-                ConfiguracionItem(
-                    icon = Icons.Default.Person,
-                    title = "Gestión de alumnos",
-                    subtitle = "Administra los alumnos de tu clase",
-                    onClick = { /* Navegar a gestión de alumnos */ }
-                )
-                
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                
-                // Opción 2: Plantillas de actividad
-                ConfiguracionItem(
-                    icon = Icons.AutoMirrored.Filled.Assignment,
-                    title = "Plantillas de actividad",
-                    subtitle = "Crea y gestiona plantillas para registros",
-                    onClick = { /* Navegar a plantillas */ }
-                )
-                
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                
-                // Opción 3: Calendario escolar
-                ConfiguracionItem(
-                    icon = Icons.Default.CalendarToday,
-                    title = "Calendario escolar",
-                    subtitle = "Ajusta fechas importantes del curso",
-                    onClick = { /* Navegar a calendario */ }
+                    text = "No hay actividades programadas para hoy",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-        
-        // Botón de cerrar sesión
-        Button(
-            onClick = { /* Cerrar sesión */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error
-            )
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Cerrar sesión")
         }
     }
 }
 
+/**
+ * Tarjeta de bienvenida para el profesor con información del día
+ */
 @Composable
-fun ConfiguracionItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+fun WelcomeCard(modifier: Modifier = Modifier) {
+    val today = LocalDate.now()
+    val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
+    val formattedDate = remember { today.format(formatter).replaceFirstChar { it.uppercase() } }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF34C759).copy(alpha = 0.1f)
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        // Icono
-        Box(
+        Column(
             modifier = Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        // Textos
-        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = Color(0xFF34C759)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = formattedDate,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Sección de aula
             Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium
+                text = "Tu aula: 2B - Educación Infantil",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
-            
+
             Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
+                text = "15 alumnos a tu cargo",
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+/**
+ * Botón de acción simplificado
+ */
+@Composable
+fun SimpleActionButton(
+    text: String,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(color),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = text,
+                tint = Color.White
+            )
+        }
         
-        // Flecha
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -1790,18 +424,7 @@ fun ConfiguracionProfesorPreviewNew() {
 fun ProfesorDashboardPreview() {
     UmeEguneroTheme {
         ProfesorDashboardScreen(
-            navController = rememberNavController(),
-            onLogout = {},
-            onNavigateToRegistroActividad = {},
-            onNavigateToDetalleAlumno = {},
-            onNavigateToChat = { _, _ -> },
-            alumnosPendientes = emptyList(),
-            alumnos = emptyList(),
-            mensajesNoLeidos = emptyList(),
-            totalMensajesNoLeidos = 0,
-            isLoading = false,
-            error = null,
-            selectedTab = 0
+            navController = rememberNavController()
         )
     }
 }
@@ -1811,18 +434,7 @@ fun ProfesorDashboardPreview() {
 fun ProfesorDashboardDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
         ProfesorDashboardScreen(
-            navController = rememberNavController(),
-            onLogout = {},
-            onNavigateToRegistroActividad = {},
-            onNavigateToDetalleAlumno = {},
-            onNavigateToChat = { _, _ -> },
-            alumnosPendientes = emptyList(),
-            alumnos = emptyList(),
-            mensajesNoLeidos = emptyList(),
-            totalMensajesNoLeidos = 0,
-            isLoading = false,
-            error = null,
-            selectedTab = 0
+            navController = rememberNavController()
         )
     }
 }

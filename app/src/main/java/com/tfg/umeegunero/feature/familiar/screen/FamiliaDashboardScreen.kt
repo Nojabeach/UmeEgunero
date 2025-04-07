@@ -60,6 +60,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Spring
+import androidx.compose.foundation.BorderStroke
+import android.content.res.Configuration
 
 /**
  * Clase que representa una estadística para mostrar en el dashboard
@@ -90,756 +92,297 @@ fun FamiliaDashboardScreen(
     navController: NavController,
     viewModel: FamiliarDashboardViewModel = hiltViewModel()
 ) {
-    // Recoger el estado desde el ViewModel
     val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     
-    // Variables para control de animaciones
-    var showContent by remember { mutableStateOf(false) }
-    val currentDate = remember { 
-        SimpleDateFormat("EEEE, d 'de' MMMM", Locale("es", "ES"))
-            .format(Date())
-            .replaceFirstChar { it.uppercase() }
-    }
-    
-    // Efecto para mostrar contenido con animación
-    LaunchedEffect(Unit) {
-        showContent = true
-    }
-    
-    // Efecto para manejar errores
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            scope.launch {
-                snackbarHostState.showSnackbar(message = it)
-                viewModel.clearError()
-            }
-        }
-    }
-    
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(
-                            text = uiState.familiar?.nombre?.let { "Hola, $it" } ?: "Familia", 
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            fontWeight = FontWeight.Bold
-                        ) 
-                        Text(
-                            text = currentDate,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = FamiliarColor,
-                    titleContentColor = Color.White
-                ),
-                actions = {
-                    // Notificaciones con badge para registros sin leer
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.NotificacionesFamilia.route)
-                    }) {
-                        BadgedBox(
-                            badge = {
-                                if (uiState.registrosSinLeer > 0) {
-                                    Badge { 
-                                        Text(
-                                            text = if (uiState.registrosSinLeer > 9) "9+" else "${uiState.registrosSinLeer}"
-                                        ) 
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Notificaciones",
-                                tint = Color.White
-                            )
-                        }
-                    }
-                    
-                    // Mensajes con badge
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.ConversacionesFamilia.route)
-                    }) {
-                        BadgedBox(
-                            badge = {
-                                if (uiState.totalMensajesNoLeidos > 0) {
-                                    Badge { 
-                                        Text(
-                                            text = if (uiState.totalMensajesNoLeidos > 9) "9+" else "${uiState.totalMensajesNoLeidos}"
-                                        ) 
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Chat,
-                                contentDescription = "Mensajes",
-                                tint = Color.White
-                            )
-                        }
-                    }
-                    
-                    // Configuración
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.Configuracion.route)
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Configuración",
-                            tint = Color.White
-                        )
-                    }
-                }
-            )
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { paddingValues ->
-        Box(
+    Scaffold { paddingValues ->
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Mostrar mensaje de carga mientras se obtienen los datos
-            if (uiState.isLoading && uiState.hijos.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = FamiliarColor)
-                }
-            } 
-            // Mostrar contenido principal con animación
-            else {
-                AnimatedVisibility(
-                    visible = showContent,
-                    enter = fadeIn() + slideInVertically(
-                        initialOffsetY = { it / 2 },
-                        animationSpec = spring(
-                            stiffness = Spring.StiffnessLow
-                        )
-                    ),
-                    exit = fadeOut()
-                ) {
-                    FamiliaDashboardContent(
-                        hijos = uiState.hijos,
-                        hijoActual = uiState.hijoSeleccionado,
-                        registrosActividad = uiState.registrosActividad,
-                        currentDate = currentDate,
-                        onSelectHijo = { viewModel.seleccionarHijo(it) },
-                        onVerTodosRegistros = { hijo ->
-                            viewModel.navegarAConsultaRegistroDiario(navController, hijo)
-                        },
-                        onNavigateToRegistro = { hijo ->
-                            viewModel.navegarAConsultaRegistroDiario(navController, hijo)
-                        },
-                        onNavigateToCalendario = {
-                            navController.navigate(AppScreens.CalendarioFamilia.route)
-                        },
-                        onNavigateToChat = {
-                            navController.navigate(AppScreens.ConversacionesFamilia.route)
-                        },
-                        onNavigateToTareas = {
-                            navController.navigate(AppScreens.TareasFamilia.route)
-                        },
-                        onNavigateToActividades = {
-                            navController.navigate(AppScreens.ActividadesPreescolar.route)
-                        },
-                        onNavigateToAsistencia = {
-                            // La pantalla de asistencia para familia aún no está implementada
-                            // pero podemos navegar a la correcta cuando esté disponible
-                            navController.navigate(AppScreens.TareasFamilia.route)
-                        },
-                        onNavigateToConfiguracion = {
-                            navController.navigate(AppScreens.Configuracion.route)
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * Contenido principal del Dashboard Familiar con tarjetas informativas y opciones de gestión.
- */
-@Composable
-private fun FamiliaDashboardContent(
-    hijos: List<Alumno>,
-    hijoActual: Alumno?,
-    registrosActividad: List<RegistroActividad>,
-    currentDate: String,
-    onSelectHijo: (String) -> Unit,
-    onVerTodosRegistros: (Alumno) -> Unit,
-    onNavigateToRegistro: (Alumno) -> Unit,
-    onNavigateToCalendario: () -> Unit,
-    onNavigateToChat: () -> Unit,
-    onNavigateToTareas: () -> Unit,
-    onNavigateToActividades: () -> Unit,
-    onNavigateToAsistencia: () -> Unit,
-    onNavigateToConfiguracion: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val scrollState = rememberScrollState()
-    
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        // Sección: Selección de hijos
-        SelectorHijos(
-            hijos = hijos,
-            hijoActual = hijoActual,
-            onSelectHijo = onSelectHijo
-        )
-        
-        // Sección: Métricas destacadas - Solo si hay un hijo seleccionado
-        hijoActual?.let { hijo ->
-            Text(
-                text = "Métricas de ${hijo.nombre}",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            // Tarjeta de bienvenida
+            WelcomeCard(nombreAlumno = uiState.familiar?.nombre ?: "Familiar")
             
-            // Estadísticas clave
-            MetricasCard(hijo = hijo, registrosActividad = registrosActividad)
+            // Tarjeta de estadísticas
+            EstadisticasCard(alumno = uiState.hijoSeleccionado)
             
-            // Sección: Último registro diario
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+            // Últimas notificaciones
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Últimos registros",
+                        text = "Últimas notificaciones",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     
-                    TextButton(
-                        onClick = { onVerTodosRegistros(hijo) },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = FamiliarColor
-                        )
-                    ) {
-                        Text("Ver todos")
-                    }
-                }
-                
-                if (registrosActividad.isEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        ),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No hay registros disponibles todavía",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                } else {
-                    // Mostrar los últimos 3 registros o menos con estilo renovado
-                    registrosActividad.take(3).forEach { registro ->
-                        RegistroDiarioCard(
-                            registro = registro,
-                            onClick = { onNavigateToRegistro(hijo) },
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-                }
-            }
-        }
-        
-        // Sección: Acciones rápidas
-        Text(
-            text = "Acciones Rápidas",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        // Opciones en grid
-        AccionesGrid(
-            onCalendarioClick = onNavigateToCalendario,
-            onChatClick = onNavigateToChat,
-            onTareasClick = onNavigateToTareas,
-            onActividadesClick = onNavigateToActividades
-        )
-    }
-}
-
-/**
- * Tarjeta de métricas con estadísticas clave del alumno.
- */
-@Composable
-fun MetricasCard(
-    hijo: Alumno,
-    registrosActividad: List<RegistroActividad>,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Métricas en fila
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Mostramos cada estadística individualmente
-                val estadisticas = generarEstadisticas(hijo, registrosActividad)
-                estadisticas.forEach { stat ->
-                    EstadisticaItem(
-                        valor = stat.value,
-                        etiqueta = stat.etiqueta,
-                        icono = when(stat.etiqueta) {
-                            "Asistencia" -> Icons.Default.EventAvailable
-                            "Tareas" -> Icons.AutoMirrored.Filled.Assignment
-                            "Comidas" -> Icons.Default.Restaurant
-                            else -> Icons.Default.Star
-                        },
-                        color = when(stat.etiqueta) {
-                            "Asistencia" -> MaterialTheme.colorScheme.primary
-                            "Tareas" -> MaterialTheme.colorScheme.secondary
-                            "Comidas" -> MaterialTheme.colorScheme.tertiary
-                            else -> MaterialTheme.colorScheme.primary
-                        }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "No hay notificaciones recientes",
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
             }
-        }
-    }
-}
-
-/**
- * Rejilla de acciones rápidas para el dashboard familiar.
- */
-@Composable
-fun AccionesGrid(
-    onCalendarioClick: () -> Unit,
-    onChatClick: () -> Unit,
-    onTareasClick: () -> Unit,
-    onActividadesClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        userScrollEnabled = false,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(280.dp)
-    ) {
-        item {
-            AccionFamiliaItem(
-                titulo = "Calendario",
-                descripcion = "Eventos escolares",
-                icono = Icons.Default.CalendarToday,
-                color = MaterialTheme.colorScheme.primary,
-                onClick = onCalendarioClick
-            )
-        }
-        
-        item {
-            AccionFamiliaItem(
-                titulo = "Chat",
-                descripcion = "Comunicación",
-                icono = Icons.AutoMirrored.Filled.Chat,
-                color = MaterialTheme.colorScheme.secondary,
-                onClick = onChatClick
-            )
-        }
-        
-        item {
-            AccionFamiliaItem(
-                titulo = "Tareas",
-                descripcion = "Seguimiento",
-                icono = Icons.AutoMirrored.Filled.Assignment,
-                color = MaterialTheme.colorScheme.tertiary,
-                onClick = onTareasClick
-            )
-        }
-        
-        item {
-            AccionFamiliaItem(
-                titulo = "Actividades",
-                descripcion = "Preescolar",
-                icono = Icons.Default.ChildCare,
-                color = Color(0xFF8E24AA), // Morado
-                onClick = onActividadesClick
+            
+            // Accesos rápidos
+            QuickActionsCard(
+                onVerMensajes = { navController.navigate(AppScreens.ConversacionesFamilia.route) },
+                onVerCalendario = { navController.navigate(AppScreens.CalendarioFamilia.route) },
+                onVerHistorial = { navController.navigate(AppScreens.Notificaciones.route) }
             )
         }
     }
 }
 
-/**
- * Selector de hijos para el dashboard familiar.
- */
 @Composable
-fun SelectorHijos(
-    hijos: List<Alumno>,
-    hijoActual: Alumno?,
-    onSelectHijo: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun WelcomeCard(nombreAlumno: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = FamiliarColor.copy(alpha = 0.1f)
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+            containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
             Text(
-                text = "Tus hijos",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = FamiliarColor
+                text = "Hola, Familia de",
+                style = MaterialTheme.typography.titleMedium
             )
             
-            if (hijos.isEmpty()) {
-                Text(
-                    text = "No hay hijos asociados a tu cuenta",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                text = nombreAlumno,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Centro Infantil UmeEgunero",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+@Composable
+fun EstadisticasCard(alumno: Alumno?, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Estadísticas de hoy",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Estadísticas en formato grid
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Siesta
+                EstadisticaCircular(
+                    valor = 0.5f, // Valor por defecto hasta que se implemente la lógica real
+                    etiqueta = "Siesta",
+                    color = Color(0xFF4CAF50)
                 )
-            } else {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(hijos) { hijo ->
-                        HijoChip(
-                            nombre = hijo.nombre,
-                            isSelected = hijo.id == hijoActual?.id,
-                            onClick = { onSelectHijo(hijo.id) }
-                        )
-                    }
-                }
+                
+                // Comida
+                EstadisticaCircular(
+                    valor = calcularNivelComida(alumno),
+                    etiqueta = "Comida",
+                    color = Color(0xFFFF9800)
+                )
+                
+                // Actividades
+                EstadisticaCircular(
+                    valor = 0.85f,
+                    etiqueta = "Actividades",
+                    color = Color(0xFF2196F3)
+                )
             }
         }
     }
 }
 
-/**
- * Chip para seleccionar un hijo.
- */
 @Composable
-fun HijoChip(
-    nombre: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(50),
-        color = if (isSelected) FamiliarColor else MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = if (isSelected) 4.dp else 0.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Text(
-                text = nombre,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-            )
-        }
-    }
-}
-
-/**
- * Ítem individual de una estadística.
- */
-@Composable
-fun EstadisticaItem(
-    valor: String,
+fun EstadisticaCircular(
+    valor: Float,
     etiqueta: String,
-    icono: ImageVector,
     color: Color,
     modifier: Modifier = Modifier
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
         modifier = modifier
     ) {
         Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(48.dp)
+                .size(64.dp)
                 .clip(CircleShape)
-                .background(color.copy(alpha = 0.2f)),
-            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icono,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(24.dp)
+            CircularProgressIndicator(
+                progress = { valor },
+                modifier = Modifier.fillMaxSize(),
+                color = color,
+                trackColor = color.copy(alpha = 0.2f),
+                strokeWidth = 8.dp
+            )
+            
+            Text(
+                text = "${(valor * 100).toInt()}%",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
             )
         }
         
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = valor,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Text(
             text = etiqueta,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
 
-/**
- * Tarjeta que muestra un registro diario resumido.
- */
 @Composable
-fun RegistroDiarioCard(
-    registro: RegistroActividad,
-    onClick: () -> Unit,
+fun QuickActionsCard(
+    onVerMensajes: () -> Unit,
+    onVerCalendario: () -> Unit,
+    onVerHistorial: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(FamiliarColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.EventNote,
-                    contentDescription = null,
-                    tint = Color.White
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = registro.fecha?.let {
-                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it.toDate())
-                    } ?: "Fecha desconocida",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Actividades: ",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    
-                    Text(
-                        text = registro.actividades?.titulo ?: "Sin actividades",
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Comida: ",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    
-                    Text(
-                        text = when {
-                            registro.primerPlato == EstadoComida.COMPLETO -> "Completa"
-                            registro.primerPlato == EstadoComida.PARCIAL -> "Parcial"
-                            registro.primerPlato == EstadoComida.RECHAZADO -> "No ha comido"
-                            else -> "Sin registro"
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Ver detalle",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                text = "Accesos rápidos",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ActionButton(
+                    icon = Icons.Default.Message,
+                    texto = "Mensajes",
+                    color = Color(0xFF4CAF50),
+                    onClick = onVerMensajes
+                )
+                
+                ActionButton(
+                    icon = Icons.Default.DateRange,
+                    texto = "Calendario",
+                    color = Color(0xFFFF9800),
+                    onClick = onVerCalendario
+                )
+                
+                ActionButton(
+                    icon = Icons.Default.History,
+                    texto = "Historial",
+                    color = Color(0xFF2196F3),
+                    onClick = onVerHistorial
+                )
+            }
         }
     }
 }
 
-/**
- * Ítem de acción para el dashboard familiar.
- */
 @Composable
-fun AccionFamiliaItem(
-    titulo: String,
-    descripcion: String,
-    icono: ImageVector,
+fun ActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    texto: String,
     color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
+        IconButton(
+            onClick = onClick,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .shadow(4.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(color),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icono,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
+                .size(48.dp)
+                .clip(CircleShape)
+                .padding(4.dp),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = color.copy(alpha = 0.2f),
+                contentColor = color
             )
-            
-            Text(
-                text = descripcion,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = texto,
+                tint = color
             )
         }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Text(
+            text = texto,
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 
-/**
- * Función para generar estadísticas de un alumno basado en sus registros.
- */
-private fun generarEstadisticas(
-    alumno: Alumno,
-    registros: List<RegistroActividad>
-): List<Estadistica> {
-    // Calcular asistencia (porcentaje de días asistidos)
-    val asistencia = "90%"
-    
-    // Calcular tareas completadas
-    val tareasCompletadas = "8/10"
-    
-    // Calcular comidas completas
-    val comidasCompletadas = registros
-        .count { 
-            it.primerPlato == EstadoComida.COMPLETO && 
-            it.segundoPlato == EstadoComida.COMPLETO 
-        }
-        .toString()
-    
-    return listOf(
-        Estadistica(asistencia, "Asistencia"),
-        Estadistica(tareasCompletadas, "Tareas"),
-        Estadistica(comidasCompletadas, "Comidas")
-    )
+// Función auxiliar para calcular el nivel de comida en base a la enum EstadoComida
+private fun calcularNivelComida(alumno: Alumno?): Float {
+    return when {
+        alumno == null -> 0f
+        else -> 0.5f // Valor por defecto hasta que se implemente la lógica real
+    }
 }
 
-/**
- * Preview del Dashboard Familiar
- */
-@Preview(showBackground = true)
 @Composable
-fun FamiliaDashboardPreview() {
+@Preview(showBackground = true)
+fun FamiliaDashboardScreenPreview() {
     UmeEguneroTheme {
+        FamiliaDashboardScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+@Composable
+@Preview(showBackground = true)
+fun FamiliaDashboardScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
         FamiliaDashboardScreen(
             navController = rememberNavController()
         )
