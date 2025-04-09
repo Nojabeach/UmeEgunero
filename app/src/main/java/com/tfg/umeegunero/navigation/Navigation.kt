@@ -265,11 +265,11 @@ fun Navigation(
         ) { backStackEntry ->
             val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
             
-            // TODO: Implementar pantalla de gestión de clases
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Gestión de Clases",
-                description = "La gestión de clases para el curso $cursoId estará disponible próximamente",
-                onNavigateBack = { navController.popBackStack() }
+            // Usar la implementación existente en lugar de DummyScreen
+            com.tfg.umeegunero.feature.common.academico.screen.GestionClasesScreen(
+                navController = navController,
+                cursoId = cursoId,
+                viewModel = hiltViewModel()
             )
         }
         
@@ -369,6 +369,38 @@ fun Navigation(
                 title = "Mensajes",
                 description = "Centro de comunicación con profesores y personal del centro",
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla para añadir una clase a un curso
+        composable(
+            route = AppScreens.AddClase.route,
+            arguments = listOf(
+                navArgument("cursoId") { type = NavType.StringType },
+                navArgument("centroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            
+            com.tfg.umeegunero.feature.common.academico.screen.AddClaseScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla para editar una clase existente
+        composable(
+            route = AppScreens.EditClase.route,
+            arguments = listOf(
+                navArgument("claseId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
+            
+            com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
             )
         }
     }
