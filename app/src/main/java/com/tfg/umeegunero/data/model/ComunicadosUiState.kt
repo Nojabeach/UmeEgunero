@@ -49,5 +49,13 @@ data class ComunicadosUiState(
     val isEnviando: Boolean = false,
     val enviado: Boolean = false,
     val fecha: String = "",
-    val remitente: String = "Administrador del Sistema"
+    val remitente: String = "Administrador del Sistema",
+    
+    // Nuevos campos para confirmación de lectura
+    val requiereConfirmacion: Boolean = false,
+    val firmaDigital: String? = null,
+    val estadisticasLectura: Map<String, Any> = emptyMap(),
+    val mostrarEstadisticas: Boolean = false,
+    val comunicadoSeleccionado: Comunicado? = null,
+    val mostrarFirmaDigital: Boolean = false
 ) 

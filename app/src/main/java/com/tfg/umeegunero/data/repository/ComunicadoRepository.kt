@@ -113,4 +113,69 @@ class ComunicadoRepository @Inject constructor(
         Timber.e(e, "Error al archivar comunicado")
         Result.Error(e)
     }
+
+    /**
+     * Registra la lectura de un comunicado por un usuario
+     */
+    suspend fun registrarLectura(comunicadoId: String, usuarioId: String): Result<Unit> = try {
+        val timestamp = Timestamp.now()
+        comunicadosCollection.document(comunicadoId)
+            .update("lecturas.$usuarioId", timestamp)
+            .await()
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Timber.e(e, "Error al registrar lectura del comunicado")
+        Result.Error(e)
+    }
+
+    /**
+     * Registra la confirmación de lectura de un comunicado
+     */
+    suspend fun confirmarLectura(comunicadoId: String, usuarioId: String): Result<Unit> = try {
+        val timestamp = Timestamp.now()
+        comunicadosCollection.document(comunicadoId)
+            .update("confirmacionesLectura.$usuarioId", timestamp)
+            .await()
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Timber.e(e, "Error al confirmar lectura del comunicado")
+        Result.Error(e)
+    }
+
+    /**
+     * Añade una firma digital a un comunicado
+     */
+    suspend fun añadirFirmaDigital(comunicadoId: String, firmaDigital: String): Result<Unit> = try {
+        comunicadosCollection.document(comunicadoId)
+            .update("firmaDigital", firmaDigital)
+            .await()
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Timber.e(e, "Error al añadir firma digital al comunicado")
+        Result.Error(e)
+    }
+
+    /**
+     * Obtiene las estadísticas de lectura de un comunicado
+     */
+    suspend fun getEstadisticasLectura(comunicadoId: String): Result<Map<String, Any>> = try {
+        val comunicadoResult = getComunicadoById(comunicadoId)
+        val comunicado = when (comunicadoResult) {
+            is Result.Success -> comunicadoResult.data
+            is Result.Error -> throw comunicadoResult.exception ?: Exception("Error desconocido")
+            is Result.Loading -> throw Exception("Cargando datos...")
+        }
+        
+        val estadisticas = mapOf(
+            "totalLecturas" to comunicado.lecturas.size,
+            "totalConfirmaciones" to comunicado.confirmacionesLectura.size,
+            "porcentajeLectura" to (comunicado.lecturas.size.toFloat() / comunicado.tiposDestinatarios.size * 100),
+            "porcentajeConfirmacion" to (comunicado.confirmacionesLectura.size.toFloat() / comunicado.tiposDestinatarios.size * 100)
+        )
+        
+        Result.Success(estadisticas)
+    } catch (e: Exception) {
+        Timber.e(e, "Error al obtener estadísticas de lectura")
+        Result.Error(e)
+    }
 } 

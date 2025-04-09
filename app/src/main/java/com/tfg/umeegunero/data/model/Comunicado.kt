@@ -60,5 +60,26 @@ data class Comunicado(
     /**
      * Enlaces o recursos relacionados con el comunicado (opcional)
      */
-    val recursos: List<String> = emptyList()
+    val recursos: List<String> = emptyList(),
+
+    /**
+     * Registro de lecturas por usuario
+     * Mapa donde la clave es el ID del usuario y el valor es la fecha de lectura
+     */
+    val lecturas: Map<String, Timestamp> = emptyMap(),
+
+    /**
+     * Firma digital del remitente (opcional)
+     */
+    val firmaDigital: String? = null,
+
+    /**
+     * Indica si el comunicado requiere confirmación de lectura
+     */
+    val requiereConfirmacion: Boolean = false,
+
+    /**
+     * Lista de usuarios que han confirmado la lectura
+     */
+    val confirmacionesLectura: Map<String, Timestamp> = emptyMap()
 ) 

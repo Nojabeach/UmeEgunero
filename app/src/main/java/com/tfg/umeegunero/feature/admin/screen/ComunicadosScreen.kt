@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.feature.admin.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,17 +18,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import com.tfg.umeegunero.data.model.Comunicado
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.admin.viewmodel.ComunicadosViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.text.SimpleDateFormat
+import java.util.*
+import androidx.compose.foundation.border
 
 /**
  * Pantalla para la gestión y envío de comunicados generales
@@ -106,7 +112,7 @@ fun ComunicadosScreen(
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
-            } else if (uiState.mostrarFormulario) {
+            } else if (uiState.showNuevoComunicado) {
                 // Mostrar formulario de nuevo comunicado
                 Column(
                     modifier = Modifier
@@ -127,10 +133,10 @@ fun ComunicadosScreen(
                         label = { Text("Título") },
                         placeholder = { Text("Ingrese el título del comunicado") },
                         modifier = Modifier.fillMaxWidth(),
-                        isError = uiState.tituloError.isNotEmpty(),
+                        isError = uiState.titulo.isBlank(),
                         supportingText = {
-                            if (uiState.tituloError.isNotEmpty()) {
-                                Text(uiState.tituloError)
+                            if (uiState.titulo.isBlank()) {
+                                Text("El título es obligatorio")
                             }
                         }
                     )
@@ -145,10 +151,10 @@ fun ComunicadosScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(150.dp),
-                        isError = uiState.mensajeError.isNotEmpty(),
+                        isError = uiState.mensaje.isBlank(),
                         supportingText = {
-                            if (uiState.mensajeError.isNotEmpty()) {
-                                Text(uiState.mensajeError)
+                            if (uiState.mensaje.isBlank()) {
+                                Text("El mensaje es obligatorio")
                             }
                         }
                     )
@@ -224,9 +230,9 @@ fun ComunicadosScreen(
                         
                         Button(
                             onClick = { viewModel.enviarComunicado() },
-                            enabled = !uiState.isEnviando
+                            enabled = !uiState.isLoading
                         ) {
-                            if (uiState.isEnviando) {
+                            if (uiState.isLoading) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     color = MaterialTheme.colorScheme.onPrimary
@@ -239,7 +245,7 @@ fun ComunicadosScreen(
                         }
                     }
                     
-                    if (uiState.enviado) {
+                    if (uiState.success != null) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Card(
                             colors = CardDefaults.cardColors(
@@ -260,7 +266,7 @@ fun ComunicadosScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Comunicado enviado correctamente",
+                                    text = uiState.success ?: "",
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -317,10 +323,32 @@ fun ComunicadosScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(uiState.comunicados) { comunicado ->
-                                ComunicadoItem(comunicado = comunicado)
+                                ComunicadoItem(
+                                    comunicado = comunicado,
+                                    onVerEstadisticas = { viewModel.verEstadisticas(it) },
+                                    onVerFirmaDigital = { viewModel.verFirmaDigital(it) }
+                                )
                             }
                         }
                     }
+                }
+            }
+            
+            // Diálogo de estadísticas
+            if (uiState.showEstadisticas) {
+                EstadisticasDialog(
+                    estadisticas = uiState.estadisticas ?: emptyMap(),
+                    onDismiss = { viewModel.cerrarEstadisticas() }
+                )
+            }
+            
+            // Diálogo de firma digital
+            if (uiState.showFirmaDigital) {
+                uiState.firmaDigital?.let { firma ->
+                    FirmaDigitalDialog(
+                        firmaDigital = firma,
+                        onDismiss = { viewModel.cerrarFirmaDigital() }
+                    )
                 }
             }
         }
@@ -330,58 +358,140 @@ fun ComunicadosScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ComunicadoItem(
-    comunicado: Comunicado
+    comunicado: Comunicado,
+    onVerEstadisticas: (Comunicado) -> Unit,
+    onVerFirmaDigital: (Comunicado) -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+            .clickable { expanded = !expanded },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = comunicado.titulo,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = comunicado.fecha,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = comunicado.mensaje,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Destinatarios: ${comunicado.destinatarios}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = comunicado.titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
-                
                 Text(
-                    text = "Enviado por: ${comunicado.remitente}",
+                    text = dateFormat.format(comunicado.fechaCreacion.toDate()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            
+            if (expanded) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = comunicado.mensaje,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(
+                        onClick = { onVerEstadisticas(comunicado) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Analytics,
+                            contentDescription = "Ver estadísticas"
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Estadísticas")
+                    }
+                    
+                    if (comunicado.firmaDigital != null) {
+                        TextButton(
+                            onClick = { onVerFirmaDigital(comunicado) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Draw,
+                                contentDescription = "Ver firma digital"
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Firma")
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+@Composable
+fun EstadisticasDialog(
+    estadisticas: Map<String, Any>,
+    onDismiss: () -> Unit
+) {
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Estadísticas de lectura") },
+        text = {
+            Column {
+                Text("Total de destinatarios: ${estadisticas["totalDestinatarios"]}")
+                Text("Lecturas confirmadas: ${estadisticas["lecturasConfirmadas"]}")
+                Text("Porcentaje de lectura: ${estadisticas["porcentajeLectura"]}%")
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Últimas lecturas:", style = MaterialTheme.typography.titleSmall)
+                (estadisticas["ultimasLecturas"] as? List<Map<String, Any>>)?.forEach { lectura ->
+                    Text("${lectura["usuarioNombre"]} - ${dateFormat.format((lectura["fechaLectura"] as com.google.firebase.Timestamp).toDate())}")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
+@Composable
+fun FirmaDigitalDialog(
+    firmaDigital: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Firma Digital") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                AsyncImage(
+                    model = firmaDigital,
+                    contentDescription = "Firma digital",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
 }
 
 /**

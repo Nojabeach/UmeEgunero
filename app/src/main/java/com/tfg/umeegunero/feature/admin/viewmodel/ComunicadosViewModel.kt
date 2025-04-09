@@ -5,7 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Comunicado
 import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.data.model.ComunicadosUiState
+import com.tfg.umeegunero.data.repository.ComunicadoRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,18 +17,31 @@ import timber.log.Timber
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.util.Locale
+
+data class ComunicadosUiState(
+    val comunicados: List<Comunicado> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val success: String? = null,
+    val showNuevoComunicado: Boolean = false,
+    val titulo: String = "",
+    val mensaje: String = "",
+    val enviarATodos: Boolean = false,
+    val enviarACentros: Boolean = false,
+    val enviarAProfesores: Boolean = false,
+    val enviarAFamiliares: Boolean = false,
+    val estadisticas: Map<String, Any>? = null,
+    val showEstadisticas: Boolean = false,
+    val firmaDigital: String? = null,
+    val showFirmaDigital: Boolean = false
+)
 
 /**
  * ViewModel para la pantalla de comunicados del sistema
  */
 @HiltViewModel
 class ComunicadosViewModel @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val comunicadoRepository: ComunicadoRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ComunicadosUiState())
@@ -42,27 +56,30 @@ class ComunicadosViewModel @Inject constructor(
      */
     fun cargarComunicados() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                _uiState.update { it.copy(isLoading = true) }
-
-                val comunicadosSnapshot = firestore.collection("comunicados")
-                    .orderBy("fechaCreacion")
-                    .get()
-                    .await()
-
-                val comunicados = comunicadosSnapshot.documents.mapNotNull { document ->
-                    val comunicado = document.toObject(Comunicado::class.java)
-                    comunicado?.copy(id = document.id)
+                val resultado = comunicadoRepository.getComunicados()
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(
+                            comunicados = resultado.data,
+                            isLoading = false
+                        ) }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = resultado.exception?.message ?: "Error desconocido",
+                            isLoading = false
+                        ) }
+                    }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
-
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    comunicados = comunicados
-                ) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
-                    isLoading = false,
-                    error = e.message ?: "Error al cargar comunicados"
+                    error = e.message ?: "Error desconocido",
+                    isLoading = false
                 ) }
             }
         }
@@ -87,16 +104,13 @@ class ComunicadosViewModel @Inject constructor(
      */
     fun toggleNuevoComunicado() {
         _uiState.update { it.copy(
-            mostrarFormulario = !it.mostrarFormulario,
+            showNuevoComunicado = !it.showNuevoComunicado,
             titulo = "",
             mensaje = "",
-            tituloError = "",
-            mensajeError = "",
             enviarATodos = false,
             enviarACentros = false,
             enviarAProfesores = false,
-            enviarAFamiliares = false,
-            enviado = false
+            enviarAFamiliares = false
         ) }
     }
 
@@ -104,32 +118,21 @@ class ComunicadosViewModel @Inject constructor(
      * Actualiza el título del comunicado
      */
     fun updateTitulo(titulo: String) {
-        _uiState.update { it.copy(
-            titulo = titulo,
-            tituloError = if (titulo.isEmpty()) "El título es obligatorio" else ""
-        ) }
+        _uiState.update { it.copy(titulo = titulo) }
     }
 
     /**
      * Actualiza el mensaje del comunicado
      */
     fun updateMensaje(mensaje: String) {
-        _uiState.update { it.copy(
-            mensaje = mensaje,
-            mensajeError = if (mensaje.isEmpty()) "El mensaje es obligatorio" else ""
-        ) }
+        _uiState.update { it.copy(mensaje = mensaje) }
     }
 
     /**
      * Activar/desactivar envío a todos los usuarios
      */
     fun toggleEnviarATodos(checked: Boolean) {
-        _uiState.update { it.copy(
-            enviarATodos = checked,
-            enviarACentros = if (checked) false else it.enviarACentros,
-            enviarAProfesores = if (checked) false else it.enviarAProfesores,
-            enviarAFamiliares = if (checked) false else it.enviarAFamiliares
-        ) }
+        _uiState.update { it.copy(enviarATodos = checked) }
     }
 
     /**
@@ -157,99 +160,201 @@ class ComunicadosViewModel @Inject constructor(
      * Envía el comunicado a los destinatarios seleccionados
      */
     fun enviarComunicado() {
+        val currentState = _uiState.value
+        if (currentState.titulo.isBlank() || currentState.mensaje.isBlank()) {
+            _uiState.update { it.copy(error = "El título y el mensaje son obligatorios") }
+            return
+        }
+
         viewModelScope.launch {
-            // Validar datos
-            val titulo = _uiState.value.titulo
-            val mensaje = _uiState.value.mensaje
-            
-            var tituloError = ""
-            var mensajeError = ""
-            
-            if (titulo.isEmpty()) {
-                tituloError = "El título es obligatorio"
-            }
-            
-            if (mensaje.isEmpty()) {
-                mensajeError = "El mensaje es obligatorio"
-            }
-            
-            val destinatariosSeleccionados = _uiState.value.enviarATodos || 
-                    _uiState.value.enviarACentros || 
-                    _uiState.value.enviarAProfesores ||
-                    _uiState.value.enviarAFamiliares
-            
-            if (!destinatariosSeleccionados) {
-                _uiState.update { it.copy(
-                    error = "Debe seleccionar al menos un tipo de destinatario"
-                ) }
-                return@launch
-            }
-            
-            if (tituloError.isNotEmpty() || mensajeError.isNotEmpty()) {
-                _uiState.update { it.copy(
-                    tituloError = tituloError,
-                    mensajeError = mensajeError
-                ) }
-                return@launch
-            }
-            
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                _uiState.update { it.copy(isEnviando = true) }
-                
-                // Determinar destinatarios
                 val tiposDestinatarios = mutableListOf<String>()
-                
-                if (_uiState.value.enviarATodos) {
-                    tiposDestinatarios.add("TODOS")
-                } else {
-                    if (_uiState.value.enviarACentros) tiposDestinatarios.add("ADMIN_CENTRO")
-                    if (_uiState.value.enviarAProfesores) tiposDestinatarios.add("PROFESOR")
-                    if (_uiState.value.enviarAFamiliares) tiposDestinatarios.add("FAMILIAR")
-                }
-                
-                // Crear objeto comunicado
-                val now = Date()
-                val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
-                val fechaFormateada = dateFormat.format(now)
-                
+                if (currentState.enviarATodos) tiposDestinatarios.add("TODOS")
+                if (currentState.enviarACentros) tiposDestinatarios.add("CENTRO")
+                if (currentState.enviarAProfesores) tiposDestinatarios.add("PROFESOR")
+                if (currentState.enviarAFamiliares) tiposDestinatarios.add("FAMILIAR")
+
                 val comunicado = Comunicado(
                     id = UUID.randomUUID().toString(),
-                    titulo = titulo,
-                    mensaje = mensaje,
-                    fechaCreacion = Timestamp(now),
-                    fecha = fechaFormateada,
-                    remitente = "Administrador del Sistema",
-                    destinatarios = if (_uiState.value.enviarATodos) "Todos los usuarios" 
-                                   else tiposDestinatarios.joinToString(", "),
+                    titulo = currentState.titulo,
+                    mensaje = currentState.mensaje,
+                    fechaCreacion = Timestamp.now(),
                     tiposDestinatarios = tiposDestinatarios
                 )
                 
-                // Guardar en Firestore
-                firestore.collection("comunicados")
-                    .document(comunicado.id)
-                    .set(comunicado)
-                    .await()
-                
-                // Simular tiempo de respuesta del servidor
-                delay(1000)
-                
-                // Actualizar estado y mostrar mensaje de éxito
-                _uiState.update { it.copy(
-                    isEnviando = false,
-                    enviado = true
-                ) }
-                
-                // Recargar lista después de un breve retraso
-                delay(2000)
-                cargarComunicados()
-                toggleNuevoComunicado()
-                
+                val resultado = comunicadoRepository.crearComunicado(comunicado)
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(
+                            success = "Comunicado enviado correctamente",
+                            showNuevoComunicado = false,
+                            isLoading = false
+                        ) }
+                        cargarComunicados()
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = resultado.exception?.message ?: "Error al enviar el comunicado",
+                            isLoading = false
+                        ) }
+                    }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
-                    isEnviando = false,
-                    error = e.message ?: "Error al enviar el comunicado"
+                    error = e.message ?: "Error al enviar el comunicado",
+                    isLoading = false
                 ) }
             }
         }
+    }
+
+    /**
+     * Registra la lectura de un comunicado
+     */
+    fun registrarLectura(comunicadoId: String, usuarioId: String) {
+        viewModelScope.launch {
+            try {
+                when (val result = comunicadoRepository.registrarLectura(comunicadoId, usuarioId)) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(
+                            success = "Lectura registrada correctamente"
+                        ) }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = result.exception?.message ?: "Error al registrar lectura"
+                        ) }
+                    }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = e.message ?: "Error al registrar lectura"
+                ) }
+            }
+        }
+    }
+
+    /**
+     * Confirma la lectura de un comunicado
+     */
+    fun confirmarLectura(comunicadoId: String, usuarioId: String) {
+        viewModelScope.launch {
+            try {
+                when (val result = comunicadoRepository.confirmarLectura(comunicadoId, usuarioId)) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(
+                            success = "Lectura confirmada correctamente"
+                        ) }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = result.exception?.message ?: "Error al confirmar lectura"
+                        ) }
+                    }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = e.message ?: "Error al confirmar lectura"
+                ) }
+            }
+        }
+    }
+
+    /**
+     * Añade una firma digital a un comunicado
+     */
+    fun añadirFirmaDigital(comunicadoId: String, firmaDigital: String) {
+        viewModelScope.launch {
+            try {
+                when (val result = comunicadoRepository.añadirFirmaDigital(comunicadoId, firmaDigital)) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(
+                            success = "Firma digital añadida correctamente"
+                        ) }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = result.exception?.message ?: "Error al añadir firma digital"
+                        ) }
+                    }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = e.message ?: "Error al añadir firma digital"
+                ) }
+            }
+        }
+    }
+
+    /**
+     * Obtiene las estadísticas de lectura de un comunicado
+     */
+    fun cargarEstadisticasLectura(comunicadoId: String) {
+        viewModelScope.launch {
+            try {
+                when (val result = comunicadoRepository.getEstadisticasLectura(comunicadoId)) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(
+                            estadisticas = result.data,
+                            showEstadisticas = true
+                        ) }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = result.exception?.message ?: "Error al cargar estadísticas"
+                        ) }
+                    }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = e.message ?: "Error al cargar estadísticas"
+                ) }
+            }
+        }
+    }
+    
+    /**
+     * Muestra las estadísticas de un comunicado
+     */
+    fun verEstadisticas(comunicado: Comunicado) {
+        _uiState.update { it.copy(
+            isLoading = true,
+            error = null
+        ) }
+        cargarEstadisticasLectura(comunicado.id)
+    }
+    
+    /**
+     * Muestra la firma digital de un comunicado
+     */
+    fun verFirmaDigital(comunicado: Comunicado) {
+        _uiState.update { it.copy(
+            firmaDigital = comunicado.firmaDigital,
+            showFirmaDigital = true
+        ) }
+    }
+
+    fun cerrarEstadisticas() {
+        _uiState.update { it.copy(showEstadisticas = false) }
+    }
+
+    fun cerrarFirmaDigital() {
+        _uiState.update { it.copy(showFirmaDigital = false) }
     }
 } 
