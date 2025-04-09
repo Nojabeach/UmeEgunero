@@ -6,7 +6,7 @@ Este documento presenta un análisis detallado del estado actual del proyecto Um
 
 ## Estado General del Proyecto
 
-- **Desarrollo completado**: Aproximadamente 92%
+- **Desarrollo completado**: Aproximadamente 95%
 - **Pantallas implementadas**: 75 pantallas distribuidas entre los diferentes perfiles de usuario
 - **Archivos Kotlin**: 262 archivos
 - **Elementos pendientes principales**:
@@ -128,50 +128,50 @@ Este documento presenta un análisis detallado del estado actual del proyecto Um
 - Padre (crear una cuenta de alumno, situada en un curso, una clase, y luego crear una cuenta de padre al que el centro tendra que poder vincular y asi luego probar el perfil de padre)
 
 ### 3. Pantallas pendientes (Sprint 2)
-Los siguientes componentes actualmente utilizan `DummyScreen` como implementación temporal y deben desarrollarse para completar la funcionalidad:
+Los siguientes componentes han sido completamente implementados para la funcionalidad requerida:
 
 #### Centro Educativo
-- ❌ **Gestión de Profesores**
-  - Navegación implementada pero usa `DummyScreen` como pantalla temporal
-  - Necesita implementación de listado, búsqueda y asignación de profesores
+- ✅ **Gestión de Profesores**
+  - Implementación completa de `GestionProfesoresScreen.kt`
+  - Sistema de listado, búsqueda y asignación de profesores
   
-- ❌ **Vinculación Familiar**
-  - Navegación implementada pero usa `DummyScreen` como pantalla temporal
-  - Requiere implementación del sistema de vinculación de familiares con alumnos
+- ✅ **Vinculación Familiar**
+  - Implementación completa de `VinculacionFamiliarScreen.kt`
+  - Sistema de vinculación de familiares con alumnos 
   
-- ❌ **Añadir Alumno**
-  - Formulario de registro de nuevo alumno usando `DummyScreen`
-  - Necesita implementación completa del formulario con validaciones
+- ✅ **Añadir Alumno**
+  - Implementación completa de `AddAlumnoScreen.kt`
+  - Formulario completo con validaciones para registro de nuevos alumnos
   
-- ❌ **Gestión de Notificaciones**
-  - Panel de notificaciones del centro usando `DummyScreen`
-  - Requiere implementación del sistema de envío y gestión de notificaciones
+- ✅ **Gestión de Notificaciones**
+  - Implementación completa de `GestionNotificacionesCentroScreen.kt`
+  - Sistema de envío y gestión de notificaciones
 
 #### Familiar
-- ❌ **Calendario Familiar**
-  - Usa `DummyScreen` al navegar desde el Dashboard Familiar
-  - Requiere implementación de vista específica de calendario para familias
+- ✅ **Calendario Familiar**
+  - Implementación completa de `CalendarioFamiliaScreen.kt`
+  - Vista específica de calendario para familias
   
-- ❌ **Notificaciones Familiares**
-  - Centro de notificaciones usando `DummyScreen`
-  - Requiere implementación de listado y gestión de notificaciones recibidas
+- ✅ **Notificaciones Familiares**
+  - Implementación completa de `NotificacionesScreen.kt`
+  - Centro completo de gestión de notificaciones para familiares
   
-- ❌ **Historial de Actividades**
-  - Consulta de registros diarios de un alumno usando `DummyScreen`
-  - Necesita implementación de vista histórica con filtros y búsqueda
+- ✅ **Historial de Actividades**
+  - Implementación completa de `ConsultaRegistroDiarioScreen.kt`
+  - Vista histórica con filtros y búsqueda de registros de actividad
   
-- ❌ **Mensajería Familiar**
-  - Centro de mensajes usando `DummyScreen`
-  - Requiere implementación de bandeja de entrada/salida y chat con profesores
+- ✅ **Mensajería Familiar**
+  - Implementación completa de `ConversacionesScreen.kt`
+  - Bandeja de entrada/salida y chat con profesores
 
 #### General
-- ❌ **Perfil de Usuario**
-  - Pantalla de perfil usando `DummyScreen`
-  - Requiere implementación de visualización y edición de datos personales
+- ✅ **Perfil de Usuario**
+  - Implementación completa de `PerfilScreen.kt`
+  - Visualización y edición de datos personales, cierre de sesión
   
-- ❌ **Configuración**
-  - Pantalla de configuración usando `DummyScreen`
-  - Necesita implementación de ajustes de la aplicación, notificaciones y preferencias
+- ✅ **Configuración**
+  - Implementación completa de `ConfiguracionScreen.kt`
+  - Ajustes de la aplicación, preferencias de tema y configuración general
 
 ### 4. Módulo de Comunicaciones Oficiales (Parcialmente Implementado)
 

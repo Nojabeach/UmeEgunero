@@ -201,6 +201,9 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-dash:1.2.0")
     implementation("androidx.media3:media3-ui:1.2.0")
     
+    // ThreeTenABP para compatibilidad Java 8 Time API en API < 26
+    implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
+    
     // Accompanist
     implementation("com.google.accompanist:accompanist-pager:0.32.0")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")

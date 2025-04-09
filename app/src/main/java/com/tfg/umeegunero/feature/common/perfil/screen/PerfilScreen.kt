@@ -31,6 +31,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.common.perfil.viewmodel.PerfilViewModel
+import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -72,6 +73,14 @@ fun PerfilScreen(
             scope.launch {
                 snackbarHostState.showSnackbar(successMsg)
                 viewModel.clearMensaje()
+            }
+        }
+    }
+    
+    LaunchedEffect(uiState.navigateToWelcome) {
+        if (uiState.navigateToWelcome) {
+            navController.navigate(AppScreens.Welcome.route) {
+                popUpTo(navController.graph.startDestinationId) { inclusive = true }
             }
         }
     }
@@ -529,10 +538,9 @@ fun PerfilScreen(
                     confirmButton = {
                         Button(
                             onClick = {
-                                // viewModel.cerrarSesion()
+                                viewModel.logout()
                                 showLogoutConfirmDialog = false
-                                // Navegar a la pantalla de login o welcome
-                                // navController.navigate(AppScreens.Welcome.route) { ... }
+                                // La navegación se manejará en el ViewModel
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error,

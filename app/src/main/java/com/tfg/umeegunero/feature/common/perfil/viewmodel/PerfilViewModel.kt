@@ -8,6 +8,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,7 +54,10 @@ data class PerfilUiState(
     // Datos adicionales
     val usuario: Usuario? = null,
     val direccion: Direccion = Direccion(),
-    val fotoPerfil: String? = null
+    val fotoPerfil: String? = null,
+    
+    // Estado de navegación
+    val navigateToWelcome: Boolean = false
 )
 
 /**
@@ -61,7 +65,8 @@ data class PerfilUiState(
  */
 @HiltViewModel
 class PerfilViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PerfilUiState())
@@ -294,5 +299,48 @@ class PerfilViewModel @Inject constructor(
      */
     fun clearMensaje() {
         _uiState.update { it.copy(success = null) }
+    }
+
+    /**
+     * Cierra la sesión del usuario actual
+     * 
+     * Este método gestiona el proceso de cierre de sesión utilizando el repositorio
+     * de autenticación y actualiza el estado para indicar la navegación a la pantalla
+     * de bienvenida.
+     */
+    fun logout() {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Intentamos cerrar sesión 
+                val result = authRepository.signOut()
+                
+                if (result) {
+                    _uiState.update { 
+                        it.copy(
+                            navigateToWelcome = true,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cerrar sesión",
+                            isLoading = false
+                        )
+                    }
+                    Timber.e("Error al cerrar sesión")
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        error = "Error inesperado al cerrar sesión: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "Error inesperado al cerrar sesión")
+            }
+        }
     }
 } 

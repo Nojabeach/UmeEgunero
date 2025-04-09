@@ -31,7 +31,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.NumberFormat
-import java.time.LocalDate
+import java.time.LocalDate as JavaLocalDate
 import java.time.Month
 import java.time.format.TextStyle
 import java.util.*
@@ -85,7 +85,7 @@ fun EstadisticasScreen(
     // Datos para gráficos
     val datosMensuales = remember { 
         val meses = (1..6).map { 
-            LocalDate.now().minusMonths(it.toLong()).month.getDisplayName(TextStyle.SHORT, Locale("es", "ES")).capitalize() 
+            JavaLocalDate.now().minusMonths(it.toLong()).month.getDisplayName(TextStyle.SHORT, Locale("es", "ES")).capitalize() 
         }.reversed()
         
         // Centros por mes (simulado)

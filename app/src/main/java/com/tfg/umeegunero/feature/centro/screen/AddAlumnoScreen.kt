@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tfg.umeegunero.feature.centro.viewmodel.AddAlumnoViewModel
-import java.time.LocalDate
+import java.time.LocalDate as JavaLocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.draw.alpha
 
@@ -352,13 +352,13 @@ fun AddAlumnoScreen(
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = try {
                 val date = if (uiState.fechaNacimiento.isNotBlank()) {
-                    LocalDate.parse(uiState.fechaNacimiento, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    JavaLocalDate.parse(uiState.fechaNacimiento, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                 } else {
-                    LocalDate.now().minusYears(6) // Edad escolar típica
+                    JavaLocalDate.now().minusYears(6) // Edad escolar típica
                 }
                 date.toEpochDay() * 24 * 60 * 60 * 1000
             } catch (e: Exception) {
-                LocalDate.now().minusYears(6).toEpochDay() * 24 * 60 * 60 * 1000
+                JavaLocalDate.now().minusYears(6).toEpochDay() * 24 * 60 * 60 * 1000
             }
         )
         
@@ -367,7 +367,7 @@ fun AddAlumnoScreen(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val date = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                        val date = JavaLocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
                         val formattedDate = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                         viewModel.updateFechaNacimiento(formattedDate)
                     }

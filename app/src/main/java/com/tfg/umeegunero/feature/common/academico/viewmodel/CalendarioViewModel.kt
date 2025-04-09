@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.time.LocalDate
+import java.time.LocalDate as JavaLocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import javax.inject.Inject
@@ -25,7 +25,7 @@ import javax.inject.Inject
  */
 data class CalendarioUiState(
     val eventos: List<Evento> = emptyList(),
-    val selectedDate: LocalDate = LocalDate.now(),
+    val selectedDate: JavaLocalDate = JavaLocalDate.now(),
     val currentMonth: YearMonth = YearMonth.now(),
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -34,8 +34,8 @@ data class CalendarioUiState(
     val eventDescription: String = "",
     val isSuccess: Boolean = false,
     val successMessage: String? = null,
-    val selectedYear: Int = LocalDate.now().year,
-    val selectedMonth: Int = LocalDate.now().monthValue
+    val selectedYear: Int = JavaLocalDate.now().year,
+    val selectedMonth: Int = JavaLocalDate.now().monthValue
 )
 
 /**
@@ -88,7 +88,7 @@ class CalendarioViewModel @Inject constructor(
     /**
      * Actualiza la fecha seleccionada
      */
-    fun updateSelectedDate(date: LocalDate) {
+    fun updateSelectedDate(date: JavaLocalDate) {
         _uiState.update { it.copy(selectedDate = date) }
     }
 

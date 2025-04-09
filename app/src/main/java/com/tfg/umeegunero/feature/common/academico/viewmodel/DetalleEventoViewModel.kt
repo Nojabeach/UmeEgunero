@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.threeten.bp.format.DateTimeFormatter
 import timber.log.Timber
-import java.time.LocalDate
+import java.time.LocalDate as JavaLocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 /**
@@ -61,8 +61,8 @@ class DetalleEventoViewModel @Inject constructor(
             try {
                 // En una implementación real, esto consultaría al repositorio con el ID
                 val eventos = calendarioRepository.getEventosByMonth(
-                    java.time.LocalDate.now().year,
-                    java.time.LocalDate.now().monthValue
+                    JavaLocalDate.now().year,
+                    JavaLocalDate.now().monthValue
                 )
                 
                 val eventoEncontrado = eventos.find { it.id == eventoId }
@@ -128,7 +128,9 @@ class DetalleEventoViewModel @Inject constructor(
                         }
                         Timber.e(resultado.exception, "Error al actualizar el evento")
                     }
-                    is Result.Loading -> { /* Estado ya actualizado */ }
+                    is Result.Loading -> {
+                        // Estado ya actualizado
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { 
@@ -174,7 +176,9 @@ class DetalleEventoViewModel @Inject constructor(
                         }
                         Timber.e(resultado.exception, "Error al eliminar el evento")
                     }
-                    is Result.Loading -> { /* Estado ya actualizado */ }
+                    is Result.Loading -> {
+                        // Estado ya actualizado
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { 

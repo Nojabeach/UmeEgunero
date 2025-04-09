@@ -13,6 +13,7 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
+import com.jakewharton.threetenabp.AndroidThreeTen
 import com.tfg.umeegunero.data.worker.EventoWorker
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
 import com.tfg.umeegunero.notification.AppNotificationManager
@@ -47,6 +48,9 @@ class UmeEguneroApp : Application(), Configuration.Provider {
         
         // Inicializar Timber para logging
         Timber.plant(Timber.DebugTree())
+        
+        // Inicializar ThreeTenABP para soporte de Java 8 Date Time API en API < 26
+        AndroidThreeTen.init(this)
         
         // Inicializar Firebase con manejo de errores
         initializeFirebase()

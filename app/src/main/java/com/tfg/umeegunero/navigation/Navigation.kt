@@ -23,7 +23,9 @@ import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
 import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.DetalleDiaEventoScreen
 import com.tfg.umeegunero.feature.common.comunicacion.screen.BandejaEntradaScreen
 import com.tfg.umeegunero.feature.common.comunicacion.screen.ComponerMensajeScreen
-import java.time.LocalDate
+import org.threeten.bp.LocalDate
+import org.threeten.bp.format.DateTimeFormatter
+import java.time.LocalDate as JavaLocalDate
 
 /**
  * Navegación principal de la aplicación
@@ -112,7 +114,7 @@ fun Navigation(
         
         // Pantalla de notificaciones
         composable(route = AppScreens.Notificaciones.route) {
-            NotificacionesScreen(
+            com.tfg.umeegunero.feature.common.config.screen.NotificacionesScreen(
                 navController = navController
             )
         }
@@ -214,11 +216,26 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val fechaString = backStackEntry.arguments?.getString(AppScreens.DetalleDiaEvento.Fecha) ?: LocalDate.now().toString()
-            val fecha = LocalDate.parse(fechaString)
+            
+            // Usar DateTimeFormatter para compatibilidad con API 24
+            val formatter = DateTimeFormatter.ISO_LOCAL_DATE
+            val fecha = try {
+                LocalDate.parse(fechaString, formatter)
+            } catch (e: Exception) {
+                LocalDate.now()
+            }
+            
+            // Convertir org.threeten.bp.LocalDate a java.time.LocalDate usando el toString y parse
+            val fechaStr = fecha.toString()
+            val javaTimeFecha = try {
+                JavaLocalDate.parse(fechaStr)
+            } catch (e: Exception) {
+                JavaLocalDate.now()
+            }
             
             DetalleDiaEventoScreen(
                 navController = navController,
-                fecha = fecha
+                fecha = javaTimeFecha
             )
         }
         
@@ -275,73 +292,61 @@ fun Navigation(
         
         // Pantalla de gestión de profesores
         composable(route = AppScreens.GestionProfesores.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Gestión de Profesores",
-                description = "Panel de administración de profesores del centro",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.centro.screen.GestionProfesoresScreen(
+                navController = navController
             )
         }
         
         // Pantalla de vinculación familiar
         composable(route = AppScreens.VinculacionFamiliar.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Vinculación Familiar",
-                description = "Gestión de vinculaciones entre familiares y alumnos",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.centro.screen.VinculacionFamiliarScreen(
+                navController = navController
             )
         }
         
         // Pantalla de añadir alumno
         composable(route = AppScreens.AddAlumno.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Añadir Alumno",
-                description = "Formulario para registrar un nuevo alumno en el centro",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.centro.screen.AddAlumnoScreen(
+                navController = navController
             )
         }
         
         // Pantalla de notificaciones del centro
         composable(route = AppScreens.GestionNotificacionesCentro.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Gestión de Notificaciones",
-                description = "Administración de notificaciones y comunicados del centro",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.centro.screen.GestionNotificacionesCentroScreen(
+                navController = navController
             )
         }
         
         // Pantalla de calendario para familiares
         composable(route = AppScreens.CalendarioFamilia.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Calendario Familiar",
-                description = "Calendario de eventos y actividades de sus hijos",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.familiar.screen.CalendarioFamiliaScreen(
+                navController = navController
             )
         }
         
         // Pantalla de notificaciones para familiares
         composable(route = AppScreens.NotificacionesFamilia.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Notificaciones",
-                description = "Centro de notificaciones y comunicados importantes",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.common.config.screen.NotificacionesScreen(
+                navController = navController
             )
         }
         
         // Pantalla de perfil de usuario
         composable(route = AppScreens.Perfil.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Mi Perfil",
-                description = "Gestión de datos personales y preferencias de usuario",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen(
+                navController = navController
             )
         }
         
         // Pantalla de configuración
-        composable(route = "configuracion") {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Configuración",
-                description = "Ajustes de la aplicación y preferencias de usuario",
-                onNavigateBack = { navController.popBackStack() }
+        composable(route = AppScreens.Configuracion.route) {
+            val viewModel = hiltViewModel<com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel>()
+            com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen(
+                viewModel = viewModel,
+                perfil = com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion.SISTEMA,
+                onNavigateBack = { navController.popBackStack() },
+                onMenuClick = {}
             )
         }
         
@@ -356,19 +361,21 @@ fun Navigation(
             val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
             val alumnoNombre = backStackEntry.arguments?.getString("alumnoNombre") ?: ""
             
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Historial de Actividades",
-                description = "Registros diarios de $alumnoNombre",
+            com.tfg.umeegunero.feature.familiar.registros.screen.ConsultaRegistroDiarioScreen(
+                viewModel = hiltViewModel(),
+                alumnoId = alumnoId,
+                alumnoNombre = alumnoNombre,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
         
         // Pantalla de conversaciones para familia
         composable(route = AppScreens.ConversacionesFamilia.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Mensajes",
-                description = "Centro de comunicación con profesores y personal del centro",
-                onNavigateBack = { navController.popBackStack() }
+            val viewModel = hiltViewModel<com.tfg.umeegunero.feature.common.mensajeria.ConversacionesViewModel>()
+            com.tfg.umeegunero.feature.common.mensajeria.ConversacionesScreen(
+                navController = navController,
+                rutaChat = AppScreens.ChatFamilia.route.substringBefore("/{conversacionId}"),
+                viewModel = viewModel
             )
         }
         
