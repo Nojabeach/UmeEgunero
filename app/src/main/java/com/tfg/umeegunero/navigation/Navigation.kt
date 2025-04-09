@@ -165,6 +165,14 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
+        
+        // Pantalla del dashboard de profesor
+        composable(route = AppScreens.ProfesorDashboard.route) {
+            com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
 
         // Ruta para la evaluación académica
         composable("evaluacion") {
@@ -237,6 +245,130 @@ fun Navigation(
             ComponerMensajeScreen(
                 navController = navController,
                 mensajeIdRespuesta = mensajeId
+            )
+        }
+        
+        // Pantalla de gestión de cursos y clases
+        composable(route = AppScreens.GestionCursosYClases.route) {
+            com.tfg.umeegunero.feature.centro.screen.GestionCursosYClasesScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de gestión de clases por curso
+        composable(
+            route = AppScreens.GestionClases.route,
+            arguments = listOf(
+                navArgument("cursoId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+            
+            // TODO: Implementar pantalla de gestión de clases
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Gestión de Clases",
+                description = "La gestión de clases para el curso $cursoId estará disponible próximamente",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de gestión de profesores
+        composable(route = AppScreens.GestionProfesores.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Gestión de Profesores",
+                description = "Panel de administración de profesores del centro",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de vinculación familiar
+        composable(route = AppScreens.VinculacionFamiliar.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Vinculación Familiar",
+                description = "Gestión de vinculaciones entre familiares y alumnos",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de añadir alumno
+        composable(route = AppScreens.AddAlumno.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Añadir Alumno",
+                description = "Formulario para registrar un nuevo alumno en el centro",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de notificaciones del centro
+        composable(route = AppScreens.GestionNotificacionesCentro.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Gestión de Notificaciones",
+                description = "Administración de notificaciones y comunicados del centro",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de calendario para familiares
+        composable(route = AppScreens.CalendarioFamilia.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Calendario Familiar",
+                description = "Calendario de eventos y actividades de sus hijos",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de notificaciones para familiares
+        composable(route = AppScreens.NotificacionesFamilia.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Notificaciones",
+                description = "Centro de notificaciones y comunicados importantes",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de perfil de usuario
+        composable(route = AppScreens.Perfil.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Mi Perfil",
+                description = "Gestión de datos personales y preferencias de usuario",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de configuración
+        composable(route = "configuracion") {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Configuración",
+                description = "Ajustes de la aplicación y preferencias de usuario",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de consulta de registro diario
+        composable(
+            route = AppScreens.ConsultaRegistroDiario.route,
+            arguments = listOf(
+                navArgument("alumnoId") { type = NavType.StringType },
+                navArgument("alumnoNombre") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            val alumnoNombre = backStackEntry.arguments?.getString("alumnoNombre") ?: ""
+            
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Historial de Actividades",
+                description = "Registros diarios de $alumnoNombre",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de conversaciones para familia
+        composable(route = AppScreens.ConversacionesFamilia.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Mensajes",
+                description = "Centro de comunicación con profesores y personal del centro",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
