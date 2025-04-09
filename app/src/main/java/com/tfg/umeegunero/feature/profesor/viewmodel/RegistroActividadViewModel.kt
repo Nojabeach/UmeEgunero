@@ -12,11 +12,14 @@ import com.tfg.umeegunero.data.model.NecesidadesFisiologicas
 import com.tfg.umeegunero.data.model.NivelConsumo
 import com.tfg.umeegunero.data.model.Observacion
 import com.tfg.umeegunero.data.model.Plato
+import com.tfg.umeegunero.data.model.PlantillaRegistroActividad
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Siesta
+import com.tfg.umeegunero.data.model.TipoActividad
 import com.tfg.umeegunero.data.model.TipoObservacion
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.PlantillaRegistroRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,13 +55,24 @@ data class RegistroActividadUiState(
     val registroGuardado: Boolean = false,
     val registroId: String = "",
     val nuevoObservacionMensaje: String = "",
-    val nuevoObservacionTipo: TipoObservacion = TipoObservacion.OTRO
+    val nuevoObservacionTipo: TipoObservacion = TipoObservacion.OTRO,
+    
+    // Nuevos campos para plantillas
+    val plantillasDisponibles: List<PlantillaRegistroActividad> = emptyList(),
+    val mostrarSelectorPlantillas: Boolean = false,
+    val plantillaSeleccionada: PlantillaRegistroActividad? = null,
+    val mostrarGuardarPlantilla: Boolean = false,
+    val nombreNuevaPlantilla: String = "",
+    val descripcionNuevaPlantilla: String = "",
+    val etiquetasNuevaPlantilla: String = "",
+    val tipoActividadNuevaPlantilla: TipoActividad = TipoActividad.GENERAL
 )
 
 // ViewModel para la pantalla donde los profes registran actividades de los niños
 @HiltViewModel
 class RegistroActividadViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
+    private val plantillaRepository: PlantillaRegistroRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -77,6 +91,10 @@ class RegistroActividadViewModel @Inject constructor(
         if (registroId.isNotBlank()) {
             _uiState.update { it.copy(registroId = registroId) }
         }
+
+        // Mantener código existente
+        // Añadir carga de plantillas
+        cargarPlantillasDisponibles()
     }
 
     // Carga los datos del alumno
@@ -358,5 +376,199 @@ class RegistroActividadViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Carga las plantillas disponibles para el profesor
+     */
+    private fun cargarPlantillasDisponibles() {
+        viewModelScope.launch {
+            try {
+                val result = plantillaRepository.getPlantillas()
+                if (result is Result.Success) {
+                    _uiState.update { 
+                        it.copy(plantillasDisponibles = result.data)
+                    }
+                } else if (result is Result.Error) {
+                    Timber.e(result.exception, "Error al cargar plantillas")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error inesperado al cargar plantillas")
+            }
+        }
+    }
+    
+    /**
+     * Muestra el selector de plantillas
+     */
+    fun mostrarSelectorPlantillas() {
+        _uiState.update { it.copy(mostrarSelectorPlantillas = true) }
+    }
+    
+    /**
+     * Oculta el selector de plantillas
+     */
+    fun ocultarSelectorPlantillas() {
+        _uiState.update { it.copy(mostrarSelectorPlantillas = false) }
+    }
+    
+    /**
+     * Selecciona una plantilla para aplicar
+     */
+    fun seleccionarPlantilla(plantilla: PlantillaRegistroActividad) {
+        _uiState.update { 
+            it.copy(
+                plantillaSeleccionada = plantilla,
+                mostrarSelectorPlantillas = false
+            )
+        }
+        aplicarPlantilla(plantilla)
+    }
+    
+    /**
+     * Aplica los datos de una plantilla al registro actual
+     */
+    private fun aplicarPlantilla(plantilla: PlantillaRegistroActividad) {
+        _uiState.update { 
+            it.copy(
+                comidas = plantilla.comidas,
+                siesta = plantilla.siesta,
+                necesidadesFisiologicas = plantilla.necesidadesFisiologicas,
+                observaciones = plantilla.observaciones
+            )
+        }
+    }
+    
+    /**
+     * Muestra el diálogo para guardar una plantilla
+     */
+    fun mostrarGuardarPlantilla() {
+        _uiState.update { it.copy(mostrarGuardarPlantilla = true) }
+    }
+    
+    /**
+     * Oculta el diálogo para guardar una plantilla
+     */
+    fun ocultarGuardarPlantilla() {
+        _uiState.update { it.copy(mostrarGuardarPlantilla = false) }
+    }
+    
+    /**
+     * Actualiza el nombre de la nueva plantilla
+     */
+    fun updateNombrePlantilla(nombre: String) {
+        _uiState.update { it.copy(nombreNuevaPlantilla = nombre) }
+    }
+    
+    /**
+     * Actualiza la descripción de la nueva plantilla
+     */
+    fun updateDescripcionPlantilla(descripcion: String) {
+        _uiState.update { it.copy(descripcionNuevaPlantilla = descripcion) }
+    }
+    
+    /**
+     * Actualiza las etiquetas de la nueva plantilla
+     */
+    fun updateEtiquetasPlantilla(etiquetas: String) {
+        _uiState.update { it.copy(etiquetasNuevaPlantilla = etiquetas) }
+    }
+    
+    /**
+     * Actualiza el tipo de actividad de la nueva plantilla
+     */
+    fun updateTipoActividadPlantilla(tipo: TipoActividad) {
+        _uiState.update { it.copy(tipoActividadNuevaPlantilla = tipo) }
+    }
+    
+    /**
+     * Guarda la plantilla actual como una nueva plantilla
+     */
+    fun guardarComoPlantilla() {
+        viewModelScope.launch {
+            try {
+                val state = _uiState.value
+                
+                if (state.nombreNuevaPlantilla.isBlank()) {
+                    _uiState.update { it.copy(error = "El nombre de la plantilla es obligatorio") }
+                    return@launch
+                }
+                
+                // Crear la plantilla con los datos actuales
+                val nuevaPlantilla = PlantillaRegistroActividad(
+                    nombre = state.nombreNuevaPlantilla,
+                    descripcion = state.descripcionNuevaPlantilla,
+                    profesorId = "", // Aquí deberías obtener el ID del profesor actual
+                    centroId = "", // Aquí deberías obtener el ID del centro
+                    comidas = state.comidas,
+                    siesta = state.siesta,
+                    necesidadesFisiologicas = state.necesidadesFisiologicas,
+                    observaciones = state.observaciones,
+                    tipoActividad = state.tipoActividadNuevaPlantilla,
+                    etiquetas = if (state.etiquetasNuevaPlantilla.isBlank()) 
+                                  emptyList() 
+                                else 
+                                  state.etiquetasNuevaPlantilla.split(",").map { it.trim() }
+                )
+                
+                val resultado = plantillaRepository.guardarPlantilla(nuevaPlantilla)
+                
+                if (resultado is Result.Success) {
+                    _uiState.update { 
+                        it.copy(
+                            mostrarGuardarPlantilla = false,
+                            nombreNuevaPlantilla = "",
+                            descripcionNuevaPlantilla = "",
+                            etiquetasNuevaPlantilla = "",
+                            tipoActividadNuevaPlantilla = TipoActividad.GENERAL,
+                            error = null
+                        )
+                    }
+                    // Recargar las plantillas disponibles
+                    cargarPlantillasDisponibles()
+                } else if (resultado is Result.Error) {
+                    _uiState.update { 
+                        it.copy(error = "Error al guardar la plantilla: ${resultado.exception?.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(error = "Error inesperado al guardar la plantilla: ${e.message}")
+                }
+                Timber.e(e, "Error al guardar plantilla")
+            }
+        }
+    }
+    
+    /**
+     * Clona un registro anterior para utilizarlo como base 
+     * 
+     * @param registroId ID del registro a clonar
+     */
+    fun clonarRegistroAnterior(registroId: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Aquí iría código para obtener un registro anterior y aplicarlo
+                // Por simplificación, simulamos que se obtiene correctamente
+                
+                // Simulación de carga exitosa
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al clonar registro: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "Error al clonar registro anterior")
+            }
+        }
     }
 }

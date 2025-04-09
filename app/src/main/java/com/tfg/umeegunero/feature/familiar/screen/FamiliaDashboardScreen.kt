@@ -94,61 +94,209 @@ fun FamiliaDashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
-    Scaffold { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Tarjeta de bienvenida
-            WelcomeCard(nombreAlumno = uiState.familiar?.nombre ?: "Familiar")
-            
-            // Tarjeta de estadísticas
-            EstadisticasCard(alumno = uiState.hijoSeleccionado)
-            
-            // Últimas notificaciones
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
+    // Si ocurrió un error, mostramos un Snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
+    
+    LaunchedEffect(Unit) {
+        // Cargar datos del familiar al inicio
+        viewModel.cargarDatosFamiliar()
+    }
+    
+    // Observamos si debemos navegar a la pantalla de welcome
+    LaunchedEffect(uiState.navigateToWelcome) {
+        if (uiState.navigateToWelcome) {
+            navController.navigate(AppScreens.Welcome.route) {
+                popUpTo(AppScreens.FamiliarDashboard.route) { inclusive = true }
+            }
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { 
                     Text(
-                        text = "Últimas notificaciones",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "Dashboard Familiar",
                         fontWeight = FontWeight.Bold
                     )
+                },
+                actions = {
+                    // Botón de mensajes con badge para notificaciones
+                    BadgedBox(
+                        badge = {
+                            if (uiState.totalMensajesNoLeidos > 0) {
+                                Badge { Text(uiState.totalMensajesNoLeidos.toString()) }
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = {
+                            navController.navigate(AppScreens.ConversacionesFamilia.route)
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Chat,
+                                contentDescription = "Mensajes"
+                            )
+                        }
+                    }
                     
-                    Spacer(modifier = Modifier.height(16.dp))
+                    // Menú de opciones
+                    var showMenu by remember { mutableStateOf(false) }
                     
-                    Text(
-                        text = "No hay notificaciones recientes",
-                        style = MaterialTheme.typography.bodyLarge
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Más opciones"
+                        )
+                    }
+                    
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Mi perfil") },
+                            onClick = {
+                                showMenu = false
+                                navController.navigate("perfil")
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        DropdownMenuItem(
+                            text = { Text("Configuración") },
+                            onClick = {
+                                showMenu = false
+                                navController.navigate("configuracion")
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        
+                        DropdownMenuItem(
+                            text = { Text("Cerrar sesión") },
+                            onClick = {
+                                showMenu = false
+                                viewModel.logout()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.ExitToApp,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = FamiliarColor,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        if (uiState.isLoading) {
+            // Mostrar un indicador de carga mientras se cargan los datos
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            // Mostrar el contenido principal cuando los datos estén cargados
+            val scrollState = rememberScrollState()
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Tarjeta de bienvenida
+                WelcomeCard(
+                    nombreAlumno = uiState.familiar?.nombre ?: "Familiar",
+                    nombreHijo = uiState.hijoSeleccionado?.nombre ?: "Alumno"
+                )
+                
+                // Selector de hijos (si hay más de uno)
+                if (uiState.hijos.size > 1) {
+                    HijosSelector(
+                        hijos = uiState.hijos,
+                        hijoSeleccionado = uiState.hijoSeleccionado,
+                        onHijoSelected = { viewModel.seleccionarHijo(it) }
                     )
                 }
+                
+                // Tarjeta de resumen de actividad diaria
+                if (uiState.hijoSeleccionado != null) {
+                    ResumenActividadCard(
+                        alumno = uiState.hijoSeleccionado!!,
+                        registrosActividad = uiState.registrosActividad,
+                        onVerDetalles = { registroId ->
+                            // Navegar a la pantalla de detalle del registro
+                            navController.navigate("detalle_registro/$registroId")
+                        }
+                    )
+                }
+                
+                // Accesos rápidos
+                QuickActionsCard(
+                    onVerMensajes = { navController.navigate(AppScreens.ConversacionesFamilia.route) },
+                    onVerCalendario = { navController.navigate(AppScreens.CalendarioFamilia.route) },
+                    onVerHistorial = { 
+                        if (uiState.hijoSeleccionado != null) {
+                            val alumnoId = uiState.hijoSeleccionado!!.dni
+                            val alumnoNombre = uiState.hijoSeleccionado!!.nombre
+                            navController.navigate(
+                                AppScreens.ConsultaRegistroDiario.createRoute(
+                                    alumnoId = alumnoId,
+                                    alumnoNombre = alumnoNombre
+                                )
+                            )
+                        }
+                    }
+                )
+                
+                // Notificaciones y comunicados recientes
+                NotificacionesCard(
+                    totalNoLeidas = uiState.registrosSinLeer,
+                    onVerTodas = { navController.navigate(AppScreens.NotificacionesFamilia.route) }
+                )
             }
-            
-            // Accesos rápidos
-            QuickActionsCard(
-                onVerMensajes = { navController.navigate(AppScreens.ConversacionesFamilia.route) },
-                onVerCalendario = { navController.navigate(AppScreens.CalendarioFamilia.route) },
-                onVerHistorial = { navController.navigate(AppScreens.Notificaciones.route) }
-            )
         }
     }
 }
 
 @Composable
-fun WelcomeCard(nombreAlumno: String, modifier: Modifier = Modifier) {
+fun WelcomeCard(nombreAlumno: String, nombreHijo: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+            containerColor = FamiliarColor.copy(alpha = 0.1f)
         )
     ) {
         Column(
@@ -157,12 +305,12 @@ fun WelcomeCard(nombreAlumno: String, modifier: Modifier = Modifier) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "Hola, Familia de",
+                text = "Hola, $nombreAlumno",
                 style = MaterialTheme.typography.titleMedium
             )
             
             Text(
-                text = nombreAlumno,
+                text = "Familia de $nombreHijo",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -173,16 +321,112 @@ fun WelcomeCard(nombreAlumno: String, modifier: Modifier = Modifier) {
                 text = "Centro Infantil UmeEgunero",
                 style = MaterialTheme.typography.bodyLarge
             )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Última actualización: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
 
 @Composable
-fun EstadisticasCard(alumno: Alumno?, modifier: Modifier = Modifier) {
+fun HijosSelector(
+    hijos: List<Alumno>,
+    hijoSeleccionado: Alumno?,
+    onHijoSelected: (Alumno) -> Unit
+) {
+    Card {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Selecciona un hijo",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(hijos) { hijo ->
+                    val isSelected = hijo.dni == hijoSeleccionado?.dni
+                    
+                    Card(
+                        modifier = Modifier
+                            .width(120.dp)
+                            .height(140.dp)
+                            .clickable { onHijoSelected(hijo) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) 
+                                FamiliarColor.copy(alpha = 0.3f) 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        border = if (isSelected) 
+                            BorderStroke(2.dp, FamiliarColor) 
+                        else 
+                            null
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            // Avatar/Inicial del alumno
+                            Box(
+                                modifier = Modifier
+                                    .size(60.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) FamiliarColor else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = hijo.nombre.first().toString(),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = Color.White
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = hijo.nombre,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ResumenActividadCard(
+    alumno: Alumno,
+    registrosActividad: List<RegistroActividad>,
+    onVerDetalles: (String) -> Unit
+) {
+    val ultimoRegistro = registrosActividad.maxByOrNull { it.fecha }
+    
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
         )
     ) {
         Column(
@@ -190,81 +434,144 @@ fun EstadisticasCard(alumno: Alumno?, modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(
-                text = "Estadísticas de hoy",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Estadísticas en formato grid
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Siesta
-                EstadisticaCircular(
-                    valor = 0.5f, // Valor por defecto hasta que se implemente la lógica real
-                    etiqueta = "Siesta",
-                    color = Color(0xFF4CAF50)
+                Text(
+                    text = "Resumen de actividad",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
                 )
                 
-                // Comida
-                EstadisticaCircular(
-                    valor = calcularNivelComida(alumno),
-                    etiqueta = "Comida",
-                    color = Color(0xFFFF9800)
+                TextButton(onClick = { 
+                    if (ultimoRegistro != null) {
+                        onVerDetalles(ultimoRegistro.id)
+                    }
+                }) {
+                    Text("Ver más")
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            if (ultimoRegistro != null) {
+                val fecha = ultimoRegistro.fecha
+                val fechaFormateada = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                    .format(Date(fecha.seconds * 1000))
+                
+                Text(
+                    text = "Último registro: $fechaFormateada",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
-                // Actividades
-                EstadisticaCircular(
-                    valor = 0.85f,
-                    etiqueta = "Actividades",
-                    color = Color(0xFF2196F3)
-                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Mostrar información básica del registro
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    ActividadInfoItem(
+                        icon = Icons.Default.Restaurant,
+                        title = "Alimentación",
+                        value = when {
+                            ultimoRegistro.comidas.primerPlato.nivelConsumo == NivelConsumo.valueOf("COMPLETO") -> "Completa"
+                            ultimoRegistro.comidas.primerPlato.nivelConsumo == NivelConsumo.valueOf("PARCIAL") -> "Parcial"
+                            else -> "No servido"
+                        }
+                    )
+                    
+                    ActividadInfoItem(
+                        icon = Icons.Default.Bedtime,
+                        title = "Siesta",
+                        value = if (ultimoRegistro.siesta?.duracion ?: 0 > 0) 
+                            "${ultimoRegistro.siesta?.duracion} min" 
+                        else 
+                            "No"
+                    )
+                    
+                    ActividadInfoItem(
+                        icon = Icons.Default.Bathroom,
+                        title = "Necesidades",
+                        value = if (ultimoRegistro.necesidadesFisiologicas.caca) "Sí" else "No"
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Observaciones
+                if (!ultimoRegistro.observaciones.isNullOrBlank()) {
+                    Text(
+                        text = "Observaciones:",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Text(
+                        text = ultimoRegistro.observaciones ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        text = "No hay observaciones para este registro",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            } else {
+                // No hay registros disponibles
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No hay registros de actividad disponibles",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun EstadisticaCircular(
-    valor: Float,
-    etiqueta: String,
-    color: Color,
-    modifier: Modifier = Modifier
+fun ActividadInfoItem(
+    icon: ImageVector,
+    title: String,
+    value: String
 ) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-        ) {
-            CircularProgressIndicator(
-                progress = { valor },
-                modifier = Modifier.fillMaxSize(),
-                color = color,
-                trackColor = color.copy(alpha = 0.2f),
-                strokeWidth = 8.dp
-            )
-            
-            Text(
-                text = "${(valor * 100).toInt()}%",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            tint = FamiliarColor,
+            modifier = Modifier.size(28.dp)
+        )
         
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         
         Text(
-            text = etiqueta,
-            style = MaterialTheme.typography.bodyMedium
+            text = title,
+            style = MaterialTheme.typography.bodySmall
+        )
+        
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -273,20 +580,18 @@ fun EstadisticaCircular(
 fun QuickActionsCard(
     onVerMensajes: () -> Unit,
     onVerCalendario: () -> Unit,
-    onVerHistorial: () -> Unit,
-    modifier: Modifier = Modifier
+    onVerHistorial: () -> Unit
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
             Text(
-                text = "Accesos rápidos",
+                text = "Acciones rápidas",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -295,27 +600,31 @@ fun QuickActionsCard(
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 ActionButton(
-                    icon = Icons.Default.Message,
-                    texto = "Mensajes",
-                    color = Color(0xFF4CAF50),
-                    onClick = onVerMensajes
+                    icon = Icons.AutoMirrored.Filled.Chat,
+                    text = "Mensajes",
+                    onClick = onVerMensajes,
+                    modifier = Modifier.weight(1f)
                 )
                 
-                ActionButton(
-                    icon = Icons.Default.DateRange,
-                    texto = "Calendario",
-                    color = Color(0xFFFF9800),
-                    onClick = onVerCalendario
-                )
+                Spacer(modifier = Modifier.width(8.dp))
                 
                 ActionButton(
-                    icon = Icons.Default.History,
-                    texto = "Historial",
-                    color = Color(0xFF2196F3),
-                    onClick = onVerHistorial
+                    icon = Icons.Default.CalendarMonth,
+                    text = "Calendario",
+                    onClick = onVerCalendario,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                ActionButton(
+                    icon = Icons.AutoMirrored.Filled.Assignment,
+                    text = "Historial",
+                    onClick = onVerHistorial,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -324,48 +633,129 @@ fun QuickActionsCard(
 
 @Composable
 fun ActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    texto: String,
-    color: Color,
+    icon: ImageVector,
+    text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Card(
         modifier = modifier
+            .height(100.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        )
     ) {
-        IconButton(
-            onClick = onClick,
+        Column(
             modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .padding(4.dp),
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = color.copy(alpha = 0.2f),
-                contentColor = color
-            )
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = texto,
-                tint = color
+                contentDescription = text,
+                tint = FamiliarColor,
+                modifier = Modifier.size(32.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        Text(
-            text = texto,
-            style = MaterialTheme.typography.bodySmall
-        )
     }
 }
 
-// Función auxiliar para calcular el nivel de comida en base a la enum EstadoComida
-private fun calcularNivelComida(alumno: Alumno?): Float {
-    return when {
-        alumno == null -> 0f
-        else -> 0.5f // Valor por defecto hasta que se implemente la lógica real
+@Composable
+fun NotificacionesCard(
+    totalNoLeidas: Int,
+    onVerTodas: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Notificaciones",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                if (totalNoLeidas > 0) {
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ) {
+                        Text(
+                            text = totalNoLeidas.toString(),
+                            color = MaterialTheme.colorScheme.onError
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Mostrar notificaciones
+            if (totalNoLeidas > 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onVerTodas)
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = "Tienes $totalNoLeidas ${if (totalNoLeidas == 1) "registro" else "registros"} sin leer",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            } else {
+                Text(
+                    text = "No hay notificaciones pendientes",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Button(
+                onClick = onVerTodas,
+                modifier = Modifier.align(Alignment.End),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = FamiliarColor
+                )
+            ) {
+                Text("Ver todas")
+            }
+        }
     }
 }
 

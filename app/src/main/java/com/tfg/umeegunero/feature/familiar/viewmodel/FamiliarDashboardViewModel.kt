@@ -501,22 +501,73 @@ class FamiliarDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Selecciona un hijo para ver sus detalles
+     * Selecciona un hijo específico para mostrar sus detalles en el dashboard
      * 
-     * Este método actualiza el hijo seleccionado en el estado de la UI
-     * y carga sus registros de actividad para mostrarlos en el dashboard.
+     * Este método actualiza el hijo actualmente seleccionado y carga sus
+     * registros de actividad asociados para mostrarlos en la interfaz.
      * 
-     * @param alumnoId ID del alumno que se quiere seleccionar
+     * @param hijo El alumno (hijo) que ha sido seleccionado
      */
-    fun seleccionarHijo(alumnoId: String) {
-        // Buscamos el alumno en la lista de hijos por su ID
-        val hijo = _uiState.value.hijos.find { it.dni == alumnoId }
+    fun seleccionarHijo(hijo: Alumno) {
+        viewModelScope.launch {
+            _uiState.update { 
+                it.copy(
+                    hijoSeleccionado = hijo,
+                    isLoading = true
+                ) 
+            }
+            
+            // Cargar los registros de actividad del hijo seleccionado
+            cargarRegistrosHijo(hijo.dni)
+        }
+    }
 
-        hijo?.let {
-            // Actualizamos el estado con el hijo seleccionado
-            _uiState.update { state -> state.copy(hijoSeleccionado = it) }
-            // Cargamos sus registros de actividad
-            cargarRegistrosActividad(alumnoId)
+    /**
+     * Carga los registros de actividad para un alumno específico
+     * 
+     * Este método recupera los registros de actividad asociados a un alumno (hijo)
+     * para mostrarlos en el dashboard del familiar.
+     * 
+     * @param alumnoId Identificador único del alumno
+     */
+    private fun cargarRegistrosHijo(alumnoId: String) {
+        viewModelScope.launch {
+            try {
+                val registrosResult = usuarioRepository.getRegistrosActividadByAlumno(alumnoId)
+                
+                when (registrosResult) {
+                    is Result.Success<*> -> {
+                        val registros = registrosResult.data as List<RegistroActividad>
+                        _uiState.update { 
+                            it.copy(
+                                registrosActividad = registros,
+                                registrosSinLeer = registros.count { !it.vistoPorFamiliar },
+                                isLoading = false
+                            ) 
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                error = "Error al cargar registros: ${registrosResult.exception?.message}",
+                                isLoading = false
+                            ) 
+                        }
+                        Timber.e(registrosResult.exception, "Error al cargar registros de actividad")
+                    }
+                    is Result.Loading<*> -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        error = "Error inesperado al cargar registros: ${e.message}",
+                        isLoading = false
+                    ) 
+                }
+                Timber.e(e, "Error inesperado al cargar registros de actividad")
+            }
         }
     }
 
@@ -558,24 +609,45 @@ class FamiliarDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Cierra la sesión del usuario
+     * Cierra la sesión del usuario actual
      * 
-     * Este método realiza el proceso de logout mediante el AuthRepository
-     * y actualiza el estado para redirigir al usuario a la pantalla de bienvenida.
+     * Este método gestiona el proceso de cierre de sesión:
+     * 1. Llama al repositorio de autenticación para cerrar sesión
+     * 2. Actualiza el estado UI para activar la navegación a la pantalla de bienvenida
+     * 3. Maneja posibles errores durante el proceso
      */
     fun logout() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            
-            // Utiliza el repositorio de autenticación para cerrar sesión
-            authRepository.signOut()
-            
-            // Actualiza el estado para navegar a la pantalla de bienvenida
-            _uiState.update { 
-                it.copy(
-                    isLoading = false,
-                    navigateToWelcome = true
-                )
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Intentamos cerrar sesión 
+                val result = authRepository.signOut()
+                
+                if (result) {
+                    _uiState.update { 
+                        it.copy(
+                            navigateToWelcome = true,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cerrar sesión",
+                            isLoading = false
+                        )
+                    }
+                    Timber.e("Error al cerrar sesión")
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        error = "Error inesperado al cerrar sesión: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "Error inesperado al cerrar sesión")
             }
         }
     }

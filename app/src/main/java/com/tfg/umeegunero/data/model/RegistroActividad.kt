@@ -49,6 +49,7 @@ import com.google.firebase.firestore.DocumentId
  * @property actividades Actividades específicas realizadas durante el día.
  * @property observaciones Observaciones generales (nuevo formato).
  * @property observacionesGenerales Observaciones generales (formato anterior).
+ * @property etiquetas Lista de IDs de etiquetas asignadas al registro.
  * @property vistoPorFamiliar Indica si el familiar ha visto el registro (nuevo formato).
  * @property fechaVisto Fecha en que el familiar visualizó el registro (nuevo formato).
  * @property visualizadoPorFamiliar Indica si el familiar ha visto el registro (formato anterior).
@@ -56,11 +57,13 @@ import com.google.firebase.firestore.DocumentId
  * @property ultimaModificacion Fecha de la última modificación del registro.
  * @property creadoPor Identificador del usuario que creó el registro.
  * @property modificadoPor Identificador del último usuario que modificó el registro.
+ * @property plantillaId Identificador de la plantilla utilizada (si se usó una).
  *
  * @see Comida
  * @see Siesta
  * @see CacaControl
  * @see Actividad
+ * @see EtiquetaActividad
  */
 data class RegistroActividad(
     // Datos básicos
@@ -111,6 +114,9 @@ data class RegistroActividad(
     val observaciones: String? = null,
     val observacionesGenerales: String = "",
     
+    // Etiquetas - Nueva funcionalidad
+    val etiquetas: List<String> = emptyList(), // Lista de IDs de etiquetas
+    
     // Control de visualización
     val vistoPorFamiliar: Boolean = false,
     val fechaVisto: Timestamp? = null,
@@ -120,7 +126,10 @@ data class RegistroActividad(
     // Metadatos
     val ultimaModificacion: Timestamp = Timestamp.now(),
     val creadoPor: String = "",
-    val modificadoPor: String = ""
+    val modificadoPor: String = "",
+    
+    // Plantilla - Nueva funcionalidad
+    val plantillaId: String? = null // ID de la plantilla utilizada (si se usó una)
 ) {
     /**
      * Función de extensión para convertir el modelo antiguo RegistroDiario a RegistroActividad.

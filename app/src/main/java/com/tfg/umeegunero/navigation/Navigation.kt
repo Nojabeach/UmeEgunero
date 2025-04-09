@@ -99,8 +99,8 @@ fun Navigation(
                     val route = when(userType) {
                         TipoUsuario.ADMIN_APP -> AppScreens.AdminDashboard.route
                         TipoUsuario.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
-                        TipoUsuario.PROFESOR -> AppScreens.Welcome.route // Temporal
-                        TipoUsuario.FAMILIAR -> AppScreens.Welcome.route // Temporal
+                        TipoUsuario.PROFESOR -> AppScreens.ProfesorDashboard.route
+                        TipoUsuario.FAMILIAR -> AppScreens.FamiliarDashboard.route
                         else -> AppScreens.Welcome.route
                     }
                     navController.navigate(route) {
@@ -153,6 +153,14 @@ fun Navigation(
         // Pantalla del dashboard del centro educativo
         composable(route = AppScreens.CentroDashboard.route) {
             com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla del dashboard familiar
+        composable(route = AppScreens.FamiliarDashboard.route) {
+            com.tfg.umeegunero.feature.familiar.screen.FamiliaDashboardScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
             )

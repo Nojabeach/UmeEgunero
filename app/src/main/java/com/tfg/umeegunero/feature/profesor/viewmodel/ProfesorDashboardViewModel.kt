@@ -504,20 +504,43 @@ class ProfesorDashboardViewModel @Inject constructor(
     /**
      * Cierra la sesión del usuario actual
      * 
-     * Este método ejecuta el proceso de logout mediante el repositorio
-     * de autenticación y actualiza el estado para redirigir al usuario
-     * a la pantalla de bienvenida/login.
+     * Este método gestiona el proceso de cierre de sesión:
+     * 1. Llama al repositorio de autenticación para cerrar sesión
+     * 2. Actualiza el estado UI para activar la navegación a la pantalla de bienvenida
+     * 3. Maneja posibles errores durante el proceso
      */
     fun logout() {
         viewModelScope.launch {
             try {
-                authRepository.signOut()
-                _uiState.update { it.copy(navigateToWelcome = true) }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cerrar sesión")
-                _uiState.update { 
-                    it.copy(error = e.message ?: "Error al cerrar sesión")
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Intentamos cerrar sesión 
+                val result = authRepository.signOut()
+                
+                if (result) {
+                    _uiState.update { 
+                        it.copy(
+                            navigateToWelcome = true,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cerrar sesión",
+                            isLoading = false
+                        )
+                    }
+                    Timber.e("Error al cerrar sesión")
                 }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        error = "Error inesperado al cerrar sesión: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "Error inesperado al cerrar sesión")
             }
         }
     }

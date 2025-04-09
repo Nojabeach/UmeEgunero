@@ -2,20 +2,31 @@ package com.tfg.umeegunero.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.TypeConverter
+import androidx.room.TypeConverters
 import com.google.firebase.Timestamp
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.tfg.umeegunero.data.model.CacaControl
+import com.tfg.umeegunero.data.model.Comidas
 import com.tfg.umeegunero.data.model.EstadoComida
+import com.tfg.umeegunero.data.model.NecesidadesFisiologicas
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.Siesta
 import java.util.Date
 
 /**
  * Entidad Room para el almacenamiento local de registros de actividad.
  * 
  * Esta entidad representa la versión local (persistente) del modelo RegistroActividad
- * para permitir el funcionamiento offline de la aplicación.
+ * para permitir el funcionamiento offline de la aplicación. Incluye soporte para
+ * etiquetas personalizadas y uso de plantillas.
  * 
- * @author Estudiante 2º DAM
+ * @author Maitane (Estudiante 2º DAM)
+ * @version 1.1
  */
 @Entity(tableName = "registros_actividad")
+@TypeConverters(StringListConverter::class)
 data class RegistroActividadEntity(
     @PrimaryKey
     val id: String,
@@ -56,6 +67,9 @@ data class RegistroActividadEntity(
     val observaciones: String? = null,
     val observacionesGenerales: String = "",
     
+    // Etiquetas - Nueva funcionalidad
+    val etiquetas: List<String> = emptyList(),
+    
     // Control de visualización
     val vistoPorFamiliar: Boolean = false,
     val fechaVistoTimestamp: Long? = null,
@@ -67,11 +81,65 @@ data class RegistroActividadEntity(
     val creadoPor: String = "",
     val modificadoPor: String = "",
     
+    // Plantilla - Nueva funcionalidad
+    val plantillaId: String? = null,
+    
     // Campo para sincronización - Indica si el registro está sincronizado con el servidor
     val isSynced: Boolean = false
 ) {
+    companion object {
+        /**
+         * Convierte un modelo RegistroActividad a una entidad RegistroActividadEntity
+         * 
+         * @param registro Modelo de dominio
+         * @param isSynced Estado de sincronización
+         * @return Entidad para Room
+         */
+        fun fromRegistroActividad(registro: RegistroActividad, isSynced: Boolean = false): RegistroActividadEntity {
+            return RegistroActividadEntity(
+                id = registro.id,
+                alumnoId = registro.alumnoId,
+                alumnoNombre = registro.alumnoNombre,
+                claseId = registro.claseId,
+                fechaTimestamp = registro.fecha.seconds * 1000,
+                profesorId = registro.profesorId,
+                profesorNombre = registro.profesorNombre,
+                primerPlato = registro.comidas.primerPlato.nivelConsumo.name,
+                segundoPlato = registro.comidas.segundoPlato.nivelConsumo.name,
+                postre = registro.comidas.postre.nivelConsumo.name,
+                merienda = registro.comidas.primerPlato.nivelConsumo.name,
+                observacionesComida = registro.observacionesComida,
+                haSiestaSiNo = registro.siesta != null,
+                horaInicioSiestaTimestamp = registro.siesta?.inicio?.seconds?.times(1000) ?: registro.horaInicioSiesta?.seconds?.times(1000),
+                horaFinSiestaTimestamp = registro.siesta?.fin?.seconds?.times(1000) ?: registro.horaFinSiesta?.seconds?.times(1000),
+                observacionesSiesta = registro.siesta?.observaciones ?: registro.observacionesSiesta,
+                haHechoCaca = registro.necesidadesFisiologicas.caca,
+                numeroCacas = if (registro.necesidadesFisiologicas.caca) 1 else 0,
+                observacionesCaca = registro.necesidadesFisiologicas.observaciones,
+                necesitaPanales = registro.necesitaPanales,
+                necesitaToallitas = registro.necesitaToallitas,
+                necesitaRopaCambio = registro.necesitaRopaCambio,
+                otroMaterialNecesario = registro.otroMaterialNecesario,
+                observaciones = registro.observaciones,
+                observacionesGenerales = registro.observacionesGenerales,
+                etiquetas = registro.etiquetas,
+                vistoPorFamiliar = registro.vistoPorFamiliar,
+                fechaVistoTimestamp = registro.fechaVisto?.seconds?.times(1000),
+                visualizadoPorFamiliar = registro.visualizadoPorFamiliar,
+                fechaVisualizacionTimestamp = registro.fechaVisualizacion?.seconds?.times(1000),
+                ultimaModificacionTimestamp = registro.ultimaModificacion.seconds * 1000,
+                creadoPor = registro.creadoPor,
+                modificadoPor = registro.modificadoPor,
+                plantillaId = registro.plantillaId,
+                isSynced = isSynced
+            )
+        }
+    }
+    
     /**
-     * Convierte la entidad Room a un modelo de dominio RegistroActividad
+     * Convierte la entidad a un modelo de dominio RegistroActividad
+     * 
+     * @return Modelo de dominio
      */
     fun toRegistroActividad(): RegistroActividad {
         return RegistroActividad(
@@ -79,81 +147,65 @@ data class RegistroActividadEntity(
             alumnoId = alumnoId,
             alumnoNombre = alumnoNombre,
             claseId = claseId,
-            fecha = Timestamp(Date(fechaTimestamp)),
+            fecha = Timestamp(fechaTimestamp / 1000, 0),
             profesorId = profesorId,
             profesorNombre = profesorNombre,
-            primerPlato = try { EstadoComida.valueOf(primerPlato) } catch (e: Exception) { EstadoComida.NO_SERVIDO },
-            segundoPlato = try { EstadoComida.valueOf(segundoPlato) } catch (e: Exception) { EstadoComida.NO_SERVIDO },
-            postre = try { EstadoComida.valueOf(postre) } catch (e: Exception) { EstadoComida.NO_SERVIDO },
-            merienda = try { EstadoComida.valueOf(merienda) } catch (e: Exception) { EstadoComida.NO_SERVIDO },
-            observacionesComida = observacionesComida,
-            haSiestaSiNo = haSiestaSiNo,
-            horaInicioSiesta = horaInicioSiestaTimestamp?.let { Timestamp(Date(it)) },
-            horaFinSiesta = horaFinSiestaTimestamp?.let { Timestamp(Date(it)) },
-            observacionesSiesta = observacionesSiesta,
-            haHechoCaca = haHechoCaca,
-            numeroCacas = numeroCacas,
-            observacionesCaca = observacionesCaca,
+            comidas = Comidas(
+                primerPlato = com.tfg.umeegunero.data.model.Plato(
+                    "", com.tfg.umeegunero.data.model.NivelConsumo.valueOf(primerPlato)
+                ),
+                segundoPlato = com.tfg.umeegunero.data.model.Plato(
+                    "", com.tfg.umeegunero.data.model.NivelConsumo.valueOf(segundoPlato)
+                ),
+                postre = com.tfg.umeegunero.data.model.Plato(
+                    "", com.tfg.umeegunero.data.model.NivelConsumo.valueOf(postre)
+                )
+            ),
+            siesta = Siesta(
+                duracion = 0,
+                inicio = horaInicioSiestaTimestamp?.let { Timestamp(it / 1000, 0) },
+                fin = horaFinSiestaTimestamp?.let { Timestamp(it / 1000, 0) },
+                observaciones = observacionesSiesta
+            ),
+            necesidadesFisiologicas = NecesidadesFisiologicas(
+                pipi = true,
+                caca = haHechoCaca,
+                observaciones = observacionesCaca
+            ),
             necesitaPanales = necesitaPanales,
             necesitaToallitas = necesitaToallitas,
             necesitaRopaCambio = necesitaRopaCambio,
             otroMaterialNecesario = otroMaterialNecesario,
             observaciones = observaciones,
             observacionesGenerales = observacionesGenerales,
+            etiquetas = etiquetas,
             vistoPorFamiliar = vistoPorFamiliar,
-            fechaVisto = fechaVistoTimestamp?.let { Timestamp(Date(it)) },
+            fechaVisto = fechaVistoTimestamp?.let { Timestamp(it / 1000, 0) },
             visualizadoPorFamiliar = visualizadoPorFamiliar,
-            fechaVisualizacion = fechaVisualizacionTimestamp?.let { Timestamp(Date(it)) },
-            ultimaModificacion = Timestamp(Date(ultimaModificacionTimestamp)),
+            fechaVisualizacion = fechaVisualizacionTimestamp?.let { Timestamp(it / 1000, 0) },
+            ultimaModificacion = Timestamp(ultimaModificacionTimestamp / 1000, 0),
             creadoPor = creadoPor,
-            modificadoPor = modificadoPor
+            modificadoPor = modificadoPor,
+            plantillaId = plantillaId
         )
     }
+}
 
-    companion object {
-        /**
-         * Crea una entidad Room a partir de un modelo de dominio RegistroActividad
-         * 
-         * @param registro El registro de actividad del dominio
-         * @param isSynced Indica si está sincronizado con el servidor
-         * @return La entidad Room correspondiente
-         */
-        fun fromRegistroActividad(registro: RegistroActividad, isSynced: Boolean = true): RegistroActividadEntity {
-            return RegistroActividadEntity(
-                id = registro.id,
-                alumnoId = registro.alumnoId,
-                alumnoNombre = registro.alumnoNombre,
-                claseId = registro.claseId,
-                fechaTimestamp = registro.fecha.toDate().time,
-                profesorId = registro.profesorId,
-                profesorNombre = registro.profesorNombre,
-                primerPlato = registro.primerPlato.name,
-                segundoPlato = registro.segundoPlato.name,
-                postre = registro.postre.name,
-                merienda = registro.merienda.name,
-                observacionesComida = registro.observacionesComida,
-                haSiestaSiNo = registro.haSiestaSiNo,
-                horaInicioSiestaTimestamp = registro.horaInicioSiesta?.toDate()?.time,
-                horaFinSiestaTimestamp = registro.horaFinSiesta?.toDate()?.time,
-                observacionesSiesta = registro.observacionesSiesta,
-                haHechoCaca = registro.haHechoCaca,
-                numeroCacas = registro.numeroCacas,
-                observacionesCaca = registro.observacionesCaca,
-                necesitaPanales = registro.necesitaPanales,
-                necesitaToallitas = registro.necesitaToallitas,
-                necesitaRopaCambio = registro.necesitaRopaCambio,
-                otroMaterialNecesario = registro.otroMaterialNecesario,
-                observaciones = registro.observaciones,
-                observacionesGenerales = registro.observacionesGenerales,
-                vistoPorFamiliar = registro.vistoPorFamiliar,
-                fechaVistoTimestamp = registro.fechaVisto?.toDate()?.time,
-                visualizadoPorFamiliar = registro.visualizadoPorFamiliar,
-                fechaVisualizacionTimestamp = registro.fechaVisualizacion?.toDate()?.time,
-                ultimaModificacionTimestamp = registro.ultimaModificacion.toDate().time,
-                creadoPor = registro.creadoPor,
-                modificadoPor = registro.modificadoPor,
-                isSynced = isSynced
-            )
-        }
+/**
+ * Conversor para listas de strings en Room
+ */
+class StringListConverter {
+    
+    private val gson = Gson()
+    
+    @TypeConverter
+    fun fromString(value: String): List<String> {
+        val listType = object : TypeToken<List<String>>() {}.type
+        return gson.fromJson(value, listType) ?: emptyList()
+    }
+    
+    @TypeConverter
+    fun fromList(list: List<String>): String {
+        return gson.toJson(list)
     }
 } 

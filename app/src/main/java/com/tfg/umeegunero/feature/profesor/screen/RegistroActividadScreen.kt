@@ -24,18 +24,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -52,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -90,6 +82,8 @@ import com.tfg.umeegunero.data.model.Observacion
 import com.tfg.umeegunero.data.model.Plato
 import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.data.model.TipoObservacion
+import com.tfg.umeegunero.data.model.PlantillaRegistroActividad
+import com.tfg.umeegunero.data.model.TipoActividad
 import com.tfg.umeegunero.feature.profesor.viewmodel.RegistroActividadViewModel
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -102,6 +96,10 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Badge
+import androidx.compose.material3.SuggestionChip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,6 +156,15 @@ fun RegistroActividadScreen(
                 },
                 actions = {
                     IconButton(
+                        onClick = { viewModel.mostrarSelectorPlantillas() }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.List,
+                            contentDescription = "Plantillas"
+                        )
+                    }
+                    
+                    IconButton(
                         onClick = { viewModel.guardarRegistro() },
                         enabled = !uiState.isLoading
                     ) {
@@ -194,17 +201,55 @@ fun RegistroActividadScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Contenido principal
+            // Contenido principal con scroll
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
-                    .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .verticalScroll(scrollState)
             ) {
                 // Información del alumno
                 uiState.alumno?.let { alumno ->
                     AlumnoInfoCard(alumno = alumno)
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Añadir botones de utilidades para plantillas y clonación
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Botón para guardar como plantilla
+                        Button(
+                            onClick = { viewModel.mostrarGuardarPlantilla() },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Save,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Guardar como plantilla")
+                            }
+                        }
+                        
+                        // Indicador de plantilla aplicada
+                        if (uiState.plantillaSeleccionada != null) {
+                            Badge(
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            ) {
+                                Text("Plantilla: ${uiState.plantillaSeleccionada?.nombre}")
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 // Sección de comidas
@@ -239,23 +284,38 @@ fun RegistroActividadScreen(
                     onAddObservacion = viewModel::addObservacion,
                     onRemoveObservacion = viewModel::removeObservacion
                 )
-
-                // Espacio al final para que el FAB no tape el contenido
-                Spacer(modifier = Modifier.height(80.dp))
             }
-
+            
+            // Diálogo de selector de plantillas
+            if (uiState.mostrarSelectorPlantillas) {
+                PlantillaSelectorDialog(
+                    plantillas = uiState.plantillasDisponibles,
+                    onDismiss = { viewModel.ocultarSelectorPlantillas() },
+                    onPlantillaSelected = { viewModel.seleccionarPlantilla(it) }
+                )
+            }
+            
+            // Diálogo para guardar como plantilla
+            if (uiState.mostrarGuardarPlantilla) {
+                GuardarPlantillaDialog(
+                    nombre = uiState.nombreNuevaPlantilla,
+                    descripcion = uiState.descripcionNuevaPlantilla,
+                    etiquetas = uiState.etiquetasNuevaPlantilla,
+                    tipoActividad = uiState.tipoActividadNuevaPlantilla,
+                    onNombreChange = { viewModel.updateNombrePlantilla(it) },
+                    onDescripcionChange = { viewModel.updateDescripcionPlantilla(it) },
+                    onEtiquetasChange = { viewModel.updateEtiquetasPlantilla(it) },
+                    onTipoActividadChange = { viewModel.updateTipoActividadPlantilla(it) },
+                    onDismiss = { viewModel.ocultarGuardarPlantilla() },
+                    onSave = { viewModel.guardarComoPlantilla() }
+                )
+            }
+            
             // Indicador de carga
             if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = ProfesorColor
-                    )
-                }
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
         }
     }
@@ -996,4 +1056,253 @@ fun NecesidadesFisiologicasCardPreview() {
             )
         }
     }
+}
+
+/**
+ * Diálogo para seleccionar una plantilla de registro
+ * 
+ * @param plantillas Lista de plantillas disponibles
+ * @param onDismiss Función para cerrar el diálogo
+ * @param onPlantillaSelected Función que se llama al seleccionar una plantilla
+ */
+@Composable
+fun PlantillaSelectorDialog(
+    plantillas: List<PlantillaRegistroActividad>,
+    onDismiss: () -> Unit,
+    onPlantillaSelected: (PlantillaRegistroActividad) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Column {
+                Text(
+                    text = "Seleccionar Plantilla",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Text(
+                    text = "Elige una plantilla predefinida para agilizar el registro",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        text = {
+            if (plantillas.isEmpty()) {
+                Text(
+                    text = "No tienes plantillas guardadas.\n\nCrea una guardando un registro como plantilla.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                LazyColumn {
+                    items(plantillas) { plantilla ->
+                        PlantillaItem(
+                            plantilla = plantilla,
+                            onClick = { onPlantillaSelected(plantilla) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
+/**
+ * Item individual de una plantilla
+ * 
+ * @param plantilla Plantilla a mostrar
+ * @param onClick Función a ejecutar al seleccionar la plantilla
+ */
+@Composable
+fun PlantillaItem(
+    plantilla: PlantillaRegistroActividad,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = plantilla.nombre,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    if (plantilla.descripcion.isNotEmpty()) {
+                        Text(
+                            text = plantilla.descripcion,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            if (plantilla.etiquetas.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    plantilla.etiquetas.take(3).forEach { etiqueta ->
+                        SuggestionChip(
+                            onClick = { },
+                            label = { Text(etiqueta) }
+                        )
+                    }
+                    
+                    if (plantilla.etiquetas.size > 3) {
+                        Text(
+                            text = "+${plantilla.etiquetas.size - 3}",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .align(Alignment.CenterVertically)
+                                .padding(start = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Diálogo para guardar el registro actual como plantilla
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GuardarPlantillaDialog(
+    nombre: String,
+    descripcion: String,
+    etiquetas: String,
+    tipoActividad: TipoActividad,
+    onNombreChange: (String) -> Unit,
+    onDescripcionChange: (String) -> Unit,
+    onEtiquetasChange: (String) -> Unit,
+    onTipoActividadChange: (TipoActividad) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Guardar como Plantilla") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = onNombreChange,
+                    label = { Text("Nombre *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = onDescripcionChange,
+                    label = { Text("Descripción") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 3
+                )
+                
+                OutlinedTextField(
+                    value = etiquetas,
+                    onValueChange = onEtiquetasChange,
+                    label = { Text("Etiquetas (separadas por comas)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                Text(
+                    text = "Tipo de Actividad:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        TipoActividad.values().take(5).forEach { tipo ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            ) {
+                                RadioButton(
+                                    selected = tipoActividad == tipo,
+                                    onClick = { onTipoActividadChange(tipo) }
+                                )
+                                Text(
+                                    text = tipo.name.lowercase().replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                    
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        TipoActividad.values().drop(5).forEach { tipo ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            ) {
+                                RadioButton(
+                                    selected = tipoActividad == tipo,
+                                    onClick = { onTipoActividadChange(tipo) }
+                                )
+                                Text(
+                                    text = tipo.name.lowercase().replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onSave,
+                enabled = nombre.isNotBlank()
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
