@@ -307,7 +307,7 @@ fun LoginScreen(
                         // Campo de email
                         OutlinedTextField(
                             value = email,
-                            onValueChange = { viewModel.updateEmail(it) },
+                            onValueChange = { email = it },
                             label = { Text("Email") },
                             leadingIcon = {
                                 Icon(
@@ -333,7 +333,7 @@ fun LoginScreen(
                         // Campo de contraseña
                         OutlinedTextField(
                             value = password,
-                            onValueChange = { viewModel.updatePassword(it) },
+                            onValueChange = { password = it },
                             label = { Text("Contraseña") },
                             leadingIcon = {
                                 Icon(

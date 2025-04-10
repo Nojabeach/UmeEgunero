@@ -9,6 +9,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.common.config.screen.NotificacionesScreen
 import com.tfg.umeegunero.feature.common.files.screen.DocumentoScreen
+import com.tfg.umeegunero.feature.common.screen.DummyScreen
 import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
 import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
@@ -26,6 +27,12 @@ import com.tfg.umeegunero.feature.common.comunicacion.screen.ComponerMensajeScre
 import org.threeten.bp.LocalDate
 import org.threeten.bp.format.DateTimeFormatter
 import java.time.LocalDate as JavaLocalDate
+import android.util.Log
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 
 /**
  * Navegación principal de la aplicación
@@ -44,13 +51,27 @@ fun Navigation(
         composable(route = AppScreens.Welcome.route) {
             WelcomeScreen(
                 onNavigateToLogin = { userType: WelcomeUserType ->
-                    val userTypeRoute: String = when (userType) {
-                        WelcomeUserType.ADMIN -> "ADMIN"
-                        WelcomeUserType.CENTRO -> "CENTRO"
-                        WelcomeUserType.PROFESOR -> "PROFESOR"
-                        WelcomeUserType.FAMILIAR -> "FAMILIAR"
+                    try {
+                        val userTypeRoute: String = when (userType) {
+                            WelcomeUserType.ADMIN -> "ADMIN"
+                            WelcomeUserType.CENTRO -> "CENTRO"
+                            WelcomeUserType.PROFESOR -> "PROFESOR"
+                            WelcomeUserType.FAMILIAR -> "FAMILIAR"
+                        }
+                        
+                        // Para el caso de administrador, usamos una ruta especial
+                        if (userType == WelcomeUserType.ADMIN) {
+                            Log.d("Navigation", "Navegando a admin_login")
+                            navController.navigate("admin_login")
+                        } else {
+                            Log.d("Navigation", "Navegando a login/$userTypeRoute")
+                            navController.navigate(AppScreens.Login.createRoute(userTypeRoute))
+                        }
+                    } catch (e: Exception) {
+                        Log.e("Navigation", "Error al navegar a login: ${e.message}", e)
+                        // Si hay un error, mostramos una pantalla de error
+                        navController.navigate("login_error")
                     }
-                    navController.navigate(AppScreens.Login.createRoute(userTypeRoute))
                 },
                 onCloseApp = onCloseApp,
                 onNavigateToTechnicalSupport = {
@@ -60,6 +81,16 @@ fun Navigation(
                     navController.navigate(AppScreens.FAQ.route)
                 }
             )
+        }
+        
+        // Pantalla de error de login
+        composable("login_error") {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Ha ocurrido un error al intentar acceder. Reinicia la aplicación.")
+            }
         }
         
         // Pantalla de soporte técnico
@@ -73,6 +104,21 @@ fun Navigation(
         composable(route = AppScreens.FAQ.route) {
             FAQScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de login específica para administradores
+        composable("admin_login") {
+            LoginScreen(
+                userType = TipoUsuario.ADMIN_APP,
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                onLoginSuccess = {
+                    navController.navigate(AppScreens.AdminDashboard.route) {
+                        popUpTo(AppScreens.Welcome.route) { inclusive = true }
+                    }
+                },
+                onForgotPassword = { navController.navigate(AppScreens.SoporteTecnico.route) }
             )
         }
         
@@ -150,6 +196,14 @@ fun Navigation(
             AdminDashboardScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantalla de gestión de centros
+        composable(route = AppScreens.GestionCentros.route) {
+            DummyScreen(
+                title = "Gestión de Centros",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -268,9 +322,9 @@ fun Navigation(
         
         // Pantalla de gestión de cursos y clases
         composable(route = AppScreens.GestionCursosYClases.route) {
-            com.tfg.umeegunero.feature.centro.screen.GestionCursosYClasesScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
+            DummyScreen(
+                title = "Gestión de Cursos y Clases",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -293,15 +347,17 @@ fun Navigation(
         
         // Pantalla de gestión de profesores
         composable(route = AppScreens.GestionProfesores.route) {
-            com.tfg.umeegunero.feature.centro.screen.GestionProfesoresScreen(
-                navController = navController
+            DummyScreen(
+                title = "Gestión de Profesores",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
         // Pantalla de vinculación familiar
         composable(route = AppScreens.VinculacionFamiliar.route) {
-            com.tfg.umeegunero.feature.centro.screen.VinculacionFamiliarScreen(
-                navController = navController
+            DummyScreen(
+                title = "Vinculación Familiar",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -314,8 +370,9 @@ fun Navigation(
         
         // Pantalla de notificaciones del centro
         composable(route = AppScreens.GestionNotificacionesCentro.route) {
-            com.tfg.umeegunero.feature.centro.screen.GestionNotificacionesCentroScreen(
-                navController = navController
+            DummyScreen(
+                title = "Gestión de Notificaciones",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -333,10 +390,11 @@ fun Navigation(
             )
         }
         
-        // Pantalla de perfil de usuario
+        // Pantalla de perfil
         composable(route = AppScreens.Perfil.route) {
-            com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen(
-                navController = navController
+            DummyScreen(
+                title = "Mi Perfil",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -372,11 +430,9 @@ fun Navigation(
         
         // Pantalla de conversaciones para familia
         composable(route = AppScreens.ConversacionesFamilia.route) {
-            val viewModel = hiltViewModel<com.tfg.umeegunero.feature.common.mensajeria.ConversacionesViewModel>()
-            com.tfg.umeegunero.feature.common.mensajeria.ConversacionesScreen(
-                navController = navController,
-                rutaChat = AppScreens.ChatFamilia.route.substringBefore("/{conversacionId}"),
-                viewModel = viewModel
+            DummyScreen(
+                title = "Mensajes Familiares",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -409,6 +465,78 @@ fun Navigation(
             com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantalla de conversaciones para profesor
+        composable(route = AppScreens.ConversacionesProfesor.route) {
+            DummyScreen(
+                title = "Conversaciones",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de registro de asistencia para profesor
+        composable(route = AppScreens.AsistenciaProfesor.route) {
+            DummyScreen(
+                title = "Registro de Asistencia",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de gestión de tareas para profesor
+        composable(route = AppScreens.TareasProfesor.route) {
+            DummyScreen(
+                title = "Gestión de Tareas",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de calendario para profesor
+        composable(route = AppScreens.CalendarioProfesor.route) {
+            DummyScreen(
+                title = "Calendario del Profesor",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de estadísticas (Dummy)
+        composable(route = AppScreens.Estadisticas.route) {
+            DummyScreen(
+                title = "Estadísticas",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de reporte de uso (Dummy)
+        composable(route = AppScreens.ReporteUso.route) {
+            DummyScreen(
+                title = "Reporte de Uso",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de reporte de rendimiento (Dummy)
+        composable(route = AppScreens.ReporteRendimiento.route) {
+            DummyScreen(
+                title = "Reporte de Rendimiento",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de configuración (Dummy)
+        composable(route = AppScreens.Config.route) {
+            DummyScreen(
+                title = "Configuración",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de comunicados (Dummy)
+        composable(route = AppScreens.Comunicados.route) {
+            DummyScreen(
+                title = "Comunicados",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

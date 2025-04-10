@@ -53,6 +53,9 @@ sealed class AppScreens(val route: String) {
     /** Dashboard principal para responsables de centros educativos */
     object CentroDashboard : AppScreens("centro_dashboard")
     
+    /** Pantalla de gestión de centros educativos */
+    object GestionCentros : AppScreens("gestion_centros")
+    
     /** Dashboard principal para profesores */
     object ProfesorDashboard : AppScreens("profesor_dashboard")
     
@@ -254,9 +257,6 @@ sealed class AppScreens(val route: String) {
             if (alumnoId != null) "chat/$familiarId/$alumnoId" else "chat/$familiarId"
     }
 
-    /** Pantalla de gestión de centros educativos */
-    object GestionCentros : AppScreens("gestion_centros")
-    
     /** Pantalla de gestión académica general */
     object GestionAcademica : AppScreens("gestion_academica")
     

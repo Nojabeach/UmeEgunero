@@ -228,7 +228,20 @@ fun ProfesorDashboardContent(
                     SimpleActionButton(
                         text = "Nuevo Registro",
                         color = Color(0xFF34C759),
-                        onClick = { onCrearRegistroActividad("") }
+                        onClick = { 
+                            try {
+                                navController.navigate(AppScreens.RegistroDiario.createRoute(
+                                    alumnoId = "dummy",
+                                    claseId = "dummy",
+                                    profesorId = "dummy",
+                                    alumnoNombre = "Alumno de prueba",
+                                    claseNombre = "Clase de prueba"
+                                ))
+                            } catch (e: Exception) {
+                                // Si falla, navegar al DummyScreen
+                                navController.navigate(AppScreens.AsistenciaProfesor.route)
+                            }
+                        }
                     )
                     
                     // Clonar Registro
@@ -236,7 +249,8 @@ fun ProfesorDashboardContent(
                         text = "Clonar Registro",
                         color = Color(0xFF2196F3),
                         onClick = { 
-                            navController.navigate("${AppScreens.RegistroActividad.route}/") 
+                            // Navegamos a la pantalla de asistencia del profesor
+                            navController.navigate(AppScreens.AsistenciaProfesor.route)
                         }
                     )
                 }

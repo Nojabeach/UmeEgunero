@@ -226,8 +226,7 @@ fun AdminDashboardContent(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            userScrollEnabled = false,
-            modifier = Modifier.height(200.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             item {
                 AdminOptionCard(

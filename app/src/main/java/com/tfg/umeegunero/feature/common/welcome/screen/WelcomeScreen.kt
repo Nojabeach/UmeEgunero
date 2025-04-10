@@ -693,7 +693,13 @@ fun WelcomeScreen(
         ) {
             // Botón de acceso admin (izquierda)
             FloatingActionButton(
-                onClick = { onNavigateToLogin(WelcomeUserType.ADMIN) },
+                onClick = { 
+                    try {
+                        onNavigateToLogin(WelcomeUserType.ADMIN) 
+                    } catch (e: Exception) {
+                        // Si hay un error, no hacemos nada para evitar que se cierre la app
+                    }
+                },
                 modifier = Modifier.size(48.dp),
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                 contentColor = if (isLight) AdminColor else PrimaryLight,

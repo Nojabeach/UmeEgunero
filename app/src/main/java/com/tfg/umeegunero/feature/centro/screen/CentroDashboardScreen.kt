@@ -150,22 +150,70 @@ fun CentroDashboardScreen(
                     currentDate = currentDate,
                     currentUser = uiState.currentUser,
                     onNavigateToGestionProfesores = { 
-                        navController.navigate(AppScreens.GestionProfesores.route) 
+                        try {
+                            navController.navigate(AppScreens.GestionProfesores.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Error al navegar: ${e.message}"
+                                )
+                            }
+                        }
                     },
                     onNavigateToGestionCursosYClases = { 
-                        navController.navigate(AppScreens.GestionCursosYClases.route) 
+                        try {
+                            navController.navigate(AppScreens.GestionCursosYClases.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Error al navegar: ${e.message}"
+                                )
+                            }
+                        }
                     },
                     onNavigateToVinculacionFamiliar = { 
-                        navController.navigate(AppScreens.VinculacionFamiliar.route) 
+                        try {
+                            navController.navigate(AppScreens.VinculacionFamiliar.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Error al navegar: ${e.message}"
+                                )
+                            }
+                        }
                     },
                     onNavigateToCalendario = { 
-                        navController.navigate(AppScreens.Calendario.route) 
+                        try {
+                            navController.navigate(AppScreens.Calendario.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Error al navegar: ${e.message}"
+                                )
+                            }
+                        }
                     },
                     onNavigateToNotificaciones = { 
-                        navController.navigate(AppScreens.GestionNotificacionesCentro.route) 
+                        try {
+                            navController.navigate(AppScreens.GestionNotificacionesCentro.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Error al navegar: ${e.message}"
+                                )
+                            }
+                        }
                     },
                     onNavigateToAddAlumno = { 
-                        navController.navigate(AppScreens.AddAlumno.route) 
+                        try {
+                            navController.navigate(AppScreens.AddAlumno.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Error al navegar: ${e.message}"
+                                )
+                            }
+                        }
                     },
                     modifier = Modifier.padding(paddingValues)
                 )
@@ -501,8 +549,7 @@ fun OpcionesGrid(
         columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        userScrollEnabled = false,
-        modifier = Modifier.height(350.dp) // Altura fija para acomodar 3 filas de 2 elementos
+        modifier = Modifier.fillMaxWidth()
     ) {
         items(opciones) { opcion ->
             OpcionDashboardItem(opcion = opcion)
