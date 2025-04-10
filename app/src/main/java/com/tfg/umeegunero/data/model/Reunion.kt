@@ -54,22 +54,22 @@ data class Reunion(
     /**
      * Estado de la reunión
      */
-    val estado: EstadoReunion = EstadoReunion.PENDIENTE,
+    val estado: EstadoReunion = EstadoReunion.PROGRAMADA,
     
     /**
      * Tipo de reunión
      */
-    val tipo: TipoReunion = TipoReunion.GENERAL,
+    val tipo: TipoReunion = TipoReunion.OTRA,
     
     /**
      * Ubicación de la reunión (opcional)
      */
-    val ubicacion: String? = null,
+    val ubicacion: String = "",
     
     /**
      * Enlace para reunión virtual (opcional)
      */
-    val enlaceVirtual: String? = null,
+    val enlaceVirtual: String = "",
     
     /**
      * Lista de archivos adjuntos
@@ -106,7 +106,8 @@ enum class EstadoReunion {
     PENDIENTE,
     CONFIRMADA,
     CANCELADA,
-    COMPLETADA
+    COMPLETADA,
+    PROGRAMADA
 }
 
 /**
@@ -124,16 +125,24 @@ enum class TipoReunion {
  * Modelo para los recordatorios de reuniones
  */
 data class Recordatorio(
-    val tipo: TipoRecordatorio,
-    val tiempoAntes: Int, // en minutos
-    val enviado: Boolean = false
+    val id: String = "",
+    val reunionId: String = "",
+    val tiempoAntes: Long = 0, // minutos antes de la reunión
+    val tipo: TipoRecordatorio = TipoRecordatorio.NOTIFICACION,
+    val estado: EstadoRecordatorio = EstadoRecordatorio.PENDIENTE
 )
 
 /**
  * Tipos de recordatorio
  */
 enum class TipoRecordatorio {
+    NOTIFICACION,
     EMAIL,
-    NOTIFICACION_PUSH,
     AMBOS
+}
+
+enum class EstadoRecordatorio {
+    PENDIENTE,
+    ENVIADO,
+    FALLIDO
 } 

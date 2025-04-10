@@ -6,7 +6,13 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Reunion
 import com.tfg.umeegunero.data.model.TipoReunion
 import com.tfg.umeegunero.data.model.Recordatorio
+import com.tfg.umeegunero.data.model.TipoRecordatorio
+import com.tfg.umeegunero.data.model.EstadoRecordatorio
+import com.tfg.umeegunero.data.model.EventoCalendario
+import com.tfg.umeegunero.data.model.EstadoReunion
 import com.tfg.umeegunero.data.repository.ReunionRepository
+import com.tfg.umeegunero.data.repository.RecordatoriosRepository
+import com.tfg.umeegunero.data.repository.CalendarRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +23,11 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.Date
+import java.time.LocalDateTime
+import java.time.Instant
 import javax.inject.Inject
 
 /**
@@ -34,12 +44,14 @@ data class ReunionesUiState(
     val fechaInicio: LocalDate = LocalDate.now(),
     val horaInicio: LocalTime = LocalTime.now(),
     val fechaFin: LocalDate = LocalDate.now(),
-    val horaFin: LocalTime = LocalTime.now(),
-    val tipo: TipoReunion = TipoReunion.GENERAL,
+    val horaFin: LocalTime = LocalTime.now().plusHours(1),
+    val tipo: TipoReunion = TipoReunion.OTRA,
     val ubicacion: String = "",
     val enlaceVirtual: String = "",
     val notas: String = "",
     val participantes: List<String> = emptyList(),
+    val participantesIds: List<String> = emptyList(),
+    val participantesNombres: List<String> = emptyList(),
     val recordatorios: List<Recordatorio> = emptyList(),
     val showDeleteDialog: Boolean = false,
     val reunionToDelete: Reunion? = null
@@ -50,7 +62,9 @@ data class ReunionesUiState(
  */
 @HiltViewModel
 class ReunionesViewModel @Inject constructor(
-    private val reunionRepository: ReunionRepository
+    private val reunionRepository: ReunionRepository,
+    private val recordatoriosRepository: RecordatoriosRepository,
+    private val calendarRepository: CalendarRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReunionesUiState())
@@ -102,12 +116,14 @@ class ReunionesViewModel @Inject constructor(
                 fechaInicio = LocalDate.now(),
                 horaInicio = LocalTime.now(),
                 fechaFin = LocalDate.now(),
-                horaFin = LocalTime.now(),
-                tipo = TipoReunion.GENERAL,
+                horaFin = LocalTime.now().plusHours(1),
+                tipo = TipoReunion.OTRA,
                 ubicacion = "",
                 enlaceVirtual = "",
                 notas = "",
                 participantes = emptyList(),
+                participantesIds = emptyList(),
+                participantesNombres = emptyList(),
                 recordatorios = emptyList()
             )
         }
@@ -204,9 +220,14 @@ class ReunionesViewModel @Inject constructor(
     /**
      * Añade un recordatorio
      */
-    fun addRecordatorio(recordatorio: Recordatorio) {
-        _uiState.update { 
-            it.copy(recordatorios = it.recordatorios + recordatorio)
+    fun addRecordatorio(tipo: TipoRecordatorio, tiempoAntes: Long) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                recordatorios = currentState.recordatorios + Recordatorio(
+                    tipo = tipo,
+                    tiempoAntes = tiempoAntes
+                )
+            )
         }
     }
 
@@ -214,68 +235,39 @@ class ReunionesViewModel @Inject constructor(
      * Elimina un recordatorio
      */
     fun removeRecordatorio(recordatorio: Recordatorio) {
-        _uiState.update { 
-            it.copy(recordatorios = it.recordatorios - recordatorio)
+        _uiState.update { currentState ->
+            currentState.copy(
+                recordatorios = currentState.recordatorios - recordatorio
+            )
         }
     }
 
     /**
-     * Crea una nueva reunión
+     * Programa los recordatorios para una reunión
      */
-    fun crearReunion() {
-        viewModelScope.launch {
-            val fechaInicioDate = Date.from(
-                _uiState.value.fechaInicio
-                    .atTime(_uiState.value.horaInicio)
-                    .toInstant(ZoneOffset.UTC)
+    private suspend fun programarRecordatorios(reunion: Reunion) {
+        reunion.recordatorios.forEach { recordatorio ->
+            val fechaInicio = reunion.fechaInicio.toDate().toInstant()
+            val fechaRecordatorio = fechaInicio.minusMillis(recordatorio.tiempoAntes * 60 * 1000)
+            
+            recordatoriosRepository.programarRecordatorio(
+                recordatorio = recordatorio.copy(
+                    estado = EstadoRecordatorio.PENDIENTE
+                ),
+                fechaRecordatorio = fechaRecordatorio
             )
-            val fechaFinDate = Date.from(
-                _uiState.value.fechaFin
-                    .atTime(_uiState.value.horaFin)
-                    .toInstant(ZoneOffset.UTC)
-            )
-
-            val reunion = Reunion(
-                titulo = _uiState.value.titulo,
-                descripcion = _uiState.value.descripcion,
-                fechaInicio = Timestamp(fechaInicioDate),
-                fechaFin = Timestamp(fechaFinDate),
-                tipo = _uiState.value.tipo,
-                ubicacion = _uiState.value.ubicacion,
-                enlaceVirtual = _uiState.value.enlaceVirtual,
-                notas = _uiState.value.notas,
-                participantesIds = _uiState.value.participantes,
-                recordatorios = _uiState.value.recordatorios
-            )
-
-            when (val result = reunionRepository.crearReunion(reunion)) {
-                is Result.Success -> {
-                    _uiState.update { 
-                        it.copy(
-                            success = "Reunión creada correctamente",
-                            showNuevaReunion = false
-                        )
-                    }
-                    cargarReuniones()
-                }
-                is Result.Error -> {
-                    _uiState.update { 
-                        it.copy(error = result.exception?.message ?: "Error desconocido")
-                    }
-                }
-                is Result.Loading -> {
-                    _uiState.update { it.copy(isLoading = true) }
-                }
-            }
         }
     }
 
     /**
      * Confirma la asistencia a una reunión
      */
-    fun confirmarAsistencia(reunionId: String, usuarioId: String) {
+    fun confirmarAsistencia(reunion: Reunion) {
         viewModelScope.launch {
-            when (val result = reunionRepository.confirmarAsistencia(reunionId, usuarioId)) {
+            // Utilizamos un ID de usuario fijo por ahora, o podríamos obtenerlo de alguna otra fuente
+            val usuarioId = "usuario_actual" // Esto debería reemplazarse con el ID real del usuario actual
+            
+            when (val result = reunionRepository.confirmarAsistencia(reunion.id, usuarioId)) {
                 is Result.Success -> {
                     _uiState.update { 
                         it.copy(success = "Asistencia confirmada correctamente")
@@ -359,5 +351,118 @@ class ReunionesViewModel @Inject constructor(
      */
     fun clearSuccess() {
         _uiState.update { it.copy(success = null) }
+    }
+
+    /**
+     * Añade una reunión al calendario del dispositivo
+     */
+    fun addReunionToCalendar(reunion: Reunion) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                val eventoCalendario = EventoCalendario(
+                    titulo = reunion.titulo,
+                    descripcion = reunion.descripcion,
+                    fechaInicio = reunion.fechaInicio.toDate(),
+                    fechaFin = reunion.fechaFin.toDate(),
+                    ubicacion = reunion.ubicacion,
+                    recordatorio = reunion.recordatorios.firstOrNull()?.tiempoAntes ?: 30
+                )
+                
+                calendarRepository.addEventoCalendario(eventoCalendario)
+                
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        success = "Reunión añadida al calendario correctamente"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al añadir la reunión al calendario: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Muestra un mensaje de error
+     */
+    fun showError(message: String) {
+        _uiState.update { it.copy(error = message) }
+    }
+
+    /**
+     * Crea una nueva reunión
+     */
+    fun crearReunion() {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                val fechaInicio = _uiState.value.fechaInicio.atTime(_uiState.value.horaInicio)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                
+                val fechaFin = _uiState.value.fechaFin.atTime(_uiState.value.horaFin)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                
+                val reunion = Reunion(
+                    titulo = _uiState.value.titulo,
+                    descripcion = _uiState.value.descripcion,
+                    fechaInicio = Timestamp(Date.from(fechaInicio)),
+                    fechaFin = Timestamp(Date.from(fechaFin)),
+                    tipo = _uiState.value.tipo,
+                    ubicacion = _uiState.value.ubicacion,
+                    enlaceVirtual = _uiState.value.enlaceVirtual,
+                    notas = _uiState.value.notas,
+                    participantesIds = _uiState.value.participantesIds,
+                    participantesNombres = _uiState.value.participantesNombres,
+                    recordatorios = _uiState.value.recordatorios,
+                    estado = EstadoReunion.PROGRAMADA
+                )
+                
+                when (val result = reunionRepository.crearReunion(reunion)) {
+                    is Result.Success -> {
+                        val reunionId = result.data
+                        val reunionCreada = reunionRepository.getReunion(reunionId)
+                        if (reunionCreada is Result.Success) {
+                            programarRecordatorios(reunionCreada.data)
+                        }
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                showNuevaReunion = false,
+                                success = "Reunión creada correctamente"
+                            )
+                        }
+                        cargarReuniones()
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                error = "Error al crear la reunión: ${result.exception?.message}"
+                            )
+                        }
+                    }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al crear la reunión: ${e.message}"
+                    )
+                }
+            }
+        }
     }
 } 

@@ -148,8 +148,8 @@ dependencies {
     kapt("androidx.room:room-compiler:$roomVersion")
 
     // Dagger Hilt
-    implementation("com.google.dagger:hilt-android:2.47")
-    kapt("com.google.dagger:hilt-android-compiler:2.47")
+    implementation("com.google.dagger:hilt-android:2.48")
+    kapt("com.google.dagger:hilt-android-compiler:2.48")
     
     // Anotación para Hilt Work Manager
     implementation("androidx.hilt:hilt-work:1.0.0")
