@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.tfg.umeegunero.feature.common.components.CustomTimePickerDialog
 
 /**
  * Pantalla principal de reuniones
@@ -109,7 +110,7 @@ fun ReunionesScreen(
                     items(uiState.reuniones) { reunion ->
                         ReunionItem(
                             reunion = reunion,
-                            onConfirmarAsistencia = { viewModel.confirmarAsistencia(reunion) },
+                            onConfirmarAsistencia = { viewModel.confirmarAsistencia(it) },
                             onEliminar = { viewModel.showDeleteDialog(reunion) },
                             onAñadirAlCalendario = { viewModel.addReunionToCalendar(reunion) }
                         )
@@ -195,7 +196,7 @@ fun ReunionesScreen(
 @Composable
 fun ReunionItem(
     reunion: Reunion,
-    onConfirmarAsistencia: () -> Unit,
+    onConfirmarAsistencia: (Reunion) -> Unit,
     onEliminar: () -> Unit,
     onAñadirAlCalendario: () -> Unit
 ) {
@@ -281,12 +282,8 @@ fun ReunionItem(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        IconButton(onClick = onConfirmarAsistencia) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Confirmar asistencia",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                        IconButton(onClick = { onConfirmarAsistencia(reunion) }) {
+                            Text(text = "Confirmar asistencia")
                         }
                         IconButton(onClick = onEliminar) {
                             Icon(
@@ -721,18 +718,9 @@ fun NuevaReunionDialog(
         
         CustomTimePickerDialog(
             onDismissRequest = { showTimePickerInicio = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onHoraInicioChange(LocalTime.of(timePickerState.hour, timePickerState.minute))
-                    showTimePickerInicio = false
-                }) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePickerInicio = false }) {
-                    Text("Cancelar")
-                }
+            onConfirm = {
+                onHoraInicioChange(LocalTime.of(timePickerState.hour, timePickerState.minute))
+                showTimePickerInicio = false
             },
             content = {
                 TimePicker(
@@ -752,18 +740,9 @@ fun NuevaReunionDialog(
         
         CustomTimePickerDialog(
             onDismissRequest = { showTimePickerFin = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onHoraFinChange(LocalTime.of(timePickerState.hour, timePickerState.minute))
-                    showTimePickerFin = false
-                }) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePickerFin = false }) {
-                    Text("Cancelar")
-                }
+            onConfirm = {
+                onHoraFinChange(LocalTime.of(timePickerState.hour, timePickerState.minute))
+                showTimePickerFin = false
             },
             content = {
                 TimePicker(
@@ -859,37 +838,6 @@ fun NuevaReunionDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CustomTimePickerDialog(
-    onDismissRequest: () -> Unit,
-    confirmButton: @Composable () -> Unit,
-    dismissButton: @Composable () -> Unit,
-    content: @Composable () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        text = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 6.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    content()
-                }
-            }
-        },
-        confirmButton = confirmButton,
-        dismissButton = dismissButton
-    )
-}
-
 @Composable
 fun ReunionChip(
     estado: EstadoReunion,
@@ -947,47 +895,6 @@ fun RecordatorioItem(
                     Icons.Default.Delete,
                     contentDescription = "Eliminar recordatorio",
                     tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TipoReunionDropdown(
-    selectedTipo: TipoReunion,
-    onTipoSelected: (TipoReunion) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = modifier
-    ) {
-        OutlinedTextField(
-            value = selectedTipo.name,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
-        )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            TipoReunion.values().forEach { tipo ->
-                DropdownMenuItem(
-                    text = { Text(tipo.name) },
-                    onClick = {
-                        onTipoSelected(tipo)
-                        expanded = false
-                    }
                 )
             }
         }

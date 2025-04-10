@@ -97,7 +97,7 @@ fun Navigation(
                 userType = userType,
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
-                onLoginSuccess = { _ ->
+                onLoginSuccess = {
                     val route = when(userType) {
                         TipoUsuario.ADMIN_APP -> AppScreens.AdminDashboard.route
                         TipoUsuario.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
@@ -108,7 +108,8 @@ fun Navigation(
                     navController.navigate(route) {
                         popUpTo(AppScreens.Welcome.route) { inclusive = true }
                     }
-                }
+                },
+                onForgotPassword = { navController.navigate(AppScreens.SoporteTecnico.route) }
             )
         }
         

@@ -75,11 +75,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
+import com.tfg.umeegunero.feature.auth.viewmodel.AuthViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Pantalla de inicio de sesión para la aplicación UmeEgunero.
@@ -111,11 +112,12 @@ import androidx.compose.material3.HorizontalDivider
 @Composable
 fun LoginScreen(
     userType: TipoUsuario,
-    viewModel: LoginViewModel = hiltViewModel(),
+    viewModel: AuthViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onLoginSuccess: (TipoUsuario) -> Unit,
+    onLoginSuccess: () -> Unit,
     onForgotPassword: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -124,6 +126,11 @@ fun LoginScreen(
     var showPassword by remember { mutableStateOf(false) }
     var rememberUser by remember { mutableStateOf(false) }
     var showBiometricInfo by remember { mutableStateOf(false) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+    var isLoginEnabled by remember { mutableStateOf(false) }
 
     // Color según tipo de usuario
     val userTypeColor = when (userType) {
@@ -146,24 +153,44 @@ fun LoginScreen(
     }
 
     // Validar el formato del email en tiempo real
-    LaunchedEffect(uiState.email) {
-        if (uiState.email.isNotEmpty()) {
-            viewModel.updateEmail(uiState.email)
+    LaunchedEffect(email) {
+        if (email.isNotEmpty()) {
+            viewModel.updateEmail(email)
         }
     }
     
     // Validar la longitud de la contraseña en tiempo real
-    LaunchedEffect(uiState.password) {
-        if (uiState.password.isNotEmpty()) {
-            viewModel.updatePassword(uiState.password)
+    LaunchedEffect(password) {
+        if (password.isNotEmpty()) {
+            viewModel.updatePassword(password)
         }
     }
 
+    // Validar entrada
+    LaunchedEffect(email, password) {
+        // Validar email
+        emailError = when {
+            email.isEmpty() -> null
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Email inválido"
+            else -> null
+        }
+        
+        // Validar contraseña
+        passwordError = when {
+            password.isEmpty() -> null
+            password.length < 6 -> "La contraseña debe tener al menos 6 caracteres"
+            else -> null
+        }
+        
+        // Habilitar botón de login
+        isLoginEnabled = email.isNotEmpty() && password.isNotEmpty() && 
+                         emailError == null && passwordError == null
+    }
+
     // Detectar éxito en el login
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) {
-            // Pasar el tipo de usuario a la función de navegación
-            onLoginSuccess(userType)
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (uiState.isLoggedIn) {
+            onLoginSuccess()
         }
     }
 
@@ -279,7 +306,7 @@ fun LoginScreen(
                     ) {
                         // Campo de email
                         OutlinedTextField(
-                            value = uiState.email,
+                            value = email,
                             onValueChange = { viewModel.updateEmail(it) },
                             label = { Text("Email") },
                             leadingIcon = {
@@ -293,10 +320,10 @@ fun LoginScreen(
                                 keyboardType = KeyboardType.Email,
                                 imeAction = ImeAction.Next
                             ),
-                            isError = uiState.emailError != null,
+                            isError = emailError != null,
                             supportingText = {
-                                if (uiState.emailError != null) {
-                                    Text(text = uiState.emailError!!)
+                                if (emailError != null) {
+                                    Text(text = emailError!!)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -305,7 +332,7 @@ fun LoginScreen(
 
                         // Campo de contraseña
                         OutlinedTextField(
-                            value = uiState.password,
+                            value = password,
                             onValueChange = { viewModel.updatePassword(it) },
                             label = { Text("Contraseña") },
                             leadingIcon = {
@@ -331,15 +358,15 @@ fun LoginScreen(
                             keyboardActions = KeyboardActions(
                                 onDone = {
                                     keyboardController?.hide()
-                                    if (uiState.isLoginEnabled) {
-                                        viewModel.login(userType, rememberUser)
+                                    if (isLoginEnabled) {
+                                        viewModel.login()
                                     }
                                 }
                             ),
-                            isError = uiState.passwordError != null,
+                            isError = passwordError != null,
                             supportingText = {
-                                if (uiState.passwordError != null) {
-                                    Text(text = uiState.passwordError!!)
+                                if (passwordError != null) {
+                                    Text(text = passwordError!!)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -557,10 +584,8 @@ fun LoginScreen(
 
                         // Botón de inicio de sesión
                         Button(
-                            onClick = { 
-                                viewModel.login(userType, rememberUser) 
-                            },
-                            enabled = uiState.isLoginEnabled && !uiState.isLoading,
+                            onClick = { viewModel.login() },
+                            enabled = isLoginEnabled && !uiState.isLoading,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),

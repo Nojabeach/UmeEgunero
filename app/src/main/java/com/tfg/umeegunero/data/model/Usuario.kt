@@ -44,8 +44,24 @@ data class Usuario(
     val activo: Boolean = true,
     val perfiles: List<Perfil> = emptyList(),
     val direccion: Direccion? = null,
-    val preferencias: Preferencias = Preferencias()
+    val preferencias: Preferencias = Preferencias(),
+    val id: String = "",
+    val avatar: String = "",
+    val fechaCreacion: Timestamp = Timestamp.now(),
+    val centroId: String = "",
+    val rol: Rol = Rol.USUARIO
 ) {
     @field:DocumentId
     var documentId: String = dni
+}
+
+/**
+ * Roles de usuarios en la aplicación
+ */
+enum class Rol {
+    ADMIN,
+    PROFESOR,
+    ALUMNO,
+    PADRE,
+    USUARIO
 } 

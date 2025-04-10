@@ -13,6 +13,7 @@ import com.tfg.umeegunero.data.model.EstadoReunion
 import com.tfg.umeegunero.data.repository.ReunionRepository
 import com.tfg.umeegunero.data.repository.RecordatoriosRepository
 import com.tfg.umeegunero.data.repository.CalendarRepository
+import com.tfg.umeegunero.data.repository.UserRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,7 +65,8 @@ data class ReunionesUiState(
 class ReunionesViewModel @Inject constructor(
     private val reunionRepository: ReunionRepository,
     private val recordatoriosRepository: RecordatoriosRepository,
-    private val calendarRepository: CalendarRepository
+    private val calendarRepository: CalendarRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReunionesUiState())
@@ -264,23 +266,34 @@ class ReunionesViewModel @Inject constructor(
      */
     fun confirmarAsistencia(reunion: Reunion) {
         viewModelScope.launch {
-            // Utilizamos un ID de usuario fijo por ahora, o podríamos obtenerlo de alguna otra fuente
-            val usuarioId = "usuario_actual" // Esto debería reemplazarse con el ID real del usuario actual
-            
-            when (val result = reunionRepository.confirmarAsistencia(reunion.id, usuarioId)) {
-                is Result.Success -> {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                // Obtener el ID del usuario actual
+                val currentUserId = userRepository.getCurrentUserId() ?: ""
+                if (currentUserId.isEmpty()) {
                     _uiState.update { 
-                        it.copy(success = "Asistencia confirmada correctamente")
+                        it.copy(
+                            isLoading = false,
+                            error = "No se ha identificado un usuario activo"
+                        )
                     }
-                    cargarReuniones()
+                    return@launch
                 }
-                is Result.Error -> {
-                    _uiState.update { 
-                        it.copy(error = result.exception?.message ?: "Error desconocido")
-                    }
+                
+                reunionRepository.confirmarAsistencia(reunion.id, currentUserId)
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        success = "Asistencia confirmada correctamente",
+                        error = null
+                    )
                 }
-                is Result.Loading -> {
-                    _uiState.update { it.copy(isLoading = true) }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al confirmar asistencia: ${e.message}"
+                    )
                 }
             }
         }
