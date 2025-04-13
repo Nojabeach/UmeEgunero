@@ -1,8 +1,18 @@
 package com.tfg.umeegunero.navigation
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.ui.graphics.vector.ImageVector
+
 /**
- * Interfaz para los elementos de navegación.
- * Define la estructura base para todos los destinos de navegación en la aplicación.
+ * Define los items de navegación de la aplicación.
+ * Cada objeto implementa esta interfaz con información de la ruta, título e icono.
+ * 
+ * Para rutas con parámetros, se usa el formato: "ruta_base/{parametro}"
+ * Ejemplo: "detalle_clase/{claseId}"
  */
 interface NavItem {
     /**
@@ -18,6 +28,9 @@ interface NavItem {
      */
     val arguments: List<String>
         get() = emptyList()
+    
+    val title: String
+    val icon: ImageVector
 }
 
 /**
@@ -42,6 +55,9 @@ object DetalleDiaEvento : NavItem {
      * @return Ruta completa para la navegación
      */
     fun createRoute(fecha: String): String = "detalle_dia_evento/$fecha"
+    
+    override val title: String = "Detalle del Día"
+    override val icon: ImageVector = Icons.Default.DateRange
 }
 
 /**
@@ -49,6 +65,8 @@ object DetalleDiaEvento : NavItem {
  */
 object BandejaEntrada : NavItem {
     override val route: String = "bandeja_entrada"
+    override val title: String = "Bandeja de Entrada"
+    override val icon: ImageVector = Icons.Default.Inbox
 }
 
 /**
@@ -77,4 +95,25 @@ object ComponerMensaje : NavItem {
             "componer_mensaje"
         }
     }
+    
+    override val title: String = "Componer Mensaje"
+    override val icon: ImageVector = Icons.Default.Email
+}
+
+/**
+ * Navegación a la pantalla que muestra el detalle de una clase
+ * @param claseId Identificador único de la clase
+ */
+object DetalleClase : NavItem {
+    const val ClaseId = "claseId"
+    override val route = "detalle_clase/{$ClaseId}"
+    override val title = "Detalle de Clase"
+    override val icon: ImageVector = Icons.Default.Description
+
+    /**
+     * Crea la ruta de navegación con el ID de la clase
+     * @param claseId Identificador único de la clase
+     * @return Ruta completa para la navegación
+     */
+    fun createRoute(claseId: String): String = "detalle_clase/$claseId"
 } 

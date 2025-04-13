@@ -179,6 +179,14 @@ sealed class AppScreens(val route: String) {
         fun createRoute(claseId: String) = "edit_clase/$claseId"
     }
     
+    /**
+     * Detalles de una clase específica
+     * @param claseId Identificador único de la clase
+     */
+    object DetalleClase : AppScreens("detalle_clase/{claseId}") {
+        fun createRoute(claseId: String) = "detalle_clase/$claseId"
+    }
+    
     /** Pantalla de calendario y eventos académicos */
     object Calendario : AppScreens("calendario")
     

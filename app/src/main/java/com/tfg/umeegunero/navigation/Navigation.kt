@@ -19,6 +19,7 @@ import com.tfg.umeegunero.feature.profesor.screen.DetalleTareaScreen
 import com.tfg.umeegunero.feature.profesor.screen.EvaluacionScreen
 import com.tfg.umeegunero.feature.common.academico.screen.CalendarioScreen
 import com.tfg.umeegunero.feature.common.academico.screen.DetalleEventoScreen
+import com.tfg.umeegunero.feature.common.academico.screen.DetalleClaseScreen
 import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioViewModel
 import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
 import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.DetalleDiaEventoScreen
@@ -333,6 +334,37 @@ fun Navigation(
                 tareaId = tareaId,
                 navController = navController,
                 viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de detalle de clase
+        composable(
+            route = AppScreens.DetalleClase.route,
+            arguments = listOf(
+                navArgument("claseId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
+            
+            DetalleClaseScreen(
+                claseId = claseId,
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla Dummy para desarrollo
+        composable(
+            route = AppScreens.Dummy.route,
+            arguments = listOf(
+                navArgument("title") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val title = backStackEntry.arguments?.getString("title") ?: "Pantalla en desarrollo"
+            
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = title,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

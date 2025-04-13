@@ -169,7 +169,7 @@ fun GestionClasesScreen(
                                 },
                                 onItemClick = {
                                     // Navegar a la pantalla de detalle de la clase
-                                    navController.navigate(AppScreens.Dummy.createRoute("Detalle de Clase: ${clase.nombre}"))
+                                    navController.navigate(AppScreens.DetalleClase.createRoute(clase.id))
                                 }
                             )
                         }

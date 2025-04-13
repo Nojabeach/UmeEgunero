@@ -105,7 +105,7 @@ fun ListClasesScreen(
                                 showConfirmDialog = true
                             },
                             onVerDetallesClick = {
-                                navController.navigate(AppScreens.AsistenciaClase.route + "/${clase.id}")
+                                navController.navigate(AppScreens.DetalleClase.createRoute(clase.id))
                             }
                         )
                     }
