@@ -12,6 +12,8 @@ import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepositoryImpl
 import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.ExportacionRepository
+import com.tfg.umeegunero.data.repository.ExportacionRepositoryImpl
 import com.tfg.umeegunero.data.repository.LocalRegistroActividadRepository
 import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
@@ -19,6 +21,8 @@ import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
 import com.tfg.umeegunero.util.FirestoreQueryUtil
 import com.tfg.umeegunero.data.repository.PersonalDocenteRepository
+import com.tfg.umeegunero.data.repository.AlumnoRepository
+import com.tfg.umeegunero.data.repository.ComunicadoRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -76,6 +80,7 @@ object RepositoryModule {
      *
      * @param firestore Instancia de FirebaseFirestore
      * @param authRepository Repositorio de autenticación
+     * @param storage Instancia de FirebaseStorage
      * @return Instancia de MensajeRepository
      */
     @Provides
@@ -143,5 +148,37 @@ object RepositoryModule {
         firestore: FirebaseFirestore
     ): PersonalDocenteRepository {
         return PersonalDocenteRepository(personalDocenteCollection, firestore)
+    }
+    
+    /**
+     * Proporciona una instancia del repositorio de exportación de datos.
+     * Este repositorio permite exportar diferentes tipos de datos a formatos como PDF y CSV.
+     *
+     * @param firestore Instancia de FirebaseFirestore
+     * @param alumnoRepository Repositorio de alumnos
+     * @param registroDiarioRepository Repositorio de registros diarios
+     * @param comunicadoRepository Repositorio de comunicados
+     * @param asistenciaRepository Repositorio de asistencia
+     * @param context Contexto de la aplicación
+     * @return Instancia de ExportacionRepository
+     */
+    @Provides
+    @Singleton
+    fun provideExportacionRepository(
+        firestore: FirebaseFirestore,
+        alumnoRepository: AlumnoRepository,
+        registroDiarioRepository: RegistroDiarioRepository,
+        comunicadoRepository: ComunicadoRepository,
+        asistenciaRepository: AsistenciaRepository,
+        @ApplicationContext context: Context
+    ): ExportacionRepository {
+        return ExportacionRepositoryImpl(
+            firestore,
+            alumnoRepository,
+            registroDiarioRepository,
+            comunicadoRepository,
+            asistenciaRepository,
+            context
+        )
     }
 } 

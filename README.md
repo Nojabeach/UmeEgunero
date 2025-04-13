@@ -10,40 +10,44 @@ UmeEgunero es una aplicación Android desarrollada en Kotlin con Jetpack Compose
 - **Firebase como backend**: Firestore para almacenamiento de datos en la nube, autenticación de usuarios y notificaciones.
 - **Inyección de dependencias con Hilt**: Gestión eficiente de dependencias.
 - **Coroutines y Flow**: Para operaciones asíncronas y flujos de datos reactivos.
+- **Modo Offline**: Sincronización robusta que permite trabajar sin conexión a internet.
+- **Compatibilidad con Android 14**: Implementación completa de los requisitos para servicios en primer plano.
 
-## Sprint 1 - Configuración y Estabilización
+## Documentación
 
-### Mejoras implementadas:
+La documentación completa del proyecto está disponible en la carpeta `/docs`:
 
-1. **Configuración de Firebase**
-   - Integración correcta del plugin de Google Services
-   - Manejo robusto de la inicialización de Firebase
-   - Configuración de Remote Config
+- **[Sprint Consolidado](./docs/Sprint_Consolidado.md)**: Resumen del estado actual del proyecto, módulos implementados y próximos pasos.
+- **[Manual de Usuario](./docs/Manual_Usuario.md)**: Guía completa para usuarios finales sobre todas las funcionalidades de la aplicación.
+- **[Documentación Técnica](./docs/Documentacion_Tecnica.md)**: Información detallada sobre la arquitectura, componentes principales y patrones de diseño.
+- **[Guía de Despliegue](./docs/Guia_Despliegue.md)**: Instrucciones paso a paso para la preparación y despliegue de la aplicación.
 
-2. **Optimización de código**
-   - Actualización de políticas WorkManager a versiones no obsoletas (REPLACE → UPDATE)
-   - Migración de componentes Divider a HorizontalDivider
-   - Actualización de iconos a versiones AutoMirrored
+## Estado actual del proyecto
 
-3. **Pruebas**
-   - Implementación de pruebas unitarias básicas
-   - Configuración de entorno de test
+El proyecto UmeEgunero se encuentra en fase de finalización, con un progreso estimado del 99% en desarrollo y 85% en pruebas básicas. Todas las funcionalidades principales están implementadas y se ha completado con éxito:
 
-### Requisitos técnicos
+- ✅ Unificación de modelos Result/Resultado
+- ✅ Optimización de la interfaz de usuario
+- ✅ Implementación del sistema de firma digital
+- ✅ Compatibilidad con Android 14 (API 34)
+- ✅ Sistema de sincronización en modo offline
+- ✅ Documentación completa del proyecto
 
-- Android Studio Hedgehog | 2023.1.1 o superior
+## Requisitos técnicos
+
+- Android Studio Meerkat | 2024.3.1 Patch 1
 - Kotlin 1.9.22
 - Java JDK 17
 - Firebase (google-services.json en la carpeta app/)
 
-### Configuración del proyecto
+## Configuración del proyecto
 
 1. Clonar el repositorio
 2. Abrir en Android Studio
 3. Sincronizar el proyecto con los archivos Gradle
 4. Ejecutar la aplicación
 
-### Estructura del proyecto
+## Estructura del proyecto
 
 La aplicación sigue una arquitectura MVVM con Clean Architecture:
 
@@ -54,129 +58,81 @@ La aplicación sigue una arquitectura MVVM con Clean Architecture:
   - **util/**: Utilidades y clases auxiliares
   - **navigation/**: Navegación y rutas de la aplicación
 
-## Próximos pasos
+## Funcionalidades principales
 
-- Mejoras en la interfaz de usuario
-- Optimización de rendimiento
-- Implementación de funcionalidades específicas por rol
+### Gestión de usuarios
+- Registro y autenticación de diferentes tipos de usuarios
+- Perfiles para administradores, profesores y familiares
+- Gestión de centros educativos
 
-## Sprint 1: Gestión de Tareas para Familiares
+### Comunicaciones
+- Sistema de comunicados entre centro educativo y familias
+- Firma digital de documentos importantes
+- Historial y archivo de comunicaciones
 
-El Sprint 1 se ha centrado en desarrollar las funcionalidades de gestión de tareas desde la perspectiva de los familiares:
+### Calendario y eventos
+- Calendario escolar compartido
+- Gestión de eventos y actividades
+- Sincronización con calendario del dispositivo
 
-### Funcionalidades Implementadas
+### Gestión de tareas
+- Asignación de tareas a alumnos
+- Seguimiento del progreso
+- Entrega de tareas y calificaciones
 
-1. **Visualización de tareas**:
-   - Lista de tareas asignadas a los alumnos
-   - Filtrado por estado (pendientes, en progreso, completadas, retrasadas)
-   - Indicadores visuales de prioridad y estado
+### Actividades preescolares
+- Catálogo de actividades para alumnos más pequeños
+- Filtrado por estado y categoría
+- Seguimiento del progreso del alumno
 
-2. **Detalle de tareas**:
-   - Información completa sobre cada tarea (título, descripción, fecha de entrega, etc.)
-   - Visualización de archivos adjuntos por el profesor
-   - Estado actual de la tarea y calificación (si está disponible)
-
-3. **Revisión de tareas por familiares**:
-   - Función para marcar tareas como revisadas
-   - Posibilidad de añadir comentarios al revisar
-
-4. **Entrega de tareas**:
-   - Interfaz para enviar entregas en nombre de los alumnos
-   - Soporte para adjuntar múltiples archivos
-   - Comentarios para el profesor
-
-### Estructura del código
-
-El proyecto sigue una estructura modular basada en características:
-
-```
-app/
-├── src/
-│   ├── main/
-│   │   ├── java/com/tfg/umeegunero/
-│   │   │   ├── data/
-│   │   │   │   ├── model/          # Modelos de datos
-│   │   │   │   ├── repository/     # Repositorios para acceso a datos
-│   │   │   │   └── ...
-│   │   │   ├── di/                 # Módulos de inyección de dependencias
-│   │   │   ├── feature/
-│   │   │   │   ├── familiar/       # Funcionalidades para familiares
-│   │   │   │   │   ├── screen/     # Pantallas UI con Compose
-│   │   │   │   │   ├── viewmodel/  # ViewModels específicos
-│   │   │   │   │   └── ...
-│   │   │   │   └── ...
-│   │   │   ├── navigation/         # Configuración de navegación
-│   │   │   └── ui/                 # Componentes de UI reutilizables
-│   │   └── ...
-│   ├── test/                       # Pruebas unitarias
-│   └── androidTest/                # Pruebas instrumentadas
-└── ...
-```
-
-### Modelos principales
-
-**Tarea**: Representa una tarea asignada por un profesor a un alumno o clase.
-```kotlin
-data class Tarea(
-    @DocumentId val id: String = "",
-    val profesorId: String = "",
-    val profesorNombre: String = "",
-    val claseId: String = "",
-    val nombreClase: String = "",
-    val alumnoId: String = "",
-    val titulo: String = "",
-    val descripcion: String = "",
-    val asignatura: String = "",
-    val fechaCreacion: Timestamp = Timestamp.now(),
-    val fechaEntrega: Timestamp? = null,
-    val adjuntos: List<String> = emptyList(),
-    val estado: EstadoTarea = EstadoTarea.PENDIENTE,
-    val prioridad: PrioridadTarea = PrioridadTarea.MEDIA,
-    val revisadaPorFamiliar: Boolean = false,
-    val fechaRevision: Timestamp? = null,
-    val comentariosFamiliar: String = "",
-    val calificacion: Double? = null,
-    val feedbackProfesor: String = ""
-)
-```
-
-**EntregaTarea**: Representa la entrega de una tarea por parte de un alumno.
-```kotlin
-data class EntregaTarea(
-    @DocumentId
-    val id: String = "",
-    val tareaId: String = "",
-    val alumnoId: String = "",
-    val fechaEntrega: Timestamp = Timestamp.now(),
-    val archivos: List<String> = emptyList(),
-    val comentario: String = "",
-    val calificacion: Float? = null,
-    val comentarioProfesor: String? = null,
-    val fechaCalificacion: Timestamp? = null
-)
-```
-
-## Próximos pasos (Sprint 2)
-
-- Mejora de la gestión de archivos (carga y descarga)
-- Notificaciones para fechas de entrega próximas
-- Funcionalidades avanzadas para profesores
-- Calendario integrado con eventos académicos
+### Sincronización offline
+- Trabajo sin conexión a internet
+- Sincronización automática de cambios
+- Gestión de conflictos
 
 ## Tecnologías utilizadas
 
 - Kotlin
 - Jetpack Compose
-- Firebase (Firestore, Authentication, Storage)
+- Material Design 3
+- Firebase (Firestore, Authentication, Storage, Cloud Messaging)
 - Hilt para inyección de dependencias
 - Coroutines y Flow
 - Jetpack Navigation
 - Room (para almacenamiento local)
+- WorkManager (para sincronización)
 - MockK (para testing)
 
 ## Requisitos
 
-- Android 7.0 (API 24) o superior
+- Android 8.0 (API 26) o superior
+- Recomendado: Android 14 (API 34) para funcionalidad completa
 - Cuenta de Firebase configurada
-- Android Studio Arctic Fox o superior
+- Android Studio Meerkat | 2024.3.1 Patch 1
+
+## Licencia
+
+Este proyecto está licenciado bajo la [Licencia MIT](https://opensource.org/licenses/MIT) - vea el archivo LICENSE para más detalles.
+
+MIT License
+
+Copyright (c) 2025 UmeEgunero
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
