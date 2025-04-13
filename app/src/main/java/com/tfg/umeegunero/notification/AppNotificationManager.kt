@@ -76,9 +76,21 @@ class AppNotificationManager @Inject constructor(
                 enableVibration(true)
             }
             
+            // Canal para notificaciones de sincronización
+            val syncChannel = NotificationChannel(
+                CHANNEL_ID_SYNC,
+                CHANNEL_NAME_SYNC,
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = context.getString(R.string.sync_notification_channel_description)
+                enableLights(false)
+                enableVibration(false)
+            }
+            
             // Crear los canales
             notificationManager.createNotificationChannel(tareasChannel)
             notificationManager.createNotificationChannel(generalChannel)
+            notificationManager.createNotificationChannel(syncChannel)
             
             Timber.d("Canales de notificación creados")
         }
@@ -159,5 +171,7 @@ class AppNotificationManager @Inject constructor(
         const val CHANNEL_NAME_TAREAS = "Tareas y Deberes"
         const val CHANNEL_ID_GENERAL = "channel_general"
         const val CHANNEL_NAME_GENERAL = "Notificaciones Generales"
+        const val CHANNEL_ID_SYNC = "sync_service_channel"
+        const val CHANNEL_NAME_SYNC = "Sincronización"
     }
 } 

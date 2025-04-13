@@ -5,6 +5,7 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("kotlin-parcelize")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -13,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "com.tfg.umeegunero"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -48,9 +49,12 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+        apiVersion = "1.9"
+        languageVersion = "1.9"
         freeCompilerArgs = listOf(
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-Xskip-prerelease-check"
+            "-Xskip-prerelease-check",
+            "-Xjvm-default=all"
         )
     }
     buildFeatures {
@@ -66,6 +70,11 @@ android {
             excludes += "/META-INF/LICENSE.md"
             excludes += "/META-INF/LICENSE-notice.md"
             excludes += "/META-INF/NOTICE.md"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/io.netty.versions.properties"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/ASL2.0"
+            excludes += "META-INF/DEPENDENCIES"
         }
     }
     
@@ -201,6 +210,9 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-dash:1.2.0")
     implementation("androidx.media3:media3-ui:1.2.0")
     
+    // ThreeTenABP para compatibilidad Java 8 Time API en API < 26
+    implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
+    
     // Accompanist
     implementation("com.google.accompanist:accompanist-pager:0.32.0")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
@@ -216,4 +228,13 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+
+    // Lifecycle Service
+    implementation("androidx.lifecycle:lifecycle-service:2.7.0")
+
+    // Dependencias para exportación de datos
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("org.apache.poi:poi:5.2.3")
+    implementation("org.apache.poi:poi-ooxml:5.2.3")
+    implementation("org.apache.commons:commons-csv:1.10.0")
 }

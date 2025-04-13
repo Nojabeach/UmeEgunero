@@ -13,9 +13,11 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
+import com.jakewharton.threetenabp.AndroidThreeTen
 import com.tfg.umeegunero.data.worker.EventoWorker
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
 import com.tfg.umeegunero.notification.AppNotificationManager
+import com.tfg.umeegunero.util.SyncManager
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -36,17 +38,26 @@ class UmeEguneroApp : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
     
+    @Inject
+    lateinit var syncManager: SyncManager
+    
     override fun getWorkManagerConfiguration(): Configuration {
         return Configuration.Builder()
             .setWorkerFactory(workerFactory)
+            .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
     }
 
     override fun onCreate() {
         super.onCreate()
         
-        // Inicializar Timber para logging
-        Timber.plant(Timber.DebugTree())
+        // Inicializar Timber para logging solo en debug
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
+        
+        // Inicializar ThreeTenABP para soporte de Java 8 Date Time API en API < 26
+        AndroidThreeTen.init(this)
         
         // Inicializar Firebase con manejo de errores
         initializeFirebase()
@@ -56,6 +67,14 @@ class UmeEguneroApp : Application(), Configuration.Provider {
         
         // Configurar tareas periódicas
         configurarSincronizacionPeriodica()
+        
+        // Iniciar el servicio de sincronización
+        syncManager.iniciarServicioSincronizacion()
+    }
+    
+    override fun onTerminate() {
+        super.onTerminate()
+        syncManager.detenerServicioSincronizacion()
     }
     
     /**
@@ -63,37 +82,46 @@ class UmeEguneroApp : Application(), Configuration.Provider {
      */
     private fun initializeFirebase() {
         try {
-            if (FirebaseApp.getApps(this).isEmpty()) {
-                FirebaseApp.initializeApp(this)
-                Timber.d("Firebase inicializado correctamente")
-            }
+            // Inicializar Firebase con configuración predeterminada
+            FirebaseApp.initializeApp(this)
+            Timber.d("Firebase inicializado correctamente")
             
-            // Configurar Remote Config solo si Firebase se inicializó correctamente
-            if (FirebaseApp.getApps(this).isNotEmpty()) {
-                val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
-                val configSettings = remoteConfigSettings {
-                    minimumFetchIntervalInSeconds = 3600
+            // Configurar Firebase Remote Config para desarrollo
+            val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
+            val configSettings = remoteConfigSettings {
+                if (BuildConfig.DEBUG) {
+                    minimumFetchIntervalInSeconds = 0 // Sin caché en desarrollo
+                } else {
+                    minimumFetchIntervalInSeconds = 3600 // 1 hora en producción
                 }
-                remoteConfig.setConfigSettingsAsync(configSettings)
-                Timber.d("Remote Config configurado correctamente")
-            } else {
-                Timber.e("Firebase no se pudo inicializar, no se configurará Remote Config")
+            }
+            remoteConfig.setConfigSettingsAsync(configSettings)
+            
+            // Intentar un fetch inicial de Remote Config
+            remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Timber.d("Remote Config sincronizado correctamente")
+                } else {
+                    Timber.w("Error al sincronizar Remote Config: ${task.exception?.message}")
+                }
             }
         } catch (e: Exception) {
             Timber.e(e, "Error al inicializar Firebase")
+            // Mostrar información detallada del error para depuración
+            e.printStackTrace()
             
-            // Crear una configuración predeterminada como fallback
+            // Reintentar la inicialización con una configuración mínima
             try {
                 val options = FirebaseOptions.Builder()
-                    .setApplicationId("1:1045944201521:android:1d17f66b49657aef2ac010")
-                    .setApiKey("AIzaSyCO6F98FkXnEoHGS_svEgtWiZdbI3IcVaY")
-                    .setProjectId("umeegunero")
+                    .setApplicationId(BuildConfig.APPLICATION_ID)
                     .build()
                 
-                FirebaseApp.initializeApp(this, options, "default")
-                Timber.d("Firebase inicializado con configuración manual")
+                if (FirebaseApp.getApps(this).isEmpty()) {
+                    FirebaseApp.initializeApp(this, options)
+                    Timber.d("Firebase reinicializado con configuración mínima")
+                }
             } catch (e2: Exception) {
-                Timber.e(e2, "No se pudo inicializar Firebase con configuración manual")
+                Timber.e(e2, "Error fatal al inicializar Firebase con configuración mínima")
             }
         }
     }

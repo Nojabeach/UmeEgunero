@@ -14,10 +14,21 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_preferences")
+/**
+ * Claves para las preferencias
+ */
+private object PreferencesKeys {
+    val DARK_THEME = booleanPreferencesKey("dark_theme")
+    val FIRST_TIME = booleanPreferencesKey("first_time")
+}
 
 /**
- * Repositorio para gestionar las preferencias del usuario mediante DataStore
+ * Singleton del DataStore
+ */
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+/**
+ * Repositorio para gestionar las preferencias del usuario.
  */
 @Singleton
 class PreferenciasRepository @Inject constructor(
@@ -109,4 +120,39 @@ class PreferenciasRepository @Inject constructor(
      * Alias para compatibilidad con código existente
      */
     val notificacionesGeneralHabilitadas: Flow<Boolean> = notificacionesGeneralFlow
+
+    /**
+     * Flujo que indica si se debe usar el tema oscuro.
+     */
+    val isDarkTheme: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.DARK_THEME] ?: false
+        }
+
+    /**
+     * Flujo que indica si es la primera vez que se abre la app.
+     */
+    val isFirstTime: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.FIRST_TIME] ?: true
+        }
+
+    /**
+     * Cambia el tema entre claro y oscuro.
+     * @param isDark true para tema oscuro, false para tema claro
+     */
+    suspend fun setDarkTheme(isDark: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DARK_THEME] = isDark
+        }
+    }
+
+    /**
+     * Establece que ya no es la primera vez que se abre la app.
+     */
+    suspend fun setNotFirstTime() {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FIRST_TIME] = false
+        }
+    }
 } 

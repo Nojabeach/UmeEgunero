@@ -15,3 +15,15 @@ plugins {
     id("com.google.gms.google-services") version "4.4.1" apply false
     id("com.google.firebase.crashlytics") version "2.9.9" apply false
 }
+
+// Configuración para mejorar la caché de configuración
+tasks.register("clean", Delete::class) {
+    delete(rootProject.layout.buildDirectory)
+}
+
+// Configuración de la caché de configuración a nivel de proyecto
+allprojects {
+    tasks.withType<Test>().configureEach {
+        maxParallelForks = Runtime.getRuntime().availableProcessors()
+    }
+}

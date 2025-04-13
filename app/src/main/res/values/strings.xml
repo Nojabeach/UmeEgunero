@@ -49,4 +49,12 @@
     <string name="faq_category_notifications">Notificaciones</string>
     <string name="faq_category_privacy">Privacidad y datos</string>
     <string name="faq_not_found">No se encontraron resultados para tu búsqueda</string>
+
+    <!-- Sincronización -->
+    <string name="sync_notification_channel_name">Sincronización</string>
+    <string name="sync_notification_channel_description">Notificaciones del servicio de sincronización</string>
+    <string name="sync_notification_title">Sincronizando datos</string>
+    <string name="sync_notification_text">Operaciones pendientes: %1$d</string>
+    <string name="sync_notification_error_title">Error en la sincronización</string>
+    <string name="sync_notification_error_text">No se pudieron sincronizar los datos. Inténtalo más tarde.</string>
 </resources>
