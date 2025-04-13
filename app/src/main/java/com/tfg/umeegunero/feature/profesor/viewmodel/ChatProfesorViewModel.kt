@@ -11,6 +11,7 @@ import com.tfg.umeegunero.data.local.entity.ConversacionEntity
 import com.tfg.umeegunero.data.model.AttachmentType
 import com.tfg.umeegunero.data.model.InteractionStatus
 import com.tfg.umeegunero.data.model.Notificacion
+import com.tfg.umeegunero.data.model.Resultado
 import com.tfg.umeegunero.data.model.TipoNotificacion
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.local.MensajeEntity
@@ -19,6 +20,7 @@ import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.ResultadoUtil
 import com.tfg.umeegunero.feature.profesor.screen.ChatMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -157,10 +159,17 @@ class ChatProfesorViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = alumnoRepository.obtenerAlumnoPorId(alumnoId)
-                when (result) {
-                    is Result.Success -> {
+                
+                // Convertimos el resultado (que podría ser Resultado<T> o Result<T>) a Result<T>
+                val resultConvertido = when (result) {
+                    is Resultado<*> -> ResultadoUtil.convertirResultadoAResult(result as Resultado<Any?>)
+                    else -> result as Result<Any?>
+                }
+                
+                when (resultConvertido) {
+                    is Result.Success<*> -> {
                         // El resultado puede ser un objeto Alumno o un Map, dependiendo de la implementación
-                        val alumnoData = result.data ?: return@launch
+                        val alumnoData = resultConvertido.data ?: return@launch
                         
                         // Extraer datos del alumno independientemente del tipo de retorno
                         var dni = ""
@@ -330,7 +339,7 @@ class ChatProfesorViewModel @Inject constructor(
                     }
                     is Result.Error -> {
                         _uiState.update { it.copy(
-                            error = "Error al cargar datos del alumno: ${result.exception?.message}"
+                            error = "Error al cargar datos del alumno: ${resultConvertido.exception?.message}"
                         )}
                     }
                     else -> { /* No hacer nada */ }

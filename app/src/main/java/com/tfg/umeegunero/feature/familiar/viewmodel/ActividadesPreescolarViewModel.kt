@@ -30,7 +30,7 @@ import javax.inject.Inject
 enum class FiltroActividad {
     TODAS,
     PENDIENTES,
-    REALIZADAS,
+    COMPLETADAS,
     RECIENTES
 }
 
@@ -272,8 +272,8 @@ class ActividadesPreescolarViewModel @Inject constructor(
                 it.estado == EstadoActividad.PENDIENTE
             }
             
-            FiltroActividad.REALIZADAS -> actividades.filter { 
-                it.estado == EstadoActividad.REALIZADA
+            FiltroActividad.COMPLETADAS -> actividades.filter { 
+                it.estado == EstadoActividad.COMPLETADA
             }
             
             FiltroActividad.RECIENTES -> {

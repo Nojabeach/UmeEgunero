@@ -14,12 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.Timestamp
+import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.ActividadPreescolar
 import com.tfg.umeegunero.data.model.CategoriaActividad
 import com.tfg.umeegunero.data.model.EstadoActividad
@@ -333,7 +335,7 @@ fun FiltrosActividades(
                             text = when (filtro) {
                                 FiltroActividadProfesor.TODAS -> "Todas"
                                 FiltroActividadProfesor.PENDIENTES -> "Pendientes"
-                                FiltroActividadProfesor.REALIZADAS -> "Realizadas"
+                                FiltroActividadProfesor.COMPLETADAS -> "Completadas"
                                 FiltroActividadProfesor.RECIENTES -> "Recientes"
                                 FiltroActividadProfesor.MIS_ACTIVIDADES -> "Mis actividades"
                             }
@@ -449,9 +451,10 @@ fun ActividadItem(
                         label = {
                             Text(
                                 text = when (actividad.estado) {
-                                    EstadoActividad.PENDIENTE -> "Pendiente"
-                                    EstadoActividad.REALIZADA -> "Realizada"
-                                    EstadoActividad.CANCELADA -> "Cancelada"
+                                    EstadoActividad.PENDIENTE -> stringResource(id = R.string.pendiente)
+                                    EstadoActividad.EN_PROGRESO -> stringResource(id = R.string.en_progreso)
+                                    EstadoActividad.COMPLETADA -> stringResource(id = R.string.completada)
+                                    EstadoActividad.CANCELADA -> stringResource(id = R.string.cancelada)
                                 },
                                 style = MaterialTheme.typography.labelSmall
                             )
@@ -459,7 +462,8 @@ fun ActividadItem(
                         colors = SuggestionChipDefaults.suggestionChipColors(
                             containerColor = when (actividad.estado) {
                                 EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.errorContainer
-                                EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.primaryContainer
+                                EstadoActividad.EN_PROGRESO -> MaterialTheme.colorScheme.primaryContainer
+                                EstadoActividad.COMPLETADA -> MaterialTheme.colorScheme.primaryContainer
                                 EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.surfaceVariant
                             }
                         )

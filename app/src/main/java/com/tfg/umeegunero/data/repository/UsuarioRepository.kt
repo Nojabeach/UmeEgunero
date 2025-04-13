@@ -1564,4 +1564,22 @@ open class UsuarioRepository @Inject constructor(
             emptyList()
         }
     }
+
+    /**
+     * Obtiene todos los perfiles de un usuario específico dado su ID
+     */
+    suspend fun obtenerPerfilesUsuario(usuarioId: String): Result<List<Perfil>> = withContext(Dispatchers.IO) {
+        try {
+            val userDoc = usuariosCollection.document(usuarioId).get().await()
+
+            if (userDoc.exists()) {
+                val usuario = userDoc.toObject(Usuario::class.java)
+                return@withContext Result.Success(usuario?.perfiles ?: emptyList())
+            } else {
+                return@withContext Result.Error(Exception("Usuario no encontrado"))
+            }
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
 }

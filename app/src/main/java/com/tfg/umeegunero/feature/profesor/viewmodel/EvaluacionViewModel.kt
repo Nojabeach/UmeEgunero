@@ -3,7 +3,9 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.Resultado
 import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.ResultadoUtil
 import com.tfg.umeegunero.data.repository.AlumnoRepositoryImpl
 import com.tfg.umeegunero.feature.profesor.models.Criterio
 import com.tfg.umeegunero.feature.profesor.models.EvaluacionRubrica
@@ -83,13 +85,20 @@ class EvaluacionViewModel @Inject constructor(
                         val rubricas = result.data
                         
                         // Ahora cargamos los alumnos
-                        val alumnosResult = alumnoRepository.getAlumnosByCentro("centro_prueba")
+                        val alumnosResultado = alumnoRepository.getAlumnosByCentro("centro_prueba")
+                        
+                        // Convertir el resultado a Result si es de tipo Resultado
+                        val alumnosResult = when (alumnosResultado) {
+                            is Resultado<*> -> ResultadoUtil.convertirResultadoAResult(alumnosResultado as Resultado<List<Alumno>>)
+                            else -> alumnosResultado as Result<List<Alumno>>
+                        }
+                        
                         when (alumnosResult) {
                             is Result.Loading -> {
                                 _uiState.value = EvaluacionUiState.Loading
                             }
                             is Result.Success -> {
-                                val alumnos = alumnosResult.data
+                                val alumnos = alumnosResult.data ?: emptyList()
                                 
                                 _uiState.value = EvaluacionUiState.Success(
                                     alumnos = alumnos,

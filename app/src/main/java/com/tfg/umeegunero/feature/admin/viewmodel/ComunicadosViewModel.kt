@@ -4,9 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Comunicado
+import com.tfg.umeegunero.data.model.ComunicadosUiState
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Resultado
 import com.tfg.umeegunero.data.repository.ComunicadoRepository
-import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,24 +18,6 @@ import timber.log.Timber
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
-
-data class ComunicadosUiState(
-    val comunicados: List<Comunicado> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val success: String? = null,
-    val showNuevoComunicado: Boolean = false,
-    val titulo: String = "",
-    val mensaje: String = "",
-    val enviarATodos: Boolean = false,
-    val enviarACentros: Boolean = false,
-    val enviarAProfesores: Boolean = false,
-    val enviarAFamiliares: Boolean = false,
-    val estadisticas: Map<String, Any>? = null,
-    val showEstadisticas: Boolean = false,
-    val firmaDigital: String? = null,
-    val showFirmaDigital: Boolean = false
-)
 
 /**
  * ViewModel para la pantalla de comunicados del sistema
@@ -60,19 +43,19 @@ class ComunicadosViewModel @Inject constructor(
             try {
                 val resultado = comunicadoRepository.getComunicados()
                 when (resultado) {
-                    is Result.Success -> {
+                    is Resultado.Exito -> {
                         _uiState.update { it.copy(
-                            comunicados = resultado.data,
+                            comunicados = resultado.datos,
                             isLoading = false
                         ) }
                     }
-                    is Result.Error -> {
+                    is Resultado.Error -> {
                         _uiState.update { it.copy(
-                            error = resultado.exception?.message ?: "Error desconocido",
+                            error = resultado.mensaje ?: "Error desconocido",
                             isLoading = false
                         ) }
                     }
-                    is Result.Loading -> {
+                    is Resultado.Cargando -> {
                         _uiState.update { it.copy(isLoading = true) }
                     }
                 }
@@ -102,9 +85,9 @@ class ComunicadosViewModel @Inject constructor(
     /**
      * Muestra/oculta el formulario de nuevo comunicado
      */
-    fun toggleNuevoComunicado() {
+    fun toggleFormulario() {
         _uiState.update { it.copy(
-            showNuevoComunicado = !it.showNuevoComunicado,
+            mostrarFormulario = !it.mostrarFormulario,
             titulo = "",
             mensaje = "",
             enviarATodos = false,
@@ -185,27 +168,33 @@ class ComunicadosViewModel @Inject constructor(
                 
                 val resultado = comunicadoRepository.crearComunicado(comunicado)
                 when (resultado) {
-                    is Result.Success -> {
+                    is Resultado.Exito -> {
                         _uiState.update { it.copy(
+                            isLoading = false,
                             success = "Comunicado enviado correctamente",
-                            showNuevoComunicado = false,
-                            isLoading = false
+                            mostrarFormulario = false,
+                            titulo = "",
+                            mensaje = "",
+                            enviarATodos = false,
+                            enviarACentros = false,
+                            enviarAProfesores = false,
+                            enviarAFamiliares = false
                         ) }
                         cargarComunicados()
                     }
-                    is Result.Error -> {
+                    is Resultado.Error -> {
                         _uiState.update { it.copy(
-                            error = resultado.exception?.message ?: "Error al enviar el comunicado",
+                            error = resultado.mensaje ?: "Error desconocido",
                             isLoading = false
                         ) }
                     }
-                    is Result.Loading -> {
+                    is Resultado.Cargando -> {
                         _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
-                    error = e.message ?: "Error al enviar el comunicado",
+                    error = e.message ?: "Error desconocido",
                     isLoading = false
                 ) }
             }
@@ -218,18 +207,19 @@ class ComunicadosViewModel @Inject constructor(
     fun registrarLectura(comunicadoId: String, usuarioId: String) {
         viewModelScope.launch {
             try {
-                when (val result = comunicadoRepository.registrarLectura(comunicadoId, usuarioId)) {
-                    is Result.Success -> {
+                val resultado = comunicadoRepository.registrarLectura(comunicadoId, usuarioId)
+                when (resultado) {
+                    is Resultado.Exito -> {
                         _uiState.update { it.copy(
                             success = "Lectura registrada correctamente"
                         ) }
                     }
-                    is Result.Error -> {
+                    is Resultado.Error -> {
                         _uiState.update { it.copy(
-                            error = result.exception?.message ?: "Error al registrar lectura"
+                            error = resultado.mensaje ?: "Error al registrar lectura"
                         ) }
                     }
-                    is Result.Loading -> {
+                    is Resultado.Cargando -> {
                         _uiState.update { it.copy(isLoading = true) }
                     }
                 }
@@ -247,18 +237,19 @@ class ComunicadosViewModel @Inject constructor(
     fun confirmarLectura(comunicadoId: String, usuarioId: String) {
         viewModelScope.launch {
             try {
-                when (val result = comunicadoRepository.confirmarLectura(comunicadoId, usuarioId)) {
-                    is Result.Success -> {
+                val resultado = comunicadoRepository.confirmarLectura(comunicadoId, usuarioId)
+                when (resultado) {
+                    is Resultado.Exito -> {
                         _uiState.update { it.copy(
                             success = "Lectura confirmada correctamente"
                         ) }
                     }
-                    is Result.Error -> {
+                    is Resultado.Error -> {
                         _uiState.update { it.copy(
-                            error = result.exception?.message ?: "Error al confirmar lectura"
+                            error = resultado.mensaje ?: "Error al confirmar lectura"
                         ) }
                     }
-                    is Result.Loading -> {
+                    is Resultado.Cargando -> {
                         _uiState.update { it.copy(isLoading = true) }
                     }
                 }
@@ -276,59 +267,66 @@ class ComunicadosViewModel @Inject constructor(
     fun añadirFirmaDigital(comunicadoId: String, firmaDigital: String) {
         viewModelScope.launch {
             try {
-                when (val result = comunicadoRepository.añadirFirmaDigital(comunicadoId, firmaDigital)) {
-                    is Result.Success -> {
+                _uiState.update { it.copy(isLoading = true) }
+                val resultado = comunicadoRepository.añadirFirmaDigital(comunicadoId, firmaDigital)
+                
+                when (resultado) {
+                    is Resultado.Exito -> {
                         _uiState.update { it.copy(
-                            success = "Firma digital añadida correctamente"
+                            success = "Firma digital añadida correctamente",
+                            isLoading = false
                         ) }
                     }
-                    is Result.Error -> {
+                    is Resultado.Error -> {
                         _uiState.update { it.copy(
-                            error = result.exception?.message ?: "Error al añadir firma digital"
+                            error = resultado.mensaje ?: "Error al añadir firma digital",
+                            isLoading = false
                         ) }
                     }
-                    is Result.Loading -> {
+                    is Resultado.Cargando -> {
                         _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
-                    error = e.message ?: "Error al añadir firma digital"
+                    error = e.message ?: "Error al añadir firma digital",
+                    isLoading = false
                 ) }
             }
         }
     }
 
     /**
-     * Obtiene las estadísticas de lectura de un comunicado
+     * Muestra/oculta el panel de estadísticas
      */
-    fun cargarEstadisticasLectura(comunicadoId: String) {
+    fun toggleEstadisticas(comunicadoId: String) {
         viewModelScope.launch {
             try {
-                when (val result = comunicadoRepository.getEstadisticasLectura(comunicadoId)) {
-                    is Result.Success -> {
+                val resultado = comunicadoRepository.getEstadisticasLectura(comunicadoId)
+                when (resultado) {
+                    is Resultado.Exito -> {
                         _uiState.update { it.copy(
-                            estadisticas = result.data,
-                            showEstadisticas = true
+                            mostrarEstadisticas = !it.mostrarEstadisticas,
+                            estadisticasLectura = resultado.datos
                         ) }
                     }
-                    is Result.Error -> {
+                    is Resultado.Error -> {
                         _uiState.update { it.copy(
-                            error = result.exception?.message ?: "Error al cargar estadísticas"
+                            error = resultado.mensaje ?: "Error al obtener estadísticas"
                         ) }
                     }
-                    is Result.Loading -> {
+                    is Resultado.Cargando -> {
                         _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
-                    error = e.message ?: "Error al cargar estadísticas"
+                    error = e.message ?: "Error al obtener estadísticas"
                 ) }
             }
         }
     }
-    
+
     /**
      * Muestra las estadísticas de un comunicado
      */
@@ -337,7 +335,49 @@ class ComunicadosViewModel @Inject constructor(
             isLoading = true,
             error = null
         ) }
-        cargarEstadisticasLectura(comunicado.id)
+        cargarEstadisticasLectura(comunicado.id ?: "")
+    }
+    
+    /**
+     * Carga las estadísticas de lectura de un comunicado
+     */
+    private fun cargarEstadisticasLectura(comunicadoId: String) {
+        if (comunicadoId.isEmpty()) {
+            _uiState.update { it.copy(
+                error = "ID de comunicado no válido",
+                isLoading = false
+            ) }
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                val resultado = comunicadoRepository.getEstadisticasLectura(comunicadoId)
+                when (resultado) {
+                    is Resultado.Exito -> {
+                        _uiState.update { it.copy(
+                            showEstadisticas = true,
+                            estadisticasLectura = resultado.datos,
+                            isLoading = false
+                        ) }
+                    }
+                    is Resultado.Error -> {
+                        _uiState.update { it.copy(
+                            error = resultado.mensaje ?: "Error al obtener estadísticas",
+                            isLoading = false
+                        ) }
+                    }
+                    is Resultado.Cargando -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = e.message ?: "Error al obtener estadísticas",
+                    isLoading = false
+                ) }
+            }
+        }
     }
     
     /**

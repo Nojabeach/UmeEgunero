@@ -271,7 +271,7 @@ class ActividadPreescolarRepository @Inject constructor(
             
             // Actualizar solo los campos necesarios
             val updates = hashMapOf<String, Any>(
-                "estado" to EstadoActividad.REALIZADA
+                "estado" to EstadoActividad.COMPLETADA
             )
             
             // Añadir comentario si no está vacío
@@ -312,4 +312,43 @@ class ActividadPreescolarRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene todas las clases asignadas a un profesor específico
+     * @param profesorId ID del profesor
+     * @return Resultado con la lista de clases o error
+     */
+    suspend fun obtenerClasesPorProfesor(profesorId: String): Result<List<ClasePreescolar>> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection("clases")
+                .whereArrayContains("profesoresIds", profesorId)
+                .get()
+                .await()
+
+            val clases = query.toObjects(ClasePreescolar::class.java)
+            return@withContext Result.Success(clases)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener clases por profesor")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Alias para mantener compatibilidad con código existente
+     */
+    suspend fun getClasesByProfesor(profesorId: String): Result<List<ClasePreescolar>> {
+        return obtenerClasesPorProfesor(profesorId)
+    }
+    
+    /**
+     * Clase simple para representar una clase preescolar
+     */
+    data class ClasePreescolar(
+        val id: String = "",
+        val nombre: String = "",
+        val centroId: String = "",
+        val nivel: String = "",
+        val alumnosIds: List<String> = emptyList(),
+        val profesoresIds: List<String> = emptyList()
+    )
 } 

@@ -67,6 +67,7 @@ enum class CategoriaActividad {
  */
 enum class EstadoActividad {
     PENDIENTE,
-    REALIZADA,
+    EN_PROGRESO,
+    COMPLETADA,
     CANCELADA
 } 

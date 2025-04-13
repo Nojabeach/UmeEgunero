@@ -91,7 +91,7 @@ fun ComunicadosScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.toggleNuevoComunicado() },
+                onClick = { viewModel.toggleFormulario() },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
@@ -221,7 +221,7 @@ fun ComunicadosScreen(
                         horizontalArrangement = Arrangement.End
                     ) {
                         OutlinedButton(
-                            onClick = { viewModel.toggleNuevoComunicado() }
+                            onClick = { viewModel.toggleFormulario() }
                         ) {
                             Text("Cancelar")
                         }
@@ -335,10 +335,15 @@ fun ComunicadosScreen(
             }
             
             // Diálogo de estadísticas
-            if (uiState.showEstadisticas) {
+            if (uiState.mostrarEstadisticas && uiState.comunicadoSeleccionado != null) {
+                val comunicadoSeleccionado = uiState.comunicadoSeleccionado // Asignación local para permitir smart cast
                 EstadisticasDialog(
-                    estadisticas = uiState.estadisticas ?: emptyMap(),
-                    onDismiss = { viewModel.cerrarEstadisticas() }
+                    estadisticas = uiState.estadisticasLectura,
+                    onDismiss = {
+                        comunicadoSeleccionado?.id?.let { id ->
+                            viewModel.toggleEstadisticas(id)
+                        } ?: viewModel.toggleEstadisticas("")
+                    }
                 )
             }
             

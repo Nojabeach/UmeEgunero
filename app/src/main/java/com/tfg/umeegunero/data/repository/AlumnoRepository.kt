@@ -3,7 +3,7 @@ package com.tfg.umeegunero.data.repository
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Alumno
-import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.data.model.Resultado
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -18,29 +18,29 @@ interface AlumnoRepository {
     /**
      * Obtiene un alumno por su ID
      */
-    suspend fun getAlumnoById(alumnoId: String): Result<Alumno>
+    suspend fun getAlumnoById(alumnoId: String): Resultado<Alumno>
     
     /**
      * Obtiene la lista de alumnos de un centro
      */
-    suspend fun getAlumnosByCentro(centroId: String): Result<List<Alumno>>
+    suspend fun getAlumnosByCentro(centroId: String): Resultado<List<Alumno>>
     
     /**
      * Obtiene la lista de alumnos de una clase
      */
-    suspend fun getAlumnosByClase(claseId: String): Result<List<Alumno>>
+    suspend fun getAlumnosByClase(claseId: String): Resultado<List<Alumno>>
 
     /**
      * Obtiene un alumno por su ID (usando nombre nuevo para el Sprint 2)
      */
-    suspend fun obtenerAlumnoPorId(alumnoId: String): Result<Alumno?>
+    suspend fun obtenerAlumnoPorId(alumnoId: String): Resultado<Alumno?>
 
     /**
      * Obtiene todos los alumnos de una clase específica
      * @param claseId ID de la clase
      * @return Resultado con la lista de alumnos
      */
-    suspend fun obtenerAlumnosPorClase(claseId: String): Result<List<Alumno>>
+    suspend fun obtenerAlumnosPorClase(claseId: String): Resultado<List<Alumno>>
 }
 
 /**
@@ -55,9 +55,9 @@ class AlumnoRepositoryImpl @Inject constructor(
         private const val COLLECTION_ALUMNOS = "alumnos"
     }
 
-    override suspend fun getAlumnoById(alumnoId: String): Result<Alumno> {
+    override suspend fun getAlumnoById(alumnoId: String): Resultado<Alumno> {
         // Implementación de prueba que devuelve un alumno ficticio
-        return Result.Success(
+        return Resultado.Exito(
             Alumno(
                 id = alumnoId,
                 dni = "12345678A",
@@ -70,14 +70,14 @@ class AlumnoRepositoryImpl @Inject constructor(
         )
     }
     
-    override suspend fun getAlumnosByCentro(centroId: String): Result<List<Alumno>> {
+    override suspend fun getAlumnosByCentro(centroId: String): Resultado<List<Alumno>> {
         // Implementación de prueba que devuelve una lista vacía
-        return Result.Success(emptyList())
+        return Resultado.Exito(emptyList())
     }
     
-    override suspend fun getAlumnosByClase(claseId: String): Result<List<Alumno>> {
+    override suspend fun getAlumnosByClase(claseId: String): Resultado<List<Alumno>> {
         // Implementación de prueba que devuelve una lista vacía
-        return Result.Success(emptyList())
+        return Resultado.Exito(emptyList())
     }
 
     /**
@@ -85,7 +85,7 @@ class AlumnoRepositoryImpl @Inject constructor(
      * @param alumnoId ID del alumno
      * @return Resultado con el alumno o null si no existe
      */
-    override suspend fun obtenerAlumnoPorId(alumnoId: String): Result<Alumno?> = withContext(Dispatchers.IO) {
+    override suspend fun obtenerAlumnoPorId(alumnoId: String): Resultado<Alumno?> = withContext(Dispatchers.IO) {
         try {
             val documento = firestore.collection(COLLECTION_ALUMNOS)
                 .document(alumnoId)
@@ -94,13 +94,13 @@ class AlumnoRepositoryImpl @Inject constructor(
 
             if (documento.exists()) {
                 val alumno = documento.toObject(Alumno::class.java)
-                return@withContext Result.Success(alumno)
+                return@withContext Resultado.Exito(alumno)
             } else {
-                return@withContext Result.Success(null)
+                return@withContext Resultado.Exito(null)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener alumno por ID")
-            return@withContext Result.Error(e)
+            return@withContext Resultado.Error(e.message, e)
         }
     }
 
@@ -109,7 +109,7 @@ class AlumnoRepositoryImpl @Inject constructor(
      * @param claseId ID de la clase
      * @return Resultado con la lista de alumnos
      */
-    override suspend fun obtenerAlumnosPorClase(claseId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+    override suspend fun obtenerAlumnosPorClase(claseId: String): Resultado<List<Alumno>> = withContext(Dispatchers.IO) {
         try {
             val query = firestore.collection(COLLECTION_ALUMNOS)
                 .whereEqualTo("aulaId", claseId)
@@ -117,10 +117,10 @@ class AlumnoRepositoryImpl @Inject constructor(
                 .await()
 
             val alumnos = query.toObjects(Alumno::class.java)
-            return@withContext Result.Success(alumnos)
+            return@withContext Resultado.Exito(alumnos)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener alumnos por clase")
-            return@withContext Result.Error(e)
+            return@withContext Resultado.Error(e.message, e)
         }
     }
 } 

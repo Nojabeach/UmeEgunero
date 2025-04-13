@@ -1,24 +1,40 @@
-package com.tfg.umeegunero.util
+package com.tfg.umeegunero.data.local.util
 
 import androidx.room.TypeConverter
 import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.tfg.umeegunero.data.local.entity.PendingSyncEntity
 import com.tfg.umeegunero.data.model.AttachmentType
 import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.InteractionStatus
 import java.util.Date
 
 /**
- * Clase de utilidad que proporciona convertidores para tipos de datos complejos.
+ * Clase que proporciona conversores para tipos de datos complejos utilizados con Room.
  * 
- * Estos convertidores pueden utilizarse con Room o para cualquier otra conversión
- * en la aplicación que requiera transformar entre tipos de datos nativos y formatos
- * serializables o entre distintos tipos de datos.
+ * Room solo puede almacenar tipos primitivos y Strings, por lo que necesitamos convertir otros tipos
+ * como listas, mapas, enums y objetos personalizados a formatos que Room pueda gestionar.
  */
 class Converters {
     private val gson = Gson()
-
+    
+    /**
+     * Convierte un Timestamp de Firestore a Date
+     */
+    @TypeConverter
+    fun fromTimestamp(value: Timestamp?): Date? {
+        return value?.toDate()
+    }
+    
+    /**
+     * Convierte un Date a Timestamp de Firestore
+     */
+    @TypeConverter
+    fun toTimestamp(date: Date?): Timestamp? {
+        return date?.let { Timestamp(it) }
+    }
+    
     /**
      * Convierte una fecha (Date) a un timestamp (Long).
      */
@@ -33,6 +49,22 @@ class Converters {
     @TypeConverter
     fun fromTimestamp(value: Long?): Date? {
         return value?.let { Date(it) }
+    }
+    
+    /**
+     * Convierte un OperationType a String
+     */
+    @TypeConverter
+    fun fromOperationType(value: PendingSyncEntity.OperationType?): String? {
+        return value?.name
+    }
+    
+    /**
+     * Convierte un String a OperationType
+     */
+    @TypeConverter
+    fun toOperationType(value: String?): PendingSyncEntity.OperationType? {
+        return value?.let { PendingSyncEntity.OperationType.valueOf(it) }
     }
 
     /**
@@ -88,7 +120,7 @@ class Converters {
         val type = object : TypeToken<Map<String, Any>>() {}.type
         return gson.fromJson(value, type)
     }
-    
+
     /**
      * Convierte un Long a Timestamp de Firebase.
      * 

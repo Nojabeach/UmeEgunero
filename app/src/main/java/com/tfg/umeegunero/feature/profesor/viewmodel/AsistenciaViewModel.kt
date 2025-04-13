@@ -7,12 +7,14 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Asistencia
 import com.tfg.umeegunero.data.model.RegistroAsistencia
+import com.tfg.umeegunero.data.model.Resultado
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.ResultadoUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -102,9 +104,17 @@ class AsistenciaViewModel @Inject constructor(
                         val alumnos = mutableListOf<Alumno>()
                         
                         for (alumnoId in alumnosIds) {
-                            val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
+                            val alumnoResultado = alumnoRepository.getAlumnoById(alumnoId)
+                            
+                            // Convertir de Resultado a Result si es necesario
+                            val alumnoResult = when (alumnoResultado) {
+                                is Resultado<*> -> ResultadoUtil.convertirResultadoAResult(alumnoResultado as Resultado<Alumno>)
+                                is Result<*> -> alumnoResultado as Result<Alumno>
+                                else -> Result.Error(Exception("Tipo de resultado no soportado"))
+                            }
+                            
                             if (alumnoResult is Result.Success) {
-                                alumnos.add(alumnoResult.data)
+                                alumnoResult.data?.let { alumnos.add(it) }
                             }
                         }
                         

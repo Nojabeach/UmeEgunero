@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EstadoTarea
-import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.data.model.Resultado
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.ResultadoUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,25 +22,32 @@ import timber.log.Timber
 import java.util.Date
 import javax.inject.Inject
 
+// Importar las clases desde el archivo TareasFamiliaUiState.kt
+import com.tfg.umeegunero.feature.familiar.viewmodel.AlumnoInfo
+import com.tfg.umeegunero.feature.familiar.viewmodel.FiltroTarea
+import com.tfg.umeegunero.feature.familiar.viewmodel.TareasFamiliaUiState
+
+// Las definiciones de FiltroTarea, AlumnoInfo y TareasFamiliaUiState se han movido al archivo TareasFamiliaUiState.kt
+
 /**
  * ViewModel para la gestión de tareas desde la perspectiva del familiar
  */
 @HiltViewModel
 class TareasFamiliaViewModel @Inject constructor(
     private val tareaRepository: TareaRepository,
-    private val alumnoRepository: AlumnoRepository,
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val alumnoRepository: AlumnoRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TareasFamiliaUiState())
     val uiState: StateFlow<TareasFamiliaUiState> = _uiState.asStateFlow()
 
     /**
-     * Inicializa el ViewModel cargando el usuario actual y sus hijos
+     * Inicializa el ViewModel con los datos del usuario familiar
      */
     fun inicializar(familiarId: String) {
+        _uiState.update { it.copy(isLoading = true, familiarId = familiarId) }
+        
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, familiarId = familiarId) }
-            
             try {
                 // Cargar información de los hijos del familiar
                 val result = usuarioRepository.obtenerUsuarioPorId(familiarId)
@@ -46,48 +55,65 @@ class TareasFamiliaViewModel @Inject constructor(
                     val usuario = result.data
                     
                     // Buscar perfiles de tipo familiar
-                    val perfilesFamiliar = usuario.perfiles.filter { perfil ->
-                        perfil.tipo == TipoUsuario.FAMILIAR
-                    }
+                    val usuarioId = usuario.id ?: usuario.dni
                     
-                    // Obtener IDs de alumnos asociados a este familiar
-                    val alumnosIds = perfilesFamiliar.flatMap { it.alumnos }.distinct()
-                    
-                    if (alumnosIds.isNotEmpty()) {
-                        val alumnosInfo = mutableListOf<AlumnoInfo>()
+                    // Cargar perfiles del usuario para obtener información de familiar
+                    val perfilesResult = usuarioRepository.obtenerPerfilesUsuario(usuarioId)
+                    if (perfilesResult is Result.Success) {
+                        // Filtrar perfiles de tipo FAMILIAR
+                        val perfilesFamiliar = perfilesResult.data.filter { perfil ->
+                            perfil.tipo == TipoUsuario.FAMILIAR
+                        }
                         
-                        // Para cada alumno, obtener su información básica
-                        for (alumnoId in alumnosIds) {
-                            val alumnoResult = alumnoRepository.obtenerAlumnoPorId(alumnoId)
-                            if (alumnoResult is Result.Success && alumnoResult.data != null) {
-                                val alumno = alumnoResult.data
-                                alumnosInfo.add(
-                                    AlumnoInfo(
-                                        id = alumno.id,
-                                        nombre = alumno.nombre,
-                                        apellidos = alumno.apellidos ?: "",
-                                        cursoNombre = alumno.curso ?: "",
-                                        claseNombre = alumno.clase ?: ""
+                        // Obtener IDs de alumnos asociados a este familiar
+                        val alumnosIds = perfilesFamiliar.flatMap { it.alumnos }.distinct()
+                        
+                        if (alumnosIds.isNotEmpty()) {
+                            val alumnosInfo = mutableListOf<AlumnoInfo>()
+                            
+                            // Para cada alumno, obtener su información básica
+                            for (alumnoId in alumnosIds) {
+                                val alumnoResultado = alumnoRepository.obtenerAlumnoPorId(alumnoId)
+                                // Convertimos Resultado a Result para mantener consistencia
+                                val alumnoResult = ResultadoUtil.convertirResultadoAResult(alumnoResultado)
+                                
+                                if (alumnoResult is Result.Success && alumnoResult.data != null) {
+                                    val alumno = alumnoResult.data
+                                    alumnosInfo.add(
+                                        AlumnoInfo(
+                                            id = alumno.id,
+                                            nombre = alumno.nombre,
+                                            apellidos = alumno.apellidos ?: "",
+                                            cursoNombre = alumno.curso ?: "",
+                                            claseNombre = alumno.clase ?: ""
+                                        )
                                     )
-                                )
+                                }
+                            }
+                            
+                            _uiState.update { 
+                                it.copy(
+                                    alumnos = alumnosInfo,
+                                    alumnoSeleccionadoId = if (alumnosInfo.isNotEmpty()) alumnosInfo.first().id else ""
+                                ) 
+                            }
+                            
+                            // Cargar tareas del primer alumno seleccionado
+                            if (alumnosInfo.isNotEmpty()) {
+                                cargarTareas(alumnosInfo.first().id)
+                            }
+                        } else {
+                            _uiState.update { 
+                                it.copy(
+                                    error = "No hay alumnos asociados a esta cuenta familiar", 
+                                    isLoading = false
+                                ) 
                             }
                         }
-                        
+                    } else if (perfilesResult is Result.Error) {
                         _uiState.update { 
                             it.copy(
-                                alumnos = alumnosInfo,
-                                alumnoSeleccionadoId = if (alumnosInfo.isNotEmpty()) alumnosInfo.first().id else ""
-                            ) 
-                        }
-                        
-                        // Cargar tareas del primer alumno seleccionado
-                        if (alumnosInfo.isNotEmpty()) {
-                            cargarTareas(alumnosInfo.first().id)
-                        }
-                    } else {
-                        _uiState.update { 
-                            it.copy(
-                                error = "No hay alumnos asociados a esta cuenta familiar", 
+                                error = "Error al cargar perfiles del usuario: ${perfilesResult.exception?.message}", 
                                 isLoading = false
                             ) 
                         }

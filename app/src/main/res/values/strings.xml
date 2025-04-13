@@ -49,4 +49,45 @@
     <string name="faq_category_notifications">Notificaciones</string>
     <string name="faq_category_privacy">Privacidad y datos</string>
     <string name="faq_not_found">No se encontraron resultados para tu búsqueda</string>
+    
+    <!-- Sync Service -->
+    <string name="sync_notification_channel_name">Sincronización</string>
+    <string name="sync_notification_channel_description">Notificaciones del servicio de sincronización</string>
+    <string name="sync_notification_title">Sincronizando datos</string>
+    <string name="sync_notification_text">%1$d operaciones pendientes</string>
+    <string name="sync_notification_error_title">Error de sincronización</string>
+    <string name="sync_notification_error_text">Se ha producido un error al sincronizar los datos</string>
+    
+    <!-- Sync Screen -->
+    <string name="sync_screen_title">Sincronización</string>
+    <string name="pending_operations_title">Operaciones pendientes</string>
+    <string name="no_pending_operations">No hay operaciones pendientes</string>
+    <string name="sync_status_initial">Listo para sincronizar</string>
+    <string name="sync_status_syncing">Sincronizando…</string>
+    <string name="sync_status_completed">Sincronización completada</string>
+    <string name="sync_status_error">Error en la sincronización</string>
+    <string name="sync_status_pending">Pendiente de sincronización</string>
+    <string name="sync_pending_operations_count">%1$d operaciones pendientes</string>
+    <string name="operation_type_signature">Firma digital</string>
+    <string name="operation_type_communication">Comunicado</string>
+    <string name="operation_type_file">Archivo</string>
+    <string name="operation_type_create">Creación</string>
+    <string name="operation_type_update">Actualización</string>
+    <string name="operation_type_delete">Eliminación</string>
+    <string name="operation_type_read_confirmation">Confirmación de lectura</string>
+    <string name="operation_status">Estado: %1$s</string>
+    <string name="operation_timestamp">Fecha: %1$s</string>
+    <string name="status_pending">Pendiente</string>
+    <string name="status_processing">En proceso</string>
+    <string name="status_completed">Completada</string>
+    <string name="status_error">Error</string>
+    
+    <!-- Estados de actividades -->
+    <string name="pendiente">Pendiente</string>
+    <string name="en_progreso">En progreso</string>
+    <string name="completada">Completada</string>
+    <string name="cancelada">Cancelada</string>
+    
+    <!-- Home Screen -->
+    <string name="home_screen_title">UmeEgunero</string>
 </resources>

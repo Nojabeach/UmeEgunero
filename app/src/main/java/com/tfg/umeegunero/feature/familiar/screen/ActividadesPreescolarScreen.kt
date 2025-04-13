@@ -313,7 +313,7 @@ fun FiltroCategorias(
                     when (filtro) {
                         FiltroActividad.TODAS -> "Todas"
                         FiltroActividad.PENDIENTES -> "Pendientes"
-                        FiltroActividad.REALIZADAS -> "Realizadas"
+                        FiltroActividad.COMPLETADAS -> "Completadas"
                         FiltroActividad.RECIENTES -> "Recientes"
                     },
                     maxLines = 1
@@ -499,7 +499,8 @@ fun ActividadCard(
                         .background(
                             when (actividad.estado) {
                                 EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
-                                EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                EstadoActividad.EN_PROGRESO -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
+                                EstadoActividad.COMPLETADA -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                                 EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
                             }
                         )
@@ -508,14 +509,16 @@ fun ActividadCard(
                     Text(
                         text = when (actividad.estado) {
                             EstadoActividad.PENDIENTE -> "Pendiente"
-                            EstadoActividad.REALIZADA -> "Realizada"
+                            EstadoActividad.EN_PROGRESO -> "En Progreso"
+                            EstadoActividad.COMPLETADA -> "Completada"
                             EstadoActividad.CANCELADA -> "Cancelada"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Medium,
                         color = when (actividad.estado) {
                             EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.tertiary
-                            EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.primary
+                            EstadoActividad.EN_PROGRESO -> MaterialTheme.colorScheme.tertiary
+                            EstadoActividad.COMPLETADA -> MaterialTheme.colorScheme.primary
                             EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.error
                         }
                     )
@@ -621,7 +624,7 @@ fun MensajeVacio(filtro: FiltroActividad) {
                 text = when (filtro) {
                     FiltroActividad.TODAS -> "No hay actividades registradas"
                     FiltroActividad.PENDIENTES -> "No hay actividades pendientes"
-                    FiltroActividad.REALIZADAS -> "No hay actividades realizadas"
+                    FiltroActividad.COMPLETADAS -> "No hay actividades completadas"
                     FiltroActividad.RECIENTES -> "No hay actividades recientes"
                 },
                 style = MaterialTheme.typography.titleLarge,
@@ -708,7 +711,7 @@ fun FiltersSection(
                             when(filtro) {
                                 FiltroActividad.TODAS -> "Todas"
                                 FiltroActividad.PENDIENTES -> "Pendientes"
-                                FiltroActividad.REALIZADAS -> "Realizadas"
+                                FiltroActividad.COMPLETADAS -> "Completadas"
                                 FiltroActividad.RECIENTES -> "Recientes"
                             }
                         ) 
@@ -905,7 +908,8 @@ fun ActividadPreescolarItem(
                     .background(
                         when (actividad.estado) {
                             EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.errorContainer
-                            EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiaryContainer
+                            EstadoActividad.EN_PROGRESO -> MaterialTheme.colorScheme.tertiaryContainer
+                            EstadoActividad.COMPLETADA -> MaterialTheme.colorScheme.tertiaryContainer
                             EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.surfaceVariant
                         }
                     ),
@@ -914,13 +918,15 @@ fun ActividadPreescolarItem(
                 Icon(
                     imageVector = when (actividad.estado) {
                         EstadoActividad.PENDIENTE -> Icons.Default.HourglassEmpty
-                        EstadoActividad.REALIZADA -> Icons.Default.Done
+                        EstadoActividad.EN_PROGRESO -> Icons.Default.HourglassFull
+                        EstadoActividad.COMPLETADA -> Icons.Default.Done
                         EstadoActividad.CANCELADA -> Icons.Default.Close
                     },
                     contentDescription = null,
                     tint = when (actividad.estado) {
                         EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.error
-                        EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiary
+                        EstadoActividad.EN_PROGRESO -> MaterialTheme.colorScheme.tertiary
+                        EstadoActividad.COMPLETADA -> MaterialTheme.colorScheme.tertiary
                         EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     modifier = Modifier.size(20.dp)
@@ -1027,7 +1033,8 @@ fun DetalleActividadDialog(
                         .background(
                             when (actividad.estado) {
                                 EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.errorContainer
-                                EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiaryContainer
+                                EstadoActividad.EN_PROGRESO -> MaterialTheme.colorScheme.tertiaryContainer
+                                EstadoActividad.COMPLETADA -> MaterialTheme.colorScheme.tertiaryContainer
                                 EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.surfaceVariant
                             }
                         )
@@ -1036,13 +1043,15 @@ fun DetalleActividadDialog(
                     Icon(
                         imageVector = when (actividad.estado) {
                             EstadoActividad.PENDIENTE -> Icons.Default.HourglassEmpty
-                            EstadoActividad.REALIZADA -> Icons.Default.Done
+                            EstadoActividad.EN_PROGRESO -> Icons.Default.HourglassFull
+                            EstadoActividad.COMPLETADA -> Icons.Default.Done
                             EstadoActividad.CANCELADA -> Icons.Default.Close
                         },
                         contentDescription = null,
                         tint = when (actividad.estado) {
                             EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.error
-                            EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiary
+                            EstadoActividad.EN_PROGRESO -> MaterialTheme.colorScheme.tertiary
+                            EstadoActividad.COMPLETADA -> MaterialTheme.colorScheme.tertiary
                             EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                     )
@@ -1052,14 +1061,16 @@ fun DetalleActividadDialog(
                     Text(
                         text = when (actividad.estado) {
                             EstadoActividad.PENDIENTE -> "Pendiente"
-                            EstadoActividad.REALIZADA -> "Realizada"
+                            EstadoActividad.EN_PROGRESO -> "En Progreso"
+                            EstadoActividad.COMPLETADA -> "Completada"
                             EstadoActividad.CANCELADA -> "Cancelada"
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = when (actividad.estado) {
                             EstadoActividad.PENDIENTE -> MaterialTheme.colorScheme.error
-                            EstadoActividad.REALIZADA -> MaterialTheme.colorScheme.tertiary
+                            EstadoActividad.EN_PROGRESO -> MaterialTheme.colorScheme.tertiary
+                            EstadoActividad.COMPLETADA -> MaterialTheme.colorScheme.tertiary
                             EstadoActividad.CANCELADA -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                     )
@@ -1105,7 +1116,7 @@ fun DetalleActividadDialog(
                     }
                 } 
                 // Si no ha sido revisada, mostrar campo para comentarios
-                else if (actividad.estado == EstadoActividad.REALIZADA) {
+                else if (actividad.estado == EstadoActividad.COMPLETADA) {
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     OutlinedTextField(
@@ -1119,7 +1130,7 @@ fun DetalleActividadDialog(
             }
         },
         confirmButton = {
-            if (!actividad.revisadaPorFamiliar && actividad.estado == EstadoActividad.REALIZADA) {
+            if (!actividad.revisadaPorFamiliar && actividad.estado == EstadoActividad.COMPLETADA) {
                 Button(
                     onClick = { 
                         onMarcarRevisada(comentario)
@@ -1135,7 +1146,7 @@ fun DetalleActividadDialog(
             }
         },
         dismissButton = {
-            if (!actividad.revisadaPorFamiliar && actividad.estado == EstadoActividad.REALIZADA) {
+            if (!actividad.revisadaPorFamiliar && actividad.estado == EstadoActividad.COMPLETADA) {
                 TextButton(onClick = onDismiss) {
                     Text("Cancelar")
                 }

@@ -4,12 +4,13 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.tfg.umeegunero.data.local.AppDatabase
 import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
 import com.tfg.umeegunero.data.local.dao.ConversacionDao
-import com.tfg.umeegunero.data.local.database.AppDatabase
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
+import com.tfg.umeegunero.util.ImageLoadingUtil
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -100,5 +101,16 @@ object AppModule {
         authRepository: AuthRepository
     ): ChatRepository {
         return ChatRepository(chatMensajeDao, conversacionDao, firestore, storage, authRepository)
+    }
+
+    /**
+     * Proporciona una instancia de ImageLoadingUtil
+     */
+    @Provides
+    @Singleton
+    fun provideImageLoadingUtil(
+        @ApplicationContext context: Context
+    ): ImageLoadingUtil {
+        return ImageLoadingUtil(context)
     }
 } 

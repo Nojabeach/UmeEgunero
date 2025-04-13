@@ -1,52 +1,78 @@
-package com.tfg.umeegunero.data.local.database
+package com.tfg.umeegunero.data.local
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.tfg.umeegunero.data.dao.OperacionPendienteDao
 import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
 import com.tfg.umeegunero.data.local.dao.ConversacionDao
+import com.tfg.umeegunero.data.local.dao.PendingSyncDao
+import com.tfg.umeegunero.data.local.dao.PreferenciasDao
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.local.entity.ChatMensajeEntity
 import com.tfg.umeegunero.data.local.entity.ConversacionEntity
+import com.tfg.umeegunero.data.local.entity.PendingSyncEntity
+import com.tfg.umeegunero.data.local.entity.PreferenciasEntity
 import com.tfg.umeegunero.data.local.entity.RegistroActividadEntity
-import com.tfg.umeegunero.util.Converters
+import com.tfg.umeegunero.data.local.util.Converters
+import com.tfg.umeegunero.data.model.OperacionPendiente
 
 /**
- * Definición de la base de datos Room para la aplicación UmeEgunero.
+ * Base de datos local de la aplicación UmeEgunero.
  * 
  * Esta clase es un singleton que proporciona acceso a la base de datos.
- * Incluye entidades, daos y conversores de tipos necesarios.
+ * Incluye entidades, DAOs y conversores de tipos necesarios para toda la aplicación.
  */
 @Database(
     entities = [
-        RegistroActividadEntity::class,
         ChatMensajeEntity::class,
-        ConversacionEntity::class
+        ConversacionEntity::class,
+        PreferenciasEntity::class,
+        PendingSyncEntity::class,
+        RegistroActividadEntity::class,
+        OperacionPendiente::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     
     /**
-     * Proporciona acceso al DAO para los registros de actividad.
-     */
-    abstract fun registroActividadDao(): RegistroActividadDao
-    
-    /**
-     * Proporciona acceso al DAO para los mensajes de chat.
+     * DAO para la entidad ChatMensajeEntity
      */
     abstract fun chatMensajeDao(): ChatMensajeDao
     
     /**
-     * Proporciona acceso al DAO para las conversaciones.
+     * DAO para la entidad ConversacionEntity
      */
     abstract fun conversacionDao(): ConversacionDao
     
+    /**
+     * DAO para la entidad PreferenciasEntity
+     */
+    abstract fun preferenciasDao(): PreferenciasDao
+    
+    /**
+     * DAO para la entidad PendingSyncEntity
+     */
+    abstract fun pendingSyncDao(): PendingSyncDao
+
+    /**
+     * DAO para la entidad RegistroActividadEntity
+     */
+    abstract fun registroActividadDao(): RegistroActividadDao
+    
+    /**
+     * DAO para la entidad OperacionPendiente
+     */
+    abstract fun operacionPendienteDao(): OperacionPendienteDao
+    
     companion object {
+        const val DATABASE_NAME = "umeegunero_db"
+        
         @Volatile
         private var INSTANCE: AppDatabase? = null
         
@@ -62,7 +88,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "umeegunero_database"
+                    DATABASE_NAME
                 )
                 .fallbackToDestructiveMigration()
                 .build()

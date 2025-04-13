@@ -6,10 +6,11 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.ActividadPreescolar
 import com.tfg.umeegunero.data.model.CategoriaActividad
 import com.tfg.umeegunero.data.model.EstadoActividad
-import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.data.model.Resultado
 import com.tfg.umeegunero.data.repository.ActividadPreescolarRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
-import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.ResultadoUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +27,7 @@ import javax.inject.Inject
 enum class FiltroActividadProfesor {
     TODAS,
     PENDIENTES,
-    REALIZADAS,
+    COMPLETADAS,
     RECIENTES,
     MIS_ACTIVIDADES
 }
@@ -81,8 +82,7 @@ data class ActividadesPreescolarProfesorUiState(
 @HiltViewModel
 class ActividadesPreescolarProfesorViewModel @Inject constructor(
     private val actividadRepository: ActividadPreescolarRepository,
-    private val alumnoRepository: AlumnoRepository,
-    private val claseRepository: ClaseRepository
+    private val alumnoRepository: AlumnoRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ActividadesPreescolarProfesorUiState())
@@ -114,7 +114,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
     private fun cargarClasesDelProfesor(profesorId: String) {
         viewModelScope.launch {
             try {
-                val clasesResult = claseRepository.getClasesByProfesor(profesorId)
+                val clasesResult = actividadRepository.obtenerClasesPorProfesor(profesorId)
                 
                 when (clasesResult) {
                     is Result.Success -> {
@@ -122,8 +122,8 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                             ClasePreescolarInfo(
                                 id = clase.id,
                                 nombre = clase.nombre,
-                                curso = "",
-                                numAlumnos = clase.alumnosIds?.size ?: 0
+                                curso = clase.nivel,
+                                numAlumnos = clase.alumnosIds.size
                             )
                         }
                         
@@ -192,25 +192,18 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
     private fun cargarAlumnosPorClase(claseId: String) {
         viewModelScope.launch {
             try {
-                val alumnosResult = alumnoRepository.getAlumnosByClase(claseId)
+                val alumnosResultado = alumnoRepository.obtenerAlumnosPorClase(claseId)
+                val alumnosResult = ResultadoUtil.convertirResultadoAResult(alumnosResultado)
                 
                 when (alumnosResult) {
                     is Result.Success -> {
                         val alumnos = alumnosResult.data.map { alumno ->
-                            // Calcular edad (implementación simplificada)
-                            val edad = try {
-                                val fechaNacimientoStr = alumno.fechaNacimiento
-                                val añoNacimiento = fechaNacimientoStr.split("-")[0].toInt()
-                                val añoActual = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-                                añoActual - añoNacimiento
-                            } catch (e: Exception) {
-                                0
-                            }
+                            val edad = calcularEdad(alumno.fechaNacimiento)
                             
                             AlumnoPreescolarProfesorInfo(
                                 id = alumno.id,
                                 nombre = alumno.nombre,
-                                apellidos = alumno.apellidos,
+                                apellidos = alumno.apellidos ?: "",
                                 edad = edad
                             )
                         }
@@ -218,6 +211,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         _uiState.update { state ->
                             state.copy(
                                 alumnos = alumnos,
+                                alumnoSeleccionadoId = if (alumnos.isNotEmpty()) alumnos[0].id else "",
                                 isLoading = false
                             )
                         }
@@ -250,11 +244,47 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
     }
 
     /**
+     * Calcula la edad de un alumno a partir de su fecha de nacimiento
+     */
+    private fun calcularEdad(fechaNacimiento: String?): Int {
+        if (fechaNacimiento == null || fechaNacimiento.isEmpty()) return 0
+        
+        try {
+            // Formato esperado: "dd/MM/yyyy"
+            val partes = fechaNacimiento.split("/")
+            if (partes.size != 3) return 0
+            
+            val diaNac = partes[0].toInt()
+            val mesNac = partes[1].toInt() - 1  // Los meses en Calendar van de 0 a 11
+            val anioNac = partes[2].toInt()
+            
+            val fechaNac = java.util.Calendar.getInstance()
+            fechaNac.set(anioNac, mesNac, diaNac)
+            
+            val hoy = java.util.Calendar.getInstance()
+            
+            var edad = hoy.get(java.util.Calendar.YEAR) - fechaNac.get(java.util.Calendar.YEAR)
+            
+            // Comprobar si aún no ha cumplido años este año
+            if (hoy.get(java.util.Calendar.DAY_OF_YEAR) < fechaNac.get(java.util.Calendar.DAY_OF_YEAR)) {
+                edad--
+            }
+            
+            return edad
+        } catch (e: Exception) {
+            Timber.e(e, "Error al calcular edad")
+            return 0
+        }
+    }
+
+    /**
      * Carga las actividades de una clase específica
      */
     private fun cargarActividadesPorClase(claseId: String) {
         viewModelScope.launch {
             try {
+                _uiState.update { it.copy(isLoading = true) }
+                
                 val actividadesResult = actividadRepository.obtenerActividadesPorClase(claseId)
                 
                 when (actividadesResult) {
@@ -264,11 +294,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         _uiState.update { state ->
                             state.copy(
                                 actividades = actividades,
-                                actividadesFiltradas = filtrarActividades(
-                                    actividades, 
-                                    state.filtroSeleccionado, 
-                                    state.categoriaSeleccionada
-                                ),
+                                actividadesFiltradas = filtrarActividades(actividades, state.filtroSeleccionado, state.categoriaSeleccionada),
                                 isLoading = false
                             )
                         }
@@ -285,7 +311,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     }
                     
                     is Result.Loading -> {
-                        // Estado de carga ya actualizado
+                        // Ya estamos mostrando el indicador de carga
                     }
                 }
             } catch (e: Exception) {
@@ -301,82 +327,39 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
     }
 
     /**
-     * Aplica un filtro a las actividades
-     */
-    fun aplicarFiltro(filtro: FiltroActividadProfesor) {
-        val actividadesFiltradas = filtrarActividades(
-            _uiState.value.actividades, 
-            filtro, 
-            _uiState.value.categoriaSeleccionada
-        )
-        
-        _uiState.update { state -> 
-            state.copy(
-                filtroSeleccionado = filtro,
-                actividadesFiltradas = actividadesFiltradas
-            )
-        }
-    }
-
-    /**
-     * Aplica un filtro por categoría de actividad
-     */
-    fun aplicarFiltroCategoria(categoria: CategoriaActividad?) {
-        val actividadesFiltradas = filtrarActividades(
-            _uiState.value.actividades, 
-            _uiState.value.filtroSeleccionado,
-            categoria
-        )
-        
-        _uiState.update { state -> 
-            state.copy(
-                categoriaSeleccionada = categoria,
-                actividadesFiltradas = actividadesFiltradas
-            )
-        }
-    }
-
-    /**
      * Filtra las actividades según los criterios seleccionados
      */
     private fun filtrarActividades(
-        actividades: List<ActividadPreescolar>,
+        actividades: List<ActividadPreescolar>, 
         filtro: FiltroActividadProfesor,
         categoria: CategoriaActividad?
     ): List<ActividadPreescolar> {
-        // Primero filtrar por estado
-        val actividadesPorEstado = when (filtro) {
-            FiltroActividadProfesor.TODAS -> actividades
-            
-            FiltroActividadProfesor.PENDIENTES -> actividades.filter { 
-                it.estado == EstadoActividad.PENDIENTE
-            }
-            
-            FiltroActividadProfesor.REALIZADAS -> actividades.filter { 
-                it.estado == EstadoActividad.REALIZADA
-            }
-            
-            FiltroActividadProfesor.RECIENTES -> {
-                // Filtrar las actividades de los últimos 7 días
-                val hace7dias = java.util.Calendar.getInstance().apply {
-                    add(java.util.Calendar.DAY_OF_YEAR, -7)
-                }.time
-                
-                actividades.filter { actividad ->
-                    actividad.fechaCreacion.toDate().after(hace7dias)
-                }
-            }
-            
-            FiltroActividadProfesor.MIS_ACTIVIDADES -> actividades.filter {
-                it.profesorId == _uiState.value.profesorId
-            }
+        // Primero filtramos por categoría si está seleccionada
+        val actividadesPorCategoria = if (categoria != null) {
+            actividades.filter { it.categoria == categoria }
+        } else {
+            actividades
         }
         
-        // Luego filtrar por categoría si está seleccionada
-        return if (categoria != null) {
-            actividadesPorEstado.filter { it.categoria == categoria }
-        } else {
-            actividadesPorEstado
+        // Luego aplicamos el filtro principal
+        return when (filtro) {
+            FiltroActividadProfesor.TODAS -> actividadesPorCategoria
+            
+            FiltroActividadProfesor.PENDIENTES -> actividadesPorCategoria.filter { 
+                it.estado == EstadoActividad.PENDIENTE || it.estado == EstadoActividad.EN_PROGRESO
+            }
+            
+            FiltroActividadProfesor.COMPLETADAS -> actividadesPorCategoria.filter { 
+                it.estado == EstadoActividad.COMPLETADA 
+            }
+            
+            FiltroActividadProfesor.RECIENTES -> actividadesPorCategoria
+                .sortedByDescending { it.fechaCreacion.seconds }
+                .take(10)
+            
+            FiltroActividadProfesor.MIS_ACTIVIDADES -> actividadesPorCategoria.filter { 
+                it.profesorId == _uiState.value.profesorId 
+            }
         }
     }
 
@@ -441,8 +424,8 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         Timber.e(actividadResult.exception, "Error al cargar actividad para editar")
                     }
                     
-                    is Result.Loading -> {
-                        // Estado de carga ya actualizado
+                    else -> {
+                        // No hacer nada para Result.Loading
                     }
                 }
             } catch (e: Exception) {
@@ -505,13 +488,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                     actividadRepository.crearActividad(actividadActualizada)
                 } else {
                     // Actualizar actividad existente
-                    actividadRepository.actualizarActividad(actividadActualizada).let {
-                        when (it) {
-                            is Result.Success -> Result.Success(actividadActualizada.id)
-                            is Result.Error -> it
-                            is Result.Loading -> Result.Success(actividadActualizada.id)
-                        }
-                    }
+                    actividadRepository.actualizarActividad(actividadActualizada)
                 }
                 
                 when (resultado) {
@@ -539,8 +516,8 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         Timber.e(resultado.exception, "Error al guardar actividad")
                     }
                     
-                    is Result.Loading -> {
-                        // Estado de carga ya actualizado
+                    else -> {
+                        // No hacer nada para Result.Loading
                     }
                 }
             } catch (e: Exception) {
@@ -588,8 +565,8 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         Timber.e(resultado.exception, "Error al eliminar actividad")
                     }
                     
-                    is Result.Loading -> {
-                        // Estado de carga ya actualizado
+                    else -> {
+                        // No hacer nada para Result.Loading
                     }
                 }
             } catch (e: Exception) {
@@ -620,7 +597,7 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         val actividadesActualizadas = _uiState.value.actividades.map { actividad ->
                             if (actividad.id == actividadId) {
                                 actividad.copy(
-                                    estado = EstadoActividad.REALIZADA,
+                                    estado = EstadoActividad.COMPLETADA,
                                     comentariosProfesor = if (comentario.isNotEmpty()) comentario else actividad.comentariosProfesor
                                 )
                             } else {
@@ -652,8 +629,8 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         Timber.e(resultado.exception, "Error al marcar actividad como realizada")
                     }
                     
-                    is Result.Loading -> {
-                        // Estado de carga ya actualizado
+                    else -> {
+                        // No hacer nada para Result.Loading
                     }
                 }
             } catch (e: Exception) {
@@ -741,8 +718,8 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         Timber.e(resultado.exception, "Error al crear actividad")
                     }
                     
-                    is Result.Loading -> {
-                        // Estado de carga ya actualizado
+                    else -> {
+                        // No hacer nada para Result.Loading
                     }
                 }
             } catch (e: Exception) {
@@ -790,8 +767,8 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
                         Timber.e(resultado.exception, "Error al actualizar actividad")
                     }
                     
-                    is Result.Loading -> {
-                        // Estado de carga ya actualizado
+                    else -> {
+                        // No hacer nada para Result.Loading
                     }
                 }
             } catch (e: Exception) {
@@ -818,5 +795,41 @@ class ActividadesPreescolarProfesorViewModel @Inject constructor(
      */
     fun clearMensaje() {
         _uiState.update { it.copy(mensaje = null) }
+    }
+
+    /**
+     * Aplica un filtro a las actividades
+     */
+    fun aplicarFiltro(filtro: FiltroActividadProfesor) {
+        val actividadesFiltradas = filtrarActividades(
+            _uiState.value.actividades, 
+            filtro, 
+            _uiState.value.categoriaSeleccionada
+        )
+        
+        _uiState.update { state -> 
+            state.copy(
+                filtroSeleccionado = filtro,
+                actividadesFiltradas = actividadesFiltradas
+            )
+        }
+    }
+
+    /**
+     * Aplica un filtro por categoría de actividad
+     */
+    fun aplicarFiltroCategoria(categoria: CategoriaActividad?) {
+        val actividadesFiltradas = filtrarActividades(
+            _uiState.value.actividades, 
+            _uiState.value.filtroSeleccionado,
+            categoria
+        )
+        
+        _uiState.update { state -> 
+            state.copy(
+                categoriaSeleccionada = categoria,
+                actividadesFiltradas = actividadesFiltradas
+            )
+        }
     }
 } 

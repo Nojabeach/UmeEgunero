@@ -1,8 +1,9 @@
 package com.tfg.umeegunero.di
 
 import android.content.Context
+import com.tfg.umeegunero.data.dao.OperacionPendienteDao
+import com.tfg.umeegunero.data.local.AppDatabase
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
-import com.tfg.umeegunero.data.local.database.AppDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -39,5 +40,16 @@ object DatabaseModule {
     @Provides
     fun provideRegistroActividadDao(appDatabase: AppDatabase): RegistroActividadDao {
         return appDatabase.registroActividadDao()
+    }
+    
+    /**
+     * Proporciona el DAO para operaciones pendientes.
+     *
+     * @param appDatabase Instancia de la base de datos
+     * @return Implementación de OperacionPendienteDao
+     */
+    @Provides
+    fun provideOperacionPendienteDao(appDatabase: AppDatabase): OperacionPendienteDao {
+        return appDatabase.operacionPendienteDao()
     }
 } 

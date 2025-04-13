@@ -17,6 +17,7 @@ import com.jakewharton.threetenabp.AndroidThreeTen
 import com.tfg.umeegunero.data.worker.EventoWorker
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
 import com.tfg.umeegunero.notification.AppNotificationManager
+import com.tfg.umeegunero.util.SyncManager
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -37,6 +38,9 @@ class UmeEguneroApp : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
     
+    @Inject
+    lateinit var syncManager: SyncManager
+    
     override fun getWorkManagerConfiguration(): Configuration {
         return Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -46,8 +50,9 @@ class UmeEguneroApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         
-        // Inicializar Timber para logging
-        Timber.plant(Timber.DebugTree())
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
         
         // Inicializar ThreeTenABP para soporte de Java 8 Date Time API en API < 26
         AndroidThreeTen.init(this)
@@ -60,6 +65,14 @@ class UmeEguneroApp : Application(), Configuration.Provider {
         
         // Configurar tareas periódicas
         configurarSincronizacionPeriodica()
+        
+        // Iniciar el servicio de sincronización
+        syncManager.iniciarServicioSincronizacion()
+    }
+    
+    override fun onTerminate() {
+        super.onTerminate()
+        syncManager.detenerServicioSincronizacion()
     }
     
     /**

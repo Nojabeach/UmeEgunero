@@ -3,11 +3,14 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.EntregaTarea
-import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.data.model.Resultado
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.ResultadoUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,14 +21,35 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Datos básicos de un alumno para las entregas
+ * Estado de entrega de una tarea
+ */
+enum class EstadoEntrega {
+    PENDIENTE,
+    ENTREGADO,
+    CALIFICADO,
+    RETRASADO
+}
+
+/**
+ * Modelo de datos para la información de un alumno con su entrega
  */
 data class AlumnoEntrega(
-    val id: String = "",
-    val nombre: String = "",
-    val apellidos: String = "",
-    val fotoUrl: String? = null,
-    val entrega: EntregaTarea? = null
+    val id: String,
+    val nombre: String,
+    val apellidos: String,
+    val entrega: EntregaTarea?,
+    val fotoUrl: String?
+) {
+    val nombreCompleto: String get() = "$nombre $apellidos"
+}
+
+/**
+ * Modelo de datos para un alumno con su estado de entrega
+ */
+data class AlumnoConEstadoEntrega(
+    val alumno: Alumno,
+    val estadoEntrega: EstadoEntrega,
+    val entrega: EntregaTarea?
 )
 
 /**
@@ -38,10 +62,11 @@ data class DetallesTareaUiState(
     val tarea: Tarea? = null,
     val entregas: List<EntregaTarea> = emptyList(),
     val alumnosEntregas: List<AlumnoEntrega> = emptyList(),
+    val alumnosConEstado: List<AlumnoConEstadoEntrega> = emptyList(),
     val totalAlumnos: Int = 0,
     val alumnosEntregados: Int = 0,
-    val entregaSeleccionada: EntregaTarea? = null,
     val alumnoSeleccionado: AlumnoEntrega? = null,
+    val entregaSeleccionada: EntregaTarea? = null,
     val mostrarDialogoCalificacion: Boolean = false
 )
 
@@ -59,129 +84,155 @@ class DetallesTareaViewModel @Inject constructor(
     val uiState: StateFlow<DetallesTareaUiState> = _uiState.asStateFlow()
     
     /**
-     * Inicializa el ViewModel cargando la tarea y sus entregas
+     * Carga la tarea y sus entregas
      */
     fun cargarDetalleTarea(tareaId: String) {
-        _uiState.update { it.copy(isLoading = true, error = null) }
-        
         viewModelScope.launch {
-            try {
-                // Cargar la tarea
-                when (val resultado = tareaRepository.obtenerTarea(tareaId)) {
-                    is Result.Success -> {
-                        val tarea = resultado.data
-                        
-                        if (tarea != null) {
-                            _uiState.update { it.copy(tarea = tarea) }
-                            
-                            // Obtener entregas de la tarea
-                            cargarEntregas(tareaId, tarea.claseId)
-                        } else {
-                            _uiState.update { 
-                                it.copy(
-                                    isLoading = false,
-                                    error = "La tarea no existe o ha sido eliminada"
-                                ) 
-                            }
-                        }
-                    }
-                    is Result.Error -> {
-                        Timber.e(resultado.exception, "Error al cargar la tarea")
+            _uiState.update { it.copy(isLoading = true) }
+            
+            when (val resultado = tareaRepository.obtenerTarea(tareaId)) {
+                is Result.Success -> {
+                    val tarea = resultado.data
+                    if (tarea != null) {
                         _uiState.update { 
                             it.copy(
-                                isLoading = false,
-                                error = "Error al cargar la tarea: ${resultado.exception?.message}"
-                            ) 
+                                tarea = tarea,
+                                isLoading = false
+                            )
+                        }
+                        
+                        if (tarea.claseId.isNotEmpty()) {
+                            cargarEntregas(tareaId, tarea.claseId)
+                        } else {
+                            _uiState.update { it.copy(isLoading = false) }
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                error = "No se encontró la tarea",
+                                isLoading = false
+                            )
                         }
                     }
-                    is Result.Loading -> {
-                        // No hacer nada, ya estamos mostrando el indicador de carga
+                }
+                is Result.Error -> {
+                    Timber.e(resultado.exception, "Error al cargar la tarea")
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cargar la tarea: ${resultado.exception?.message}",
+                            isLoading = false
+                        )
                     }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cargar la tarea")
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        error = "Error al cargar la tarea: ${e.message}"
-                    ) 
+                else -> {
+                    // No hacer nada para Result.Loading
                 }
             }
         }
     }
     
     /**
-     * Carga las entregas de la tarea y los alumnos asociados
+     * Carga las entregas de la tarea
      */
-    private suspend fun cargarEntregas(tareaId: String, claseId: String) {
-        try {
-            // Cargar entregas
-            when (val resultadoEntregas = tareaRepository.obtenerEntregasPorTarea(tareaId)) {
+    private fun cargarEntregas(tareaId: String, claseId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            when (val resultado = tareaRepository.obtenerEntregasPorTarea(tareaId)) {
                 is Result.Success -> {
-                    val entregas = resultadoEntregas.data
-                    _uiState.update { it.copy(entregas = entregas) }
-                    
-                    // Cargar alumnos de la clase
-                    val resultadoAlumnos = alumnoRepository.obtenerAlumnosPorClase(claseId)
-                    when (resultadoAlumnos) {
-                        is Result.Success -> {
-                            val alumnos = resultadoAlumnos.data
-                            
-                            // Crear lista de alumnos con sus entregas
-                            val alumnosEntregas = alumnos.map { alumno ->
-                                val entrega = entregas.find { it.alumnoId == alumno.id }
-                                AlumnoEntrega(
-                                    id = alumno.dni,
-                                    nombre = alumno.nombre,
-                                    apellidos = alumno.apellidos,
-                                    entrega = entrega,
-                                    fotoUrl = null // Por ahora no tenemos fotos de alumnos
-                                )
-                            }
-                            
-                            _uiState.update { 
-                                it.copy(
-                                    alumnosEntregas = alumnosEntregas,
-                                    totalAlumnos = alumnos.size,
-                                    alumnosEntregados = entregas.size,
-                                    isLoading = false
-                                ) 
-                            }
-                        }
-                        is Result.Error -> {
-                            Timber.e(resultadoAlumnos.exception, "Error al cargar alumnos")
-                            _uiState.update { 
-                                it.copy(
-                                    isLoading = false,
-                                    error = "Error al cargar alumnos: ${resultadoAlumnos.exception?.message}"
-                                ) 
-                            }
-                        }
-                        is Result.Loading -> {
-                            // No hacer nada, ya estamos mostrando el indicador de carga
-                        }
-                    }
-                }
-                is Result.Error -> {
-                    Timber.e(resultadoEntregas.exception, "Error al cargar entregas")
+                    val entregas = resultado.data
                     _uiState.update { 
                         it.copy(
-                            isLoading = false,
-                            error = "Error al cargar entregas: ${resultadoEntregas.exception?.message}"
+                            entregas = entregas,
+                            alumnosEntregados = entregas.size
+                        )
+                    }
+                    
+                    // Cargar los alumnos de la clase para mostrar quien no ha entregado
+                    cargarAlumnos(claseId, entregas)
+                }
+                is Result.Error -> {
+                    Timber.e(resultado.exception, "Error al cargar las entregas")
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cargar las entregas: ${resultado.exception?.message}",
+                            isLoading = false
+                        )
+                    }
+                }
+                else -> {
+                    // No hacer nada para Result.Loading
+                }
+            }
+        }
+    }
+    
+    /**
+     * Carga los alumnos de la clase
+     */
+    private fun cargarAlumnos(claseId: String, entregas: List<EntregaTarea>) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            // Convertimos Resultado a Result para mantener coherencia
+            val resultadoAlumnos = alumnoRepository.obtenerAlumnosPorClase(claseId)
+            val alumnosResult = ResultadoUtil.convertirResultadoAResult(resultadoAlumnos)
+            
+            when (alumnosResult) {
+                is Result.Success -> {
+                    val alumnos = alumnosResult.data
+                    val entregasPorAlumno = entregas.associateBy { it.alumnoId }
+                    
+                    // Lista de AlumnoEntrega para compatibilidad con la UI actual
+                    val alumnosEntregas = alumnos.map { alumno ->
+                        val entrega = entregasPorAlumno[alumno.id]
+                        AlumnoEntrega(
+                            id = alumno.id,
+                            nombre = alumno.nombre,
+                            apellidos = alumno.apellidos ?: "",
+                            entrega = entrega,
+                            fotoUrl = null
+                        )
+                    }
+                    
+                    // Lista con estados para mejor manejo de la UI
+                    val alumnosConEstado = alumnos.map { alumno ->
+                        val entrega = entregasPorAlumno[alumno.id]
+                        val estado = when {
+                            entrega == null -> EstadoEntrega.PENDIENTE
+                            entrega.calificacion != null -> EstadoEntrega.CALIFICADO
+                            entrega.fechaEntrega.toDate().after(_uiState.value.tarea?.fechaEntrega?.toDate()) -> EstadoEntrega.RETRASADO
+                            else -> EstadoEntrega.ENTREGADO
+                        }
+                        
+                        AlumnoConEstadoEntrega(
+                            alumno = alumno,
+                            estadoEntrega = estado,
+                            entrega = entrega
+                        )
+                    }
+                    
+                    _uiState.update { 
+                        it.copy(
+                            alumnosEntregas = alumnosEntregas,
+                            alumnosConEstado = alumnosConEstado,
+                            totalAlumnos = alumnos.size,
+                            isLoading = false
                         ) 
                     }
                 }
-                is Result.Loading -> {
-                    // No hacer nada, ya estamos mostrando el indicador de carga
+                is Result.Error -> {
+                    Timber.e(alumnosResult.exception, "Error al cargar alumnos")
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            error = "Error al cargar alumnos: ${alumnosResult.exception?.message}"
+                        ) 
+                    }
                 }
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al cargar entregas y alumnos")
-            _uiState.update { 
-                it.copy(
-                    isLoading = false,
-                    error = "Error al cargar entregas y alumnos: ${e.message}"
-                ) 
+                else -> {
+                    // No hacer nada para Result.Loading
+                }
             }
         }
     }
@@ -214,7 +265,10 @@ class DetallesTareaViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                when (val resultado = tareaRepository.calificarEntrega(entregaId, calificacion, feedback)) {
+                // Primero obtenemos el resultado directamente del repositorio que devuelve Result<Boolean>
+                val resultado = tareaRepository.calificarEntrega(entregaId, calificacion, feedback)
+                
+                when (resultado) {
                     is Result.Success -> {
                         // Recargar los datos
                         _uiState.value.tarea?.let { tarea ->
@@ -237,8 +291,8 @@ class DetallesTareaViewModel @Inject constructor(
                             ) 
                         }
                     }
-                    is Result.Loading -> {
-                        // No hacer nada, ya estamos mostrando el indicador de carga
+                    else -> {
+                        // No hacer nada para Result.Loading
                     }
                 }
             } catch (e: Exception) {

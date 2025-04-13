@@ -3,9 +3,8 @@ package com.tfg.umeegunero.feature.auth.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseUser
-import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.Resultado
 import com.tfg.umeegunero.data.repository.UserRepository
-import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,6 +68,7 @@ class AuthViewModel @Inject constructor(
             val email = _uiState.value.email
             val password = _uiState.value.password
             
+            // Validaciones básicas
             if (email.isBlank() || password.isBlank()) {
                 _uiState.update { 
                     it.copy(
@@ -79,26 +79,26 @@ class AuthViewModel @Inject constructor(
                 return@launch
             }
             
-            when (val result = userRepository.login(email, password)) {
-                is Result.Success -> {
+            when (val resultado = userRepository.login(email, password)) {
+                is Resultado.Exito -> {
                     _uiState.update { 
                         it.copy(
                             isLoggedIn = true,
-                            currentUser = result.data,
+                            currentUser = resultado.datos,
                             success = "Inicio de sesión exitoso",
                             isLoading = false
                         )
                     }
                 }
-                is Result.Error -> {
+                is Resultado.Error -> {
                     _uiState.update { 
                         it.copy(
-                            error = result.exception?.message ?: "Error al iniciar sesión",
+                            error = resultado.mensaje ?: "Error al iniciar sesión",
                             isLoading = false
                         )
                     }
                 }
-                is Result.Loading -> {
+                is Resultado.Cargando -> {
                     _uiState.update { it.copy(isLoading = true) }
                 }
             }
@@ -152,26 +152,26 @@ class AuthViewModel @Inject constructor(
             
             val nombreCompleto = "$nombre $apellidos"
             
-            when (val result = userRepository.register(email, password, nombreCompleto)) {
-                is Result.Success -> {
+            when (val resultado = userRepository.register(email, password, nombreCompleto)) {
+                is Resultado.Exito -> {
                     _uiState.update { 
                         it.copy(
                             isLoggedIn = true,
-                            currentUser = result.data,
+                            currentUser = resultado.datos,
                             success = "Registro exitoso",
                             isLoading = false
                         )
                     }
                 }
-                is Result.Error -> {
+                is Resultado.Error -> {
                     _uiState.update { 
                         it.copy(
-                            error = result.exception?.message ?: "Error al registrar usuario",
+                            error = resultado.mensaje ?: "Error al registrar usuario",
                             isLoading = false
                         )
                     }
                 }
-                is Result.Loading -> {
+                is Resultado.Cargando -> {
                     _uiState.update { it.copy(isLoading = true) }
                 }
             }
@@ -182,18 +182,18 @@ class AuthViewModel @Inject constructor(
      * Cierra la sesión del usuario actual
      */
     fun logout() {
-        when (val result = userRepository.logout()) {
-            is Result.Success -> {
+        when (val resultado = userRepository.logout()) {
+            is Resultado.Exito -> {
                 _uiState.update { 
                     AuthUiState(success = "Sesión cerrada correctamente")
                 }
             }
-            is Result.Error -> {
+            is Resultado.Error -> {
                 _uiState.update { 
-                    it.copy(error = result.exception?.message ?: "Error al cerrar sesión")
+                    it.copy(error = resultado.mensaje ?: "Error al cerrar sesión")
                 }
             }
-            is Result.Loading -> {
+            is Resultado.Cargando -> {
                 _uiState.update { it.copy(isLoading = true) }
             }
         }
@@ -218,8 +218,8 @@ class AuthViewModel @Inject constructor(
                 return@launch
             }
             
-            when (val result = userRepository.resetPassword(email)) {
-                is Result.Success -> {
+            when (val resultado = userRepository.resetPassword(email)) {
+                is Resultado.Exito -> {
                     _uiState.update { 
                         it.copy(
                             success = "Se ha enviado un correo para restablecer tu contraseña",
@@ -227,15 +227,15 @@ class AuthViewModel @Inject constructor(
                         )
                     }
                 }
-                is Result.Error -> {
+                is Resultado.Error -> {
                     _uiState.update { 
                         it.copy(
-                            error = result.exception?.message ?: "Error al enviar correo de recuperación",
+                            error = resultado.mensaje ?: "Error al enviar correo de recuperación",
                             isLoading = false
                         )
                     }
                 }
-                is Result.Loading -> {
+                is Resultado.Cargando -> {
                     _uiState.update { it.copy(isLoading = true) }
                 }
             }

@@ -3,28 +3,29 @@ package com.tfg.umeegunero.di
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.repository.ActividadPreescolarRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
-import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepositoryImpl
-import com.tfg.umeegunero.data.repository.AlumnoRepositoryImpl
 import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.repository.ComunicadoRepository
 import com.tfg.umeegunero.data.repository.LocalRegistroActividadRepository
 import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
+import com.tfg.umeegunero.util.FirestoreQueryUtil
+import com.tfg.umeegunero.data.repository.PersonalDocenteRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import javax.inject.Named
 
 /**
  * Módulo Dagger/Hilt que proporciona las implementaciones de los repositorios.
@@ -59,22 +60,8 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideAlumnoRepository(
-        firestore: FirebaseFirestore
-    ): AlumnoRepository {
-        return AlumnoRepositoryImpl(firestore)
-    }
-
-    @Provides
-    @Singleton
     fun provideNotificacionRepository(firestore: FirebaseFirestore): NotificacionRepository {
         return NotificacionRepository(firestore)
-    }
-
-    @Provides
-    @Singleton
-    fun provideComunicadoRepository(firestore: FirebaseFirestore): ComunicadoRepository {
-        return ComunicadoRepository(firestore)
     }
 
     @Provides
@@ -139,5 +126,22 @@ object RepositoryModule {
         firestore: FirebaseFirestore
     ): ActividadPreescolarRepository {
         return ActividadPreescolarRepository(firestore)
+    }
+
+    @Provides
+    @Named("personalDocenteCollection")
+    fun providePersonalDocenteCollection(
+        firestore: FirebaseFirestore
+    ): CollectionReference {
+        return firestore.collection("personal_docente")
+    }
+
+    @Provides
+    @Singleton
+    fun providePersonalDocenteRepository(
+        @Named("personalDocenteCollection") personalDocenteCollection: CollectionReference,
+        firestore: FirebaseFirestore
+    ): PersonalDocenteRepository {
+        return PersonalDocenteRepository(personalDocenteCollection, firestore)
     }
 } 

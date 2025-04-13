@@ -3,7 +3,7 @@ package com.tfg.umeegunero.data.repository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
-import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.data.model.Resultado
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import javax.inject.Inject
@@ -14,8 +14,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class UserRepository @Inject constructor(
-    private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) {
     
     private val usersCollection = firestore.collection("usuarios")
@@ -38,20 +38,20 @@ class UserRepository @Inject constructor(
     /**
      * Inicia sesión con correo electrónico y contraseña
      */
-    suspend fun login(email: String, password: String): Result<FirebaseUser> = try {
+    suspend fun login(email: String, password: String): Resultado<FirebaseUser> = try {
         val authResult = auth.signInWithEmailAndPassword(email, password).await()
         authResult.user?.let {
-            Result.Success(it)
-        } ?: Result.Error(Exception("Error al iniciar sesión"))
+            Resultado.Exito(it)
+        } ?: Resultado.Error("Error al iniciar sesión", Exception("Error al iniciar sesión"))
     } catch (e: Exception) {
         Timber.e(e, "Error durante el login")
-        Result.Error(e)
+        Resultado.Error(e.message, e)
     }
     
     /**
      * Registra un nuevo usuario con correo electrónico y contraseña
      */
-    suspend fun register(email: String, password: String, nombre: String): Result<FirebaseUser> = try {
+    suspend fun register(email: String, password: String, nombre: String): Resultado<FirebaseUser> = try {
         val authResult = auth.createUserWithEmailAndPassword(email, password).await()
         authResult.user?.let { user ->
             // Guardar información adicional del usuario en Firestore
@@ -62,32 +62,32 @@ class UserRepository @Inject constructor(
                 "fechaCreacion" to com.google.firebase.Timestamp.now()
             )
             usersCollection.document(user.uid).set(userData).await()
-            Result.Success(user)
-        } ?: Result.Error(Exception("Error al registrar usuario"))
+            Resultado.Exito(user)
+        } ?: Resultado.Error("Error al registrar usuario", Exception("Error al registrar usuario"))
     } catch (e: Exception) {
         Timber.e(e, "Error durante el registro")
-        Result.Error(e)
+        Resultado.Error(e.message, e)
     }
     
     /**
      * Cierra la sesión del usuario actual
      */
-    fun logout(): Result<Unit> = try {
+    fun logout(): Resultado<Unit> = try {
         auth.signOut()
-        Result.Success(Unit)
+        Resultado.Exito(Unit)
     } catch (e: Exception) {
         Timber.e(e, "Error al cerrar sesión")
-        Result.Error(e)
+        Resultado.Error(e.message, e)
     }
     
     /**
      * Envía un correo de recuperación de contraseña
      */
-    suspend fun resetPassword(email: String): Result<Unit> = try {
+    suspend fun resetPassword(email: String): Resultado<Unit> = try {
         auth.sendPasswordResetEmail(email).await()
-        Result.Success(Unit)
+        Resultado.Exito(Unit)
     } catch (e: Exception) {
         Timber.e(e, "Error al enviar correo de recuperación")
-        Result.Error(e)
+        Resultado.Error(e.message, e)
     }
 } 

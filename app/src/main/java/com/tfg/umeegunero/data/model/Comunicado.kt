@@ -3,13 +3,14 @@ package com.tfg.umeegunero.data.model
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
+import java.util.Date
 
 /**
  * Modelo de datos para los comunicados generales
  */
 data class Comunicado(
     @DocumentId
-    val id: String = "",
+    val id: String? = null,
     
     /**
      * Título del comunicado
@@ -69,9 +70,26 @@ data class Comunicado(
     val lecturas: Map<String, Timestamp> = emptyMap(),
 
     /**
-     * Firma digital del remitente (opcional)
+     * Firma digital del remitente en formato Base64 (opcional)
+     * Esta es la representación textual de la firma
      */
     val firmaDigital: String? = null,
+    
+    /**
+     * URL de la imagen de la firma almacenada en Firebase Storage
+     */
+    val firmaDigitalUrl: String? = null,
+    
+    /**
+     * Hash de verificación de la firma digital
+     * Se utiliza para verificar la autenticidad de la firma
+     */
+    val firmaDigitalHash: String? = null,
+    
+    /**
+     * Marca de tiempo de cuando se firmó el comunicado
+     */
+    val firmaTimestamp: Timestamp? = null,
 
     /**
      * Indica si el comunicado requiere confirmación de lectura
@@ -80,6 +98,24 @@ data class Comunicado(
 
     /**
      * Lista de usuarios que han confirmado la lectura
+     * Mapa donde la clave es el ID del usuario y el valor es la fecha de confirmación
      */
-    val confirmacionesLectura: Map<String, Timestamp> = emptyMap()
+    val confirmacionesLectura: Map<String, Timestamp> = emptyMap(),
+    
+    /**
+     * Indica si el comunicado requiere firma digital por parte del destinatario
+     */
+    val requiereFirmaDestinatario: Boolean = false,
+    
+    /**
+     * Registro de firmas digitales de los destinatarios
+     * Mapa donde la clave es el ID del usuario y el valor es un mapa con información de la firma
+     */
+    val firmasDestinatarios: Map<String, Map<String, Any>> = emptyMap(),
+    
+    /**
+     * URLs de las firmas de los destinatarios
+     * Mapa donde la clave es el ID del usuario y el valor es la URL de la firma
+     */
+    val firmasUrlsDestinatarios: Map<String, String> = emptyMap()
 ) 
