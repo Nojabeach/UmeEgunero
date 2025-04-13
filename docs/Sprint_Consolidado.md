@@ -1,203 +1,110 @@
 # UmeEgunero - Estado del Proyecto y Plan de Sprint
 
-## Resumen Ejecutivo
+## Estado actual del proyecto
 
-Este documento presenta un análisis detallado del estado actual del proyecto UmeEgunero y define las tareas pendientes para completar la visión del producto. UmeEgunero es una aplicación Android para la gestión educativa que conecta centros escolares, profesores y familias, implementada con Jetpack Compose y siguiendo principios modernos de diseño UX/UI.
+El proyecto UmeEgunero es una aplicación móvil Android para la comunicación entre centros educativos, profesores y familias que utiliza una arquitectura MVVM moderna con Jetpack Compose. Se han implementado la mayoría de las funcionalidades, pero aún quedan algunos elementos por completar.
 
-## Estado General del Proyecto
+### Módulos implementados
 
-- **Desarrollo completado**: Aproximadamente 92%
-- **Pantallas implementadas**: 75 pantallas distribuidas entre los diferentes perfiles de usuario
-- **Archivos Kotlin**: 262 archivos
-- **Elementos pendientes principales**:
-  - Implementación completa del Sistema de Gamificación Educativa
-  - Desarrollo del Módulo de Comunicaciones Oficiales
-  - Optimización de la manipulación de archivos y adjuntos
+✅ **Sistema de navegación**: Estructura completa con `NavAnimations`, `AppScreens` y `Navigation`
 
-## Logros Completados
+✅ **Autenticación**: 
+- Login para todos los perfiles de usuario
+- Gestión de sesiones
 
-### Sistema de Autenticación
-- ✅ **Login**: Sistema completamente funcional con soporte para diferentes tipos de usuario
-  - Administrador de Aplicación
-  - Administrador de Centro
-  - Profesor
-  - Familiar
-- ✅ **Navegación adaptativa** por tipo de usuario
-- ✅ **Persistencia de sesión** con recuperación de estado
-- ✅ **Validación de credenciales** en tiempo real
+✅ **Dashboards**: 
+- AdminDashboard
+- CentroDashboard
+- ProfesorDashboard
+- FamiliarDashboard
 
-### Dashboards Completados
-- ✅ **Dashboard para Administrador de App**: 
-  - Centro de control completo para gestión global
-  - Diseño moderno siguiendo Material Design 3
-  - Categorización por secciones
-  - Componentes animados
-  - Documentación Dokka
-- ✅ **Dashboard para Administrador de Centro**: 
-  - Interfaz moderna con estadísticas clave
-  - Panel de gestión con tarjetas interactivas 
-  - Documentación Dokka
-- ✅ **Dashboard para Profesor**:
-  - Interfaz completa para la gestión de alumnos y clases
-  - Sistema de visualización y registro de actividades
-  - Sistema de navegación integrado con el resto de la aplicación
-  - Documentación Dokka
-- ✅ **Dashboard para Familiar**:
-  - Interfaz moderna para visualización de actividades de los hijos
-  - Sistema de selección de múltiples hijos
-  - Tarjetas informativas de resumen de actividades diarias
-  - Accesos rápidos a las funcionalidades principales
-  - Sistema de notificaciones integrado
-  - Documentación Dokka
+✅ **Comunicación**: 
+- Sistema completo de mensajería
+- Bandeja de entrada
+- Compose de mensajes
 
-### Sistema de Mensajería
-- ✅ **Chat entre profesores y familiares**
-- ✅ **Bandeja de entrada/salida**
-- ✅ **Notificaciones de mensajes**
-- ⚠️ **Adjuntos y gestión de archivos** (parcialmente implementado)
+✅ **Calendario académico**:
+- Visualización de calendario
+- Gestión de eventos
 
-### Calendario Académico
-- ✅ **Visualización** mensual, semanal y diaria
-- ✅ **Gestión de eventos** académicos
-- ✅ **Sincronización** entre usuarios
+✅ **Gestión académica**:
+- Cursos y clases
+- Gestión de alumnos
+- Asistencia
 
-### Sistema de Gestión Académica
-- ✅ **Cursos y Clases**: CRUD completo
-  - Implementación completa de gestión de cursos con CRUD y validaciones
-  - Implementación completa de gestión de clases con CRUD y validaciones
-  - Interfaz de usuario moderna con animaciones y feedback visual
-  - Validaciones de entrada de datos
-  - Navegación fluida entre cursos y clases
-  - Soporte para roles de administrador y centro educativo
-- ✅ **Asignación** de profesores y alumnos
-- ✅ **Seguimiento académico** básico
+✅ **Gestión para profesores**:
+- Registro de actividades preescolares
+- Sistema de evaluación
+- Gestión de tareas
+- Chat con familias
 
-### Sistema de Registro de Actividades
-- ✅ **Registro diario** para alumnos de preescolar
-- ✅ **Alimentación, descanso, actividades**
-- ✅ **Visualización para familiares**
+✅ **Funcionalidades para familias**:
+- Visualización de registros diarios
+- Seguimiento de actividades
+- Entrega de tareas
+- Chat con profesores
 
-### Mejoras y Correcciones Implementadas
-- ✅ **Compilación exitosa** de todos los módulos
-- ✅ **Corrección de errores** en referencias a `EstadoComida` y `Spring`
-- ✅ **Actualización de importaciones** para usar APIs no deprecadas
-- ✅ **Verificaciones de seguridad** para mapas de datos
-- ✅ **Corrección de problemas** en navegación
-- ✅ **Corrección de errores** en el Dashboard Familiar:
-  - Solución a problemas con enumeraciones `NivelConsumo`
-  - Manejo seguro de propiedades nullables como `siesta`
-  - Corrección de métodos en `FamiliarDashboardViewModel`
-  - Ajuste de verificaciones de tipo en `Result`
+### Correcciones recientes
 
-## Elementos Pendientes
+Se han solucionado los siguientes errores:
 
-### 1. Finalización de Dashboards
+1. Referencias incorrectas en `AdminDashboardScreen.kt` a `Comunicados` (ahora usa `ComunicadosCirculares`)
+2. Importación de `Result` y corrección de método `obtenerUsuarioPorId` en `ComponerMensajeViewModel.kt`
+3. Parámetros para `DocumentoScreen` en `Navigation.kt`
+4. Conversión correcta del tipo de datos para `fecha` en `DetalleDiaEventoScreen`
 
-#### Dashboard de Profesor
-- ✅ **Reemplazar referencias a DummyScreen**
-  - Se ha implementado correctamente `HiltProfesorDashboardScreen.kt` con un diseño moderno
-  - Se ha integrado con el ViewModel existente `ProfesorDashboardViewModel`
-  - Se ha añadido documentación Dokka completa
-- ✅ **Mejorar sistema de registro de actividades**
-  - Se han añadido plantillas predefinidas en el modelo `PlantillaRegistroActividad`
-  - Se ha implementado un sistema de etiquetas personalizables con el modelo `EtiquetaActividad`
-  - Se ha implementado la clonación de registros anteriores
-- ❌ **Expandir herramientas de evaluación**
-  - Sistema de rúbricas configurable
-  - Evaluación cualitativa y cuantitativa
-  - Generación automática de informes
+### Pantallas pendientes por implementar
 
-#### Dashboard de Familiar
-- ✅ **Optimizar visualización de múltiples alumnos** (implementado)
-  - Vista con selector de hijos con avatares y diseño visual intuitivo
-  - Sistema de selección con feedback visual claro
-  - Actualización dinámica de contenido según el hijo seleccionado
-- ✅ **Implementar panel de comunicación bidireccional** (implementado)
-  - Acceso directo a mensajería desde el dashboard
-  - Contador de mensajes no leídos con badge
-  - Botones de acciones rápidas
-- ✅ **Mejorar visualización de estadísticas** (implementado)
-  - Resumen de actividades diarias con iconos intuitivos
-  - Visualización clara de estados de alimentación, siesta y necesidades
-  - Sistema de notificaciones para registros no leídos
+1. **Pendientes para la administración**:
+   - ❌ Implementación completa de algunos formularios de alta/modificación
+   - ❌ Mejoras en la gestión de usuarios
 
-### 2. Funcionamiento de Dashboards
-- Administrador de aplicación ( acceso con admin@eguneroko.com)
-- Administrador de centro ( acceso con el unico centro desarrollado bmerana@eguneroko.com)
-- Profesor ( crear una cuenta para acceder y ver todas las opiones)
-- Padre (crear una cuenta de alumno, situada en un curso, una clase, y luego crear una cuenta de padre al que el centro tendra que poder vincular y asi luego probar el perfil de padre)
+2. **Elementos pendientes para comunicación**:
+   - ❌ Implementación de lectura de comunicados y circulares
+   - ❌ Confirmación de lectura de comunicados
 
-### 3. Pantallas pendientes (Sprint 2)
-Los siguientes componentes actualmente utilizan `DummyScreen` como implementación temporal y deben desarrollarse para completar la funcionalidad:
+3. **Mejoras para el calendario**:
+   - ❌ Sincronización con calendario del dispositivo
+   - ❌ Notificaciones de eventos próximos
 
-#### Centro Educativo
-- ❌ **Gestión de Profesores**
-  - Navegación implementada pero usa `DummyScreen` como pantalla temporal
-  - Necesita implementación de listado, búsqueda y asignación de profesores
-  
-- ❌ **Vinculación Familiar**
-  - Navegación implementada pero usa `DummyScreen` como pantalla temporal
-  - Requiere implementación del sistema de vinculación de familiares con alumnos
-  
-- ❌ **Añadir Alumno**
-  - Formulario de registro de nuevo alumno usando `DummyScreen`
-  - Necesita implementación completa del formulario con validaciones
-  
-- ❌ **Gestión de Notificaciones**
-  - Panel de notificaciones del centro usando `DummyScreen`
-  - Requiere implementación del sistema de envío y gestión de notificaciones
+## Plan de Sprint
 
-#### Familiar
-- ❌ **Calendario Familiar**
-  - Usa `DummyScreen` al navegar desde el Dashboard Familiar
-  - Requiere implementación de vista específica de calendario para familias
-  
-- ❌ **Notificaciones Familiares**
-  - Centro de notificaciones usando `DummyScreen`
-  - Requiere implementación de listado y gestión de notificaciones recibidas
-  
-- ❌ **Historial de Actividades**
-  - Consulta de registros diarios de un alumno usando `DummyScreen`
-  - Necesita implementación de vista histórica con filtros y búsqueda
-  
-- ❌ **Mensajería Familiar**
-  - Centro de mensajes usando `DummyScreen`
-  - Requiere implementación de bandeja de entrada/salida y chat con profesores
+### Objetivos para el próximo sprint
 
-#### General
-- ❌ **Perfil de Usuario**
-  - Pantalla de perfil usando `DummyScreen`
-  - Requiere implementación de visualización y edición de datos personales
-  
-- ❌ **Configuración**
-  - Pantalla de configuración usando `DummyScreen`
-  - Necesita implementación de ajustes de la aplicación, notificaciones y preferencias
+1. **Optimizaciones del módulo de comunicación**:
+   - Mejorar la gestión de archivos adjuntos
+   - Implementar notificaciones de nuevos mensajes
 
-### 4. Módulo de Comunicaciones Oficiales (Parcialmente Implementado)
+2. **Mejoras en el módulo de tareas**:
+   - Optimizar interfaz de creación de tareas
+   - Mejorar sistema de evaluación
 
-- ⚠️ **Sistema de circulares y comunicados** (parcialmente implementado)
-  - Ya existe modelo `Comunicado.kt` y `ComunicadosViewModel.kt`
-  - `ComunicadosScreen.kt` implementada para administradores
-  - Falta implementar confirmación de lectura
-  - Falta añadir firma digital
-- ❌ **Desarrollar calendario de reuniones**
-  - Sistema de solicitud y confirmación de citas
-  - Recordatorios automatizados
-  - Integración con calendario del dispositivo
+3. **Perfeccionar el módulo de calendario**:
+   - Mejorar la visualización de eventos recurrentes
+   - Implementar recordatorios
 
-### 5. Optimización y Corrección de Errores
+4. **Experiencia de usuario**:
+   - Optimizar animaciones en transiciones
+   - Implementar tema oscuro completo
+   - Mejorar adaptación a diferentes tamaños de pantalla
 
-- ❌ **Completar funcionalidad de adjuntos**
-  - Finalizar la funcionalidad de manipulación de adjuntos en mensajes
-  - Implementar acciones adicionales en la interfaz de chat
-  - Optimizar la manipulación de archivos
-- ❌ **Mejorar rendimiento general**
-  - Optimizar tiempos de carga en dashboards
-  - Reducir consumo de memoria en visualizaciones complejas
-  - Implementar carga diferida de componentes pesados
+### Tareas específicas para desarrolladores
 
-### Mejoras en Interoperabilidad de Perfiles
-- ✅ **Acceso Administrador Universal**:
-  - El administrador de la aplicación tiene acceso a todas las funcionalidades de otros perfiles
-  - Las pantallas principales como Gestión de Cursos y Clases están implementadas en el módulo común
-  - Componentes reutilizables organizados en paquete `common` para máxima consistencia
+| ID | Tarea | Descripción | Prioridad | Estimación |
+|----|-------|-------------|-----------|------------|
+| 1 | Optimizar sistema de mensajería | Mejorar visualización y gestión de adjuntos | Alta | 2 días |
+| 2 | Implementar notificaciones push | Configurar FCM para notificaciones en tiempo real | Alta | 3 días |
+| 3 | Mejorar tema oscuro | Revisar y corregir componentes en modo oscuro | Media | 2 días |
+| 4 | Optimizar transiciones | Perfeccionar animaciones entre pantallas | Baja | 1 día |
+| 5 | Testing de componentes | Ampliar tests para navegación y pantallas principales | Alta | 3 días |
+
+## Recomendaciones técnicas
+
+1. **Optimización de rendimiento**: La aplicación podría beneficiarse de técnicas de carga diferida para componentes pesados.
+2. **Gestión de caché**: Implementar mejores estrategias de caché para reducir llamadas al backend.
+3. **Testing**: Incrementar la cobertura de pruebas, especialmente en módulos críticos.
+4. **Soporte multilenguaje**: Preparar la app para soportar múltiples idiomas.
+
+## Conclusión
+
+El proyecto UmeEgunero se encuentra en una fase avanzada de desarrollo con la mayoría de las pantallas implementadas. El enfoque para el próximo sprint debería centrarse en optimizaciones, mejoras de experiencia de usuario y pruebas para garantizar la calidad y estabilidad de la aplicación.

@@ -35,16 +35,16 @@ import androidx.compose.foundation.layout.Arrangement.SpaceEvenly
 @Composable
 fun ComponerMensajeScreen(
     navController: NavController,
-    mensajeIdRespuesta: String? = null,
+    destinatarioId: String? = null,
     viewModel: ComponerMensajeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Si es una respuesta, cargar mensaje original
-    LaunchedEffect(mensajeIdRespuesta) {
-        mensajeIdRespuesta?.let {
-            // La lógica para cargar y configurar el mensaje de respuesta se añadirá más adelante
+    // Inicializar con destinatario si se proporciona
+    LaunchedEffect(destinatarioId) {
+        destinatarioId?.let {
+            viewModel.cargarDestinatario(it)
         }
     }
     

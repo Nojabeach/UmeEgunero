@@ -11,6 +11,15 @@ UmeEgunero es una aplicación Android desarrollada en Kotlin con Jetpack Compose
 - **Inyección de dependencias con Hilt**: Gestión eficiente de dependencias.
 - **Coroutines y Flow**: Para operaciones asíncronas y flujos de datos reactivos.
 
+## Documentación
+
+El proyecto incluye documentación detallada disponible en la carpeta `/docs`:
+
+- **[Documentación Técnica](docs/Documentacion_Tecnica.md)**: Detalles técnicos sobre arquitectura, patrones utilizados y guía para desarrolladores.
+- **[Manual de Usuario](docs/Manual_Usuario.md)**: Guía completa sobre cómo utilizar la aplicación para cada tipo de usuario.
+- **[Guía de Despliegue](docs/Guia_Despliegue.md)**: Instrucciones paso a paso para configurar y desplegar la aplicación.
+- **[Estado del Sprint](docs/Sprint_Consolidado.md)**: Estado actual del desarrollo, tareas completadas y pendientes.
+
 ## Sprint 1 - Configuración y Estabilización
 
 ### Mejoras implementadas:

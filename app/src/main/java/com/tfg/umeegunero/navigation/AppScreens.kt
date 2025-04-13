@@ -1,5 +1,9 @@
 package com.tfg.umeegunero.navigation
 
+import android.net.Uri
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+
 /**
  * Representa las diferentes pantallas y rutas de navegación de la aplicación.
  * 
@@ -212,7 +216,7 @@ sealed class AppScreens(val route: String) {
      * @param url URL del documento a visualizar (codificada)
      * @param nombre Nombre opcional del documento (codificado)
      */
-    object Documento : AppScreens("documento/{url}?nombre={nombre}") {
+    object VisualizadorDocumento : AppScreens("documento/{url}?nombre={nombre}") {
         fun createRoute(url: String, nombre: String? = null): String {
             val urlEncoded = android.net.Uri.encode(url)
             return if (nombre != null) {
@@ -301,7 +305,7 @@ sealed class AppScreens(val route: String) {
      * Sección: Pantallas de comunicaciones y reportes
      */
     /** Pantalla de comunicados y circulares */
-    object Comunicados : AppScreens("comunicaciones/comunicados")
+    object ComunicadosCirculares : AppScreens("comunicaciones/comunicados")
     
     /** Reporte de uso del sistema */
     object ReporteUso : AppScreens("reportes/uso")
@@ -495,16 +499,35 @@ sealed class AppScreens(val route: String) {
     
     /**
      * Pantalla para componer un nuevo mensaje
-     * @param mensajeId ID de mensaje opcional para responder
+     * @param destinatarioId ID del destinatario (opcional)
      */
-    object ComponerMensaje : AppScreens("componer_mensaje?mensajeId={mensajeId}") {
-        const val MensajeId = "mensajeId"
-        fun createRoute(mensajeId: String? = null): String {
-            return if (mensajeId != null) {
-                "componer_mensaje?mensajeId=$mensajeId"
-            } else {
-                "componer_mensaje"
-            }
-        }
+    object ComponerMensaje : AppScreens("componer_mensaje?destinatario={destinatarioId}") {
+        fun createRoute() = "componer_mensaje"
+        fun createRoute(destinatarioId: String) = "componer_mensaje?destinatario=$destinatarioId"
     }
+    
+    /**
+     * Detalle de un mensaje recibido
+     * @param mensajeId ID del mensaje
+     */
+    object DetalleMensaje : AppScreens("detalle_mensaje/{mensajeId}") {
+        fun createRoute(mensajeId: String) = "detalle_mensaje/$mensajeId"
+    }
+    
+    /**
+     * Sección: Pantallas de tareas y evaluación
+     */
+    /** Lista de tareas académicas */
+    object Tareas : AppScreens("tareas")
+    
+    /**
+     * Detalle de una tarea académica
+     * @param tareaId ID de la tarea
+     */
+    object DetalleTarea : AppScreens("detalle_tarea/{tareaId}") {
+        fun createRoute(tareaId: String) = "detalle_tarea/$tareaId"
+    }
+    
+    /** Pantalla de evaluaciones */
+    object Evaluacion : AppScreens("evaluacion")
 } 

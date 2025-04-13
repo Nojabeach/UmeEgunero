@@ -8,6 +8,7 @@ import com.tfg.umeegunero.data.model.TipoDestinatario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,6 +54,50 @@ class ComponerMensajeViewModel @Inject constructor(
     
     init {
         cargarUsuarios()
+    }
+    
+    /**
+     * Carga un destinatario por su ID
+     */
+    fun cargarDestinatario(destinatarioId: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(cargando = true) }
+                
+                // Buscar usuario por ID
+                when (val result = usuarioRepository.obtenerUsuarioPorId(destinatarioId)) {
+                    is Result.Success<Usuario> -> {
+                        val usuario = result.data
+                        _uiState.update { 
+                            it.copy(
+                                destinatario = usuario,
+                                tipoDestinatario = TipoDestinatario.INDIVIDUAL,
+                                cargando = false
+                            ) 
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                error = "No se pudo cargar el destinatario: ${result.exception?.message}",
+                                cargando = false
+                            ) 
+                        }
+                    }
+                    is Result.Loading<*> -> {
+                        // Estado de carga
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar destinatario")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar destinatario: ${e.message}",
+                        cargando = false
+                    ) 
+                }
+            }
+        }
     }
     
     /**

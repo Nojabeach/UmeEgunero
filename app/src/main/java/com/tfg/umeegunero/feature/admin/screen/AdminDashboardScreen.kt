@@ -144,7 +144,7 @@ fun AdminDashboardScreen(
                     onNavigateToReporteUso = { navController.navigate(AppScreens.ReporteUso.route) },
                     onNavigateToReporteRendimiento = { navController.navigate(AppScreens.ReporteRendimiento.route) },
                     onNavigateToSeguridad = { navController.navigate(AppScreens.Config.route) },
-                    onNavigateToComunicados = { navController.navigate(AppScreens.Comunicados.route) },
+                    onNavigateToComunicados = { navController.navigate(AppScreens.ComunicadosCirculares.route) },
                     onNavigateToNotificaciones = { navController.navigate(AppScreens.Notificaciones.route) },
                     onNavigateToPerfil = { navController.navigate(AppScreens.Perfil.route) },
                     modifier = Modifier.padding(paddingValues)
@@ -284,7 +284,7 @@ fun AdminDashboardContent(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             AdminOptionCard(
-                title = "Comunicados",
+                title = "Comunicados y circulares",
                 description = "Anuncios generales",
                 icon = Icons.Default.Campaign,
                 color = Color(0xFF1565C0),

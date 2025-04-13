@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.navigation
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.*
@@ -27,6 +28,10 @@ import java.time.LocalDate
 
 /**
  * Navegación principal de la aplicación
+ * 
+ * @param navController Controlador de navegación
+ * @param startDestination Ruta inicial
+ * @param onCloseApp Función para cerrar la app
  */
 @Composable
 fun Navigation(
@@ -36,7 +41,43 @@ fun Navigation(
 ) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        enterTransition = { 
+            val animationType = if (targetState.destination.route?.contains("dashboard") == true || 
+                targetState.destination.route == AppScreens.Welcome.route) {
+                NavAnimations.AnimationType.DASHBOARD
+            } else {
+                NavAnimations.AnimationType.DETAIL
+            }
+            NavAnimations.setTransitionAnimations(targetState, animationType).first
+        },
+        exitTransition = { 
+            val animationType = if (initialState.destination.route?.contains("dashboard") == true || 
+                initialState.destination.route == AppScreens.Welcome.route) {
+                NavAnimations.AnimationType.DASHBOARD
+            } else {
+                NavAnimations.AnimationType.DETAIL
+            }
+            NavAnimations.setTransitionAnimations(initialState, animationType).second
+        },
+        popEnterTransition = { 
+            val animationType = if (targetState.destination.route?.contains("dashboard") == true || 
+                targetState.destination.route == AppScreens.Welcome.route) {
+                NavAnimations.AnimationType.DASHBOARD
+            } else {
+                NavAnimations.AnimationType.DETAIL
+            }
+            NavAnimations.setTransitionAnimations(targetState, animationType).first
+        },
+        popExitTransition = { 
+            val animationType = if (initialState.destination.route?.contains("dashboard") == true || 
+                initialState.destination.route == AppScreens.Welcome.route) {
+                NavAnimations.AnimationType.DASHBOARD
+            } else {
+                NavAnimations.AnimationType.DETAIL
+            }
+            NavAnimations.setTransitionAnimations(initialState, animationType).second
+        }
     ) {
         // Pantalla de bienvenida
         composable(route = AppScreens.Welcome.route) {
@@ -48,7 +89,12 @@ fun Navigation(
                         WelcomeUserType.PROFESOR -> "PROFESOR"
                         WelcomeUserType.FAMILIAR -> "FAMILIAR"
                     }
-                    navController.navigate(AppScreens.Login.createRoute(userTypeRoute))
+                    try {
+                        navController.navigate(AppScreens.Login.createRoute(userTypeRoute))
+                    } catch (e: Exception) {
+                        Log.e("Navigation", "Error al navegar a login: ${e.message}", e)
+                        navController.navigate(AppScreens.SoporteTecnico.route)
+                    }
                 },
                 onCloseApp = onCloseApp,
                 onNavigateToTechnicalSupport = {
@@ -119,7 +165,7 @@ fun Navigation(
         
         // Pantalla de visualización de documentos
         composable(
-            route = AppScreens.Documento.route,
+            route = AppScreens.VisualizadorDocumento.route,
             arguments = listOf(
                 navArgument("url") { 
                     type = NavType.StringType 
@@ -137,8 +183,7 @@ fun Navigation(
             DocumentoScreen(
                 navController = navController,
                 documentoUrl = url,
-                documentoNombre = nombre,
-                viewModel = hiltViewModel()
+                documentoNombre = nombre
             )
         }
 
@@ -150,6 +195,8 @@ fun Navigation(
             )
         }
 
+        // PANTALLAS DE CENTRO
+        
         // Pantalla del dashboard del centro educativo
         composable(route = AppScreens.CentroDashboard.route) {
             com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen(
@@ -158,6 +205,8 @@ fun Navigation(
             )
         }
         
+        // PANTALLAS DE FAMILIA
+        
         // Pantalla del dashboard familiar
         composable(route = AppScreens.FamiliarDashboard.route) {
             com.tfg.umeegunero.feature.familiar.screen.FamiliaDashboardScreen(
@@ -165,6 +214,8 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
+        
+        // PANTALLAS DE PROFESOR
         
         // Pantalla del dashboard de profesor
         composable(route = AppScreens.ProfesorDashboard.route) {
@@ -175,17 +226,20 @@ fun Navigation(
         }
 
         // Ruta para la evaluación académica
-        composable("evaluacion") {
+        composable(route = AppScreens.Evaluacion.route) {
             EvaluacionScreen(
                 navController = navController,
                 alumnos = emptyList()
             )
         }
         
+        // PANTALLAS DE CALENDARIO Y EVENTOS
+        
         // Pantalla de calendario y eventos académicos
         composable(route = AppScreens.Calendario.route) {
             CalendarioScreen(
-                navController = navController
+                navController = navController,
+                viewModel = hiltViewModel<CalendarioViewModel>()
             )
         }
         
@@ -200,205 +254,83 @@ fun Navigation(
             
             DetalleEventoScreen(
                 eventoId = eventoId,
-                navController = navController
+                navController = navController,
+                viewModel = hiltViewModel()
             )
         }
-
-        // Detalle de día con eventos
+        
+        // Pantalla de detalle de día con eventos
         composable(
             route = AppScreens.DetalleDiaEvento.route,
             arguments = listOf(
-                navArgument(AppScreens.DetalleDiaEvento.Fecha) {
-                    type = NavType.StringType
-                }
+                navArgument("fecha") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val fechaString = backStackEntry.arguments?.getString(AppScreens.DetalleDiaEvento.Fecha) ?: LocalDate.now().toString()
-            val fecha = LocalDate.parse(fechaString)
+            val fechaStr = backStackEntry.arguments?.getString("fecha") ?: LocalDate.now().toString()
+            val fecha = try {
+                LocalDate.parse(fechaStr)
+            } catch (e: Exception) {
+                LocalDate.now()
+            }
             
             DetalleDiaEventoScreen(
+                fecha = fecha,
                 navController = navController,
-                fecha = fecha
+                viewModel = hiltViewModel()
             )
         }
         
-        // Pantalla de bandeja de entrada de mensajes
+        // PANTALLAS DE COMUNICACIÓN
+        
+        // Pantalla de bandeja de entrada
         composable(route = AppScreens.BandejaEntrada.route) {
             BandejaEntradaScreen(
-                navController = navController
+                navController = navController,
+                viewModel = hiltViewModel()
             )
         }
         
-        // Pantalla para componer un nuevo mensaje
+        // Pantalla para componer mensaje
         composable(
             route = AppScreens.ComponerMensaje.route,
             arguments = listOf(
-                navArgument(AppScreens.ComponerMensaje.MensajeId) {
+                navArgument("destinatarioId") { 
                     type = NavType.StringType
-                    nullable = true
+                    nullable = true 
                     defaultValue = null
                 }
             )
         ) { backStackEntry ->
-            val mensajeId = backStackEntry.arguments?.getString(AppScreens.ComponerMensaje.MensajeId)
+            val destinatarioId = backStackEntry.arguments?.getString("destinatarioId")
             
             ComponerMensajeScreen(
                 navController = navController,
-                mensajeIdRespuesta = mensajeId
+                destinatarioId = destinatarioId,
+                viewModel = hiltViewModel()
             )
         }
+
+        // PANTALLAS DE TAREAS
         
-        // Pantalla de gestión de cursos y clases
-        composable(route = AppScreens.GestionCursosYClases.route) {
-            com.tfg.umeegunero.feature.centro.screen.GestionCursosYClasesScreen(
+        // Pantalla de tareas
+        composable(route = AppScreens.Tareas.route) {
+            TareasScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
             )
         }
         
-        // Pantalla de gestión de clases por curso
+        // Pantalla de detalle de tarea
         composable(
-            route = AppScreens.GestionClases.route,
+            route = AppScreens.DetalleTarea.route,
             arguments = listOf(
-                navArgument("cursoId") { type = NavType.StringType }
+                navArgument("tareaId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+            val tareaId = backStackEntry.arguments?.getString("tareaId") ?: ""
             
-            // Usar la implementación existente en lugar de DummyScreen
-            com.tfg.umeegunero.feature.common.academico.screen.GestionClasesScreen(
-                navController = navController,
-                cursoId = cursoId,
-                viewModel = hiltViewModel()
-            )
-        }
-        
-        // Pantalla de gestión de profesores
-        composable(route = AppScreens.GestionProfesores.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Gestión de Profesores",
-                description = "Panel de administración de profesores del centro",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de vinculación familiar
-        composable(route = AppScreens.VinculacionFamiliar.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Vinculación Familiar",
-                description = "Gestión de vinculaciones entre familiares y alumnos",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de añadir alumno
-        composable(route = AppScreens.AddAlumno.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Añadir Alumno",
-                description = "Formulario para registrar un nuevo alumno en el centro",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de notificaciones del centro
-        composable(route = AppScreens.GestionNotificacionesCentro.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Gestión de Notificaciones",
-                description = "Administración de notificaciones y comunicados del centro",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de calendario para familiares
-        composable(route = AppScreens.CalendarioFamilia.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Calendario Familiar",
-                description = "Calendario de eventos y actividades de sus hijos",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de notificaciones para familiares
-        composable(route = AppScreens.NotificacionesFamilia.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Notificaciones",
-                description = "Centro de notificaciones y comunicados importantes",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de perfil de usuario
-        composable(route = AppScreens.Perfil.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Mi Perfil",
-                description = "Gestión de datos personales y preferencias de usuario",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de configuración
-        composable(route = "configuracion") {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Configuración",
-                description = "Ajustes de la aplicación y preferencias de usuario",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de consulta de registro diario
-        composable(
-            route = AppScreens.ConsultaRegistroDiario.route,
-            arguments = listOf(
-                navArgument("alumnoId") { type = NavType.StringType },
-                navArgument("alumnoNombre") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
-            val alumnoNombre = backStackEntry.arguments?.getString("alumnoNombre") ?: ""
-            
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Historial de Actividades",
-                description = "Registros diarios de $alumnoNombre",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla de conversaciones para familia
-        composable(route = AppScreens.ConversacionesFamilia.route) {
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Mensajes",
-                description = "Centro de comunicación con profesores y personal del centro",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla para añadir una clase a un curso
-        composable(
-            route = AppScreens.AddClase.route,
-            arguments = listOf(
-                navArgument("cursoId") { type = NavType.StringType },
-                navArgument("centroId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
-            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
-            
-            com.tfg.umeegunero.feature.common.academico.screen.AddClaseScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
-        }
-        
-        // Pantalla para editar una clase existente
-        composable(
-            route = AppScreens.EditClase.route,
-            arguments = listOf(
-                navArgument("claseId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
-            
-            com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen(
+            DetalleTareaScreen(
+                tareaId = tareaId,
                 navController = navController,
                 viewModel = hiltViewModel()
             )
