@@ -8,6 +8,7 @@ import androidx.navigation.*
 import androidx.navigation.compose.*
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
+import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
 import com.tfg.umeegunero.feature.common.config.screen.NotificacionesScreen
 import com.tfg.umeegunero.feature.common.files.screen.DocumentoScreen
 import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
@@ -97,6 +98,9 @@ fun Navigation(
                         navController.navigate(AppScreens.SoporteTecnico.route)
                     }
                 },
+                onNavigateToRegister = {
+                    navController.navigate(AppScreens.Registro.route)
+                },
                 onCloseApp = onCloseApp,
                 onNavigateToTechnicalSupport = {
                     navController.navigate(AppScreens.SoporteTecnico.route)
@@ -104,6 +108,14 @@ fun Navigation(
                 onNavigateToFAQ = {
                     navController.navigate(AppScreens.FAQ.route)
                 }
+            )
+        }
+        
+        // Pantalla de registro de usuarios (familiar)
+        composable(route = AppScreens.Registro.route) {
+            RegistroScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onRegistroCompletado = { navController.navigate(AppScreens.Login.createRoute("FAMILIAR")) }
             )
         }
         

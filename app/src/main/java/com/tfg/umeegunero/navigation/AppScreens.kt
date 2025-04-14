@@ -36,8 +36,8 @@ sealed class AppScreens(val route: String) {
         fun createRoute(userType: String) = "login/$userType"
     }
     
-    /** Pantalla de registro de nuevos usuarios - Comentada temporalmente por problemas de compilación */
-    // object Registro : AppScreens("registro")
+    /** Pantalla de registro de nuevos usuarios */
+    object Registro : AppScreens("registro")
     
     /** Pantalla de soporte técnico con formulario de contacto */
     object SoporteTecnico : AppScreens("soporte_tecnico")

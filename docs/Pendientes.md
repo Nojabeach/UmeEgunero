@@ -74,10 +74,12 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Prioridad: Alta
    - Tiempo estimado: 1 día
 
-3. **Comunicaciones**
+3. **Comunicaciones** ⚠️
    - Verificar envío de mensajes a familias
    - Comprobar creación y difusión de comunicados
+   - Implementar visualización de estadísticas de lectura y confirmación de comunicados
    - Validar notificaciones de respuestas
+   - **Pendiente**: Implementar panel de administración para monitorizar confirmaciones de lectura
    - Prioridad: Alta
    - Tiempo estimado: 1 día
 
@@ -280,6 +282,28 @@ Se recomienda revisar y consolidar los siguientes elementos:
    - Prioridad: Media
    - Tiempo estimado: 2 días
 
+## Refactorización y limpieza del código
+
+1. **Corregir advertencias de compilación**
+   - Actualizar uso de APIs obsoletas (migrate from deprecated APIs)
+     - Migrar de IconVectors obsoletos a sus versiones AutoMirrored
+     - Actualizar `Divider` a `HorizontalDivider`
+     - Utilizar la API KTX de Firebase en lugar de los métodos obsoletos como `toObject()`
+   - Eliminar llamadas seguras innecesarias a receptores no nulos
+   - Eliminar operadores Elvis innecesarios en tipos no nulos
+   - Renombrar o utilizar los parámetros no utilizados
+   - Eliminar variables no utilizadas
+   - Prioridad: Media
+   - Tiempo estimado: 3 días
+
+2. **Mejorar calidad del código**
+   - Refactorizar código duplicado
+   - Simplificar expresiones condicionales innecesarias
+   - Mejorar el manejo de tipos nulos para evitar conversiones inseguras
+   - Normalizar el estilo de código en todos los archivos
+   - Prioridad: Baja
+   - Tiempo estimado: 2 días
+
 ## Conclusiones y prioridades para TFG
 
 El proyecto UmeEgunero, como Trabajo de Fin de Grado para 2º de DAM, se encuentra en una fase avanzada pero requiere completar estas tareas pendientes para ser considerado un proyecto profesional completo que demuestre las competencias adquiridas durante la formación.
@@ -290,10 +314,14 @@ Las prioridades recomendadas son:
 2. Completar la revisión de funcionalidades por perfil de usuario
 3. Verificar el correcto funcionamiento de los gráficos y datos en tiempo real
 4. Mejorar los sistemas de comunicación y notificaciones
+   - **Progreso**: Se ha completado la implementación del sistema de confirmación de lectura de comunicados.
 5. Completar la implementación de formularios de alta/modificación
 6. Ampliar la suite de pruebas (unitarias, integración y UI)
 7. Documentar adecuadamente la estructura de la base de datos
 8. Optimizar rendimiento y experiencia de usuario
+9. Refactorizar y limpiar el código para corregir advertencias de compilación
+   - Actualizar APIs obsoletas
+   - Eliminar código redundante y mejorar la calidad general
 
 Es fundamental garantizar una cobertura de pruebas suficiente para demostrar la robustez de la implementación y documentar adecuadamente el código para facilitar su evaluación académica y mostrar las buenas prácticas de desarrollo aprendidas durante el ciclo formativo.
 
