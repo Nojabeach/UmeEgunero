@@ -278,7 +278,8 @@ fun FamiliaDashboardScreen(
                                 )
                             )
                         }
-                    }
+                    },
+                    onVerComunicados = { navController.navigate(AppScreens.ComunicadosFamilia.route) }
                 )
                 
                 // Notificaciones y comunicados recientes
@@ -580,18 +581,17 @@ fun ActividadInfoItem(
 fun QuickActionsCard(
     onVerMensajes: () -> Unit,
     onVerCalendario: () -> Unit,
-    onVerHistorial: () -> Unit
+    onVerHistorial: () -> Unit,
+    onVerComunicados: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Acciones rápidas",
+                text = "Accesos Rápidos",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -600,7 +600,7 @@ fun QuickActionsCard(
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 ActionButton(
                     icon = Icons.AutoMirrored.Filled.Chat,
@@ -624,6 +624,15 @@ fun QuickActionsCard(
                     icon = Icons.AutoMirrored.Filled.Assignment,
                     text = "Historial",
                     onClick = onVerHistorial,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                ActionButton(
+                    icon = Icons.Default.Announcement,
+                    text = "Comunicados",
+                    onClick = onVerComunicados,
                     modifier = Modifier.weight(1f)
                 )
             }

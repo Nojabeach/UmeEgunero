@@ -72,6 +72,44 @@ interface AuthRepository {
      * @return El objeto FirebaseUser si hay un usuario autenticado, null en caso contrario
      */
     suspend fun getFirebaseUser(): FirebaseUser?
+    
+    /**
+     * Marca un comunicado como leído por el usuario actual.
+     * 
+     * Este método registra que el usuario ha visto el comunicado, 
+     * actualizando la lista de usuarios que lo han leído.
+     * 
+     * @param comunicadoId Identificador del comunicado
+     * @return Resultado encapsulado que indica éxito o error en la operación
+     */
+    suspend fun marcarComunicadoComoLeido(comunicadoId: String): Result<Unit>
+    
+    /**
+     * Confirma la lectura de un comunicado por el usuario actual.
+     * 
+     * Este método registra que el usuario ha confirmado explícitamente 
+     * que ha leído el comunicado y está al tanto de su contenido.
+     * 
+     * @param comunicadoId Identificador del comunicado
+     * @return Resultado encapsulado que indica éxito o error en la operación
+     */
+    suspend fun confirmarLecturaComunicado(comunicadoId: String): Result<Unit>
+    
+    /**
+     * Verifica si el usuario actual ha leído un comunicado específico.
+     * 
+     * @param comunicadoId Identificador del comunicado
+     * @return Resultado encapsulado que contiene true si el usuario ha leído el comunicado, false en caso contrario
+     */
+    suspend fun haLeidoComunicado(comunicadoId: String): Result<Boolean>
+    
+    /**
+     * Verifica si el usuario actual ha confirmado la lectura de un comunicado específico.
+     * 
+     * @param comunicadoId Identificador del comunicado
+     * @return Resultado encapsulado que contiene true si el usuario ha confirmado la lectura, false en caso contrario
+     */
+    suspend fun haConfirmadoLecturaComunicado(comunicadoId: String): Result<Boolean>
 }
 
 /**
@@ -91,11 +129,13 @@ interface AuthRepository {
  * 
  * @param firebaseAuth Instancia de FirebaseAuth inyectada automáticamente por Hilt
  * @param usuarioRepository Repositorio de usuarios inyectado para acceso a datos completos
+ * @param comunicadoRepository Repositorio de comunicados para gestionar las confirmaciones de lectura
  */
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val comunicadoRepository: ComunicadoRepository
 ) : AuthRepository {
 
     /**
@@ -221,5 +261,98 @@ class AuthRepositoryImpl @Inject constructor(
      */
     override suspend fun getFirebaseUser(): FirebaseUser? {
         return firebaseAuth.currentUser
+    }
+    
+    /**
+     * Marca un comunicado como leído por el usuario actual.
+     * 
+     * Este método obtiene el ID del usuario actual y delega la operación
+     * al repositorio de comunicados para registrar que el usuario ha visto el comunicado.
+     * 
+     * @param comunicadoId Identificador del comunicado
+     * @return Resultado encapsulado que indica éxito o error en la operación
+     */
+    override suspend fun marcarComunicadoComoLeido(comunicadoId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val usuario = getCurrentUser() ?: return@withContext Result.Error(
+                    Exception("No hay usuario autenticado")
+                )
+                
+                comunicadoRepository.marcarComoLeido(comunicadoId, usuario.documentId)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al marcar comunicado como leído")
+                Result.Error(e)
+            }
+        }
+    }
+    
+    /**
+     * Confirma la lectura de un comunicado por el usuario actual.
+     * 
+     * Este método obtiene el ID del usuario actual y delega la operación
+     * al repositorio de comunicados para registrar que el usuario ha confirmado
+     * explícitamente la lectura del comunicado.
+     * 
+     * @param comunicadoId Identificador del comunicado
+     * @return Resultado encapsulado que indica éxito o error en la operación
+     */
+    override suspend fun confirmarLecturaComunicado(comunicadoId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val usuario = getCurrentUser() ?: return@withContext Result.Error(
+                    Exception("No hay usuario autenticado")
+                )
+                
+                comunicadoRepository.confirmarLectura(comunicadoId, usuario.documentId)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al confirmar lectura de comunicado")
+                Result.Error(e)
+            }
+        }
+    }
+    
+    /**
+     * Verifica si el usuario actual ha leído un comunicado específico.
+     * 
+     * @param comunicadoId Identificador del comunicado
+     * @return Resultado encapsulado que contiene true si el usuario ha leído 
+     *         el comunicado, false en caso contrario
+     */
+    override suspend fun haLeidoComunicado(comunicadoId: String): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val usuario = getCurrentUser() ?: return@withContext Result.Error(
+                    Exception("No hay usuario autenticado")
+                )
+                
+                comunicadoRepository.haLeidoComunicado(comunicadoId, usuario.documentId)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al verificar si el comunicado ha sido leído")
+                Result.Error(e)
+            }
+        }
+    }
+    
+    /**
+     * Verifica si el usuario actual ha confirmado la lectura de un comunicado específico.
+     * 
+     * @param comunicadoId Identificador del comunicado
+     * @return Resultado encapsulado que contiene true si el usuario ha confirmado 
+     *         la lectura, false en caso contrario
+     */
+    override suspend fun haConfirmadoLecturaComunicado(comunicadoId: String): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val usuario = getCurrentUser() ?: return@withContext Result.Error(
+                    Exception("No hay usuario autenticado")
+                )
+                
+                comunicadoRepository.haConfirmadoLectura(comunicadoId, usuario.documentId)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al verificar si el comunicado ha sido confirmado")
+                Result.Error(e)
+            }
+        }
     }
 } 

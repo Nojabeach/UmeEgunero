@@ -456,6 +456,9 @@ sealed class AppScreens(val route: String) {
     
     /** Notificaciones para familiares */
     object NotificacionesFamilia : AppScreens("notificaciones_familia")
+    
+    /** Comunicados para familiares */
+    object ComunicadosFamilia : AppScreens("comunicados_familia")
 
     /** Pantalla de gestión de profesores */
     object GestionProfesores : AppScreens("gestion_profesores")

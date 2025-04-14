@@ -1,8 +1,29 @@
 # Manual de Usuario - UmeEgunero
 
+## Índice
+1. [Introducción](#introducción)
+2. [Requisitos del Sistema](#requisitos-del-sistema)
+3. [Instalación](#instalación)
+4. [Registro e Inicio de Sesión](#registro-e-inicio-de-sesión)
+5. [Perfiles de Usuario](#perfiles-de-usuario)
+   - [Administrador de Aplicación](#administrador-de-aplicación)
+   - [Administrador de Centro](#administrador-de-centro)
+   - [Profesor](#profesor)
+   - [Familiar](#familiar)
+6. [Módulos Principales](#módulos-principales)
+   - [Comunicaciones](#comunicaciones)
+   - [Calendario y Eventos](#calendario-y-eventos)
+   - [Gestión de Usuarios](#gestión-de-usuarios)
+   - [Gestión Académica](#gestión-académica)
+   - [Chat](#chat)
+7. [Solución de Problemas](#solución-de-problemas)
+8. [Preguntas Frecuentes](#preguntas-frecuentes)
+
 ## Introducción
 
 Bienvenido a UmeEgunero, la aplicación integral para la gestión educativa que conecta centros escolares, profesores y familias. Este manual le guiará a través de todas las funcionalidades disponibles según su perfil de usuario.
+
+UmeEgunero está diseñada para facilitar la comunicación entre todos los miembros de la comunidad educativa y ofrecer herramientas específicas para cada rol, mejorando la experiencia educativa y administrativa de los centros.
 
 ## Requisitos del Sistema
 
@@ -10,377 +31,451 @@ Bienvenido a UmeEgunero, la aplicación integral para la gestión educativa que 
 - Recomendado: Android 14 (API 34) para todas las funcionalidades.
 - Conexión a Internet (algunas funciones están disponibles en modo offline).
 - Espacio de almacenamiento mínimo: 100 MB.
+- Se recomienda 2GB de memoria RAM o superior.
 
 ## Instalación
 
 1. Descargue la aplicación desde Google Play Store.
 2. Abra la aplicación una vez instalada.
-3. Permita los permisos solicitados para el correcto funcionamiento.
+3. Permita los permisos solicitados durante la instalación:
+   - Almacenamiento: para guardar documentos y archivos.
+   - Cámara: para tomar fotos de perfil o adjuntar a mensajes.
+   - Notificaciones: para recibir alertas de comunicados y mensajes.
+4. La aplicación realizará una verificación inicial y descargará recursos adicionales si es necesario.
 
 ## Registro e Inicio de Sesión
 
 ### Registro de Usuario Nuevo
 
+El registro en UmeEgunero requiere un código de acceso proporcionado por el centro educativo o el administrador del sistema, dependiendo del tipo de perfil:
+
 1. En la pantalla de bienvenida, pulse el botón "Registrarse".
 2. Complete el formulario con:
    - Nombre completo
    - Correo electrónico
-   - Contraseña (mínimo 8 caracteres)
-   - Tipo de usuario (Familia, Profesor, Administrador)
-3. Para usuarios tipo Familia:
+   - Contraseña (mínimo 8 caracteres, debe incluir mayúsculas, minúsculas y números)
+   - Seleccione el tipo de usuario (Familiar, Profesor, Administrador de Centro)
+
+3. **Para usuarios tipo Familiar**:
    - Introduzca el código de centro proporcionado por su centro educativo.
    - Introduzca el código de identificación familiar.
-4. Para usuarios tipo Profesor:
+   - Seleccione el alumno o alumnos asociados a su cuenta.
+
+4. **Para usuarios tipo Profesor**:
    - Introduzca el código de centro y el código de identificación de profesor.
-5. Para administradores:
-   - Contacte con soporte técnico para activar este perfil.
-6. Pulse "Completar Registro".
-7. Verifique su correo electrónico siguiendo el enlace enviado.
+   - El administrador del centro deberá validar su cuenta antes de tener acceso completo.
+
+5. **Para administradores de centro**:
+   - Necesitará el código especial proporcionado por el administrador de la aplicación.
+   - Deberá completar la información del centro si es un centro nuevo.
+
+6. **Para administradores de la aplicación**:
+   - Este perfil solo puede ser creado por otro administrador existente.
+   - Contacte con soporte técnico para solicitar este perfil.
+
+7. Pulse "Completar Registro".
+8. Verifique su correo electrónico siguiendo el enlace enviado.
 
 ### Inicio de Sesión
 
 1. Introduzca su correo electrónico registrado.
 2. Introduzca su contraseña.
-3. Pulse "Iniciar Sesión".
-4. Si ha olvidado su contraseña, pulse "¿Olvidó su contraseña?" y siga las instrucciones.
+3. Opcionalmente, active "Recordar usuario" para facilitar futuros accesos.
+4. Pulse "Iniciar Sesión".
+5. Si ha olvidado su contraseña, pulse "¿Olvidó su contraseña?" y siga las instrucciones para restablecerla a través de su correo electrónico.
 
-## Interfaz Principal
+### Autenticación de Dos Factores (Opcional)
 
-La interfaz se adapta según su perfil de usuario:
+Para mayor seguridad, puede activar la autenticación de dos factores:
 
-### Dashboard para Familias
+1. Vaya a su perfil de usuario.
+2. Seleccione "Configuración de seguridad".
+3. Active "Autenticación de dos factores".
+4. Siga las instrucciones para configurar la autenticación por SMS o aplicación autenticadora.
 
-![Dashboard Familiar](https://ejemplo.com/dashboard_familiar.jpg)
+## Perfiles de Usuario
 
-1. **Barra Superior**:
-   - Menú de navegación (icono de tres líneas)
-   - Notificaciones (icono de campana)
-   - Perfil (icono de usuario)
+UmeEgunero ofrece cuatro perfiles de usuario principales, cada uno con funcionalidades específicas adaptadas a sus necesidades:
 
-2. **Tarjetas de Acceso Rápido**:
-   - Comunicados
-   - Calendario
-   - Tareas
-   - Chat con profesores
-   - Actividades preescolares
-   - Asistencia
-   - Evaluaciones
+### Administrador de Aplicación
 
-3. **Sección de Hijos**:
-   - Foto y nombre de cada hijo
-   - Resumen de actividad reciente
+Este perfil tiene control total sobre la plataforma y es responsable de la configuración global del sistema.
 
-4. **Notificaciones Recientes**:
-   - Últimos avisos
-   - Recordatorios pendientes
-
-### Dashboard para Profesores
-
-![Dashboard Profesor](https://ejemplo.com/dashboard_profesor.jpg)
-
-1. **Barra Superior**: Similar a la vista de familias.
-
-2. **Tarjetas de Acceso Rápido**:
-   - Gestión de alumnos
-   - Comunicados
-   - Calendario
-   - Asistencia
-   - Evaluaciones
-   - Chat con familias
-   - Actividades preescolares
-
-3. **Clases Asignadas**:
-   - Lista de grupos
-   - Acceso rápido a cada clase
-
-4. **Tareas Pendientes**:
-   - Evaluaciones por completar
-   - Comunicados por revisar
-
-### Dashboard para Administradores
+#### Dashboard Principal
 
 ![Dashboard Administrador](https://ejemplo.com/dashboard_admin.jpg)
 
-1. **Barra Superior**: Similar a otras vistas.
+Desde el dashboard principal puede acceder a:
 
-2. **Tarjetas de Acceso Rápido**:
-   - Gestión de usuarios
-   - Configuración del centro
-   - Estadísticas
-   - Comunicados generales
-   - Calendario del centro
+1. **Gestión de Centros**: Añadir, editar o desactivar centros educativos.
+2. **Gestión de Usuarios**: Administrar todos los tipos de usuarios.
+3. **Estadísticas Globales**: Ver estadísticas de uso de la plataforma.
+4. **Configuración del Sistema**: Ajustes generales de la aplicación.
+5. **Auditoría y Seguridad**: Registros de actividad y configuración de seguridad.
 
-3. **Estadísticas del Centro**:
-   - Gráficos de actividad
-   - Resumen de asistencia
+#### Funciones Clave
+
+- **Gestión de Centros Educativos**:
+  1. Pulse "Centros" en el menú lateral.
+  2. Para añadir un centro, pulse el botón "+" en la esquina inferior.
+  3. Para editar, pulse el icono de lápiz junto al centro deseado.
+  4. Para desactivar, pulse el interruptor de estado.
+
+- **Gestión de Administradores de Centro**:
+  1. Seleccione un centro de la lista.
+  2. Pulse "Administradores".
+  3. Para añadir, pulse "+" y complete el formulario.
+  4. Puede revocar permisos o cambiar administradores existentes.
+
+- **Configuración Global**:
+  1. Pulse "Configuración" en el menú lateral.
+  2. Ajuste parámetros como política de contraseñas, tiempo de sesión, etc.
+  3. Configure los servicios de correo electrónico y notificaciones.
+
+### Administrador de Centro
+
+Este perfil gestiona un centro educativo específico, incluyendo su estructura académica, profesorado y alumnado.
+
+#### Dashboard Principal
+
+![Dashboard Centro](https://ejemplo.com/dashboard_centro.jpg)
+
+Desde el dashboard principal puede acceder a:
+
+1. **Gestión Académica**: Cursos, clases y horarios.
+2. **Profesorado**: Lista y gestión de profesores.
+3. **Alumnado**: Lista y gestión de alumnos.
+4. **Comunicaciones**: Sistema de avisos y circulares.
+5. **Calendario**: Eventos y actividades del centro.
+
+#### Funciones Clave
+
+- **Estructura Académica**:
+  1. Pulse "Gestión Académica" en el menú lateral.
+  2. Para crear un curso, pulse "Añadir Curso" y complete el formulario.
+  3. Dentro de cada curso, puede añadir clases mediante "Añadir Clase".
+  4. Configure la capacidad y asigne un tutor a cada clase.
+
+- **Gestión de Profesores**:
+  1. Pulse "Profesores" en el menú lateral.
+  2. Para añadir un profesor, pulse "+" y complete sus datos.
+  3. Asigne clases y materias a cada profesor desde su ficha.
+  4. Gestione permisos y responsabilidades específicas.
+
+- **Comunicados Generales**:
+  1. Pulse "Comunicaciones" en el menú lateral.
+  2. Cree comunicados para todo el centro, cursos específicos o clases.
+  3. Adjunte documentos si es necesario.
+  4. Monitorice la recepción y lectura de comunicados.
+
+### Profesor
+
+Este perfil permite a los docentes gestionar sus clases, comunicarse con las familias y realizar seguimiento académico de los alumnos.
+
+#### Dashboard Principal
+
+![Dashboard Profesor](https://ejemplo.com/dashboard_profesor.jpg)
+
+Desde el dashboard principal puede acceder a:
+
+1. **Mis Clases**: Listado de grupos asignados.
+2. **Comunicaciones**: Mensajes y circulares.
+3. **Asistencia**: Control de asistencia de alumnos.
+4. **Actividades**: Asignación y seguimiento de actividades.
+5. **Calendario**: Eventos y horario personal.
+6. **Chat**: Comunicación con familias.
+
+#### Funciones Clave
+
+- **Gestión de Clases**:
+  1. Pulse sobre una clase en el dashboard o en "Mis Clases".
+  2. Verá la lista completa de alumnos.
+  3. Pulse sobre un alumno para ver su ficha detallada.
+  4. Puede filtrar por diversos criterios (asistencia, evaluaciones, etc.).
+
+- **Control de Asistencia**:
+  1. Dentro de una clase, pulse "Asistencia".
+  2. Seleccione la fecha (por defecto es el día actual).
+  3. Marque presentes/ausentes/retrasos para cada alumno.
+  4. Puede añadir observaciones en cada caso.
+  5. Pulse "Guardar" para registrar la asistencia.
+
+- **Comunicación con Familias**:
+  1. Seleccione un alumno de la lista.
+  2. Pulse "Contactar con Familia" o acceda al Chat desde el menú.
+  3. Redacte el mensaje y pulse enviar.
+  4. Para mensajes a toda la clase, use "Comunicado Grupal".
+
+- **Actividades Preescolares**:
+  1. Pulse "Actividades" en el menú.
+  2. Cree una nueva actividad con "+" y complete los detalles.
+  3. Asigne la actividad a alumnos específicos o a toda la clase.
+  4. Establezca fechas y haga seguimiento de su realización.
+
+### Familiar
+
+Este perfil permite a padres, madres y tutores legales seguir la actividad académica de sus hijos y comunicarse con el centro.
+
+#### Dashboard Principal
+
+![Dashboard Familiar](https://ejemplo.com/dashboard_familiar.jpg)
+
+Desde el dashboard principal puede acceder a:
+
+1. **Mis Hijos**: Acceso a la información de cada hijo registrado.
+2. **Comunicados**: Mensajes del centro y profesores.
+3. **Calendario**: Eventos, reuniones y actividades.
+4. **Actividades**: Seguimiento de actividades asignadas.
+5. **Chat**: Comunicación directa con profesores.
+
+#### Funciones Clave
+
+- **Seguimiento de Hijos**:
+  1. Pulse sobre la tarjeta de un hijo en el dashboard.
+  2. Acceda a información detallada: asistencia, actividades, comunicaciones.
+  3. Vea el progreso y evolución a través de los gráficos disponibles.
+  4. Configure notificaciones específicas para cada hijo.
+
+- **Consulta de Asistencia**:
+  1. Dentro de la ficha de un hijo, pulse "Asistencia".
+  2. Visualice el historial por meses y semanas.
+  3. Reciba alertas automáticas sobre ausencias no justificadas.
+  4. Justifique ausencias mediante el formulario correspondiente.
+
+- **Comunicación con Profesores**:
+  1. Dentro de la ficha de un hijo, pulse "Profesores".
+  2. Seleccione el profesor con quien desea comunicarse.
+  3. Utilice el chat para enviar mensajes directos.
+  4. Solicite tutorías o reuniones mediante la opción correspondiente.
+
+- **Seguimiento de Actividades**:
+  1. Pulse "Actividades" en la ficha de su hijo.
+  2. Vea las actividades pendientes y completadas.
+  3. Marque como realizadas las actividades finalizadas.
+  4. Añada comentarios o consultas sobre cada actividad.
 
 ## Módulos Principales
 
-### 1. Comunicaciones
+### Comunicaciones
+
+El sistema de comunicaciones de UmeEgunero permite el intercambio de información entre todos los usuarios de la plataforma.
+
+#### Para Administradores y Profesores
+
+1. **Crear Comunicado**:
+   - Pulse el botón "+" en la pantalla de comunicados.
+   - Seleccione el tipo: informativo, circular, aviso importante.
+   - Elija destinatarios: todo el centro, cursos, clases o usuarios específicos.
+   - Redacte el título y contenido.
+   - Añada adjuntos si es necesario (hasta 5MB por archivo).
+   - Active "Requiere confirmación" si necesita que los destinatarios confirmen la lectura.
+   - Pulse "Enviar".
+
+2. **Gestionar Comunicados**:
+   - Vea estadísticas de lectura y confirmación.
+   - Filtre por estado, fecha o destinatarios.
+   - Envíe recordatorios a quienes no han leído/confirmado.
+   - Archive comunicados antiguos.
+   - Edite o cancele comunicados pendientes.
 
 #### Para Familias
 
 1. **Ver Comunicados**:
    - Acceda desde la tarjeta "Comunicados" en el dashboard.
-   - Los comunicados aparecen ordenados por fecha, con los más recientes primero.
-   - Los comunicados no leídos se destacan con un indicador.
+   - Los comunicados no leídos aparecen destacados.
+   - Utilice los filtros: Todos, No leídos, Importantes, Archivados.
 
-2. **Filtrar Comunicados**:
-   - Use los filtros superiores para mostrar: Todos, No leídos, Importantes, Archivados.
-   - Pulse el icono de búsqueda para buscar por palabras clave.
-
-3. **Acciones sobre Comunicados**:
+2. **Acciones sobre Comunicados**:
    - Pulse sobre un comunicado para leerlo completo.
-   - Desde la vista detallada puede:
+   - En la vista detallada puede:
      - Marcar como leído
      - Descargar adjuntos
-     - Firmar (si requiere firma)
-     - Archivar
+     - Confirmar lectura (si se requiere)
      - Responder (si está habilitado)
+     - Archivar para consulta futura
 
-#### Para Profesores
+### Calendario y Eventos
 
-1. **Crear Comunicado**:
-   - Pulse el botón "+" en la esquina inferior derecha.
-   - Seleccione destinatarios (clases, grupos o individuales).
-   - Complete el título y contenido.
-   - Añada adjuntos si es necesario.
-   - Marque la casilla "Requiere firma" si es un documento oficial.
-   - Pulse "Enviar".
-
-2. **Gestionar Comunicados**:
-   - Vea estadísticas de lectura y firma.
-   - Envíe recordatorios a quienes no han leído/firmado.
-   - Archive comunicados antiguos.
-
-### 2. Calendario y Eventos
+Gestione eventos, reuniones, exámenes y otras actividades importantes.
 
 1. **Ver Calendario**:
-   - Acceda desde la tarjeta "Calendario" en el dashboard.
-   - Navegue entre vistas: Día, Semana, Mes.
+   - Acceda desde "Calendario" en el menú.
+   - Alterne entre vistas: Día, Semana, Mes.
+   - Filtre por categorías de eventos (académicos, reuniones, extraescolares).
+   - Pulse sobre un evento para ver detalles.
 
-2. **Crear Evento** (Profesores y Administradores):
-   - Pulse el día deseado o el botón "+" en la esquina inferior.
-   - Complete los detalles: título, descripción, hora, lugar.
-   - Seleccione asistentes o grupos.
-   - Configure recordatorios.
+2. **Crear Evento** (Administradores y Profesores):
+   - Pulse "+" en la esquina inferior de la vista de calendario.
+   - Complete los campos: título, fecha, hora, lugar, descripción.
+   - Seleccione la categoría y color del evento.
+   - Elija destinatarios: centro, curso, clase o usuarios específicos.
+   - Configure recordatorios (15min, 1h, 1 día antes).
    - Pulse "Guardar".
 
-3. **Sincronizar con Calendario del Dispositivo**:
-   - En la vista de calendario, pulse el icono de configuración.
-   - Active "Sincronizar con calendario del dispositivo".
-   - Seleccione qué tipo de eventos sincronizar.
+3. **Sincronizar con Calendario Personal**:
+   - En la configuración del calendario, active "Sincronizar con mi calendario".
+   - Seleccione la cuenta de Google o calendario del dispositivo.
+   - Elija qué tipos de eventos desea sincronizar.
 
-### 3. Gestión de Alumnos (Profesores)
+### Gestión de Usuarios
 
-1. **Ver Lista de Alumnos**:
-   - Acceda desde "Gestión de alumnos" en el dashboard.
-   - Seleccione la clase o grupo para ver sus alumnos.
+#### Para Administradores
 
-2. **Perfil de Alumno**:
-   - Pulse sobre un alumno para ver su perfil detallado.
-   - Información personal y académica.
-   - Historial de asistencia.
-   - Evaluaciones y progreso.
-   - Contacto con familia.
+1. **Añadir Usuario**:
+   - Acceda a "Gestión de Usuarios" en el menú.
+   - Pulse "+" para añadir nuevo usuario.
+   - Seleccione el tipo de usuario y complete la información requerida.
+   - Para profesores y administradores, asigne el centro correspondiente.
+   - Pulse "Guardar" para crear el usuario y enviar las credenciales.
 
-3. **Control de Asistencia**:
-   - Desde la vista de clase, pulse "Asistencia".
-   - Seleccione la fecha (por defecto es hoy).
-   - Marque presentes/ausentes.
-   - Añada observaciones si es necesario.
-   - Guarde los cambios.
+2. **Gestionar Permisos**:
+   - Seleccione un usuario de la lista.
+   - Pulse "Permisos" en su ficha.
+   - Active o desactive funcionalidades específicas.
+   - Para administradores de centro, configure el alcance de sus permisos.
 
-### 4. Evaluaciones
+3. **Gestión Masiva**:
+   - Utilice "Importar Usuarios" para crear múltiples usuarios desde un archivo CSV.
+   - Descargue la plantilla, complete los datos y súbala al sistema.
+   - Revise los resultados y corrija errores si es necesario.
 
-#### Para Profesores
+### Gestión Académica
 
-1. **Crear Evaluación**:
-   - Acceda a "Evaluaciones" y pulse "+".
-   - Seleccione clase y asignatura.
-   - Defina tipo de evaluación (examen, trabajo, proyecto...).
-   - Establezca criterios y ponderación.
-   - Pulse "Crear".
+#### Para Administradores de Centro
 
-2. **Calificar**:
-   - Seleccione la evaluación pendiente.
-   - Introduzca calificaciones para cada alumno.
-   - Añada observaciones individuales.
-   - Pulse "Guardar" o "Publicar" (para hacerlo visible a las familias).
+1. **Configurar Estructura Académica**:
+   - Acceda a "Gestión Académica" en el menú.
+   - Cree cursos con "Añadir Curso".
+   - Dentro de cada curso, cree clases con "Añadir Clase".
+   - Asigne tutores y capacidades a cada clase.
 
-3. **Generar Informes**:
-   - En la vista de evaluaciones, pulse "Informes".
-   - Seleccione período, clase, asignatura.
-   - Elija tipo de informe (individual, grupal, estadístico).
-   - Pulse "Generar" y descargue en PDF.
+2. **Gestionar Horarios**:
+   - Seleccione una clase y pulse "Horario".
+   - Utilice la matriz de días/horas para asignar materias y profesores.
+   - Guarde los cambios y publique el horario cuando esté completo.
 
-#### Para Familias
+3. **Gestionar Evaluaciones**:
+   - Configure periodos de evaluación en "Configuración Académica".
+   - Establezca criterios y plantillas de evaluación.
+   - Defina fechas límite para la entrega de calificaciones.
 
-1. **Ver Evaluaciones**:
-   - Acceda a "Evaluaciones" desde el dashboard.
-   - Seleccione el hijo (si tiene varios).
-   - Vea todas las evaluaciones, filtradas por asignatura o período.
+### Chat
 
-2. **Detalles de Evaluación**:
-   - Pulse sobre una evaluación para ver detalles.
-   - Notas, observaciones del profesor, criterios evaluados.
-   - Pulse "Firmar" si se requiere confirmación de lectura.
-
-### 5. Actividades Preescolares
-
-#### Para Profesores
-
-1. **Crear Actividad**:
-   - Acceda a "Actividades Preescolares" y pulse "+".
-   - Complete título, descripción, objetivos.
-   - Asigne a clase/grupo o alumnos individuales.
-   - Establezca categoría y nivel de dificultad.
-   - Añada recursos o imágenes si es necesario.
-   - Pulse "Guardar".
-
-2. **Seguimiento**:
-   - Vea el progreso de cada alumno.
-   - Filtre por estado: Pendientes, En Progreso, Completadas, Canceladas.
-   - Añada observaciones sobre el desempeño.
-
-#### Para Familias
-
-1. **Ver Actividades Asignadas**:
-   - Acceda a "Actividades Preescolares" desde el dashboard.
-   - Seleccione el hijo (si tiene varios).
-   - Vea las actividades filtradas por estado.
-
-2. **Marcar Progreso**:
-   - Pulse sobre una actividad para ver detalles.
-   - Actualice el estado según el progreso del niño.
-   - Añada comentarios o fotos del resultado.
-   - Pulse "Guardar".
-
-### 6. Chat
+El sistema de chat permite la comunicación directa entre profesores y familias.
 
 1. **Iniciar Conversación**:
-   - Acceda a "Chat" desde el dashboard.
-   - Pulse el icono "+" para nueva conversación.
-   - Seleccione destinatario (profesor o familia).
-   - Escriba y envíe su mensaje.
+   - Acceda a "Chat" en el menú principal.
+   - Para profesores: seleccione una familia de la lista o busque por nombre.
+   - Para familias: seleccione un profesor de la lista asociada a su hijo.
+   - Pulse "Nueva conversación" e introduzca el primer mensaje.
 
 2. **Gestionar Conversaciones**:
-   - Las conversaciones aparecen ordenadas por más recientes.
-   - Los mensajes no leídos se destacan.
-   - Pulse sobre una conversación para continuarla.
-   - En la conversación activa puede:
-     - Enviar texto, imágenes o documentos
-     - Ver historial completo
-     - Buscar mensajes específicos
+   - Las conversaciones activas aparecen ordenadas por fecha de último mensaje.
+   - Los mensajes no leídos se destacan y muestran un contador.
+   - Puede archivar conversaciones antiguas mediante "Archivar".
+   - Recupere conversaciones archivadas en "Archivados".
 
-## Sincronización y Modo Offline
+3. **Adjuntar Archivos**:
+   - Dentro de una conversación, pulse el clip para adjuntar.
+   - Seleccione el tipo: documento, imagen, audio.
+   - Elija el archivo de su dispositivo o tome una foto/grabación.
+   - Añada un comentario opcional y envíe.
 
-La aplicación permite trabajar sin conexión a internet:
-
-1. **Modo Offline Automático**:
-   - Cuando no hay conexión, se activa automáticamente.
-   - Puede ver datos previamente sincronizados.
-   - Las acciones se almacenan localmente.
-
-2. **Control Manual de Sincronización**:
-   - Acceda al menú lateral y pulse "Sincronización".
-   - Vea el estado de la última sincronización.
-   - Pulse "Sincronizar ahora" para forzar actualización.
-   - Configure frecuencia de sincronización automática.
-
-3. **Notificaciones de Sincronización**:
-   - La aplicación notifica cuando hay operaciones pendientes.
-   - Se indica cuando se completa una sincronización.
-
-## Configuración de la Aplicación
-
-Acceda a la configuración desde el menú lateral:
-
-1. **Perfil de Usuario**:
-   - Edite su información personal.
-   - Cambie contraseña.
-   - Gestione foto de perfil.
-
-2. **Notificaciones**:
-   - Active/desactive tipos de notificaciones.
-   - Configure sonidos y vibración.
-   - Establezca horarios de no molestar.
-
-3. **Privacidad y Datos**:
-   - Gestione permisos de la aplicación.
-   - Vea política de privacidad.
-   - Elimine datos almacenados localmente.
-
-4. **Apariencia**:
-   - Cambie entre tema claro/oscuro.
-   - Ajuste tamaño de texto.
-   - Personalice colores (si está habilitado por su centro).
-
-5. **Idioma**:
-   - Seleccione idioma de la aplicación.
+4. **Configurar Notificaciones**:
+   - En "Configuración" > "Notificaciones" personalice:
+     - Sonidos para nuevos mensajes
+     - Visualización en pantalla de bloqueo
+     - Horarios de silencio
+     - Prioridad de contactos
 
 ## Solución de Problemas
 
-### Problemas de Inicio de Sesión
+### Problemas de Conexión
 
-1. **No recuerda la contraseña**:
-   - Pulse "¿Olvidó su contraseña?" en la pantalla de inicio.
-   - Siga las instrucciones enviadas a su correo.
+1. **La aplicación muestra "Sin conexión"**:
+   - Verifique su conexión a Internet.
+   - Intente cambiar entre WiFi y datos móviles.
+   - Pulse "Reintentar" o cierre y vuelva a abrir la aplicación.
+   - La mayoría de las funciones seguirán disponibles en modo offline y se sincronizarán cuando vuelva la conexión.
 
-2. **No recibe correo de verificación**:
-   - Revise su carpeta de spam.
-   - Pulse "Reenviar correo de verificación" en la pantalla de inicio.
-   - Si persiste, contacte con soporte.
+2. **Datos desactualizados**:
+   - Pulse el icono de actualizar en la esquina superior.
+   - Vaya a "Configuración" > "Sincronización" y pulse "Sincronizar ahora".
+   - Si el problema persiste, cierre sesión y vuelva a iniciarla.
 
-### Problemas de Sincronización
+### Problemas de Cuenta
 
-1. **La aplicación no sincroniza**:
-   - Verifique su conexión a internet.
-   - Compruebe que tiene espacio libre en el dispositivo.
-   - Fuerza la sincronización manual desde el menú.
-   - Cierre y vuelva a abrir la aplicación.
+1. **No puedo iniciar sesión**:
+   - Verifique que su correo y contraseña sean correctos.
+   - Compruebe si su cuenta ha sido desactivada contactando con su administrador.
+   - Utilice "¿Olvidó su contraseña?" para restablecerla.
+   - Si el problema persiste, contacte con soporte.
 
-2. **Datos no actualizados**:
-   - Deslice hacia abajo para actualizar la vista actual.
-   - Vaya a Configuración > Sincronización > "Sincronizar ahora".
-   - Compruebe la fecha de última sincronización exitosa.
+2. **No veo a todos mis hijos/alumnos**:
+   - Para familias: contacte con el administrador del centro para verificar la vinculación.
+   - Para profesores: compruebe sus asignaciones de clase con el administrador.
 
-### Otras Incidencias
+### Problemas con Notificaciones
 
-1. **La aplicación se cierra inesperadamente**:
-   - Actualice a la última versión.
-   - Reinicie su dispositivo.
-   - Desinstale y vuelva a instalar la aplicación.
+1. **No recibo notificaciones**:
+   - Vaya a Configuración del dispositivo > Aplicaciones > UmeEgunero > Notificaciones y verifique que estén habilitadas.
+   - En la aplicación, vaya a "Configuración" > "Notificaciones" y compruebe la configuración.
+   - Verifique que no tenga activo el modo "No molestar" en su dispositivo.
 
-2. **Notificaciones no recibidas**:
-   - Verifique la configuración de notificaciones del sistema.
-   - Compruebe que la app tiene permisos de notificación.
-   - Desactive el modo "No molestar" o "Ahorro de batería".
+2. **Recibo notificaciones duplicadas**:
+   - Vaya a "Configuración" > "Notificaciones" > "Restablecer preferencias".
+   - Cierre sesión y vuelva a iniciarla.
 
-## Contacto y Soporte
+### Problemas con Archivos
 
-Si necesita ayuda adicional:
+1. **No puedo subir archivos**:
+   - Verifique que el archivo no supere los 5MB.
+   - Compruebe los formatos permitidos (.pdf, .doc, .docx, .jpg, .png).
+   - Asegúrese de tener espacio suficiente en su dispositivo.
+   - Verifique que tiene una conexión estable a Internet.
 
-- **Correo electrónico**: soporte@umeegunero.com
-- **Teléfono**: +34 900 123 456
-- **Horario de atención**: Lunes a viernes, 9:00 - 18:00
+2. **No puedo abrir un archivo adjunto**:
+   - Asegúrese de tener una aplicación compatible para el tipo de archivo.
+   - Intente descargar el archivo en lugar de abrirlo directamente.
+   - Si el problema persiste, contacte con el emisor del archivo.
 
 ## Preguntas Frecuentes
 
-**P: ¿Puedo acceder desde varios dispositivos con la misma cuenta?**  
-R: Sí, puede iniciar sesión en varios dispositivos simultáneamente.
+### Sobre Cuentas y Accesos
 
-**P: ¿Mis datos están seguros?**  
-R: Todos los datos se almacenan cifrados y cumpliendo con la normativa RGPD.
+**P: ¿Puedo usar la misma cuenta en múltiples dispositivos?**
+R: Sí, puede iniciar sesión con sus credenciales en varios dispositivos simultáneamente.
 
-**P: ¿Qué hago si cambio de centro educativo?**  
-R: Contacte con el administrador de su nuevo centro para que le proporcione un código de acceso. Luego vaya a Configuración > Perfil > Cambiar centro.
+**P: ¿Cómo puedo cambiar mi contraseña?**
+R: Vaya a su perfil de usuario, pulse "Seguridad" y seleccione "Cambiar contraseña".
 
-**P: ¿Puedo tener varios perfiles (como profesor y familiar)?**  
-R: Actualmente necesita cuentas separadas para diferentes perfiles. Use correos electrónicos distintos para cada rol.
+**P: ¿Puedo tener diferentes perfiles en la misma cuenta?**
+R: No, cada usuario tiene un tipo de perfil específico. Si necesita roles diferentes, deberá usar cuentas separadas.
 
-**P: ¿Los documentos firmados tienen validez legal?**  
-R: Sí, el sistema de firma digital cumple con los requisitos legales actuales para comunicaciones entre centros educativos y familias.
+### Sobre Comunicaciones
+
+**P: ¿Los destinatarios ven quién más ha recibido un comunicado?**
+R: No por defecto. Los destinatarios solo ven que han recibido el comunicado, no la lista completa de receptores, a menos que el emisor active la opción "Mostrar destinatarios".
+
+**P: ¿Puedo cancelar un comunicado ya enviado?**
+R: Puede cancelarlo si aún no ha sido leído por ningún destinatario. Una vez leído, solo puede enviar una rectificación.
+
+**P: ¿Hay límite de almacenamiento para comunicados?**
+R: Los comunicados se archivan automáticamente después de 6 meses, pero siguen siendo accesibles a través de la sección "Archivo".
+
+### Sobre Uso General
+
+**P: ¿La aplicación consume muchos datos móviles?**
+R: El consumo es moderado. Puede reducirlo activando "Ahorro de datos" en la configuración, que limitará la descarga de imágenes y archivos grandes a conexiones WiFi.
+
+**P: ¿Cómo cambio el idioma de la aplicación?**
+R: La aplicación usa por defecto el idioma del sistema. Para cambiarlo, modifique el idioma en la configuración de su dispositivo.
+
+**P: ¿Se guardan copias de seguridad de mis datos?**
+R: Sí, toda la información se sincroniza con los servidores y se realizan copias de seguridad diarias.
+
+**P: ¿Puedo usar la aplicación sin conexión?**
+R: Sí, muchas funciones están disponibles offline. Los cambios se sincronizarán cuando recupere la conexión.
 
 ---
 

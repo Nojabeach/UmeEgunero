@@ -143,7 +143,7 @@ fun ListFamiliarScreen(
                             navController.navigate(AppScreens.UserDetail.createRoute(familiar.dni))
                         },
                         onEditClick = {
-                            navController.navigate(AppScreens.Dummy.createRoute("Editar Familiar"))
+                            navController.navigate(AppScreens.EditUser.createRoute(familiar.dni))
                         },
                         onDeleteClick = {
                             viewModel.deleteFamiliar(familiar.dni)

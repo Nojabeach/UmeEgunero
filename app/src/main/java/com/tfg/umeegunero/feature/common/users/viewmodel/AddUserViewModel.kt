@@ -195,6 +195,58 @@ class AddUserViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
+    /**
+     * Carga los datos de un usuario para edición
+     * 
+     * @param dni Identificador del usuario a cargar
+     */
+    fun loadUserForEdit(dni: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                when (val result = usuarioRepository.getUsuarioByDni(dni)) {
+                    is Result.Success -> {
+                        val usuario = result.data
+                        
+                        // Actualizar el estado con los datos del usuario
+                        _uiState.update {
+                            it.copy(
+                                dni = usuario?.dni ?: "",
+                                email = usuario?.email ?: "",
+                                nombre = usuario?.nombre ?: "",
+                                apellidos = usuario?.apellidos ?: "",
+                                telefono = usuario?.telefono ?: "",
+                                tipoUsuario = usuario?.perfiles?.firstOrNull()?.tipo ?: TipoUsuario.FAMILIAR,
+                                centroId = usuario?.perfiles?.firstOrNull()?.centroId ?: "",
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.exception?.message ?: "Error al cargar datos del usuario"
+                            )
+                        }
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "Error al cargar datos del usuario"
+                    )
+                }
+            }
+        }
+    }
+
     // Métodos de validación
     private fun isDniValid(dni: String): Boolean {
         // Implementar validación de DNI

@@ -11,6 +11,7 @@ import com.tfg.umeegunero.data.repository.CiudadRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.ClaseRepositoryImpl
+import com.tfg.umeegunero.data.repository.ComunicadoRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.DebugUtils
@@ -65,9 +66,10 @@ object FirebaseModule {
     @Singleton
     fun provideAuthRepository(
         firebaseAuth: FirebaseAuth,
-        usuarioRepository: UsuarioRepository
+        usuarioRepository: UsuarioRepository,
+        comunicadoRepository: ComunicadoRepository
     ): AuthRepository {
-        return AuthRepositoryImpl(firebaseAuth, usuarioRepository)
+        return AuthRepositoryImpl(firebaseAuth, usuarioRepository, comunicadoRepository)
     }
 
     @Provides

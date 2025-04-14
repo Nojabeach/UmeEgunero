@@ -6,6 +6,10 @@ import com.google.firebase.firestore.ServerTimestamp
 
 /**
  * Modelo de datos para los comunicados generales
+ * 
+ * Esta clase representa los comunicados oficiales enviados por administradores
+ * y profesores a los diferentes tipos de usuarios del sistema educativo.
+ * Incluye soporte para confirmación de lectura y seguimiento de usuarios.
  */
 data class Comunicado(
     @DocumentId
@@ -60,5 +64,25 @@ data class Comunicado(
     /**
      * Enlaces o recursos relacionados con el comunicado (opcional)
      */
-    val recursos: List<String> = emptyList()
+    val recursos: List<String> = emptyList(),
+    
+    /**
+     * Indica si el comunicado requiere confirmación explícita de lectura
+     */
+    val requiereConfirmacion: Boolean = false,
+    
+    /**
+     * Lista de IDs de usuarios que han confirmado la lectura del comunicado
+     */
+    val usuariosConfirmados: List<String> = emptyList(),
+    
+    /**
+     * Lista de IDs de usuarios que han leído el comunicado
+     */
+    val usuariosLeidos: List<String> = emptyList(),
+    
+    /**
+     * Fecha límite para confirmar la lectura (opcional)
+     */
+    val fechaLimiteConfirmacion: Timestamp? = null
 ) 

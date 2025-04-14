@@ -216,6 +216,15 @@ fun Navigation(
             )
         }
         
+        // Pantalla de comunicados para familiares
+        composable(route = AppScreens.ComunicadosFamilia.route) {
+            com.tfg.umeegunero.feature.familiar.screen.ComunicadosFamiliaScreen(
+                viewModel = hiltViewModel(),
+                onNavigateUp = { navController.popBackStack() },
+                navController = navController
+            )
+        }
+        
         // PANTALLAS DE PROFESOR
         
         // Pantalla del dashboard de profesor
@@ -366,6 +375,61 @@ fun Navigation(
                 title = title,
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+
+        // Pantalla para editar usuario
+        composable(
+            route = AppScreens.EditUser.route,
+            arguments = listOf(
+                navArgument("dni") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val dni = backStackEntry.arguments?.getString("dni") ?: ""
+            val viewModel = hiltViewModel<com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel>()
+            
+            com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
+                uiState = com.tfg.umeegunero.feature.common.users.screen.AddUserUiState(
+                    dni = viewModel.uiState.collectAsState().value.dni,
+                    dniError = viewModel.uiState.collectAsState().value.dniError,
+                    email = viewModel.uiState.collectAsState().value.email,
+                    emailError = viewModel.uiState.collectAsState().value.emailError,
+                    password = viewModel.uiState.collectAsState().value.password,
+                    passwordError = viewModel.uiState.collectAsState().value.passwordError,
+                    confirmPassword = viewModel.uiState.collectAsState().value.confirmPassword,
+                    confirmPasswordError = viewModel.uiState.collectAsState().value.confirmPasswordError,
+                    nombre = viewModel.uiState.collectAsState().value.nombre,
+                    nombreError = viewModel.uiState.collectAsState().value.nombreError,
+                    apellidos = viewModel.uiState.collectAsState().value.apellidos,
+                    apellidosError = viewModel.uiState.collectAsState().value.apellidosError,
+                    telefono = viewModel.uiState.collectAsState().value.telefono,
+                    telefonoError = viewModel.uiState.collectAsState().value.telefonoError,
+                    tipoUsuario = viewModel.uiState.collectAsState().value.tipoUsuario,
+                    isLoading = viewModel.uiState.collectAsState().value.isLoading,
+                    error = viewModel.uiState.collectAsState().value.error,
+                    success = viewModel.uiState.collectAsState().value.success
+                ),
+                onUpdateDni = viewModel::updateDni,
+                onUpdateEmail = viewModel::updateEmail,
+                onUpdatePassword = viewModel::updatePassword,
+                onUpdateConfirmPassword = viewModel::updateConfirmPassword,
+                onUpdateNombre = viewModel::updateNombre,
+                onUpdateApellidos = viewModel::updateApellidos,
+                onUpdateTelefono = viewModel::updateTelefono,
+                onUpdateTipoUsuario = viewModel::updateTipoUsuario,
+                onUpdateCentroSeleccionado = { centro -> 
+                    centro?.id?.let { viewModel.updateCentroSeleccionado(it) }
+                },
+                onSaveUser = viewModel::saveUser,
+                onClearError = viewModel::clearError,
+                onNavigateBack = { navController.popBackStack() }
+            )
+            
+            // Cargar los datos del usuario para edición
+            LaunchedEffect(dni) {
+                if (dni.isNotBlank()) {
+                    viewModel.loadUserForEdit(dni)
+                }
+            }
         }
     }
 } 
