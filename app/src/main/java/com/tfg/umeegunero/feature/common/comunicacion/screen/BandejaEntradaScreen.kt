@@ -26,6 +26,8 @@ import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.Send
 
 /**
  * Pantalla principal de bandeja de entrada y mensajes
@@ -122,10 +124,13 @@ fun BandejaEntradaScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(AppScreens.ComponerMensaje.route) }
+                onClick = { 
+                    navController.navigate(AppScreens.ComponerMensaje.route)
+                },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
-                    imageVector = Icons.Default.Create,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Nuevo mensaje"
                 )
             }
@@ -217,7 +222,7 @@ fun BandejaEntradaScreen(
                                 onEliminar = { viewModel.confirmarEliminarMensaje(mensaje) }
                             )
                             
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
@@ -428,7 +433,7 @@ fun DetalleMensajeDialog(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 
                 // Contenido del mensaje
                 Text(
@@ -437,7 +442,7 @@ fun DetalleMensajeDialog(
                 )
                 
                 // Adjuntos (si hay)
-                if (mensaje.adjuntos?.isNotEmpty() == true) {
+                if (mensaje.adjuntos != null && mensaje.adjuntos.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
@@ -448,7 +453,7 @@ fun DetalleMensajeDialog(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    mensaje.adjuntos?.forEach { adjunto ->
+                    mensaje.adjuntos.forEach { adjunto ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

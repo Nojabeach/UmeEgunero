@@ -26,6 +26,7 @@ import javax.inject.Inject
 import timber.log.Timber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.tfg.umeegunero.util.AppUtils
 
 @HiltViewModel
 class AddCentroViewModel @Inject constructor(
@@ -416,8 +417,8 @@ class AddCentroViewModel @Inject constructor(
                     direccion = direccionString,
                     telefono = contacto.telefono,
                     email = contacto.email,
-                    latitud = _uiState.value.latitud ?: 0.0,
-                    longitud = _uiState.value.longitud ?: 0.0,
+                    latitud = AppUtils.valueOrDefault(_uiState.value.latitud, 0.0),
+                    longitud = AppUtils.valueOrDefault(_uiState.value.longitud, 0.0),
                     logo = _uiState.value.imageUrl,
                     activo = true,
                     direccionObj = direccion,

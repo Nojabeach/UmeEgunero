@@ -29,6 +29,8 @@ import com.tfg.umeegunero.feature.centro.viewmodel.VinculacionFamiliarViewModel
 import androidx.compose.foundation.selection.selectable
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import kotlinx.coroutines.launch
+import androidx.compose.material3.HorizontalDivider
+import com.tfg.umeegunero.util.AppUtils.capitalizeFirst
 
 /**
  * Pantalla para gestionar las vinculaciones entre alumnos y familiares
@@ -301,7 +303,7 @@ fun VinculacionFamiliarScreen(
                                         showFamiliaresDialog = false
                                     }
                                 )
-                                Divider()
+                                HorizontalDivider()
                             }
                         }
                     }
@@ -418,7 +420,7 @@ fun VinculacionFamiliarScreen(
                                     selected = selectedParentesco == subtipo,
                                     onClick = { selectedParentesco = subtipo }
                                 )
-                                Text(subtipo.name.lowercase().capitalize())
+                                Text(subtipo.name.lowercase().let { capitalizeFirst(it) })
                             }
                         }
                     }
