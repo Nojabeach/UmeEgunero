@@ -222,9 +222,8 @@ fun Navigation(
         // Pantalla para añadir un nuevo centro
         composable(route = AppScreens.AddCentro.route) {
             com.tfg.umeegunero.feature.admin.screen.AddCentroScreen(
-                viewModel = hiltViewModel(),
-                onNavigateBack = { navController.popBackStack() },
-                onCentroAdded = { navController.navigate(AppScreens.GestionCentros.route) { popUpTo(AppScreens.GestionCentros.route) } }
+                navController = navController,
+                viewModel = hiltViewModel()
             )
         }
         
