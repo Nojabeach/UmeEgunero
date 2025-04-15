@@ -31,7 +31,9 @@ data class ComunicadosFamiliaUiState(
     val estadoLecturaPorComunicado: Map<String, Boolean> = emptyMap(),
     val estadoConfirmacionPorComunicado: Map<String, Boolean> = emptyMap(),
     val mostrarDialogoConfirmacion: Boolean = false,
-    val comunicadoSeleccionado: Comunicado? = null
+    val comunicadoSeleccionado: Comunicado? = null,
+    val mostrarDetalle: Boolean = false,
+    val comunicadoParaDetalle: Comunicado? = null
 ) {
     /**
      * Indica si hay algún filtro activo
@@ -302,17 +304,17 @@ class ComunicadosFamiliaViewModel @Inject constructor(
     /**
      * Muestra el diálogo de confirmación para un comunicado
      * 
-     * @param comunicado Comunicado que requiere confirmación
+     * @param comunicado Comunicado a confirmar
      */
     fun mostrarConfirmacion(comunicado: Comunicado) {
-        _uiState.update { 
-            it.copy(
+        _uiState.update { currentState ->
+            currentState.copy(
                 mostrarDialogoConfirmacion = true,
                 comunicadoSeleccionado = comunicado
-            ) 
+            )
         }
         
-        // Si no está leído, marcamos como leído automáticamente
+        // Si no está marcado como leído, lo marcamos
         if (!esComunicadoLeido(comunicado.id)) {
             marcarComoLeido(comunicado.id)
         }
@@ -322,11 +324,42 @@ class ComunicadosFamiliaViewModel @Inject constructor(
      * Cierra el diálogo de confirmación
      */
     fun cerrarDialogoConfirmacion() {
-        _uiState.update { 
-            it.copy(
+        _uiState.update { currentState ->
+            currentState.copy(
                 mostrarDialogoConfirmacion = false,
                 comunicadoSeleccionado = null
-            ) 
+            )
+        }
+    }
+    
+    /**
+     * Muestra el diálogo de detalle para un comunicado
+     * 
+     * @param comunicado Comunicado a mostrar en detalle
+     */
+    fun mostrarDetalle(comunicado: Comunicado) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                mostrarDetalle = true,
+                comunicadoParaDetalle = comunicado
+            )
+        }
+        
+        // Si no está marcado como leído, lo marcamos
+        if (!esComunicadoLeido(comunicado.id)) {
+            marcarComoLeido(comunicado.id)
+        }
+    }
+    
+    /**
+     * Cierra el diálogo de detalle
+     */
+    fun cerrarDetalle() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                mostrarDetalle = false,
+                comunicadoParaDetalle = null
+            )
         }
     }
     

@@ -85,6 +85,11 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.material.icons.filled.MarkEmailUnread
 
 /**
  * Componente que muestra un mensaje cuando no hay contenido para mostrar.
@@ -271,12 +276,12 @@ fun ComunicadosFamiliaScreen(
                             end = 16.dp
                         )
                     ) {
-                        items(uiState.comunicadosFiltrados) { comunicado ->
+                        items(comunicadosFiltrados) { comunicado ->
                             ComunicadoItem(
                                 comunicado = comunicado,
                                 leido = viewModel.esComunicadoLeido(comunicado.id),
                                 confirmado = viewModel.esComunicadoConfirmado(comunicado.id),
-                                onClick = {
+                                onComunicadoClick = {
                                     // Si el comunicado requiere confirmación y no está confirmado,
                                     // mostramos el diálogo de confirmación
                                     if (comunicado.requiereConfirmacion && 
@@ -284,11 +289,12 @@ fun ComunicadosFamiliaScreen(
                                         viewModel.mostrarConfirmacion(comunicado)
                                     } else {
                                         // Si no requiere confirmación o ya está confirmado,
-                                        // solo lo marcamos como leído
-                                        if (!viewModel.esComunicadoLeido(comunicado.id)) {
-                                            viewModel.marcarComoLeido(comunicado.id)
-                                        }
+                                        // mostramos el detalle
+                                        viewModel.mostrarDetalle(comunicado)
                                     }
+                                },
+                                onConfirmarClick = {
+                                    viewModel.confirmarLectura(it.id)
                                 }
                             )
                         }
@@ -305,6 +311,16 @@ fun ComunicadosFamiliaScreen(
                     },
                     onDismiss = {
                         viewModel.cerrarDialogoConfirmacion()
+                    }
+                )
+            }
+            
+            // Diálogo de detalle de comunicado
+            if (uiState.mostrarDetalle && uiState.comunicadoParaDetalle != null) {
+                ComunicadoDetalleDialog(
+                    comunicado = uiState.comunicadoParaDetalle!!,
+                    onDismiss = {
+                        viewModel.cerrarDetalle()
                     }
                 )
             }
@@ -365,154 +381,214 @@ fun BadgeNotification(noLeidos: Int, sinConfirmar: Int) {
 }
 
 /**
- * Componente que muestra un comunicado individual en la lista
- *
- * @param comunicado Comunicado a mostrar
- * @param leido Indica si el comunicado ha sido leído
- * @param confirmado Indica si el comunicado ha sido confirmado
- * @param onClick Callback para cuando se hace click en el comunicado
+ * Muestra los recursos adjuntos de un comunicado de forma atractiva
+ */
+@Composable
+fun RecursosAdjuntos(
+    recursos: List<String>,
+    modifier: Modifier = Modifier
+) {
+    if (recursos.isEmpty()) return
+    
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        // Título de la sección
+        Text(
+            text = "Adjuntos (${recursos.size})",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Lista de recursos
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            recursos.take(2).forEach { recurso ->
+                RecursoChip(recurso)
+            }
+            
+            // Si hay más de 2 recursos, mostrar contador
+            if (recursos.size > 2) {
+                RecursoChip("+${recursos.size - 2} más")
+            }
+        }
+    }
+}
+
+/**
+ * Chip para mostrar un recurso adjunto
+ */
+@Composable
+private fun RecursoChip(texto: String) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+        modifier = Modifier.height(28.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.AttachFile,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            Text(
+                text = texto,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }
+}
+
+/**
+ * Elemento que muestra un comunicado en la lista
  */
 @Composable
 fun ComunicadoItem(
     comunicado: Comunicado,
     leido: Boolean,
     confirmado: Boolean,
-    onClick: () -> Unit
+    onComunicadoClick: (Comunicado) -> Unit,
+    onConfirmarClick: (Comunicado) -> Unit
 ) {
-    val backgroundColor = when {
-        comunicado.requiereConfirmacion && !confirmado -> 
-            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-        !leido -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+    val colorFondo = when {
+        !leido -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        comunicado.requiereConfirmacion && !confirmado -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
         else -> MaterialTheme.colorScheme.surface
     }
     
+    val borde = when {
+        !leido -> MaterialTheme.colorScheme.primary
+        comunicado.requiereConfirmacion && !confirmado -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+    }
+    
+    val iconoLectura = when {
+        !leido -> Icons.Default.MarkEmailUnread
+        confirmado -> Icons.Default.MarkEmailRead
+        else -> Icons.Default.Email
+    }
+    
+    val colorIconoLectura = when {
+        !leido -> MaterialTheme.colorScheme.primary
+        confirmado -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.outline
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorFondo
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = borde
+        ),
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(
             defaultElevation = if (!leido) 4.dp else 1.dp
         ),
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        )
+        onClick = { onComunicadoClick(comunicado) }
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            // Fila superior con título y estado
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            // Icono de estado de lectura
+            Icon(
+                imageVector = iconoLectura,
+                contentDescription = if (leido) "Leído" else "No leído",
+                tint = colorIconoLectura,
+                modifier = Modifier
+                    .padding(top = 2.dp, end = 12.dp)
+                    .size(24.dp)
+            )
+            
+            // Contenido principal
+            Column(
+                modifier = Modifier
+                    .weight(1f)
             ) {
-                // Título del comunicado
                 Text(
                     text = comunicado.titulo,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (!leido) FontWeight.Bold else FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    fontWeight = if (!leido) FontWeight.Bold else FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 
-                // Indicador de estado: leído/sin leer, confirmado/sin confirmar
-                when {
-                    comunicado.requiereConfirmacion && confirmado -> {
-                        // Confirmado
-                        Icon(
-                            imageVector = Icons.Filled.DoneAll,
-                            contentDescription = "Lectura confirmada",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    comunicado.requiereConfirmacion && !confirmado -> {
-                        // Requiere confirmación pero aún no se ha confirmado
-                        Icon(
-                            imageVector = Icons.Outlined.HourglassEmpty,
-                            contentDescription = "Requiere confirmación",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    leido -> {
-                        // Leído
-                        Icon(
-                            imageVector = Icons.Filled.Done,
-                            contentDescription = "Leído",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    else -> {
-                        // No leído
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        )
-                    }
+                Text(
+                    text = comunicado.mensaje,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                
+                // Recursos adjuntos
+                if (comunicado.recursos.isNotEmpty()) {
+                    RecursosAdjuntos(recursos = comunicado.recursos)
+                }
+                
+                // Metadatos
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Fecha
+                    Text(
+                        text = formatearFecha(comunicado.fechaCreacion.toDate()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    // Remitente
+                    Text(
+                        text = comunicado.remitente,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Contenido del comunicado
-            Text(
-                text = comunicado.mensaje,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Fila inferior con fecha y destinatarios
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Fecha de creación
-                Text(
-                    text = formatearFecha(comunicado.fechaCreacion.toDate()),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                // Indicador de confirmación requerida si aplica
-                if (comunicado.requiereConfirmacion) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = if (confirmado) 
-                                MaterialTheme.colorScheme.primary
-                            else 
-                                MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(4.dp))
-                        
-                        Text(
-                            text = if (confirmado) 
-                                "Confirmado" 
-                            else if (comunicado.fechaLimiteConfirmacion != null && 
-                                    Date().after(comunicado.fechaLimiteConfirmacion?.toDate())) 
-                                "¡Confirma antes del ${formatearFecha(comunicado.fechaLimiteConfirmacion?.toDate())}!"
-                            else 
-                                "Requiere confirmación",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (confirmado) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
-                                MaterialTheme.colorScheme.error
-                        )
-                    }
+            // Botón de confirmar si es necesario
+            if (comunicado.requiereConfirmacion && !confirmado && leido) {
+                IconButton(
+                    onClick = { onConfirmarClick(comunicado) },
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Confirmar lectura",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
@@ -642,6 +718,208 @@ fun ConfirmacionLecturaDialog(
 }
 
 /**
+ * Diálogo para mostrar el detalle completo de un comunicado
+ *
+ * @param comunicado Comunicado a mostrar en detalle
+ * @param onDismiss Callback para cuando el usuario cierra el diálogo
+ */
+@Composable
+fun ComunicadoDetalleDialog(
+    comunicado: Comunicado,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 6.dp
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                // Cabecera con título e icono
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    Text(
+                        text = comunicado.titulo,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Metadatos
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Fecha
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Done,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Text(
+                            text = formatearFecha(comunicado.fechaCreacion.toDate()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    // Remitente
+                    Text(
+                        text = "De: ${comunicado.remitente}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                // Confirmación requerida (si aplica)
+                if (comunicado.requiereConfirmacion) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Column {
+                            Text(
+                                text = "Este comunicado requiere confirmación de lectura",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            
+                            if (comunicado.fechaLimiteConfirmacion != null) {
+                                Text(
+                                    text = "Fecha límite: ${formatearFecha(comunicado.fechaLimiteConfirmacion?.toDate())}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Contenido principal
+                Text(
+                    text = comunicado.mensaje,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                // Recursos adjuntos
+                if (comunicado.recursos.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Recursos adjuntos",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(12.dp)
+                    ) {
+                        comunicado.recursos.forEach { recurso ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PriorityHigh,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Text(
+                                    text = recurso,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            
+                            if (recurso != comunicado.recursos.last()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Botón para cerrar
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Cerrar")
+                }
+            }
+        }
+    }
+}
+
+/**
  * Formatea una fecha para mostrarla en la UI
  *
  * @param date Fecha a formatear
@@ -672,7 +950,8 @@ fun ComunicadoItemPreview() {
                 ),
                 leido = false,
                 confirmado = false,
-                onClick = {}
+                onComunicadoClick = {},
+                onConfirmarClick = {}
             )
         }
     }

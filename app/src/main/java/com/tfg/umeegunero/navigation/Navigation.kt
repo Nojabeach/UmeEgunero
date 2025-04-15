@@ -26,6 +26,7 @@ import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
 import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.DetalleDiaEventoScreen
 import com.tfg.umeegunero.feature.common.comunicacion.screen.BandejaEntradaScreen
 import com.tfg.umeegunero.feature.common.comunicacion.screen.ComponerMensajeScreen
+import com.tfg.umeegunero.feature.familiar.screen.ComunicadosFamiliaScreen
 import java.time.LocalDate
 
 /**
@@ -307,6 +308,14 @@ fun Navigation(
         // Pantalla de bandeja de entrada
         composable(route = AppScreens.BandejaEntrada.route) {
             BandejaEntradaScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de comunicados y circulares
+        composable(route = AppScreens.ComunicadosCirculares.route) {
+            ComunicadosFamiliaScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
             )
