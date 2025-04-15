@@ -145,4 +145,48 @@ class DebugUtils @Inject constructor(
             throw e
         }
     }
+
+    /**
+     * Elimina todos los centros educativos de Firestore para resolver problemas de datos incompatibles
+     * @return Un par con (éxito: Boolean, mensaje: String)
+     */
+    suspend fun purgarCentrosEducativos(): Pair<Boolean, String> {
+        return try {
+            Log.d("DebugUtils", "Iniciando purga de centros educativos...")
+            
+            // Referencia a la colección de centros
+            val centrosCollection = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("centros")
+            
+            // Obtener todos los centros
+            val querySnapshot = centrosCollection.get().await()
+            
+            if (querySnapshot.isEmpty) {
+                Log.d("DebugUtils", "No se encontraron centros para purgar")
+                return Pair(true, "No se encontraron centros para purgar. La base de datos ya está limpia.")
+            }
+            
+            Log.d("DebugUtils", "Se encontraron ${querySnapshot.size()} centros para purgar")
+            
+            // Lista para guardar operaciones de escritura
+            val batch = com.google.firebase.firestore.FirebaseFirestore.getInstance().batch()
+            
+            // Para cada centro, programar su eliminación
+            querySnapshot.documents.forEach { doc ->
+                val id = doc.id
+                Log.d("DebugUtils", "Programando eliminación del centro con ID: $id")
+                batch.delete(centrosCollection.document(id))
+            }
+            
+            // Ejecutar todas las eliminaciones como una operación atómica
+            batch.commit().await()
+            
+            Log.d("DebugUtils", "Purga completada con éxito. Se eliminaron ${querySnapshot.size()} centros.")
+            Pair(true, "Purga completada con éxito. Se eliminaron ${querySnapshot.size()} centros.")
+            
+        } catch (e: Exception) {
+            Log.e("DebugUtils", "Error durante la purga de centros: ${e.message}", e)
+            Pair(false, "Error durante la purga de centros: ${e.message}")
+        }
+    }
 }

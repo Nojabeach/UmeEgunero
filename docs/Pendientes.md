@@ -10,12 +10,20 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Prioridad: Alta
    - Tiempo estimado: 1 día
 
+2. **Pantalla de Gestión de Centros en el Panel de Administrador**
+   - Actualmente al hacer clic en el card de "Centros" en el panel de administrador, la aplicación se cierra
+   - Se requiere implementar una redirección a DummyScreen o la pantalla correspondiente
+   - Revisar el resto de cards y botones del panel para asegurar que no cierren la aplicación
+   - Prioridad: Alta
+   - Tiempo estimado: 1 día
+
 ## Revisión de Funcionalidades por Perfil
 
 ### Perfil Administrador de Aplicación
 
-1. **Dashboard Principal**
+1. **Dashboard Principal** ⚠️
    - Verificar que todos los botones y tarjetas de navegación funcionan correctamente
+   - **URGENTE**: Corregir el card de "Centros" que actualmente causa cierre de la aplicación
    - Comprobar que las estadísticas mostradas se actualizan con datos reales
    - Revisar la visualización de centros educativos registrados
    - Prioridad: Alta
@@ -192,6 +200,16 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Tiempo estimado: 2 días
 
 ## Problemas y optimizaciones pendientes
+
+### Funcionalidades especiales y ocultas
+
+1. **Borrado de centros educativos (Triple clic)** ℹ️
+   - **RECORDATORIO**: En la pantalla de Registro Familiar se ha implementado una funcionalidad oculta mediante triple clic en el título "Registro Familiar" de la barra superior.
+   - Esta funcionalidad muestra un diálogo de depuración que permite purgar todos los centros educativos obsoletos de Firestore.
+   - Utilizar solo en caso de inconsistencias en los datos de centros o durante pruebas de desarrollo.
+   - Documentar adecuadamente esta funcionalidad en el manual técnico.
+   - Prioridad: Baja (funcionalidad ya implementada)
+   - Tiempo estimado: 1 día (para documentación adicional)
 
 ### Posibles duplicaciones de modelos
 

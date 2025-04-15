@@ -31,6 +31,7 @@ import com.google.firebase.Timestamp
 import java.io.IOException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import android.util.Log
 
 /**
  * Repositorio para gestionar usuarios y operaciones relacionadas
@@ -375,9 +376,43 @@ open class UsuarioRepository @Inject constructor(
     suspend fun getCentrosEducativos(): Result<List<Centro>> = withContext(Dispatchers.IO) {
         try {
             val centrosQuery = centrosCollection.whereEqualTo("activo", true).get().await()
-            val centros = centrosQuery.toObjects(Centro::class.java)
-            return@withContext Result.Success(centros)
+            try {
+                val centros = centrosQuery.toObjects(Centro::class.java)
+                return@withContext Result.Success(centros)
+            } catch (deserializeEx: Exception) {
+                // Manejo específico para errores de deserialización
+                Log.e("UsuarioRepository", "Error de deserialización: ${deserializeEx.message}")
+                
+                // Intento alternativo: procesar manualmente los documentos
+                val centrosAlternativos = mutableListOf<Centro>()
+                try {
+                    for (doc in centrosQuery.documents) {
+                        val id = doc.id
+                        val nombre = doc.getString("nombre") ?: ""
+                        val direccion = doc.getString("direccion") ?: ""
+                        val telefono = doc.getString("telefono") ?: ""
+                        val email = doc.getString("email") ?: ""
+                        val activo = doc.getBoolean("activo") ?: true
+                        
+                        // Crear un objeto Centro con los campos esenciales
+                        val centro = Centro(
+                            id = id,
+                            nombre = nombre,
+                            direccion = direccion,
+                            telefono = telefono,
+                            email = email,
+                            activo = activo
+                        )
+                        centrosAlternativos.add(centro)
+                    }
+                    return@withContext Result.Success(centrosAlternativos)
+                } catch (innerEx: Exception) {
+                    // Si también falla el procesamiento manual, reportamos el error original
+                    return@withContext Result.Error(deserializeEx)
+                }
+            }
         } catch (e: Exception) {
+            Log.e("UsuarioRepository", "Error general al obtener centros: ${e.message}")
             return@withContext Result.Error(e)
         }
     }

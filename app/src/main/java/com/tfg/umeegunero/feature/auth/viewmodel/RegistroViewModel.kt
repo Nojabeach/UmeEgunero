@@ -9,6 +9,7 @@ import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.DebugUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.util.regex.Pattern
+import android.util.Log
 
 /**
  * Estado UI para la pantalla de registro
@@ -44,7 +46,8 @@ data class RegistroUiState(
 
 @HiltViewModel
 class RegistroViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val debugUtils: DebugUtils
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegistroUiState())
@@ -68,9 +71,17 @@ class RegistroViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
+                    // Comprobar si el error es de deserialización
+                    val errorMessage = if (result.exception?.message?.contains("deserialize") == true || 
+                                         result.exception?.message?.contains("HashMap") == true) {
+                        "Error de compatibilidad en los datos de los centros. Por favor, contacte con soporte."
+                    } else {
+                        "Error al cargar centros: ${result.exception?.message}"
+                    }
+                    
                     _uiState.update {
                         it.copy(
-                            error = "Error al cargar centros: ${result.exception?.message}",
+                            error = errorMessage,
                             isLoadingCentros = false
                         )
                     }
@@ -633,6 +644,46 @@ class RegistroViewModel @Inject constructor(
             confirmPassword.isBlank() -> "La confirmación de contraseña es obligatoria"
             password != confirmPassword -> "Las contraseñas no coinciden"
             else -> null
+        }
+    }
+
+    /**
+     * Método para purgar los centros de Firestore desde la pantalla de debug
+     */
+    fun purgarCentrosFirestore() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            try {
+                val (success, message) = debugUtils.purgarCentrosEducativos()
+                
+                if (success) {
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            error = "Operación completada: $message"
+                        ) 
+                    }
+                    
+                    // Recargar centros después de purgar
+                    cargarCentros()
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            error = "Error: $message"
+                        ) 
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("RegistroViewModel", "Error al purgar centros", e)
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error inesperado: ${e.message}"
+                    ) 
+                }
+            }
         }
     }
 
