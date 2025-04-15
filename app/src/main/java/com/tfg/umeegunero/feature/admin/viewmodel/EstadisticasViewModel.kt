@@ -12,8 +12,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * ViewModel para la pantalla de estadísticas del administrador
@@ -25,6 +29,8 @@ class EstadisticasViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(EstadisticasUiState())
     val uiState: StateFlow<EstadisticasUiState> = _uiState.asStateFlow()
+    
+    private val dateFormatter = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale("es", "ES"))
 
     init {
         cargarEstadisticas()
@@ -67,6 +73,8 @@ class EstadisticasViewModel @Inject constructor(
                 val nuevosFamiliares = familiares.count { doc ->
                     doc.getTimestamp("fechaCreacion")?.toDate()?.after(fechaLimite) == true
                 }
+
+                val fechaActualizacion = dateFormatter.format(Date())
                 
                 // Actualizar estado UI
                 _uiState.update { it.copy(
@@ -79,13 +87,17 @@ class EstadisticasViewModel @Inject constructor(
                     nuevosCentros = nuevosCentros,
                     nuevosProfesores = nuevosProfesores,
                     nuevosAlumnos = nuevosAlumnos,
-                    nuevosFamiliares = nuevosFamiliares
+                    nuevosFamiliares = nuevosFamiliares,
+                    fechaActualizacion = fechaActualizacion
                 ) }
+                
+                Timber.d("Estadísticas actualizadas: ${Date()}")
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
                     error = e.message ?: "Error al cargar estadísticas"
                 ) }
+                Timber.e(e, "Error al cargar estadísticas")
             }
         }
     }
@@ -143,6 +155,7 @@ class EstadisticasViewModel @Inject constructor(
      * Recarga las estadísticas
      */
     fun recargarEstadisticas() {
+        Timber.d("Recargando estadísticas...")
         cargarEstadisticas()
     }
 } 

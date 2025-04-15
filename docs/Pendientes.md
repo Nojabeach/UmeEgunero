@@ -231,13 +231,6 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
 
 ### Funcionalidades especiales y ocultas
 
-1. **Borrado de centros educativos (Triple clic)** ℹ️
-   - **RECORDATORIO**: En la pantalla de Registro Familiar se ha implementado una funcionalidad oculta mediante triple clic en el título "Registro Familiar" de la barra superior.
-   - Esta funcionalidad muestra un diálogo de depuración que permite purgar todos los centros educativos obsoletos de Firestore.
-   - Utilizar solo en caso de inconsistencias en los datos de centros o durante pruebas de desarrollo.
-   - Documentar adecuadamente esta funcionalidad en el manual técnico.
-   - Prioridad: Baja (funcionalidad ya implementada)
-   - Tiempo estimado: 1 día (para documentación adicional)
 
 ### Problemas específicos de interfaz
 

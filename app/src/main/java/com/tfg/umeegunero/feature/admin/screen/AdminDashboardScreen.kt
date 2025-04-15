@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Dashboard del administrador de la aplicación
@@ -70,7 +71,7 @@ fun AdminDashboardScreen(
     // Variables para control de animaciones
     var showContent by remember { mutableStateOf(false) }
     val currentDate = remember { 
-        LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")) 
+        LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", Locale("es", "ES")))
     }
     
     // Efecto para mostrar contenido con animación
@@ -175,7 +176,7 @@ fun AdminDashboardContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Tarjeta de bienvenida
         AdminWelcomeCard(currentDate = currentDate)
@@ -185,116 +186,83 @@ fun AdminDashboardContent(
             text = "Gestión de Centros",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
         )
         
-        // Opciones de gestión de centros
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            AdminOptionCard(
-                title = "Ver Centros",
-                description = "Consultar listado",
-                icon = Icons.Default.Business,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f),
-                onClick = onNavigateToGestionCentros
-            )
-            
-            AdminOptionCard(
-                title = "Añadir Centro",
-                description = "Crear nuevo centro",
-                icon = Icons.Default.Add,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.weight(1f),
-                onClick = onNavigateToAddCentro
-            )
-        }
+        // Opciones de gestión de centros en formato lista
+        AdminOptionCard(
+            title = "Ver Centros",
+            description = "Consultar listado de centros educativos",
+            icon = Icons.Default.Business,
+            color = MaterialTheme.colorScheme.primary,
+            onClick = onNavigateToGestionCentros
+        )
+        
+        AdminOptionCard(
+            title = "Añadir Centro",
+            description = "Crear nuevo centro educativo",
+            icon = Icons.Default.Add,
+            color = MaterialTheme.colorScheme.secondary,
+            onClick = onNavigateToAddCentro
+        )
         
         // Título para sección de análisis
         Text(
             text = "Análisis y Reportes",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
         )
         
-        // Opciones de análisis
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            userScrollEnabled = false,
-            modifier = Modifier.height(200.dp)
-        ) {
-            item {
-                AdminOptionCard(
-                    title = "Estadísticas",
-                    description = "Datos generales",
-                    icon = Icons.Default.PieChart,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    onClick = onNavigateToEstadisticas
-                )
-            }
-            
-            item {
-                AdminOptionCard(
-                    title = "Uso del Sistema",
-                    description = "Métricas de uso",
-                    icon = Icons.Default.Timeline,
-                    color = Color(0xFFE65100),
-                    onClick = onNavigateToReporteUso
-                )
-            }
-            
-            item {
-                AdminOptionCard(
-                    title = "Seguridad",
-                    description = "Accesos y permisos",
-                    icon = Icons.Default.Security,
-                    color = Color(0xFF7B1FA2),
-                    onClick = onNavigateToSeguridad
-                )
-            }
-            
-            // Añadir un espacio vacío para mantener el equilibrio del grid
-            item {
-                Box(modifier = Modifier.fillMaxSize())
-            }
-        }
+        // Opciones de análisis en formato lista vertical
+        AdminOptionCard(
+            title = "Estadísticas",
+            description = "Datos generales del sistema",
+            icon = Icons.Default.PieChart,
+            color = MaterialTheme.colorScheme.tertiary,
+            onClick = onNavigateToEstadisticas
+        )
+        
+        AdminOptionCard(
+            title = "Uso del Sistema",
+            description = "Métricas de uso y actividad",
+            icon = Icons.Default.Timeline,
+            color = Color(0xFFE65100),
+            onClick = onNavigateToReporteUso
+        )
+        
+        AdminOptionCard(
+            title = "Seguridad",
+            description = "Configuración de accesos y permisos",
+            icon = Icons.Default.Security,
+            color = Color(0xFF7B1FA2),
+            onClick = onNavigateToSeguridad
+        )
         
         // Título para sección de comunicación
         Text(
             text = "Comunicación",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
         )
         
-        // Opciones de comunicación
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            AdminOptionCard(
-                title = "Comunicados y circulares",
-                description = "Anuncios generales",
-                icon = Icons.Default.Campaign,
-                color = Color(0xFF1565C0),
-                modifier = Modifier.weight(1f),
-                onClick = onNavigateToComunicados
-            )
-            
-            AdminOptionCard(
-                title = "Notificaciones",
-                description = "Alertas del sistema",
-                icon = Icons.Default.Notifications,
-                color = Color(0xFFD32F2F),
-                modifier = Modifier.weight(1f),
-                onClick = onNavigateToNotificaciones
-            )
-        }
+        // Opciones de comunicación en formato lista
+        AdminOptionCard(
+            title = "Comunicados y circulares",
+            description = "Gestión de anuncios y mensajes generales",
+            icon = Icons.Default.Campaign,
+            color = Color(0xFF1565C0),
+            onClick = onNavigateToComunicados
+        )
+        
+        AdminOptionCard(
+            title = "Notificaciones",
+            description = "Configuración de alertas del sistema",
+            icon = Icons.Default.Notifications,
+            color = Color(0xFFD32F2F),
+            onClick = onNavigateToNotificaciones
+        )
         
         // Perfil
         Spacer(modifier = Modifier.height(8.dp))
@@ -302,6 +270,7 @@ fun AdminDashboardContent(
         Button(
             onClick = onNavigateToPerfil,
             modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -392,7 +361,7 @@ fun AdminOptionCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(120.dp)
+            .height(80.dp)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -402,14 +371,14 @@ fun AdminOptionCard(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Icono con fondo circular
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(color.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
@@ -418,12 +387,14 @@ fun AdminOptionCard(
                     imageVector = icon,
                     contentDescription = title,
                     tint = color,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
             
             // Textos
-            Column {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
@@ -439,10 +410,18 @@ fun AdminOptionCard(
                         lineHeight = 14.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            
+            // Flecha indicadora para la navegación
+            Icon(
+                imageVector = Icons.Default.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

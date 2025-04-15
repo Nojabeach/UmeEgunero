@@ -473,12 +473,31 @@ fun AddCentroScreenContent(
                 modifier = Modifier.padding(bottom = 24.dp)
             ) {
                 // Texto explicativo
-                Text(
-                    text = "Añade al menos un administrador para que pueda acceder a la plataforma y gestionar el centro educativo.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                Column(modifier = Modifier.padding(bottom = 16.dp)) {
+                    Text(
+                        text = "Al menos un administrador principal es obligatorio para gestionar el centro educativo.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = "Este usuario se creará en el sistema con sus credenciales y podrá acceder a la plataforma para gestionar el centro.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    if (uiState.adminCentroError != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = uiState.adminCentroError,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
                 
                 // Lista de administradores
                 uiState.adminCentro.forEachIndexed { index, admin ->
@@ -1263,7 +1282,7 @@ fun MapaUbicacion(
 }
 
 /**
- * Componente para mostrar una tarjeta de administrador de centro
+ * Componente para mostrar un formulario de administrador de centro
  */
 @Composable
 fun AdminCentroCard(
@@ -1277,32 +1296,33 @@ fun AdminCentroCard(
     onTelefonoChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onRemove: () -> Unit,
-    isPrimary: Boolean
+    isPrimary: Boolean = false
 ) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isPrimary) 
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
             else 
-                MaterialTheme.colorScheme.surfaceVariant
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isPrimary) 2.dp else 1.dp
-        ),
-        border = if (isPrimary) 
-            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
-        else
-            null
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isPrimary) 
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            else
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+        )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Header de la tarjeta
+            // Título con etiqueta de "Principal" si corresponde
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1311,59 +1331,61 @@ fun AdminCentroCard(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (isPrimary) "Administrador Principal" else "Administrador ${index + 1}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = if (isPrimary) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                     
-                    if (isPrimary) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        ) {
-                            Text(
-                                text = "Credenciales de acceso",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = if (isPrimary) "Administrador Principal" else "Administrador Adicional",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (isPrimary) FontWeight.Bold else FontWeight.Normal
+                    )
                 }
                 
-                if (canDelete) {
-                    IconButton(onClick = onRemove) {
+                if (isPrimary) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                    ) {
+                        Text(
+                            text = "Obligatorio",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                } else if (canDelete) {
+                    IconButton(
+                        onClick = onRemove,
+                        modifier = Modifier.size(32.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Eliminar administrador",
-                            tint = MaterialTheme.colorScheme.error
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
             
-            if (isPrimary) {
-                Text(
-                    text = "Este administrador tendrá acceso principal al centro",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
-                )
-            }
-            
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Campos de datos
+            // DNI
             EnhancedFormTextField(
                 value = admin.dni,
                 onValueChange = onDniChange,
-                label = "DNI/NIE",
+                label = "DNI",
                 error = admin.dniError,
                 icon = Icons.Default.Place,
                 modifier = Modifier
@@ -1372,6 +1394,7 @@ fun AdminCentroCard(
                 placeholder = "Ej: 12345678A"
             )
             
+            // Nombre
             EnhancedFormTextField(
                 value = admin.nombre,
                 onValueChange = onNombreChange,
@@ -1384,6 +1407,7 @@ fun AdminCentroCard(
                 placeholder = "Ej: Juan"
             )
             
+            // Apellidos
             EnhancedFormTextField(
                 value = admin.apellidos,
                 onValueChange = onApellidosChange,
@@ -1393,78 +1417,108 @@ fun AdminCentroCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                placeholder = "Ej: García López"
+                placeholder = "Ej: López García"
             )
             
+            // Email
             EnhancedFormTextField(
                 value = admin.email,
                 onValueChange = onEmailChange,
-                label = if (isPrimary) "Email (acceso al centro)" else "Email",
+                label = "Email",
                 error = admin.emailError,
                 icon = Icons.Default.Email,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                keyboardType = KeyboardType.Email,
-                placeholder = "Ej: usuario@dominio.com"
+                placeholder = "Ej: admin@centro.com",
+                keyboardType = KeyboardType.Email
             )
             
+            // Teléfono (opcional)
             EnhancedFormTextField(
                 value = admin.telefono,
                 onValueChange = onTelefonoChange,
-                label = "Teléfono (opcional)",
+                label = "Teléfono",
                 error = admin.telefonoError,
                 icon = Icons.Default.Phone,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                keyboardType = KeyboardType.Phone,
-                placeholder = "Ej: 666777888"
+                placeholder = "Ej: 666777888 (opcional)",
+                keyboardType = KeyboardType.Phone
             )
             
-            // Campo para contraseña con visibilidad toggleable
-            PasswordTextField(
+            // Contraseña
+            EnhancedFormTextField(
                 value = admin.password,
                 onValueChange = onPasswordChange,
-                label = if (isPrimary) "Contraseña (acceso al centro)" else "Contraseña",
-                error = admin.passwordError
+                label = "Contraseña",
+                error = admin.passwordError,
+                icon = Icons.Default.Lock,
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) 
+                                Icons.Default.Visibility 
+                            else 
+                                Icons.Default.VisibilityOff,
+                            contentDescription = "Mostrar contraseña"
+                        )
+                    }
+                },
+                visualTransformation = if (passwordVisible) 
+                    VisualTransformation.None 
+                else 
+                    PasswordVisualTransformation(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                placeholder = "Min. 8 caracteres, letras y números"
             )
-        }
-    }
-}
-
-/**
- * Campo de texto para contraseñas
- */
-@Composable
-fun PasswordTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    error: String? = null
-) {
-    var passwordVisible by remember { mutableStateOf(false) }
-    
-    EnhancedFormTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = label,
-        error = error,
-        icon = Icons.Default.Lock,
-        modifier = modifier.fillMaxWidth(),
-        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardType = KeyboardType.Password,
-        placeholder = "Mínimo 6 caracteres",
-        trailingIcon = {
-            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                Icon(
-                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+            
+            // Mensaje de ayuda para contraseña
+            Text(
+                text = "La contraseña debe tener al menos 8 caracteres e incluir letras y números.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+            )
+            
+            // Si es el administrador principal, mostrar mensaje explicativo adicional
+            if (isPrimary) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Help,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Este usuario es obligatorio y podrá acceder a la aplicación con el email y contraseña especificados.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
-    )
+    }
 }
 
 /**

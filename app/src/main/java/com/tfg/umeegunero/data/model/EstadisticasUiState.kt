@@ -15,5 +15,6 @@ data class EstadisticasUiState(
     val nuevosProfesores: Int = 0,
     val nuevosAlumnos: Int = 0,
     val nuevosFamiliares: Int = 0,
-    val informeGenerado: Boolean = false
+    val informeGenerado: Boolean = false,
+    val fechaActualizacion: String = "No disponible"
 ) 

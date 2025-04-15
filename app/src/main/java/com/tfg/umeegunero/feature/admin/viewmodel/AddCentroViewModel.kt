@@ -411,8 +411,18 @@ class AddCentroViewModel @Inject constructor(
                 // Combinar los datos de dirección en un string por compatibilidad
                 val direccionString = "${direccion.calle}, ${direccion.numero}, ${direccion.codigoPostal}, ${direccion.ciudad}, ${direccion.provincia}"
                 
+                val centroId = if (_uiState.value.isEdit) _uiState.value.id else UUID.randomUUID().toString()
+                
+                // IMPORTANTE: Primero crear los administradores para asegurar que existen antes de guardar el centro
+                Timber.d("Creando administradores para el centro $centroId")
+                val adminIds = crearAdministradoresCentro(centroId)
+                
+                if (adminIds.isEmpty()) {
+                    throw Exception("No se pudieron crear los administradores del centro. Verifique que los datos sean correctos y que no existan usuarios duplicados.")
+                }
+                
                 val centro = Centro(
-                    id = if (_uiState.value.isEdit) _uiState.value.id else UUID.randomUUID().toString(),
+                    id = centroId,
                     nombre = _uiState.value.nombre,
                     direccion = direccionString,
                     telefono = contacto.telefono,
@@ -422,7 +432,8 @@ class AddCentroViewModel @Inject constructor(
                     logo = _uiState.value.imageUrl,
                     activo = true,
                     direccionObj = direccion,
-                    contactoObj = contacto
+                    contactoObj = contacto,
+                    adminIds = adminIds // Asignar los IDs de los administradores creados
                 )
                 
                 if (_uiState.value.isEdit) {
@@ -431,6 +442,8 @@ class AddCentroViewModel @Inject constructor(
                     centroRepository.addCentro(centro)
                 }
                 
+                Timber.d("Centro guardado correctamente con ${adminIds.size} administradores")
+                
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -438,13 +451,21 @@ class AddCentroViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                val errorMessage = when {
+                    e.message?.contains("already in use", ignoreCase = true) == true -> 
+                        "Ya existe un usuario con ese email. Por favor, utilice otro email o contacte con soporte."
+                    e.message?.contains("no se pudieron crear los administradores", ignoreCase = true) == true ->
+                        e.message ?: "Error al crear los administradores del centro"
+                    else -> "Error al guardar el centro: ${e.message}"
+                }
+                
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        error = "Error al guardar el centro: ${e.message}"
+                        error = errorMessage
                     )
                 }
-                Timber.e(e, "Error al guardar centro")
+                Timber.e(e, "Error al guardar centro: $errorMessage")
             }
         }
     }
@@ -494,17 +515,23 @@ class AddCentroViewModel @Inject constructor(
         if (currentState.nombre.isBlank()) {
             _uiState.update { it.copy(nombreError = "El nombre es obligatorio") }
             isValid = false
+        } else {
+            _uiState.update { it.copy(nombreError = null) }
         }
 
         // Validar dirección
         if (currentState.calle.isBlank()) {
             _uiState.update { it.copy(calleError = "La calle es obligatoria") }
             isValid = false
+        } else {
+            _uiState.update { it.copy(calleError = null) }
         }
 
         if (currentState.numero.isBlank()) {
             _uiState.update { it.copy(numeroError = "El número es obligatorio") }
             isValid = false
+        } else {
+            _uiState.update { it.copy(numeroError = null) }
         }
 
         if (currentState.codigoPostal.isBlank()) {
@@ -513,22 +540,30 @@ class AddCentroViewModel @Inject constructor(
         } else if (!isValidCodigoPostal(currentState.codigoPostal)) {
             _uiState.update { it.copy(codigoPostalError = "El código postal debe tener 5 dígitos") }
             isValid = false
+        } else {
+            _uiState.update { it.copy(codigoPostalError = null) }
         }
 
         if (currentState.ciudad.isBlank()) {
             _uiState.update { it.copy(ciudadError = "La ciudad es obligatoria") }
             isValid = false
+        } else {
+            _uiState.update { it.copy(ciudadError = null) }
         }
 
         if (currentState.provincia.isBlank()) {
             _uiState.update { it.copy(provinciaError = "La provincia es obligatoria") }
             isValid = false
+        } else {
+            _uiState.update { it.copy(provinciaError = null) }
         }
 
         // Validar teléfono general del centro (opcional)
         if (currentState.telefono.isNotBlank() && !isValidTelefono(currentState.telefono)) {
             _uiState.update { it.copy(telefonoError = "El formato del teléfono no es válido") }
             isValid = false
+        } else {
+            _uiState.update { it.copy(telefonoError = null) }
         }
 
         // Validar administradores
@@ -538,69 +573,105 @@ class AddCentroViewModel @Inject constructor(
             }
             isValid = false
         } else {
+            _uiState.update { it.copy(adminCentroError = null) }
+            
             // Validar los datos del administrador principal (index 0)
             val adminPrincipal = currentState.adminCentro.firstOrNull()
             if (adminPrincipal != null) {
+                var adminPrincipalValido = true
+                
                 if (adminPrincipal.dni.isBlank()) {
                     updateAdminCentroField(0) { 
                         it.copy(dniError = "El DNI es obligatorio") 
                     }
+                    adminPrincipalValido = false
                     isValid = false
                 } else if (!isDniValid(adminPrincipal.dni)) {
                     updateAdminCentroField(0) { 
                         it.copy(dniError = "El DNI no es válido") 
                     }
+                    adminPrincipalValido = false
                     isValid = false
+                } else {
+                    updateAdminCentroField(0) { it.copy(dniError = null) }
                 }
                 
                 if (adminPrincipal.nombre.isBlank()) {
                     updateAdminCentroField(0) { 
                         it.copy(nombreError = "El nombre es obligatorio") 
                     }
+                    adminPrincipalValido = false
                     isValid = false
+                } else {
+                    updateAdminCentroField(0) { it.copy(nombreError = null) }
                 }
                 
                 if (adminPrincipal.apellidos.isBlank()) {
                     updateAdminCentroField(0) { 
                         it.copy(apellidosError = "Los apellidos son obligatorios") 
                     }
+                    adminPrincipalValido = false
                     isValid = false
+                } else {
+                    updateAdminCentroField(0) { it.copy(apellidosError = null) }
                 }
                 
                 if (adminPrincipal.email.isBlank()) {
                     updateAdminCentroField(0) { 
                         it.copy(emailError = "El email es obligatorio") 
                     }
+                    adminPrincipalValido = false
                     isValid = false
                 } else if (!isValidEmail(adminPrincipal.email)) {
                     updateAdminCentroField(0) { 
                         it.copy(emailError = "El formato del email no es válido") 
                     }
+                    adminPrincipalValido = false
                     isValid = false
+                } else {
+                    updateAdminCentroField(0) { it.copy(emailError = null) }
                 }
                 
                 if (adminPrincipal.telefono.isNotBlank() && !isValidTelefono(adminPrincipal.telefono)) {
                     updateAdminCentroField(0) { 
                         it.copy(telefonoError = "El formato del teléfono no es válido") 
                     }
+                    adminPrincipalValido = false
                     isValid = false
+                } else {
+                    updateAdminCentroField(0) { it.copy(telefonoError = null) }
                 }
                 
-                if (adminPrincipal.password.isBlank()) {
-                    updateAdminCentroField(0) { 
-                        it.copy(passwordError = "La contraseña es obligatoria") 
+                // Solo pedimos password para centros nuevos (no en modo edición) o cuando se especifica
+                if (!_uiState.value.isEdit || adminPrincipal.password.isNotBlank()) {
+                    if (adminPrincipal.password.isBlank()) {
+                        updateAdminCentroField(0) { 
+                            it.copy(passwordError = "La contraseña es obligatoria") 
+                        }
+                        adminPrincipalValido = false
+                        isValid = false
+                    } else if (adminPrincipal.password.length < 8) {
+                        updateAdminCentroField(0) { 
+                            it.copy(passwordError = "La contraseña debe tener al menos 8 caracteres") 
+                        }
+                        adminPrincipalValido = false
+                        isValid = false
+                    } else if (!isPasswordComplex(adminPrincipal.password)) {
+                        updateAdminCentroField(0) { 
+                            it.copy(passwordError = "La contraseña debe incluir letras y números") 
+                        }
+                        adminPrincipalValido = false
+                        isValid = false
+                    } else {
+                        updateAdminCentroField(0) { it.copy(passwordError = null) }
                     }
-                    isValid = false
-                } else if (adminPrincipal.password.length < 8) {
-                    updateAdminCentroField(0) { 
-                        it.copy(passwordError = "La contraseña debe tener al menos 8 caracteres") 
+                }
+                
+                // Si el administrador principal no es válido, mostrar mensaje adicional
+                if (!adminPrincipalValido) {
+                    _uiState.update { 
+                        it.copy(adminCentroError = "El administrador principal tiene datos incompletos o inválidos") 
                     }
-                    isValid = false
-                } else if (!isPasswordComplex(adminPrincipal.password)) {
-                    updateAdminCentroField(0) { 
-                        it.copy(passwordError = "La contraseña debe incluir letras y números") 
-                    }
-                    isValid = false
                 }
             }
             
@@ -619,6 +690,8 @@ class AddCentroViewModel @Inject constructor(
                             it.copy(dniError = "El DNI no es válido") 
                         }
                         isValid = false
+                    } else {
+                        updateAdminCentroField(indexFinal) { it.copy(dniError = null) }
                     }
                     
                     if (admin.nombre.isBlank()) {
@@ -626,6 +699,8 @@ class AddCentroViewModel @Inject constructor(
                             it.copy(nombreError = "El nombre es obligatorio") 
                         }
                         isValid = false
+                    } else {
+                        updateAdminCentroField(indexFinal) { it.copy(nombreError = null) }
                     }
                     
                     if (admin.apellidos.isBlank()) {
@@ -633,6 +708,8 @@ class AddCentroViewModel @Inject constructor(
                             it.copy(apellidosError = "Los apellidos son obligatorios") 
                         }
                         isValid = false
+                    } else {
+                        updateAdminCentroField(indexFinal) { it.copy(apellidosError = null) }
                     }
                     
                     if (admin.email.isBlank()) {
@@ -645,6 +722,8 @@ class AddCentroViewModel @Inject constructor(
                             it.copy(emailError = "El formato del email no es válido") 
                         }
                         isValid = false
+                    } else {
+                        updateAdminCentroField(indexFinal) { it.copy(emailError = null) }
                     }
                     
                     if (admin.telefono.isNotBlank() && !isValidTelefono(admin.telefono)) {
@@ -652,23 +731,30 @@ class AddCentroViewModel @Inject constructor(
                             it.copy(telefonoError = "El formato del teléfono no es válido") 
                         }
                         isValid = false
+                    } else {
+                        updateAdminCentroField(indexFinal) { it.copy(telefonoError = null) }
                     }
                     
-                    if (admin.password.isBlank()) {
-                        updateAdminCentroField(indexFinal) { 
-                            it.copy(passwordError = "La contraseña es obligatoria") 
+                    // Solo pedimos password para centros nuevos o cuando se especifica
+                    if (!_uiState.value.isEdit || admin.password.isNotBlank()) {
+                        if (admin.password.isBlank()) {
+                            updateAdminCentroField(indexFinal) { 
+                                it.copy(passwordError = "La contraseña es obligatoria") 
+                            }
+                            isValid = false
+                        } else if (admin.password.length < 8) {
+                            updateAdminCentroField(indexFinal) { 
+                                it.copy(passwordError = "La contraseña debe tener al menos 8 caracteres") 
+                            }
+                            isValid = false
+                        } else if (!isPasswordComplex(admin.password)) {
+                            updateAdminCentroField(indexFinal) { 
+                                it.copy(passwordError = "La contraseña debe incluir letras y números") 
+                            }
+                            isValid = false
+                        } else {
+                            updateAdminCentroField(indexFinal) { it.copy(passwordError = null) }
                         }
-                        isValid = false
-                    } else if (admin.password.length < 8) {
-                        updateAdminCentroField(indexFinal) { 
-                            it.copy(passwordError = "La contraseña debe tener al menos 8 caracteres") 
-                        }
-                        isValid = false
-                    } else if (!isPasswordComplex(admin.password)) {
-                        updateAdminCentroField(indexFinal) { 
-                            it.copy(passwordError = "La contraseña debe incluir letras y números") 
-                        }
-                        isValid = false
                     }
                 }
             }
@@ -856,93 +942,156 @@ class AddCentroViewModel @Inject constructor(
     private suspend fun crearAdministradoresCentro(centroId: String): List<String> {
         val adminIds = mutableListOf<String>()
         
-        for (admin in _uiState.value.adminCentro) {
-            try {
-                var authSuccessUid = ""
-                
-                // Primero verificamos si el usuario ya existe en Firestore
-                val usuarioExistente = usuarioRepository.getUsuarioByEmail(admin.email)
-                if (usuarioExistente is Result.Success && usuarioExistente.data != null) {
-                    // Si ya existe, lo saltamos y pasamos al siguiente
-                    Timber.w("El usuario con email ${admin.email} ya existe en Firestore, se omitirá")
-                    continue
-                }
-                
-                // Intentamos crear el usuario en Authentication
+        if (_uiState.value.adminCentro.isEmpty()) {
+            throw Exception("Debe existir al menos un administrador de centro")
+        }
+        
+        // Primero intentamos crear el administrador principal (índice 0)
+        val adminPrincipal = _uiState.value.adminCentro.firstOrNull() 
+            ?: throw Exception("No se encontró el administrador principal")
+        
+        try {
+            val adminPrincipalId = procesarAdministrador(adminPrincipal, centroId, true)
+            if (adminPrincipalId.isNotBlank()) {
+                adminIds.add(adminPrincipalId)
+                Timber.d("Administrador principal creado correctamente: ${adminPrincipal.email}")
+            } else {
+                throw Exception("No se pudo crear el administrador principal")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error crítico al crear el administrador principal: ${adminPrincipal.email}")
+            throw Exception("Error al crear el administrador principal: ${e.message}")
+        }
+        
+        // Si hay más administradores, los procesamos también
+        if (_uiState.value.adminCentro.size > 1) {
+            // Procesamos el resto de administradores (a partir del índice 1)
+            for (i in 1 until _uiState.value.adminCentro.size) {
+                val admin = _uiState.value.adminCentro[i]
                 try {
-                    val authResult = usuarioRepository.crearUsuarioConEmailYPassword(
-                        admin.email, 
-                        admin.password
-                    )
-                    
-                    when (authResult) {
-                        is Result.Success -> {
-                            authSuccessUid = authResult.data
-                            Timber.d("Usuario creado en Authentication: ${admin.email} con uid $authSuccessUid")
-                        }
-                        is Result.Error -> {
-                            // Si falla porque ya existe, lo manejamos graciosamente
-                            if (authResult.exception?.message?.contains("The email address is already in use", ignoreCase = true) == true) {
-                                Timber.d("El email ${admin.email} ya existe en Authentication, pero continuamos con la creación en Firestore")
-                            } else {
-                                throw authResult.exception ?: Exception("Error desconocido en el proceso de autenticación")
-                            }
-                        }
-                        else -> {}
+                    val adminId = procesarAdministrador(admin, centroId, false)
+                    if (adminId.isNotBlank()) {
+                        adminIds.add(adminId)
                     }
                 } catch (e: Exception) {
-                    // Si falla la creación en Authentication, verificamos si es porque ya existe
-                    if (e.message?.contains("The email address is already in use", ignoreCase = true) == true) {
-                        Timber.d("El email ${admin.email} ya existe en Authentication, pero continuamos con la creación en Firestore")
-                    } else {
-                        throw e
-                    }
+                    // Para los administradores secundarios, registramos el error pero continuamos
+                    Timber.w(e, "No se pudo crear el administrador secundario: ${admin.email}. Se continuará con el resto.")
                 }
-                
-                // Crear perfil de administrador de centro
-                val perfil = Perfil(
-                    tipo = TipoUsuario.ADMIN_CENTRO,
-                    centroId = centroId,
-                    verificado = true
-                )
-                
-                // Crear usuario en Firestore
-                val usuario = Usuario(
-                    dni = admin.dni,
-                    email = admin.email,
-                    nombre = admin.nombre,
-                    apellidos = admin.apellidos,
-                    telefono = admin.telefono,
-                    perfiles = listOf(perfil)
-                )
-                
-                // Guardar usuario en Firestore
-                val saveResult = usuarioRepository.guardarUsuario(usuario)
-                
-                when (saveResult) {
-                    is Result.Success -> {
-                        adminIds.add(admin.dni)
-                        Timber.d("Administrador de centro creado en Firestore: ${admin.dni}")
-                    }
-                    is Result.Error -> {
-                        // Si falla guardar en Firestore, intentamos eliminar la cuenta de Firebase Auth si se creó nueva
-                        if (authSuccessUid.isNotBlank()) {
-                            usuarioRepository.borrarUsuario(authSuccessUid)
-                        }
-                        Timber.e(saveResult.exception, "Error al guardar administrador en Firestore: ${admin.dni}")
-                        throw saveResult.exception ?: Exception("Error desconocido al guardar administrador")
-                    }
-                    is Result.Loading -> {
-                        // Continuamos con el estado de carga
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error inesperado al crear administrador: ${admin.dni}")
-                throw e
             }
         }
         
         return adminIds
+    }
+
+    /**
+     * Procesa un administrador individual
+     * @param admin El administrador a procesar
+     * @param centroId ID del centro al que pertenece
+     * @param esPrincipal Si es el administrador principal (obligatorio)
+     * @return ID del administrador creado o vacío si falla
+     */
+    private suspend fun procesarAdministrador(admin: AdminCentroUsuario, centroId: String, esPrincipal: Boolean): String {
+        var authSuccessUid = ""
+        
+        // Verificamos si el usuario ya existe en Firestore
+        val usuarioExistente = usuarioRepository.getUsuarioByEmail(admin.email)
+        if (usuarioExistente is Result.Success && usuarioExistente.data != null) {
+            if (esPrincipal) {
+                throw Exception("El email ${admin.email} ya está registrado. Por favor, utilice otro email para el administrador principal.")
+            } else {
+                Timber.w("El usuario con email ${admin.email} ya existe en Firestore, se omitirá")
+                return ""
+            }
+        }
+        
+        // Intentamos crear el usuario en Authentication
+        try {
+            val authResult = usuarioRepository.crearUsuarioConEmailYPassword(
+                admin.email, 
+                admin.password
+            )
+            
+            when (authResult) {
+                is Result.Success -> {
+                    authSuccessUid = authResult.data
+                    Timber.d("Usuario creado en Authentication: ${admin.email} con uid $authSuccessUid")
+                }
+                is Result.Error -> {
+                    // Si falla porque ya existe, solo es error crítico para el principal
+                    if (authResult.exception?.message?.contains("The email address is already in use", ignoreCase = true) == true) {
+                        if (esPrincipal) {
+                            throw Exception("El email ${admin.email} ya está registrado. Por favor, utilice otro email para el administrador principal.")
+                        } else {
+                            Timber.d("El email ${admin.email} ya existe en Authentication, se omitirá")
+                            return ""
+                        }
+                    } else {
+                        throw authResult.exception ?: Exception("Error desconocido en el proceso de autenticación")
+                    }
+                }
+                else -> {}
+            }
+        } catch (e: Exception) {
+            // Si falla la creación en Authentication, verificamos si es porque ya existe
+            if (e.message?.contains("The email address is already in use", ignoreCase = true) == true) {
+                if (esPrincipal) {
+                    throw Exception("El email ${admin.email} ya está registrado. Por favor, utilice otro email para el administrador principal.")
+                } else {
+                    Timber.d("El email ${admin.email} ya existe en Authentication, se omitirá")
+                    return ""
+                }
+            } else {
+                throw e
+            }
+        }
+        
+        // Crear perfil de administrador de centro
+        val perfil = Perfil(
+            tipo = TipoUsuario.ADMIN_CENTRO,
+            centroId = centroId,
+            verificado = true
+        )
+        
+        // Crear usuario en Firestore
+        val usuario = Usuario(
+            dni = admin.dni,
+            email = admin.email,
+            nombre = admin.nombre,
+            apellidos = admin.apellidos,
+            telefono = admin.telefono,
+            perfiles = listOf(perfil)
+        )
+        
+        // Guardar usuario en Firestore
+        val saveResult = usuarioRepository.guardarUsuario(usuario)
+        
+        when (saveResult) {
+            is Result.Success -> {
+                Timber.d("Administrador de centro creado en Firestore: ${admin.dni}")
+                return admin.dni
+            }
+            is Result.Error -> {
+                // Si falla guardar en Firestore, intentamos eliminar la cuenta de Firebase Auth si se creó nueva
+                if (authSuccessUid.isNotBlank()) {
+                    try {
+                        usuarioRepository.borrarUsuario(authSuccessUid)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al eliminar usuario de auth después de fallar la creación en Firestore")
+                    }
+                }
+                
+                if (esPrincipal) {
+                    throw saveResult.exception ?: Exception("Error desconocido al guardar administrador principal")
+                } else {
+                    Timber.e(saveResult.exception, "Error al guardar administrador secundario en Firestore: ${admin.dni}")
+                    return ""
+                }
+            }
+            is Result.Loading -> {
+                // Continuamos con el estado de carga
+                return ""
+            }
+        }
     }
 
     /**
