@@ -95,6 +95,7 @@ class LoginViewModel @Inject constructor(
     // Constantes para las preferencias
     companion object {
         private const val PREF_SAVED_EMAIL = "saved_email"
+        private const val PREF_REMEMBER_USER = "remember_user"
     }
 
     // Estado de la UI expuesto como StateFlow inmutable
@@ -168,6 +169,50 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
+     * Comprueba si hay credenciales guardadas y las carga
+     */
+    fun checkSavedCredentials() {
+        val savedEmail = sharedPreferences.getString(PREF_SAVED_EMAIL, "")
+        val rememberUser = sharedPreferences.getBoolean(PREF_REMEMBER_USER, false)
+        
+        if (!savedEmail.isNullOrEmpty() && rememberUser) {
+            updateEmail(savedEmail)
+            _uiState.update {
+                it.copy(
+                    email = savedEmail
+                )
+            }
+        }
+    }
+
+    /**
+     * Actualiza la preferencia de recordar usuario
+     */
+    fun updateRememberUser(remember: Boolean) {
+        sharedPreferences.edit()
+            .putBoolean(PREF_REMEMBER_USER, remember)
+            .apply()
+    }
+
+    /**
+     * Valida las credenciales para habilitar el botón de login
+     */
+    fun validateCredentials() {
+        val email = _uiState.value.email
+        val password = _uiState.value.password
+        
+        if (email.isNotBlank() && password.isNotBlank() && 
+            isValidEmail(email) && password.length >= 6) {
+            _uiState.update {
+                it.copy(
+                    emailError = null,
+                    passwordError = null
+                )
+            }
+        }
+    }
+
+    /**
      * Persiste las credenciales del usuario en las preferencias compartidas.
      * 
      * Utilizado cuando el usuario marca la opción "Recordarme" para facilitar
@@ -178,6 +223,7 @@ class LoginViewModel @Inject constructor(
     private fun saveUserCredentials(email: String) {
         sharedPreferences.edit()
             .putString(PREF_SAVED_EMAIL, email)
+            .putBoolean(PREF_REMEMBER_USER, true)
             .apply()
     }
 
@@ -190,6 +236,7 @@ class LoginViewModel @Inject constructor(
     private fun clearSavedCredentials() {
         sharedPreferences.edit()
             .remove(PREF_SAVED_EMAIL)
+            .putBoolean(PREF_REMEMBER_USER, false)
             .apply()
     }
 

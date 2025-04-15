@@ -145,6 +145,16 @@ fun LoginScreen(
         TipoUsuario.DESCONOCIDO -> "Usuario"
     }
 
+    // Verificar si hay credenciales guardadas
+    LaunchedEffect(Unit) {
+        viewModel.checkSavedCredentials()
+    }
+    
+    // Cuando cambia el valor de rememberUser, actualizar en el ViewModel
+    LaunchedEffect(rememberUser) {
+        viewModel.updateRememberUser(rememberUser)
+    }
+
     // Validar el formato del email en tiempo real
     LaunchedEffect(uiState.email) {
         if (uiState.email.isNotEmpty()) {
@@ -356,7 +366,13 @@ fun LoginScreen(
                         ) {
                             androidx.compose.material3.Checkbox(
                                 checked = rememberUser,
-                                onCheckedChange = { rememberUser = it }
+                                onCheckedChange = { 
+                                    rememberUser = it
+                                    // Si activamos recordar usuario y hay credenciales guardadas, habilitamos login
+                                    if (it && !uiState.email.isNullOrEmpty() && !uiState.password.isNullOrEmpty()) {
+                                        viewModel.validateCredentials()
+                                    }
+                                }
                             )
                             Text(
                                 text = "Recordar mi usuario",
