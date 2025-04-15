@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -45,13 +47,14 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -69,6 +72,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,8 +86,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -102,6 +117,7 @@ import com.tfg.umeegunero.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TextButton
@@ -137,6 +153,9 @@ fun RegistroScreen(
     var showPasswordRequirements by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
     var showPasswordSuggestions by remember { mutableStateOf(false) }
+    val lazyListState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     
     // Simplificar código sin animaciones
     val passwordIconColor = if (isPasswordValid(uiState.form.password)) 
@@ -202,7 +221,11 @@ fun RegistroScreen(
                             contentDescription = "Volver"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -217,240 +240,305 @@ fun RegistroScreen(
                     )
                 )
         ) {
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(horizontal = 16.dp),
+                state = lazyListState,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Indicador de progreso
-                if (!uiState.isLoading) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (!uiState.isLoading) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            FormProgressIndicator(
+                                currentStep = (porcentajeCompletado * 100).toInt(),
+                                totalSteps = 100
+                            )
+                            Text(
+                                text = "${(porcentajeCompletado * 100).toInt()}% completado",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Logo y título
+                item {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FormProgressIndicator(
-                            currentStep = (porcentajeCompletado * 100).toInt(),
-                            totalSteps = 100
+                        // Logo
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .padding(vertical = 8.dp),
+                            tint = MaterialTheme.colorScheme.primary
                         )
+                        
+                        // Título y descripción
                         Text(
-                            text = "${(porcentajeCompletado * 100).toInt()}% completado",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Bienvenido a UmeEgunero",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+
+                        Text(
+                            text = "Regístrate para acceder a la información de tus hijos",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Logo
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(120.dp)
-                        .padding(vertical = 32.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-
-                // Título y descripción
-                Text(
-                    text = "Bienvenido a UmeEgunero",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    text = "Regístrate para acceder a la información de tus hijos",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
                 // Formulario de registro
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    ),
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = if (uiState.isLoading) 8.dp else 4.dp
-                    )
-                ) {
-                    Column(
+                item {
+                    ElevatedCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = if (uiState.isLoading) 8.dp else 4.dp
+                        )
                     ) {
-                        // Email con feedback
-                        OutlinedTextField(
-                            value = uiState.form.email,
-                            onValueChange = { viewModel.updateEmail(it) },
-                            label = { Text("Email") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Email, contentDescription = null)
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Email,
-                                imeAction = ImeAction.Next
-                            ),
-                            isError = uiState.formErrors["email"] != null || uiState.emailError != null,
-                            supportingText = {
-                                (uiState.formErrors["email"] ?: uiState.emailError)?.let { 
-                                    Text(
-                                        text = it,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        // DNI (campo obligatorio)
-                        OutlinedTextField(
-                            value = uiState.form.dni,
-                            onValueChange = { viewModel.updateDni(it) },
-                            label = { Text("DNI") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Person, contentDescription = null)
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Next
-                            ),
-                            isError = uiState.formErrors["dni"] != null || uiState.dniError != null,
-                            supportingText = {
-                                (uiState.formErrors["dni"] ?: uiState.dniError)?.let { 
-                                    Text(
-                                        text = it,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        // Nombre (campo obligatorio)
-                        OutlinedTextField(
-                            value = uiState.form.nombre,
-                            onValueChange = { viewModel.updateNombre(it) },
-                            label = { Text("Nombre") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Person, contentDescription = null)
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Next
-                            ),
-                            isError = uiState.formErrors["nombre"] != null || uiState.nombreError != null,
-                            supportingText = {
-                                (uiState.formErrors["nombre"] ?: uiState.nombreError)?.let { 
-                                    Text(
-                                        text = it,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        // Apellidos (campo obligatorio)
-                        OutlinedTextField(
-                            value = uiState.form.apellidos,
-                            onValueChange = { viewModel.updateApellidos(it) },
-                            label = { Text("Apellidos") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Person, contentDescription = null)
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Next
-                            ),
-                            isError = uiState.formErrors["apellidos"] != null || uiState.apellidosError != null,
-                            supportingText = {
-                                (uiState.formErrors["apellidos"] ?: uiState.apellidosError)?.let { 
-                                    Text(
-                                        text = it,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        // Teléfono (campo obligatorio)
-                        OutlinedTextField(
-                            value = uiState.form.telefono,
-                            onValueChange = { viewModel.updateTelefono(it) },
-                            label = { Text("Teléfono") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Phone, contentDescription = null)
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Phone,
-                                imeAction = ImeAction.Next
-                            ),
-                            isError = uiState.formErrors["telefono"] != null || uiState.telefonoError != null,
-                            supportingText = {
-                                (uiState.formErrors["telefono"] ?: uiState.telefonoError)?.let { 
-                                    Text(
-                                        text = it,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Selector de tipo de familiar
                         Column(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(
-                                text = "Relación con el alumno",
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = "Información Personal",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                             
-                            // Opciones de tipo de familiar
+                            // Email con feedback
+                            OutlinedTextField(
+                                value = uiState.form.email,
+                                onValueChange = { viewModel.updateEmail(it) },
+                                label = { Text("Email") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Email, contentDescription = null)
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Email,
+                                    imeAction = ImeAction.Next
+                                ),
+                                isError = uiState.formErrors["email"] != null || uiState.emailError != null,
+                                supportingText = {
+                                    (uiState.formErrors["email"] ?: uiState.emailError)?.let { 
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            // DNI (campo obligatorio)
+                            OutlinedTextField(
+                                value = uiState.form.dni,
+                                onValueChange = { viewModel.updateDni(it) },
+                                label = { Text("DNI") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Person, contentDescription = null)
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Next
+                                ),
+                                isError = uiState.formErrors["dni"] != null || uiState.dniError != null,
+                                supportingText = {
+                                    (uiState.formErrors["dni"] ?: uiState.dniError)?.let { 
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            // Nombre (campo obligatorio)
+                            OutlinedTextField(
+                                value = uiState.form.nombre,
+                                onValueChange = { viewModel.updateNombre(it) },
+                                label = { Text("Nombre") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Person, contentDescription = null)
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Next
+                                ),
+                                isError = uiState.formErrors["nombre"] != null || uiState.nombreError != null,
+                                supportingText = {
+                                    (uiState.formErrors["nombre"] ?: uiState.nombreError)?.let { 
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            // Apellidos (campo obligatorio)
+                            OutlinedTextField(
+                                value = uiState.form.apellidos,
+                                onValueChange = { viewModel.updateApellidos(it) },
+                                label = { Text("Apellidos") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Person, contentDescription = null)
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Next
+                                ),
+                                isError = uiState.formErrors["apellidos"] != null || uiState.apellidosError != null,
+                                supportingText = {
+                                    (uiState.formErrors["apellidos"] ?: uiState.apellidosError)?.let { 
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            // Teléfono (campo obligatorio)
+                            OutlinedTextField(
+                                value = uiState.form.telefono,
+                                onValueChange = { viewModel.updateTelefono(it) },
+                                label = { Text("Teléfono") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Phone, contentDescription = null)
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Phone,
+                                    imeAction = ImeAction.Next
+                                ),
+                                isError = uiState.formErrors["telefono"] != null || uiState.telefonoError != null,
+                                supportingText = {
+                                    (uiState.formErrors["telefono"] ?: uiState.telefonoError)?.let { 
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+                    }
+                }
+                
+                // Tipo de familiar
+                item {
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "Relación con el alumno",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-                                RelacionFamiliarOption(
+                                RelacionFamiliarOptionCard(
                                     selected = uiState.form.subtipo == SubtipoFamiliar.PADRE,
                                     onClick = { viewModel.updateSubtipoFamiliar(SubtipoFamiliar.PADRE) },
                                     title = "Padre"
                                 )
                                 
-                                RelacionFamiliarOption(
+                                RelacionFamiliarOptionCard(
                                     selected = uiState.form.subtipo == SubtipoFamiliar.MADRE,
                                     onClick = { viewModel.updateSubtipoFamiliar(SubtipoFamiliar.MADRE) },
                                     title = "Madre"
                                 )
                                 
-                                RelacionFamiliarOption(
+                                RelacionFamiliarOptionCard(
                                     selected = uiState.form.subtipo == SubtipoFamiliar.TUTOR,
                                     onClick = { viewModel.updateSubtipoFamiliar(SubtipoFamiliar.TUTOR) },
                                     title = "Tutor"
                                 )
                                 
-                                RelacionFamiliarOption(
+                                RelacionFamiliarOptionCard(
                                     selected = uiState.form.subtipo == SubtipoFamiliar.OTRO,
                                     onClick = { viewModel.updateSubtipoFamiliar(SubtipoFamiliar.OTRO) },
                                     title = "Otro"
                                 )
                             }
                         }
-
-                        // Contraseña con feedback
+                    }
+                }
+                
+                // Contraseña
+                item {
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        )
+                    ) {
                         Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
+                            Text(
+                                text = "Seguridad",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                    
                             OutlinedTextField(
                                 value = uiState.form.password,
                                 onValueChange = { viewModel.updatePassword(it) },
@@ -501,13 +589,16 @@ fun RegistroScreen(
                                                 progress = { calculatePasswordStrength(uiState.form.password) },
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .height(4.dp)
-                                                    .padding(top = 4.dp),
+                                                    .height(8.dp)
+                                                    .padding(top = 4.dp)
+                                                    .clip(CircleShape),
                                                 color = when {
                                                     calculatePasswordStrength(uiState.form.password) < 0.3f -> MaterialTheme.colorScheme.error
                                                     calculatePasswordStrength(uiState.form.password) < 0.7f -> MaterialTheme.colorScheme.tertiary
                                                     else -> MaterialTheme.colorScheme.primary
-                                                }
+                                                },
+                                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                strokeCap = StrokeCap.Round
                                             )
                                         }
                                         
@@ -520,145 +611,155 @@ fun RegistroScreen(
                                         )
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
                             )
                         }
-
-                        // Botón de registro
-                        Button(
-                            onClick = { 
-                                // Verificar si todos los campos obligatorios están completos
-                                if (isFormValid(uiState)) {
-                                    viewModel.submitRegistration() 
-                                } else {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            message = "Por favor completa todos los campos obligatorios"
-                                        )
-                                    }
-                                }
-                            },
-                            enabled = !uiState.isLoading && isFormValid(uiState),
+                    }
+                }
+                
+                // Botones de acción
+                item {
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        )
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp)
+                                .padding(horizontal = 16.dp, vertical = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .height(24.dp)
-                                        .padding(end = 8.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
+                            // Botón de registro
+                            Button(
+                                onClick = { 
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                    
+                                    // Verificar si todos los campos obligatorios están completos
+                                    if (isFormValid(uiState)) {
+                                        viewModel.submitRegistration() 
+                                    } else {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                message = "Por favor completa todos los campos obligatorios"
+                                            )
+                                        }
+                                    }
+                                },
+                                enabled = !uiState.isLoading && isFormValid(uiState),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                if (uiState.isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .padding(end = 8.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text(
+                                    "Registrarse",
+                                    style = MaterialTheme.typography.titleMedium
                                 )
                             }
-                            Text("Registrarse con Email")
-                        }
 
-                        // Si hay errores en los campos específicos, mostrarlos aquí
-                        AnimatedVisibility(
-                            visible = uiState.passwordError != null,
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
-                        ) {
-                            Text(
-                                text = uiState.passwordError ?: "",
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                            )
-                        }
+                            // Si hay errores en los campos específicos, mostrarlos aquí
+                            AnimatedVisibility(
+                                visible = uiState.passwordError != null,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Text(
+                                    text = uiState.passwordError ?: "",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                )
+                            }
 
-                        // Separador
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Divider(modifier = Modifier.weight(1f))
-                            Text(
-                                text = "o",
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Divider(modifier = Modifier.weight(1f))
-                        }
+                            // Separador
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                HorizontalDivider(modifier = Modifier.weight(1f))
+                                Text(
+                                    text = "o",
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                HorizontalDivider(modifier = Modifier.weight(1f))
+                            }
 
-                        // Botón de registro con Google
-                        OutlinedButton(
-                            onClick = { /* Implementar registro con Google */ },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle, // Cambiar por icono de Google
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text("Registrarse con Google")
+                            // Botón de registro con Google
+                            OutlinedButton(
+                                onClick = { /* Implementar registro con Google */ },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle, // Cambiar por icono de Google
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                                Text("Registrarse con Google")
+                            }
                         }
                     }
                 }
 
                 // Términos y condiciones
-                TermsAndConditions()
-
-                // Información sobre proceso de vinculación de alumnos
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Vinculación con tus hijos",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "Una vez creada tu cuenta, deberás:\n" +
-                                  "• Proporcionar los DNIs de tus hijos para vincularlos\n" +
-                                  "• Seleccionar el centro educativo al que pertenecen\n" +
-                                  "• Esperar la aprobación del administrador del centro",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
+                item {
+                    TermsAndConditionsCard()
                 }
 
-                // Información sobre el proceso de aprobación
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Información sobre proceso
+                item {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+                        )
                     ) {
-                        Text(
-                            text = "Proceso de Registro",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        Text(
-                            text = "1. Completa todos los campos del formulario (DNI, email, nombre, apellidos, teléfono y contraseña)\n" +
-                                  "2. Se creará tu cuenta y tendrás que vincularla con tus hijos\n" +
-                                  "3. El administrador del centro revisará tu solicitud\n" +
-                                  "4. Una vez aprobada, podrás acceder a la información de tus hijos",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Proceso de Registro",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "1. Completa todos los campos del formulario\n" +
+                                      "2. Vincula tu cuenta con tus hijos\n" +
+                                      "3. El centro revisará tu solicitud\n" +
+                                      "4. Una vez aprobada, podrás acceder a toda la información",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
@@ -816,9 +917,124 @@ fun PreviewRegistroScreen() {
             )
         }
     ) { paddingValues ->
-        // Aquí puedes agregar el contenido del scaffold para el preview
-        Box(modifier = Modifier.padding(paddingValues)) {
-            Text("Contenido de preview")
+        // Preview con LazyColumn
+        LazyColumn(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.School,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Bienvenido a UmeEgunero",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Text(
+                        text = "Regístrate para acceder a la información de tus hijos",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            
+            // Campos de ejemplo
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Información Personal",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        
+                        OutlinedTextField(
+                            value = "",
+                            onValueChange = { },
+                            label = { Text("Email") },
+                            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = "",
+                            onValueChange = { },
+                            label = { Text("DNI") },
+                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
+            }
+            
+            // Ejemplo de relación familiar
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Relación con el alumno",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            RelacionFamiliarOptionCard(
+                                selected = true,
+                                onClick = { },
+                                title = "Padre"
+                            )
+                            
+                            RelacionFamiliarOptionCard(
+                                selected = false,
+                                onClick = { },
+                                title = "Madre"
+                            )
+                            
+                            RelacionFamiliarOptionCard(
+                                selected = false,
+                                onClick = { },
+                                title = "Tutor"
+                            )
+                            
+                            RelacionFamiliarOptionCard(
+                                selected = false,
+                                onClick = { },
+                                title = "Otro"
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -848,24 +1064,82 @@ private fun PasswordRequirementItem(
 }
 
 @Composable
-private fun TermsAndConditions() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+private fun TermsAndConditionsCard() {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
     ) {
-        Text(
-            text = "Al registrarte, aceptas nuestros ",
-            style = MaterialTheme.typography.bodySmall
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Al registrarte, aceptas nuestros ",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "términos y condiciones",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable { /* Implementar navegación a términos y condiciones */ }
+            )
+        }
+    }
+}
+
+@Composable
+private fun RelacionFamiliarOptionCard(
+    selected: Boolean,
+    onClick: () -> Unit,
+    title: String
+) {
+    Card(
+        modifier = Modifier
+            .padding(4.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+            contentColor = if (selected)
+                MaterialTheme.colorScheme.onPrimaryContainer
+            else
+                MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (selected) 4.dp else 0.dp
         )
-        Text(
-            text = "términos y condiciones",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-            textDecoration = TextDecoration.Underline,
-            modifier = Modifier.clickable { /* Implementar navegación a términos y condiciones */ }
-        )
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                )
+            )
+        }
     }
 }
 
@@ -928,37 +1202,5 @@ private fun generatePasswordSuggestions(): List<String> {
     
     return List(3) {
         "${adjectives.random()}${nouns.random()}$numbers${specialChars.random()}"
-    }
-}
-
-@Composable
-private fun RelacionFamiliarOption(
-    selected: Boolean,
-    onClick: () -> Unit,
-    title: String
-) {
-    Card(
-        modifier = Modifier
-            .padding(4.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            RadioButton(
-                selected = selected,
-                onClick = onClick
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
     }
 }
