@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -54,6 +56,9 @@ import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.tooling.preview.Preview
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.navigation.compose.rememberNavController
 
 /**
  * Clase para gestionar el estado de la pantalla de detalle de centro
@@ -507,6 +512,93 @@ fun DetalleCentroScreen(
         // Indicador de carga durante la eliminación
         if (state.isDeleting) {
             LoadingIndicator(message = "Eliminando centro...")
+        }
+    }
+}
+
+/**
+ * Vista previa de la pantalla de detalle de centro
+ */
+@Preview(showBackground = true)
+@Composable
+fun DetalleCentroScreenPreview() {
+    UmeEguneroTheme {
+        Surface {
+            DetalleCentroScreen(
+                centroId = "1",
+                viewModel = hiltViewModel(),
+                onNavigateBack = {},
+                onNavigateToEdit = {},
+                onDeleteSuccess = {}
+            )
+        }
+    }
+}
+
+/**
+ * Vista previa del contenido de detalle de un centro
+ */
+@Preview(showBackground = true)
+@Composable
+fun DetalleCentroContentPreview() {
+    UmeEguneroTheme {
+        Surface {
+            val centro = Centro(
+                id = "1",
+                nombre = "Colegio San José",
+                direccion = "Calle Principal 123, 48001 Bilbao, Vizcaya",
+                telefono = "944123123",
+                email = "contacto@sanjose.edu.es",
+                latitud = 43.2569629,
+                longitud = -2.9234409
+            )
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = centro.nombre,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Información de Contacto",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = centro.direccion,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 } 

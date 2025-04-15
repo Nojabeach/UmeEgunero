@@ -14,6 +14,7 @@ import com.tfg.umeegunero.data.repository.AsistenciaRepositoryImpl
 import com.tfg.umeegunero.data.repository.AlumnoRepositoryImpl
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ComunicadoRepository
+import com.tfg.umeegunero.data.repository.EstadisticasRepository
 import com.tfg.umeegunero.data.repository.LocalRegistroActividadRepository
 import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
@@ -99,6 +100,21 @@ object RepositoryModule {
         storage: FirebaseStorage
     ): MensajeRepository {
         return MensajeRepository(firestore, authRepository, storage)
+    }
+    
+    /**
+     * Proporciona una instancia del repositorio de estadísticas.
+     * Este repositorio maneja las métricas de uso de la aplicación.
+     *
+     * @param firestore Instancia de FirebaseFirestore
+     * @return Instancia de EstadisticasRepository
+     */
+    @Provides
+    @Singleton
+    fun provideEstadisticasRepository(
+        firestore: FirebaseFirestore
+    ): EstadisticasRepository {
+        return EstadisticasRepository(firestore)
     }
     
     @Provides

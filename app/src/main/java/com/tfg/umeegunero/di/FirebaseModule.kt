@@ -67,9 +67,10 @@ object FirebaseModule {
     fun provideAuthRepository(
         firebaseAuth: FirebaseAuth,
         usuarioRepository: UsuarioRepository,
-        comunicadoRepository: ComunicadoRepository
+        comunicadoRepository: ComunicadoRepository,
+        firestore: FirebaseFirestore
     ): AuthRepository {
-        return AuthRepositoryImpl(firebaseAuth, usuarioRepository, comunicadoRepository)
+        return AuthRepositoryImpl(firebaseAuth, usuarioRepository, comunicadoRepository, firestore)
     }
 
     @Provides

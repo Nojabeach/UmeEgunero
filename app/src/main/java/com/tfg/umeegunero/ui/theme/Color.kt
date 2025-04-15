@@ -49,6 +49,59 @@ val GradientEnd = Color(0xFF3F51B5)    // Fin de gradiente
 val PurpleDark = Color(0xFF4527A0)
 val BlueDark = Color(0xFF283593)
 
+val Purple80 = Color(0xFFD0BCFF)
+val PurpleGrey80 = Color(0xFFCCC2DC)
+val Pink80 = Color(0xFFEFB8C8)
+
+val Purple40 = Color(0xFF6650a4)
+val PurpleGrey40 = Color(0xFF625b71)
+val Pink40 = Color(0xFF7D5260)
+
+// Colores principales de la aplicación
+val PrimaryVariant = Color(0xFF0D4B7F)
+val SecondaryVariant = Color(0xFFF29F05)
+val SurfaceVariant = Color(0xFFE8F4F8)
+
+// Colores específicos para temas
+val LightBackground = Color(0xFFEAF1F8)
+val DarkBackground = Color(0xFF101C2B)
+
+// Colores para gradientes
+val GradientMiddle = Color(0xFF3D7EB6)
+
+// Colores para tarjetas y elementos visuales
+val CardLight = Color(0xFFFFFFFF)
+val CardDark = Color(0xFF1A2C42)
+
+// Colores para texto
+val TextPrimary = Color(0xFF333333)
+val TextSecondary = Color(0xFF757575)
+val TextDisabled = Color(0xFFBDBDBD)
+
+// Paleta de rojos
+val Red100 = Color(0xFFFFCDD2)
+val Red200 = Color(0xFFEF9A9A)
+val Red300 = Color(0xFFE57373)
+val Red500 = Color(0xFFF44336)
+val Red700 = Color(0xFFD32F2F)
+val Red900 = Color(0xFFB71C1C)
+
+// Paleta de verdes
+val Green100 = Color(0xFFC8E6C9)
+val Green200 = Color(0xFFA5D6A7)
+val Green300 = Color(0xFF81C784)
+val Green500 = Color(0xFF4CAF50)
+val Green700 = Color(0xFF388E3C)
+val Green900 = Color(0xFF1B5E20)
+
+// Paleta de azules
+val Blue100 = Color(0xFFBBDEFB)
+val Blue200 = Color(0xFF90CAF9)
+val Blue300 = Color(0xFF64B5F6)
+val Blue500 = Color(0xFF2196F3)
+val Blue700 = Color(0xFF1976D2)
+val Blue900 = Color(0xFF0D47A1)
+
 /**
  * Devuelve un color representativo para cada categoría de actividad preescolar
  */

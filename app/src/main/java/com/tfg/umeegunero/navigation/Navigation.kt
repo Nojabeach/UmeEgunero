@@ -209,6 +209,89 @@ fun Navigation(
             )
         }
 
+        // PANTALLAS DE ADMINISTRACIÓN
+        
+        // Pantalla de gestión de centros
+        composable(route = AppScreens.GestionCentros.route) {
+            com.tfg.umeegunero.feature.admin.screen.ListCentrosScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla para añadir un nuevo centro
+        composable(route = AppScreens.AddCentro.route) {
+            com.tfg.umeegunero.feature.admin.screen.AddCentroScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                onCentroAdded = { navController.navigate(AppScreens.GestionCentros.route) { popUpTo(AppScreens.GestionCentros.route) } }
+            )
+        }
+        
+        // Pantalla para editar un centro existente
+        composable(
+            route = AppScreens.EditCentro.route,
+            arguments = listOf(
+                navArgument("centroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            com.tfg.umeegunero.feature.admin.screen.EditCentroScreen(
+                centroId = centroId,
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                onCentroUpdated = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla para ver detalles de un centro
+        composable(
+            route = AppScreens.DetalleCentro.route,
+            arguments = listOf(
+                navArgument("centroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen(
+                centroId = centroId,
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = { navController.navigate(AppScreens.EditCentro.createRoute(it)) },
+                onDeleteSuccess = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de configuración de email
+        composable(route = AppScreens.EmailConfig.route) {
+            com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de perfil de usuario
+        composable(route = AppScreens.Perfil.route) {
+            com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de reportes de uso
+        composable(route = AppScreens.ReporteUso.route) {
+            com.tfg.umeegunero.feature.admin.screen.ReporteUsoScreen(
+                navController = navController
+            )
+        }
+        
+        // Pantalla de estadísticas
+        composable(route = AppScreens.Estadisticas.route) {
+            com.tfg.umeegunero.feature.admin.screen.EstadisticasScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
         // PANTALLAS DE CENTRO
         
         // Pantalla del dashboard del centro educativo
@@ -315,7 +398,7 @@ fun Navigation(
         
         // Pantalla de comunicados y circulares
         composable(route = AppScreens.ComunicadosCirculares.route) {
-            ComunicadosFamiliaScreen(
+            com.tfg.umeegunero.feature.admin.screen.ComunicadosScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
             )
@@ -406,7 +489,7 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val dni = backStackEntry.arguments?.getString("dni") ?: ""
-            val viewModel = hiltViewModel<com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel>()
+            val viewModel: com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel = hiltViewModel()
             
             com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
                 uiState = com.tfg.umeegunero.feature.common.users.screen.AddUserUiState(

@@ -575,4 +575,110 @@ class MensajeRepository @Inject constructor(
             null
         }
     }
+
+    /**
+     * Obtiene todos los mensajes enviados o recibidos por un usuario (para la bandeja de entrada)
+     * 
+     * @param usuarioId ID del usuario
+     * @return Lista de mensajes
+     */
+    suspend fun getMensajesForUsuario(usuarioId: String): List<Mensaje> {
+        return try {
+            val mensajesRecibidos = firestore.collection(COLLECTION_MENSAJES)
+                .whereEqualTo("destinatarioId", usuarioId)
+                .orderBy("fechaEnvio", Query.Direction.DESCENDING)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { Mensaje.fromSnapshot(it) }
+            
+            val mensajesEnviados = firestore.collection(COLLECTION_MENSAJES)
+                .whereEqualTo("remitente", usuarioId)
+                .orderBy("fechaEnvio", Query.Direction.DESCENDING)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { Mensaje.fromSnapshot(it) }
+            
+            // Combinar y ordenar por fecha descendente
+            (mensajesRecibidos + mensajesEnviados).sortedByDescending { it.fechaEnvio }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener mensajes del usuario")
+            emptyList()
+        }
+    }
+
+    /**
+     * Marca un mensaje como leído y devuelve el mensaje actualizado
+     * 
+     * @param mensajeId ID del mensaje
+     * @param usuarioDni DNI del usuario 
+     * @return Mensaje actualizado o null si ocurre un error
+     */
+    suspend fun marcarMensajeComoLeido(mensajeId: String, usuarioDni: String): Mensaje? {
+        return try {
+            val updateData = mapOf(
+                "leido" to true,
+                "fechaLeido" to Timestamp.now(),
+                "leidos" to FieldValue.arrayUnion(usuarioDni)
+            )
+            
+            firestore.collection(COLLECTION_MENSAJES)
+                .document(mensajeId)
+                .update(updateData)
+                .await()
+            
+            // Obtener el mensaje actualizado
+            getMensaje(mensajeId)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al marcar mensaje como leído: $mensajeId")
+            null
+        }
+    }
+
+    /**
+     * Cambia el estado destacado de un mensaje y devuelve el mensaje actualizado
+     * 
+     * @param mensajeId ID del mensaje
+     * @param usuarioDni DNI del usuario
+     * @param destacado Nuevo estado destacado
+     * @return Mensaje actualizado o null si ocurre un error
+     */
+    suspend fun toggleMensajeDestacado(mensajeId: String, usuarioDni: String, destacado: Boolean): Mensaje? {
+        return try {
+            firestore.collection(COLLECTION_MENSAJES)
+                .document(mensajeId)
+                .update("destacado", destacado)
+                .await()
+            
+            // Obtener el mensaje actualizado
+            getMensaje(mensajeId)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cambiar estado destacado del mensaje: $mensajeId")
+            null
+        }
+    }
+
+    /**
+     * Elimina un mensaje para un usuario
+     * 
+     * @param mensajeId ID del mensaje
+     * @param usuarioDni DNI del usuario
+     * @return true si se eliminó exitosamente, false en caso contrario
+     */
+    suspend fun eliminarMensaje(mensajeId: String, usuarioDni: String): Boolean {
+        return try {
+            // En una implementación real, podríamos marcar el mensaje como eliminado
+            // para ese usuario específico, pero aquí simplemente lo eliminamos
+            firestore.collection(COLLECTION_MENSAJES)
+                .document(mensajeId)
+                .delete()
+                .await()
+            
+            true
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar mensaje: $mensajeId")
+            false
+        }
+    }
 } 

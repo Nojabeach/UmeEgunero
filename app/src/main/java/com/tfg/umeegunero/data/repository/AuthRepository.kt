@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.firestore.FirebaseFirestore
 
 /**
  * Interfaz que define las operaciones relacionadas con la autenticación de usuarios.
@@ -110,6 +111,13 @@ interface AuthRepository {
      * @return Resultado encapsulado que contiene true si el usuario ha confirmado la lectura, false en caso contrario
      */
     suspend fun haConfirmadoLecturaComunicado(comunicadoId: String): Result<Boolean>
+
+    /**
+     * Obtiene el usuario actualmente autenticado en el sistema
+     * 
+     * @return Usuario autenticado o null si no hay ninguno
+     */
+    suspend fun getUsuarioActual(): Usuario?
 }
 
 /**
@@ -130,12 +138,14 @@ interface AuthRepository {
  * @param firebaseAuth Instancia de FirebaseAuth inyectada automáticamente por Hilt
  * @param usuarioRepository Repositorio de usuarios inyectado para acceso a datos completos
  * @param comunicadoRepository Repositorio de comunicados para gestionar las confirmaciones de lectura
+ * @param firestore Instancia de FirebaseFirestore inyectada automáticamente por Hilt
  */
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val usuarioRepository: UsuarioRepository,
-    private val comunicadoRepository: ComunicadoRepository
+    private val comunicadoRepository: ComunicadoRepository,
+    private val firestore: FirebaseFirestore
 ) : AuthRepository {
 
     /**
@@ -353,6 +363,40 @@ class AuthRepositoryImpl @Inject constructor(
                 Timber.e(e, "Error al verificar si el comunicado ha sido confirmado")
                 Result.Error(e)
             }
+        }
+    }
+
+    /**
+     * Obtiene el usuario actualmente autenticado en el sistema
+     * 
+     * @return Usuario autenticado o null si no hay ninguno
+     */
+    override suspend fun getUsuarioActual(): Usuario? {
+        val firebaseUser = getFirebaseUser() ?: return null
+        
+        return try {
+            val userDoc = firestore.collection("usuarios")
+                .whereEqualTo("uid", firebaseUser.uid)
+                .limit(1)
+                .get()
+                .await()
+                
+            if (userDoc.isEmpty) {
+                Timber.e("Usuario no encontrado en Firestore: ${firebaseUser.uid}")
+                return null
+            }
+            
+            // Convertir el documento a objeto Usuario
+            val usuario = userDoc.documents.first().toObject(Usuario::class.java)
+            
+            if (usuario == null) {
+                Timber.e("Error al convertir documento a Usuario: ${userDoc.documents.first().id}")
+            }
+            
+            usuario
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener usuario actual")
+            null
         }
     }
 } 

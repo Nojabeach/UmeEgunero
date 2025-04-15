@@ -27,6 +27,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -48,6 +51,8 @@ import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError
+import androidx.compose.ui.tooling.preview.Preview
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
 // Clase para gestionar el estado de la pantalla
 class AddCentroState {
@@ -442,6 +447,75 @@ fun AddCentroScreen(
         // Indicador de carga
         if (state.isLoading) {
             LoadingIndicator(message = "Guardando centro...")
+        }
+    }
+}
+
+/**
+ * Preview del formulario para agregar un centro educativo
+ */
+@Preview(showBackground = true)
+@Composable
+fun AddCentroScreenPreview() {
+    UmeEguneroTheme {
+        AddCentroScreen(
+            viewModel = hiltViewModel(),
+            onNavigateBack = {},
+            onCentroAdded = {}
+        )
+    }
+}
+
+/**
+ * Preview de un paso específico del formulario
+ */
+@Preview(showBackground = true)
+@Composable
+fun AddCentroFormStepPreview() {
+    UmeEguneroTheme {
+        Surface {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Información Básica",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextFieldWithError(
+                    value = "Colegio Ejemplo",
+                    onValueChange = {},
+                    label = "Nombre del Centro",
+                    errorMessage = null,
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = null
+                        )
+                    }
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Spacer(modifier = Modifier.width(64.dp))
+                    
+                    Button(
+                        onClick = { }
+                    ) {
+                        Text("Siguiente")
+                    }
+                }
+            }
         }
     }
 } 

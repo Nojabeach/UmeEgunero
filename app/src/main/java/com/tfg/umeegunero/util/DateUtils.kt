@@ -173,4 +173,67 @@ fun Timestamp.toLocalTime(): LocalTime {
 fun LocalDate.toTimestamp(): Timestamp {
     val dateTime = this.atStartOfDay()
     return dateTime.toTimestamp()
+}
+
+/**
+ * Formatea una fecha en formato corto (dd/MM/yyyy)
+ */
+fun Date.formatDateShort(): String {
+    val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    return formatter.format(this)
+}
+
+/**
+ * Formatea una fecha y hora completa (dd/MM/yyyy HH:mm)
+ */
+fun Date.formatDateTime(): String {
+    val formatter = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    return formatter.format(this)
+}
+
+/**
+ * Formatea una fecha mostrando solo la hora (HH:mm)
+ */
+fun Date.formatTime(): String {
+    val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+    return formatter.format(this)
+}
+
+/**
+ * Formatea una fecha en formato largo (dd de MMMM de yyyy)
+ */
+fun Date.formatDateLong(): String {
+    val formatter = SimpleDateFormat("dd 'de' MMMM 'de' yyyy", Locale("es"))
+    return formatter.format(this)
+}
+
+/**
+ * Determina si la fecha es hoy
+ */
+fun Date.isToday(): Boolean {
+    val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+    val dateCompare = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(this)
+    return today == dateCompare
+}
+
+/**
+ * Determina si la fecha fue ayer
+ */
+fun Date.isYesterday(): Boolean {
+    val cal = java.util.Calendar.getInstance()
+    cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+    val yesterday = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(cal.time)
+    val dateCompare = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(this)
+    return yesterday == dateCompare
+}
+
+/**
+ * Formatea una fecha relativa (Hoy, Ayer o dd/MM/yyyy)
+ */
+fun Date.formatRelative(): String {
+    return when {
+        isToday() -> "Hoy ${formatTime()}"
+        isYesterday() -> "Ayer ${formatTime()}"
+        else -> formatDateShort()
+    }
 } 

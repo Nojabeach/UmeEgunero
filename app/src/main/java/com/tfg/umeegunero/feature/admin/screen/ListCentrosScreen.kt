@@ -44,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -66,6 +67,9 @@ import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.viewmodel.ListCentrosViewModel
 import com.tfg.umeegunero.navigation.AppScreens
+import androidx.compose.ui.tooling.preview.Preview
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.navigation.compose.rememberNavController
 
 /**
  * Pantalla que muestra el listado de todos los centros educativos.
@@ -230,18 +234,6 @@ fun ListCentrosScreen(
                             }
                         } else {
                             Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Button(
-                                onClick = { navController.navigate(AppScreens.AddCentro.route) }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Añadir primer centro")
-                            }
                         }
                     }
                 }
@@ -452,6 +444,46 @@ fun CentroItem(
                     Text("Cancelar")
                 }
             }
+        )
+    }
+}
+
+/**
+ * Preview de un centro educativo
+ */
+@Preview(showBackground = true)
+@Composable
+fun CentroItemPreview() {
+    UmeEguneroTheme {
+        Surface {
+            CentroItem(
+                centro = Centro(
+                    id = "1",
+                    nombre = "Colegio San José",
+                    direccion = "Calle Principal 123, 48001 Bilbao, Vizcaya",
+                    telefono = "944123123",
+                    email = "contacto@sanjose.edu.es",
+                    latitud = 43.2569629,
+                    longitud = -2.9234409
+                ),
+                onViewDetails = {},
+                onEditClick = {},
+                onDeleteClick = {}
+            )
+        }
+    }
+}
+
+/**
+ * Preview de la pantalla de listado de centros
+ */
+@Preview(showBackground = true)
+@Composable
+fun ListCentrosScreenPreview() {
+    UmeEguneroTheme {
+        ListCentrosScreen(
+            navController = rememberNavController(),
+            viewModel = hiltViewModel()
         )
     }
 } 

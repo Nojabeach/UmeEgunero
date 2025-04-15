@@ -27,6 +27,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,6 +52,9 @@ import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError
+import androidx.compose.ui.tooling.preview.Preview
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.navigation.compose.rememberNavController
 
 // Clase para gestionar el estado de la pantalla
 class EditCentroState(private val viewModel: AdminViewModel, private val centroId: String, private val onNavigateBack: () -> Unit) {
@@ -483,6 +489,47 @@ fun EditCentroScreen(
             // Indicador de carga durante la actualización
             if (state.isLoading) {
                 LoadingIndicator(message = "Actualizando centro...")
+            }
+        }
+    }
+}
+
+/**
+ * Preview de la pantalla de edición de centro
+ */
+@Preview(showBackground = true)
+@Composable
+fun EditCentroScreenPreview() {
+    UmeEguneroTheme {
+        Surface {
+            EditCentroScreen(
+                centroId = "1",
+                viewModel = hiltViewModel(),
+                onNavigateBack = {},
+                onCentroUpdated = {}
+            )
+        }
+    }
+}
+
+/**
+ * Preview del estado de carga
+ */
+@Preview(showBackground = true)
+@Composable
+fun EditCentroLoadingPreview() {
+    UmeEguneroTheme {
+        Surface {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "Cargando datos del centro...")
             }
         }
     }

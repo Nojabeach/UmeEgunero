@@ -248,8 +248,27 @@ private fun NotificacionItem(notificacion: Notificacion) {
 
 @Preview(showBackground = true)
 @Composable
+private fun NotificacionItemPreview() {
+    UmeEguneroTheme {
+        NotificacionItem(
+            notificacion = Notificacion(
+                id = "1",
+                titulo = "Nueva actualización disponible",
+                mensaje = "Se ha detectado una nueva versión del sistema. Se recomienda actualizar tan pronto como sea posible para disfrutar de las mejoras y correcciones.",
+                fecha = Date(),
+                leida = false,
+                tipo = TipoNotificacion.SISTEMA
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
 fun AdminNotificacionesScreenPreview() {
     UmeEguneroTheme {
-        AdminNotificacionesScreen(navController = rememberNavController())
+        AdminNotificacionesScreen(
+            navController = rememberNavController()
+        )
     }
 } 

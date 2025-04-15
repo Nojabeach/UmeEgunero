@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -142,7 +143,6 @@ fun AdminDashboardScreen(
                     onNavigateToAddCentro = { navController.navigate(AppScreens.AddCentro.route) },
                     onNavigateToEstadisticas = { navController.navigate(AppScreens.Estadisticas.route) },
                     onNavigateToReporteUso = { navController.navigate(AppScreens.ReporteUso.route) },
-                    onNavigateToReporteRendimiento = { navController.navigate(AppScreens.ReporteRendimiento.route) },
                     onNavigateToSeguridad = { navController.navigate(AppScreens.Config.route) },
                     onNavigateToComunicados = { navController.navigate(AppScreens.ComunicadosCirculares.route) },
                     onNavigateToNotificaciones = { navController.navigate(AppScreens.Notificaciones.route) },
@@ -164,7 +164,6 @@ fun AdminDashboardContent(
     onNavigateToAddCentro: () -> Unit,
     onNavigateToEstadisticas: () -> Unit,
     onNavigateToReporteUso: () -> Unit,
-    onNavigateToReporteRendimiento: () -> Unit,
     onNavigateToSeguridad: () -> Unit,
     onNavigateToComunicados: () -> Unit,
     onNavigateToNotificaciones: () -> Unit,
@@ -251,22 +250,17 @@ fun AdminDashboardContent(
             
             item {
                 AdminOptionCard(
-                    title = "Rendimiento",
-                    description = "Métricas académicas",
-                    icon = Icons.Default.TrendingUp,
-                    color = Color(0xFF00897B),
-                    onClick = onNavigateToReporteRendimiento
-                )
-            }
-            
-            item {
-                AdminOptionCard(
                     title = "Seguridad",
                     description = "Accesos y permisos",
                     icon = Icons.Default.Security,
                     color = Color(0xFF7B1FA2),
                     onClick = onNavigateToSeguridad
                 )
+            }
+            
+            // Añadir un espacio vacío para mantener el equilibrio del grid
+            item {
+                Box(modifier = Modifier.fillMaxSize())
             }
         }
         
@@ -398,7 +392,7 @@ fun AdminOptionCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(100.dp)
+            .height(120.dp)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -440,9 +434,12 @@ fun AdminOptionCard(
                 
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp
+                    ),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -490,7 +487,6 @@ fun AdminDashboardContentPreview() {
                 onNavigateToAddCentro = {},
                 onNavigateToEstadisticas = {},
                 onNavigateToReporteUso = {},
-                onNavigateToReporteRendimiento = {},
                 onNavigateToSeguridad = {},
                 onNavigateToComunicados = {},
                 onNavigateToNotificaciones = {},

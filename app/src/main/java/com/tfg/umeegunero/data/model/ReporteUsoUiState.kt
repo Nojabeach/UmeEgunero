@@ -1,5 +1,7 @@
 package com.tfg.umeegunero.data.model
 
+import com.google.firebase.Timestamp
+
 /**
  * Estado de la UI para la pantalla de reporte de uso de la aplicación.
  *
@@ -17,6 +19,7 @@ package com.tfg.umeegunero.data.model
  * @property tiempoPromedioSesion Duración media de cada sesión de usuario formateada (ej. "15 min")
  * @property isGeneratingReport Indica si se está generando un informe exportable
  * @property reportGenerated Indica si el informe ha sido generado correctamente
+ * @property ultimaActualizacion Timestamp con la fecha y hora de la última actualización de datos
  *
  * @see CaracteristicaUsada
  * @see com.tfg.umeegunero.feature.admin.viewmodel.ReporteUsoViewModel
@@ -31,5 +34,6 @@ data class ReporteUsoUiState(
     val sesionesPromedio: Double = 0.0,
     val tiempoPromedioSesion: String = "0 min",
     val isGeneratingReport: Boolean = false,
-    val reportGenerated: Boolean = false
+    val reportGenerated: Boolean = false,
+    val ultimaActualizacion: Timestamp? = null
 ) 

@@ -413,4 +413,30 @@ Las prioridades recomendadas son:
 
 Es fundamental garantizar una cobertura de pruebas suficiente para demostrar la robustez de la implementación y documentar adecuadamente el código para facilitar su evaluación académica y mostrar las buenas prácticas de desarrollo aprendidas durante el ciclo formativo.
 
-Siguiendo este plan, el proyecto puede completarse en aproximadamente 4-5 sprints, dependiendo del tamaño del equipo de desarrollo. 
+Siguiendo este plan, el proyecto puede completarse en aproximadamente 4-5 sprints, dependiendo del tamaño del equipo de desarrollo.
+
+### Pantallas sin uso (No conectadas al sistema de navegación)
+
+Esta sección lista pantallas implementadas pero que actualmente no están accesibles desde el sistema de navegación.
+
+#### Pantallas Comunes sin vincular
+- **PerfilScreen.kt**: Aunque la pantalla de perfil de usuario está definida en la ruta `AppScreens.Perfil.route` en Navigation.kt, no hay ningún enlace ni botón en las vistas principales que redirija a esta pantalla, excepto en el Dashboard de Administrador.
+
+Todas las pantallas del módulo de administración ahora están correctamente vinculadas en el archivo `Navigation.kt`, incluyendo:
+- ListCentrosScreen.kt (GestionCentros.route)
+- AddCentroScreen.kt (AddCentro.route)
+- EditCentroScreen.kt (EditCentro.route)
+- DetalleCentroScreen.kt (DetalleCentro.route)
+- EmailConfigScreen.kt (EmailConfig.route)
+- EstadisticasScreen.kt (Estadisticas.route)
+- ReporteUsoScreen.kt (ReporteUso.route)
+- NotificacionesScreen.kt (Notificaciones.route)
+- ComunicadosScreen.kt (ComunicadosCirculares.route)
+- DetalleComunicadoScreen.kt (DetalleComunicado.route)
+- NuevoComunicadoScreen.kt (NuevoComunicado.route)
+- GestionCentrosScreen.kt (GestionCentros.route)
+- DetalleCentroScreen.kt (DetalleCentro.route)
+- AddCentroScreen.kt (AddCentro.route)
+- EditCentroScreen.kt (EditCentro.route)
+
+Se recomienda revisar los flujos de navegación para asegurar que todas estas pantallas sean accesibles desde los puntos lógicos de la aplicación. 

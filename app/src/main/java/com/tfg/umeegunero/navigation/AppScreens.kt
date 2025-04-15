@@ -318,9 +318,6 @@ sealed class AppScreens(val route: String) {
     /** Reporte de uso del sistema */
     object ReporteUso : AppScreens("reportes/uso")
     
-    /** Reporte de rendimiento académico */
-    object ReporteRendimiento : AppScreens("reportes/rendimiento")
-    
     /**
      * Sección: Gestión de alumnos y vinculación familiar
      */
