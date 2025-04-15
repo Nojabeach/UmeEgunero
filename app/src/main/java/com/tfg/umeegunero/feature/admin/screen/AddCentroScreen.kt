@@ -29,6 +29,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
@@ -69,6 +81,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -93,6 +106,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Ciudad
 import com.tfg.umeegunero.data.model.Contacto
@@ -183,26 +197,6 @@ fun AddCentroScreen(
                     // Botón de guardar
                     IconButton(
                         onClick = { 
-                            // Crear objetos para el centro y guardar
-                            val centro = Centro(
-                                id = uiState.id.ifBlank { "" },
-                                nombre = uiState.nombre,
-                                direccion = "${uiState.calle}, ${uiState.numero}, ${uiState.codigoPostal}, ${uiState.ciudad}, ${uiState.provincia}",
-                                direccionObj = Direccion(
-                                    calle = uiState.calle,
-                                    numero = uiState.numero,
-                                    codigoPostal = uiState.codigoPostal,
-                                    ciudad = uiState.ciudad,
-                                    provincia = uiState.provincia
-                                ),
-                                contactoObj = Contacto(
-                                    telefono = uiState.telefono,
-                                    email = uiState.adminCentro.firstOrNull()?.email ?: ""
-                                ),
-                                latitud = uiState.latitud ?: 0.0,
-                                longitud = uiState.longitud ?: 0.0
-                            )
-                            
                             viewModel.guardarCentro()
                         },
                         enabled = !uiState.isLoading
@@ -270,11 +264,56 @@ fun AddCentroScreen(
 @Composable
 fun AddCentroScreenPreview() {
     UmeEguneroTheme {
-        AddCentroScreen(
-            navController = hiltViewModel(),
-            viewModel = hiltViewModel(),
-            centroId = null
-        )
+        // Para previews, mostramos solo el contenido en lugar de la pantalla completa
+        Surface {
+            // Usar un estado simulado para el preview
+            val previewState = AddCentroViewModel.AddCentroState(
+                nombre = "Colegio Ejemplo",
+                calle = "Calle Mayor",
+                numero = "25",
+                codigoPostal = "48001",
+                ciudad = "Bilbao",
+                provincia = "Vizcaya",
+                telefono = "944123456",
+                adminCentro = listOf(
+                    AdminCentroUsuario(
+                        dni = "12345678A",
+                        nombre = "Juan",
+                        apellidos = "García López",
+                        email = "admin@ejemplo.com",
+                        telefono = "666777888",
+                        password = "123456"
+                    )
+                )
+            )
+            
+            // Mostrar directamente el contenido de la pantalla
+            AddCentroScreenContent(
+                uiState = previewState,
+                provincias = listOf("Vizcaya", "Guipúzcoa", "Álava"),
+                porcentajeCompletado = 0.8f,
+                isEditMode = false,
+                onNombreChange = {},
+                onCalleChange = {},
+                onNumeroChange = {},
+                onCodigoPostalChange = {},
+                onCiudadChange = {},
+                onProvinciaChange = {},
+                onTelefonoChange = {},
+                onCiudadSelected = {},
+                onToggleMapa = {},
+                onSaveClick = {},
+                onCancelClick = {},
+                onAddAdminCentro = {},
+                onRemoveAdminCentro = { _ -> },
+                onUpdateAdminCentroDni = { _, _ -> },
+                onUpdateAdminCentroNombre = { _, _ -> },
+                onUpdateAdminCentroApellidos = { _, _ -> },
+                onUpdateAdminCentroEmail = { _, _ -> },
+                onUpdateAdminCentroTelefono = { _, _ -> },
+                onUpdateAdminCentroPassword = { _, _ -> }
+            )
+        }
     }
 }
 
@@ -1863,4 +1902,11 @@ fun AddCentroScreenDarkPreview() {
             )
         }
     }
+}
+
+/**
+ * Función de extensión que reemplaza el método capitalize() obsoleto
+ */
+private fun String.capitalizeFirst(): String {
+    return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 } 
