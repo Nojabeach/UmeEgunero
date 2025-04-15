@@ -46,6 +46,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tfg.umeegunero.feature.admin.viewmodel.EstadisticasViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Surface
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Schedule
 
 /**
  * Pantalla de estadísticas para el administrador
@@ -61,6 +68,12 @@ fun EstadisticasScreen(
     val context = LocalContext.current
     var showUpdateMessage by remember { mutableStateOf(false) }
     
+    // Estado para mostrar/ocultar el diálogo de selección de período
+    val mostrarDialogoPeriodo = remember { mutableStateOf(false) }
+    
+    // Lista de períodos disponibles
+    val periodos = listOf("Última semana", "Último mes", "Último trimestre", "Último año", "Todo")
+    
     // Efecto para mostrar mensaje cuando se actualicen los datos
     LaunchedEffect(uiState.fechaActualizacion) {
         if (!uiState.isLoading && uiState.fechaActualizacion != "No disponible") {
@@ -68,6 +81,63 @@ fun EstadisticasScreen(
             delay(3000)
             showUpdateMessage = false
         }
+    }
+    
+    // Diálogo de selección de período
+    if (mostrarDialogoPeriodo.value) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoPeriodo.value = false },
+            title = { Text("Seleccionar período") },
+            text = {
+                Column {
+                    Text(
+                        "Elige el período para el que quieres ver las estadísticas",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    
+                    periodos.forEach { periodo ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    // Llamar al método correspondiente del viewModel
+                                    when (periodo) {
+                                        "Última semana" -> viewModel.cargarEstadisticasPorPeriodo(7)
+                                        "Último mes" -> viewModel.cargarEstadisticasPorPeriodo(30)
+                                        "Último trimestre" -> viewModel.cargarEstadisticasPorPeriodo(90)
+                                        "Último año" -> viewModel.cargarEstadisticasPorPeriodo(365)
+                                        else -> viewModel.cargarEstadisticas()
+                                    }
+                                    mostrarDialogoPeriodo.value = false
+                                    Toast.makeText(context, "Cargando estadísticas para: $periodo", Toast.LENGTH_SHORT).show()
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Text(
+                                text = periodo,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogoPeriodo.value = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
     
     Scaffold(
@@ -91,16 +161,13 @@ fun EstadisticasScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { 
-                    viewModel.recargarEstadisticas()
-                    Toast.makeText(context, "Actualizando estadísticas...", Toast.LENGTH_SHORT).show()
-                },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                onClick = { mostrarDialogoPeriodo.value = true },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Actualizar estadísticas"
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Seleccionar Período",
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -137,22 +204,100 @@ fun EstadisticasScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Sección de resumen
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Resumen General",
-                            style = MaterialTheme.typography.headlineSmall,
+                            text = "Resumen de Estadísticas",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         
-                        Text(
-                            text = "Actualizado: ${uiState.fechaActualizacion}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            FechaActualizacionBadge(fechaActualizacion = uiState.fechaActualizacion)
+                            
+                            Button(
+                                onClick = { 
+                                    viewModel.recargarEstadisticas() 
+                                    Toast.makeText(context, "Actualizando estadísticas...", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.height(32.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Actualizar estadísticas",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.width(4.dp))
+                                
+                                Text(
+                                    text = "Actualizar",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Gráfico de distribución de usuarios
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Distribución de Usuarios",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
+                            // Calcular porcentajes
+                            val totalUsuarios = uiState.totalUsuarios.coerceAtLeast(1)
+                            val porcentajeProfesores = (uiState.totalProfesores.toFloat() / totalUsuarios) * 100
+                            val porcentajeAlumnos = (uiState.totalAlumnos.toFloat() / totalUsuarios) * 100
+                            val porcentajeFamiliares = (uiState.totalFamiliares.toFloat() / totalUsuarios) * 100
+                            
+                            // Barras de distribución
+                            UserTypeBar(
+                                label = "Profesores",
+                                count = uiState.totalProfesores,
+                                percentage = porcentajeProfesores,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            UserTypeBar(
+                                label = "Alumnos",
+                                count = uiState.totalAlumnos,
+                                percentage = porcentajeAlumnos,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            UserTypeBar(
+                                label = "Familiares",
+                                count = uiState.totalFamiliares,
+                                percentage = porcentajeFamiliares,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
                     
                     // Mostrar tarjetas de resumen
@@ -295,25 +440,34 @@ fun EstadisticasScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     
-                    Row(
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     ) {
-                        ActionButton(
-                            text = "Informe Detallado",
-                            icon = Icons.Default.Assessment,
-                            description = "Genera un informe completo con todos los datos del sistema",
-                            onClick = { viewModel.generarInforme() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        ActionButton(
-                            text = "Exportar Datos",
-                            icon = Icons.Default.Download,
-                            description = "Exporta los datos en formato CSV para análisis",
-                            onClick = { viewModel.exportarDatos() },
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                ActionButton(
+                                    text = "Informe Detallado",
+                                    icon = Icons.Default.Assessment,
+                                    description = "Genera un informe completo con todos los datos del sistema",
+                                    onClick = { viewModel.generarInforme() },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                
+                                ActionButton(
+                                    text = "Exportar Datos",
+                                    icon = Icons.Default.Download,
+                                    description = "Exporta los datos en formato CSV para análisis",
+                                    onClick = { viewModel.exportarDatos() },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
                     
                     if (uiState.informeGenerado) {
@@ -634,6 +788,87 @@ fun StatisticCard(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+/**
+ * Barra horizontal que representa la proporción de un tipo de usuario
+ */
+@Composable
+fun UserTypeBar(
+    label: String,
+    count: Int,
+    percentage: Float,
+    color: Color
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            
+            Text(
+                text = "$count (${percentage.toInt()}%)",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(percentage / 100f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(color)
+            )
+        }
+    }
+}
+
+/**
+ * Componente para mostrar la fecha de última actualización en formato Badge
+ */
+@Composable
+fun FechaActualizacionBadge(fechaActualizacion: String) {
+    Surface(
+        modifier = Modifier
+            .padding(end = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (fechaActualizacion == "No disponible") 
+                      "Pendiente de actualización" 
+                      else "Actualizado: $fechaActualizacion",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium
             )
         }
     }

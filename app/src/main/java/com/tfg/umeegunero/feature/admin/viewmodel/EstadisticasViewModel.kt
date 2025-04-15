@@ -39,7 +39,7 @@ class EstadisticasViewModel @Inject constructor(
     /**
      * Carga las estadísticas desde Firestore
      */
-    private fun cargarEstadisticas() {
+    fun cargarEstadisticas() {
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
@@ -98,6 +98,82 @@ class EstadisticasViewModel @Inject constructor(
                     error = e.message ?: "Error al cargar estadísticas"
                 ) }
                 Timber.e(e, "Error al cargar estadísticas")
+            }
+        }
+    }
+    
+    /**
+     * Carga las estadísticas desde Firestore para un período específico
+     * @param dias Número de días atrás para considerar como "nuevos registros"
+     */
+    fun cargarEstadisticasPorPeriodo(dias: Int) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+
+                // Obtener estadísticas de Firestore
+                val centros = firestore.collection("centros").get().await()
+                val usuarios = firestore.collection("usuarios").get().await()
+                
+                // Contar por roles
+                val profesores = usuarios.documents.filter { it.getString("rol") == "PROFESOR" }
+                val alumnos = usuarios.documents.filter { it.getString("rol") == "ALUMNO" }
+                val familiares = usuarios.documents.filter { it.getString("rol") == "FAMILIAR" }
+                
+                // Obtener nuevos registros en el período especificado
+                val fechaLimite = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, -dias)
+                }.time
+                
+                val nuevosCentros = centros.documents.count { doc ->
+                    doc.getTimestamp("fechaCreacion")?.toDate()?.after(fechaLimite) == true
+                }
+                
+                val nuevosProfesores = profesores.count { doc ->
+                    doc.getTimestamp("fechaCreacion")?.toDate()?.after(fechaLimite) == true
+                }
+                
+                val nuevosAlumnos = alumnos.count { doc ->
+                    doc.getTimestamp("fechaCreacion")?.toDate()?.after(fechaLimite) == true
+                }
+                
+                val nuevosFamiliares = familiares.count { doc ->
+                    doc.getTimestamp("fechaCreacion")?.toDate()?.after(fechaLimite) == true
+                }
+
+                // Formato para el nombre del período
+                val nombrePeriodo = when (dias) {
+                    7 -> "última semana"
+                    30 -> "último mes"
+                    90 -> "último trimestre"
+                    365 -> "último año"
+                    else -> "$dias días"
+                }
+                
+                val fechaActualizacion = "${dateFormatter.format(Date())} (${nombrePeriodo})"
+                
+                // Actualizar estado UI
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    totalCentros = centros.size(),
+                    totalUsuarios = usuarios.size(),
+                    totalProfesores = profesores.size,
+                    totalAlumnos = alumnos.size,
+                    totalFamiliares = familiares.size,
+                    nuevosCentros = nuevosCentros,
+                    nuevosProfesores = nuevosProfesores,
+                    nuevosAlumnos = nuevosAlumnos,
+                    nuevosFamiliares = nuevosFamiliares,
+                    fechaActualizacion = fechaActualizacion
+                ) }
+                
+                Timber.d("Estadísticas actualizadas para período de $dias días: ${Date()}")
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = e.message ?: "Error al cargar estadísticas"
+                ) }
+                Timber.e(e, "Error al cargar estadísticas para período $dias")
             }
         }
     }

@@ -4,7 +4,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 
 /**
- * Modelo que representa un curso académico en el sistema UmeEgunero.
+ * Modelo de datos que representa un curso académico en un centro educativo.
  * 
  * Esta clase define la estructura de datos para los cursos educativos, que son
  * elementos organizativos fundamentales dentro de un centro educativo. Un curso
@@ -45,10 +45,10 @@ import com.google.firebase.firestore.DocumentId
 data class Curso(
     @DocumentId val id: String = "",
     val nombre: String = "",
+    val anioAcademico: String = "",
     val descripcion: String = "",
     val edadMinima: Int = 0,
     val edadMaxima: Int = 0,
-    val anioAcademico: String = "",
     val centroId: String = "",
     val fechaCreacion: Timestamp = Timestamp.now(),
     val activo: Boolean = true,

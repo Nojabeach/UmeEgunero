@@ -7,6 +7,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.repository.ActividadPreescolarRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
+import com.tfg.umeegunero.data.repository.CursosRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
@@ -140,6 +141,21 @@ object RepositoryModule {
         registroActividadDao: RegistroActividadDao
     ): LocalRegistroActividadRepository {
         return LocalRegistroActividadRepository(registroActividadDao)
+    }
+    
+    /**
+     * Proporciona una instancia del repositorio para cursos académicos.
+     * Este repositorio maneja las operaciones con cursos de los centros educativos.
+     *
+     * @param firestore Instancia de FirebaseFirestore
+     * @return Instancia de CursosRepository
+     */
+    @Provides
+    @Singleton
+    fun provideCursosRepository(
+        firestore: FirebaseFirestore
+    ): CursosRepository {
+        return CursosRepository(firestore)
     }
     
     /**

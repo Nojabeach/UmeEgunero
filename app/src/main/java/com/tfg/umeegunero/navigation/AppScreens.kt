@@ -538,4 +538,19 @@ sealed class AppScreens(val route: String) {
     
     /** Pantalla de evaluaciones */
     object Evaluacion : AppScreens("evaluacion")
+
+    /** Gestión de cursos para el centro educativo */
+    object ListaCursos : AppScreens("gestion_centro/cursos")
+
+    /** Gestión de clases para el centro educativo */
+    object ListaClases : AppScreens("gestion_centro/clases")
+
+    /** Lista de profesores para vincular a clases */
+    object ListaProfesoresClases : AppScreens("gestion_centro/profesores_clases")
+
+    /** Lista de alumnos para vincular a familiares */
+    object ListaAlumnosFamilias : AppScreens("gestion_centro/alumnos_familias")
+
+    /** Creación rápida de usuarios */
+    object CrearUsuarioRapido : AppScreens("gestion_centro/crear_usuario")
 } 

@@ -219,6 +219,42 @@ fun Navigation(
             )
         }
         
+        // Pantallas de gestión para el centro educativo
+        composable(route = AppScreens.ListaCursos.route) {
+            com.tfg.umeegunero.feature.centro.screen.ListaCursosScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.ListaClases.route) {
+            com.tfg.umeegunero.feature.centro.screen.ListaClasesScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.ListaProfesoresClases.route) {
+            com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.ListaAlumnosFamilias.route) {
+            com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.CrearUsuarioRapido.route) {
+            com.tfg.umeegunero.feature.centro.screen.CrearUsuarioRapidoScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
         // Pantalla para añadir un nuevo centro
         composable(route = AppScreens.AddCentro.route) {
             com.tfg.umeegunero.feature.admin.screen.AddCentroScreen(
