@@ -366,181 +366,182 @@ fun LoginScreen(
                         }
 
                         // Botón para autenticación biométrica (mostrado solo como UI, sin implementación real)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Fingerprint,
-                                contentDescription = "Acceso biométrico",
-                                modifier = Modifier.size(24.dp),
-                                tint = userTypeColor
-                            )
-                            
-                            Spacer(modifier = Modifier.width(4.dp))
-                            
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Información biométrica",
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { showBiometricInfo = true }
-                                    ),
-                                tint = userTypeColor.copy(alpha = 0.7f)
-                            )
-                        }
+                        // Row(
+                        //     modifier = Modifier
+                        //         .fillMaxWidth()
+                        //         .padding(top = 8.dp),
+                        //     horizontalArrangement = Arrangement.End,
+                        //     verticalAlignment = Alignment.CenterVertically
+                        // ) {
+                        //     Icon(
+                        //         imageVector = Icons.Default.Fingerprint,
+                        //         contentDescription = "Acceso biométrico",
+                        //         modifier = Modifier.size(24.dp),
+                        //         tint = userTypeColor
+                        //     )
+                        //     
+                        //     Spacer(modifier = Modifier.width(4.dp))
+                        //     
+                        //     Icon(
+                        //         imageVector = Icons.Default.Info,
+                        //         contentDescription = "Información biométrica",
+                        //         modifier = Modifier
+                        //             .size(20.dp)
+                        //             .clickable(
+                        //                 interactionSource = remember { MutableInteractionSource() },
+                        //                 indication = null,
+                        //                 onClick = { /* Acción de información biométrica */ }
+                        //             ),
+                        //         tint = userTypeColor.copy(alpha = 0.7f)
+                        //     )
+                        // }
 
-                        if (showBiometricInfo) {
-                            androidx.compose.material3.AlertDialog(
-                                onDismissRequest = { showBiometricInfo = false },
-                                title = { 
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Fingerprint,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            "Acceso Biométrico",
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                },
-                                text = {
-                                    Column {
-                                        Text(
-                                            "Para utilizar el acceso biométrico:",
-                                            fontWeight = FontWeight.Medium,
-                                            modifier = Modifier.padding(bottom = 8.dp)
-                                        )
-                                        
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(vertical = 8.dp),
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                                        )
-                                        
-                                        Row(
-                                            modifier = Modifier.padding(vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .background(
-                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                                        CircleShape
-                                                    ),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    "1",
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Inicia sesión normalmente primero")
-                                        }
-                                        
-                                        Row(
-                                            modifier = Modifier.padding(vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .background(
-                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                                        CircleShape
-                                                    ),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    "2",
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Ve a Configuración > Seguridad")
-                                        }
-                                        
-                                        Row(
-                                            modifier = Modifier.padding(vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .background(
-                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                                        CircleShape
-                                                    ),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    "3",
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Activa la autenticación biométrica")
-                                        }
-                                        
-                                        Row(
-                                            modifier = Modifier.padding(vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .background(
-                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                                        CircleShape
-                                                    ),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    "4",
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("La próxima vez podrás acceder usando tu huella dactilar")
-                                        }
-                                    }
-                                },
-                                confirmButton = {
-                                    Button(
-                                        onClick = { showBiometricInfo = false },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary
-                                        )
-                                    ) {
-                                        Text("Entendido")
-                                    }
-                                },
-                                dismissButton = {
-                                    TextButton(
-                                        onClick = { showBiometricInfo = false }
-                                    ) {
-                                        Text("Cerrar")
-                                    }
-                                }
-                            )
-                        }
+                        // Comentar todo el diálogo de información biométrica
+                        // if (showBiometricInfo) {
+                        //     androidx.compose.material3.AlertDialog(
+                        //         onDismissRequest = { showBiometricInfo = false },
+                        //         title = { 
+                        //             Row(
+                        //                 verticalAlignment = Alignment.CenterVertically
+                        //             ) {
+                        //                 Icon(
+                        //                     imageVector = Icons.Default.Fingerprint,
+                        //                     contentDescription = null,
+                        //                     tint = MaterialTheme.colorScheme.primary,
+                        //                     modifier = Modifier.size(24.dp)
+                        //                 )
+                        //                 Spacer(modifier = Modifier.width(8.dp))
+                        //                 Text(
+                        //                     "Acceso Biométrico",
+                        //                     fontWeight = FontWeight.Bold
+                        //                 )
+                        //             }
+                        //         },
+                        //         text = {
+                        //             Column {
+                        //                 Text(
+                        //                     "Para utilizar el acceso biométrico:",
+                        //                     fontWeight = FontWeight.Medium,
+                        //                     modifier = Modifier.padding(bottom = 8.dp)
+                        //                 )
+                        //                 
+                        //                 HorizontalDivider(
+                        //                     modifier = Modifier.padding(vertical = 8.dp),
+                        //                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                        //                 )
+                        //                 
+                        //                 Row(
+                        //                     modifier = Modifier.padding(vertical = 4.dp),
+                        //                     verticalAlignment = Alignment.CenterVertically
+                        //                 ) {
+                        //                     Box(
+                        //                         modifier = Modifier
+                        //                             .size(24.dp)
+                        //                             .background(
+                        //                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        //                                 CircleShape
+                        //                             ),
+                        //                         contentAlignment = Alignment.Center
+                        //                     ) {
+                        //                         Text(
+                        //                             "1",
+                        //                             fontWeight = FontWeight.Bold,
+                        //                             color = MaterialTheme.colorScheme.primary
+                        //                         )
+                        //                     }
+                        //                     Spacer(modifier = Modifier.width(8.dp))
+                        //                     Text("Inicia sesión normalmente primero")
+                        //                 }
+                        //                 
+                        //                 Row(
+                        //                     modifier = Modifier.padding(vertical = 4.dp),
+                        //                     verticalAlignment = Alignment.CenterVertically
+                        //                 ) {
+                        //                     Box(
+                        //                         modifier = Modifier
+                        //                             .size(24.dp)
+                        //                             .background(
+                        //                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        //                                 CircleShape
+                        //                             ),
+                        //                         contentAlignment = Alignment.Center
+                        //                     ) {
+                        //                         Text(
+                        //                             "2",
+                        //                             fontWeight = FontWeight.Bold,
+                        //                             color = MaterialTheme.colorScheme.primary
+                        //                         )
+                        //                     }
+                        //                     Spacer(modifier = Modifier.width(8.dp))
+                        //                     Text("Ve a Configuración > Seguridad")
+                        //                 }
+                        //                 
+                        //                 Row(
+                        //                     modifier = Modifier.padding(vertical = 4.dp),
+                        //                     verticalAlignment = Alignment.CenterVertically
+                        //                 ) {
+                        //                     Box(
+                        //                         modifier = Modifier
+                        //                             .size(24.dp)
+                        //                             .background(
+                        //                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        //                                 CircleShape
+                        //                             ),
+                        //                         contentAlignment = Alignment.Center
+                        //                     ) {
+                        //                         Text(
+                        //                             "3",
+                        //                             fontWeight = FontWeight.Bold,
+                        //                             color = MaterialTheme.colorScheme.primary
+                        //                         )
+                        //                     }
+                        //                     Spacer(modifier = Modifier.width(8.dp))
+                        //                     Text("Activa la autenticación biométrica")
+                        //                 }
+                        //                 
+                        //                 Row(
+                        //                     modifier = Modifier.padding(vertical = 4.dp),
+                        //                     verticalAlignment = Alignment.CenterVertically
+                        //                 ) {
+                        //                     Box(
+                        //                         modifier = Modifier
+                        //                             .size(24.dp)
+                        //                             .background(
+                        //                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        //                                 CircleShape
+                        //                             ),
+                        //                         contentAlignment = Alignment.Center
+                        //                     ) {
+                        //                         Text(
+                        //                             "4",
+                        //                             fontWeight = FontWeight.Bold,
+                        //                             color = MaterialTheme.colorScheme.primary
+                        //                         )
+                        //                     }
+                        //                     Spacer(modifier = Modifier.width(8.dp))
+                        //                     Text("La próxima vez podrás acceder usando tu huella dactilar")
+                        //                 }
+                        //             }
+                        //         },
+                        //         confirmButton = {
+                        //             Button(
+                        //                 onClick = { showBiometricInfo = false },
+                        //                 colors = ButtonDefaults.buttonColors(
+                        //                     containerColor = MaterialTheme.colorScheme.primary
+                        //                 )
+                        //             ) {
+                        //                 Text("Entendido")
+                        //             }
+                        //         },
+                        //         dismissButton = {
+                        //             TextButton(
+                        //                 onClick = { showBiometricInfo = false }
+                        //             ) {
+                        //                 Text("Cerrar")
+                        //             }
+                        //         }
+                        //     )
+                        // }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -848,35 +849,35 @@ fun LoginScreenPreview(userType: TipoUsuario, darkTheme: Boolean) {
                         }
 
                         // Botón para autenticación biométrica (en preview)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Fingerprint,
-                                contentDescription = "Acceso biométrico",
-                                modifier = Modifier.size(24.dp),
-                                tint = userTypeColor
-                            )
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Información biométrica",
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { /* Acción de información biométrica */ }
-                                    ),
-                                tint = userTypeColor.copy(alpha = 0.7f)
-                            )
-                        }
+                        // Row(
+                        //     modifier = Modifier
+                        //         .fillMaxWidth()
+                        //         .padding(top = 16.dp),
+                        //     horizontalArrangement = Arrangement.Center,
+                        //     verticalAlignment = Alignment.CenterVertically
+                        // ) {
+                        //     Icon(
+                        //         imageVector = Icons.Default.Fingerprint,
+                        //         contentDescription = "Acceso biométrico",
+                        //         modifier = Modifier.size(24.dp),
+                        //         tint = userTypeColor
+                        //     )
+                        //     
+                        //     Spacer(modifier = Modifier.width(8.dp))
+                        //     
+                        //     Icon(
+                        //         imageVector = Icons.Default.Info,
+                        //         contentDescription = "Información biométrica",
+                        //         modifier = Modifier
+                        //             .size(20.dp)
+                        //             .clickable(
+                        //                 interactionSource = remember { MutableInteractionSource() },
+                        //                 indication = null,
+                        //                 onClick = { /* Acción de información biométrica */ }
+                        //             ),
+                        //         tint = userTypeColor.copy(alpha = 0.7f)
+                        //     )
+                        // }
                     }
                 }
 

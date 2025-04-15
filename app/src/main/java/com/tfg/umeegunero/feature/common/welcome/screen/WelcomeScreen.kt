@@ -1053,7 +1053,8 @@ fun LoginButtons(
     onFamiliarLogin: () -> Unit
 ) {
     val isLight = isLightTheme()
-    var showBiometricInfo by remember { mutableStateOf(false) }
+    // Comentar esta línea si está definida:
+    // var showBiometricInfo by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1099,23 +1100,18 @@ fun LoginButtons(
                 modifier = Modifier.weight(1f)
             )
             
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
-            )
+            // Ocultar cualquier icono de huella:
+            // Icon(
+            //     imageVector = Icons.Default.Fingerprint,
+            //     contentDescription = "Acceso biométrico",
+            //     modifier = Modifier.size(24.dp),
+            //     tint = Color.White
+            // )
             
             Spacer(modifier = Modifier.width(4.dp))
             
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = "Información biométrica",
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable { showBiometricInfo = true },
-                tint = Color.White.copy(alpha = 0.8f)
-            )
+            // Ocultar cualquier evento clickable relacionado con biometría:
+            // .clickable { showBiometricInfo = true },
         }
 
         // Botón de acceso profesor con diseño mejorado
@@ -1157,23 +1153,18 @@ fun LoginButtons(
                 modifier = Modifier.weight(1f)
             )
             
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
-            )
+            // Ocultar cualquier icono de huella:
+            // Icon(
+            //     imageVector = Icons.Default.Fingerprint,
+            //     contentDescription = "Acceso biométrico",
+            //     modifier = Modifier.size(24.dp),
+            //     tint = Color.White
+            // )
             
             Spacer(modifier = Modifier.width(4.dp))
             
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = "Información biométrica",
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable { showBiometricInfo = true },
-                tint = Color.White.copy(alpha = 0.8f)
-            )
+            // Ocultar cualquier evento clickable relacionado con biometría:
+            // .clickable { showBiometricInfo = true },
         }
 
         // Botón de acceso familiar con diseño mejorado
@@ -1215,171 +1206,25 @@ fun LoginButtons(
                 modifier = Modifier.weight(1f)
             )
             
-            Icon(
-                imageVector = Icons.Default.Fingerprint,
-                contentDescription = "Acceso biométrico",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
-            )
+            // Ocultar cualquier icono de huella:
+            // Icon(
+            //     imageVector = Icons.Default.Fingerprint,
+            //     contentDescription = "Acceso biométrico",
+            //     modifier = Modifier.size(24.dp),
+            //     tint = Color.White
+            // )
             
             Spacer(modifier = Modifier.width(4.dp))
             
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = "Información biométrica",
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable { showBiometricInfo = true },
-                tint = Color.White.copy(alpha = 0.8f)
-            )
+            // Ocultar cualquier evento clickable relacionado con biometría:
+            // .clickable { showBiometricInfo = true },
         }
     }
 
-    if (showBiometricInfo) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showBiometricInfo = false },
-            title = { 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Acceso Biométrico",
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            text = {
-                Column {
-                Text(
-                        "Para utilizar el acceso biométrico:",
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                    )
-                    
-                    Row(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "1",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Inicia sesión normalmente primero")
-                    }
-                    
-                    Row(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "2",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ve a Configuración > Seguridad")
-                    }
-                    
-                    Row(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "3",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Activa la autenticación biométrica")
-                    }
-                    
-                    Row(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "4",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("La próxima vez podrás acceder usando tu huella dactilar")
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showBiometricInfo = false },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Entendido")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showBiometricInfo = false }
-                ) {
-                    Text("Cerrar")
-                }
-            }
-        )
-    }
+    // Comentar todo el diálogo de información biométrica si existe:
+    // if (showBiometricInfo) {
+    //     AlertDialog(...)
+    // }
 }
 
 @Preview(showBackground = true)

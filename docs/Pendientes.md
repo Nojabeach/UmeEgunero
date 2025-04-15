@@ -43,6 +43,13 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Prioridad: Alta
    - Tiempo estimado: 1 día
 
+4. **Funcionalidades de seguridad**
+   - Verificar el funcionamiento de la autenticación biométrica
+   - Comprobar el flujo de activación y desactivación de la biometría
+   - Validar la seguridad y gestión de credenciales biométricas
+   - Prioridad: Media
+   - Tiempo estimado: 1 día
+
 ### Perfil Administrador de Centro
 
 1. **Dashboard Principal**
@@ -63,6 +70,13 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Comprobar la creación y gestión de profesores
    - Validar la asignación de profesores a clases
    - Revisar gestión de permisos dentro del centro
+   - Prioridad: Media
+   - Tiempo estimado: 1 día
+
+4. **Funcionalidades de seguridad**
+   - Verificar el funcionamiento de la autenticación biométrica
+   - Comprobar el flujo de activación y desactivación de la biometría
+   - Validar el acceso seguro a datos sensibles del centro
    - Prioridad: Media
    - Tiempo estimado: 1 día
 
@@ -98,6 +112,13 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Prioridad: Media
    - Tiempo estimado: 1 día
 
+5. **Funcionalidades de seguridad**
+   - Verificar el funcionamiento de la autenticación biométrica
+   - Comprobar el flujo de activación y desactivación de la biometría
+   - Validar la seguridad en el acceso a datos de alumnos
+   - Prioridad: Media
+   - Tiempo estimado: 1 día
+
 ### Perfil Familiar
 
 1. **Dashboard Principal**
@@ -126,6 +147,13 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Revisar visualización de actividades asignadas
    - Comprobar funcionalidad para marcar actividades completadas
    - Validar envío de comentarios sobre actividades
+   - Prioridad: Media
+   - Tiempo estimado: 1 día
+
+5. **Funcionalidades de seguridad**
+   - Verificar el funcionamiento de la autenticación biométrica
+   - Comprobar el flujo de activación y desactivación de la biometría
+   - Validar la seguridad en el acceso a información familiar
    - Prioridad: Media
    - Tiempo estimado: 1 día
 
@@ -210,6 +238,30 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Documentar adecuadamente esta funcionalidad en el manual técnico.
    - Prioridad: Baja (funcionalidad ya implementada)
    - Tiempo estimado: 1 día (para documentación adicional)
+
+### Problemas específicos de interfaz
+
+1. **Botón "Más información" en FAQ sin funcionalidad**
+   - Al desplegar opciones en la pantalla de FAQ, el botón de "Más información" no realiza ninguna acción
+   - Se debe implementar la funcionalidad para mostrar información detallada o eliminar el botón
+   - Verificar en todas las secciones de FAQ si este botón tiene el mismo comportamiento
+   - Prioridad: Media
+   - Tiempo estimado: 1 día
+
+2. **Envío de correos electrónicos a soporte**
+   - El formulario de contacto con soporte técnico no completa correctamente el envío de correos
+   - Verificar la configuración del servicio de correo electrónico
+   - Implementar un sistema alternativo de notificación si el envío de correos no es viable
+   - Considerar almacenar las solicitudes de soporte en Firestore como respaldo
+   - Prioridad: Alta
+   - Tiempo estimado: 2 días
+
+3. **Enlace a Términos y Condiciones en Registro**
+   - El enlace para ver los Términos y Condiciones en la pantalla de Registro redirige a una pantalla provisional
+   - Desarrollar una pantalla adecuada para mostrar los términos y condiciones reales de la aplicación
+   - Implementar la opción de descargar el documento como PDF
+   - Prioridad: Alta
+   - Tiempo estimado: 2 días
 
 ### Posibles duplicaciones de modelos
 
@@ -300,6 +352,16 @@ Se recomienda revisar y consolidar los siguientes elementos:
    - Prioridad: Media
    - Tiempo estimado: 2 días
 
+3. **Implementación de autenticación biométrica**
+   - Verificar la implementación actual de autenticación biométrica en la aplicación
+   - Comprobar la funcionalidad con diferentes tipos de sensores biométricos (huella, facial)
+   - Implementar una integración completa con BiometricPrompt de AndroidX
+   - Añadir flujo de configuración para activar/desactivar la biometría
+   - Probar específicamente con el Extended Control Finger1 del emulador de Android
+   - Implementar manejo adecuado de errores y casos fallidos
+   - Prioridad: Alta
+   - Tiempo estimado: 3 días
+
 ## Refactorización y limpieza del código
 
 1. **Corregir advertencias de compilación**
@@ -333,11 +395,19 @@ Las prioridades recomendadas son:
 3. Verificar el correcto funcionamiento de los gráficos y datos en tiempo real
 4. Mejorar los sistemas de comunicación y notificaciones
    - **Progreso**: Se ha completado la implementación del sistema de confirmación de lectura de comunicados.
-5. Completar la implementación de formularios de alta/modificación
-6. Ampliar la suite de pruebas (unitarias, integración y UI)
-7. Documentar adecuadamente la estructura de la base de datos
-8. Optimizar rendimiento y experiencia de usuario
-9. Refactorizar y limpiar el código para corregir advertencias de compilación
+5. Completar la implementación y verificación de la autenticación biométrica
+   - Implementar la integración completa con BiometricPrompt de AndroidX
+   - Verificar su funcionamiento en todos los tipos de usuario
+   - Probar con el Extended Control Finger1 del emulador de Android
+6. Resolver problemas específicos de interfaz
+   - Implementar o eliminar el botón "Más información" en FAQ 
+   - Corregir el envío de correos al soporte técnico
+   - Desarrollar una pantalla real para los Términos y Condiciones
+7. Completar la implementación de formularios de alta/modificación
+8. Ampliar la suite de pruebas (unitarias, integración y UI)
+9. Documentar adecuadamente la estructura de la base de datos
+10. Optimizar rendimiento y experiencia de usuario
+11. Refactorizar y limpiar el código para corregir advertencias de compilación
    - Actualizar APIs obsoletas
    - Eliminar código redundante y mejorar la calidad general
 
