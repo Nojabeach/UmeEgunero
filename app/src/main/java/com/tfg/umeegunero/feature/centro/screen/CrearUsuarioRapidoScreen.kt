@@ -16,6 +16,32 @@ import com.tfg.umeegunero.navigation.AppScreens
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/**
+ * Estado de UI para la pantalla de creación rápida de usuarios
+ */
+data class CrearUsuarioRapidoUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val mensaje: String? = null
+)
+
+/**
+ * ViewModel para la pantalla de creación rápida de usuarios
+ */
+@HiltViewModel
+class CrearUsuarioRapidoViewModel @Inject constructor() : ViewModel() {
+    private val _uiState = MutableStateFlow(CrearUsuarioRapidoUiState())
+    val uiState: StateFlow<CrearUsuarioRapidoUiState> = _uiState.asStateFlow()
+    
+    // Esta función se puede ampliar cuando se implemente la lógica de negocio real
+    fun crearUsuario(tipoUsuario: String) {
+        // Implementación pendiente
+    }
+}
 
 /**
  * Pantalla para crear rápidamente usuarios (profesores, alumnos o familiares)
@@ -26,6 +52,16 @@ fun CrearUsuarioRapidoScreen(
     navController: NavController,
     viewModel: CrearUsuarioRapidoViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Efecto para mostrar mensajes de error
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -45,78 +81,90 @@ fun CrearUsuarioRapidoScreen(
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
-        // Contenido en desarrollo
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(16.dp)
+        // Si está cargando, mostrar indicador
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.PersonAdd,
-                    contentDescription = null,
-                    modifier = Modifier.size(72.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "Creación Rápida de Usuarios",
-                    style = MaterialTheme.typography.headlineMedium,
-                    textAlign = TextAlign.Center
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = "Esta pantalla está en desarrollo. Pronto podrás crear usuarios rápidamente desde aquí.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Botones provisionales para acceder a pantallas existentes
-                ElevatedButton(
-                    onClick = { navController.navigate(AppScreens.AddUser.createRoute(false, "profesor")) },
-                    modifier = Modifier.fillMaxWidth()
+                CircularProgressIndicator()
+            }
+        } else {
+            // Contenido principal
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Text("Crear Profesor")
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                ElevatedButton(
-                    onClick = { navController.navigate(AppScreens.AddUser.createRoute(false, "alumno")) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Crear Alumno")
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                ElevatedButton(
-                    onClick = { navController.navigate(AppScreens.AddUser.createRoute(false, "familiar")) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Crear Familiar")
+                    Icon(
+                        imageVector = Icons.Default.PersonAdd,
+                        contentDescription = null,
+                        modifier = Modifier.size(72.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Creación Rápida de Usuarios",
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Seleccione el tipo de usuario que desea crear:",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Botones para crear diferentes tipos de usuarios
+                    ElevatedButton(
+                        onClick = { 
+                            navController.navigate(AppScreens.AddUser.createRoute(false, "profesor"))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Crear Profesor")
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    ElevatedButton(
+                        onClick = { 
+                            navController.navigate(AppScreens.AddUser.createRoute(false, "alumno"))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Crear Alumno")
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    ElevatedButton(
+                        onClick = { 
+                            navController.navigate(AppScreens.AddUser.createRoute(false, "familiar"))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Crear Familiar")
+                    }
                 }
             }
         }
     }
-}
-
-/**
- * ViewModel para la pantalla de creación rápida de usuarios
- * Implementación pendiente
- */
-@HiltViewModel
-class CrearUsuarioRapidoViewModel @Inject constructor() : ViewModel() 
+} 
