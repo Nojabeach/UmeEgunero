@@ -246,7 +246,7 @@ fun AdminDashboardContent(
             description = "Ver todos los usuarios del sistema",
             icon = Icons.Default.People,
             color = MaterialTheme.colorScheme.secondary,
-            onClick = { navController.navigate(AppScreens.GestionProfesores.route) }
+            onClick = { navController.navigate(AppScreens.GestionUsuarios.route) }
         )
         
         // Título para sección de vinculaciones

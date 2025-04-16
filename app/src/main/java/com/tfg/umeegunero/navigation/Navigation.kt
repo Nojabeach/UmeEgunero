@@ -269,7 +269,12 @@ fun Navigation(
         composable(
             route = AppScreens.AddUser.route,
             arguments = listOf(
-                navArgument("isAdminApp") { type = NavType.BoolType }
+                navArgument("isAdminApp") { type = NavType.BoolType },
+                navArgument("tipo") { 
+                    type = NavType.StringType 
+                    nullable = true
+                    defaultValue = null
+                }
             )
         ) { backStackEntry ->
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
@@ -537,11 +542,9 @@ fun Navigation(
         
         // Pantalla de gestión de profesores
         composable(route = AppScreens.GestionProfesores.route) {
-            // Usar una pantalla dummy como solución temporal
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Gestión de Profesores",
-                description = "Esta pantalla permitirá gestionar los profesores del centro educativo. Estará disponible próximamente.",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.centro.screen.GestionProfesoresScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
             )
         }
         
@@ -560,11 +563,11 @@ fun Navigation(
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
             val tipoUsuario = backStackEntry.arguments?.getString("tipo")
             
-            // Usar una pantalla dummy como solución temporal
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Añadir ${tipoUsuario ?: "Usuario"}",
-                description = "Esta pantalla permitirá la creación de nuevos usuarios. Estará disponible próximamente.",
-                onNavigateBack = { navController.popBackStack() }
+            com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
+                navController = navController,
+                viewModel = hiltViewModel(),
+                isAdminApp = isAdminApp,
+                tipoPreseleccionado = tipoUsuario
             )
         }
 
@@ -587,6 +590,42 @@ fun Navigation(
             com.tfg.umeegunero.feature.common.screen.DummyScreen(
                 title = title,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de gestión de usuarios
+        composable(route = AppScreens.GestionUsuarios.route) {
+            com.tfg.umeegunero.feature.admin.screen.GestionUsuariosScreen(
+                navController = navController
+            )
+        }
+        
+        // Pantallas de listado por tipo de usuario
+        composable(route = AppScreens.AdminList.route) {
+            com.tfg.umeegunero.feature.common.users.screen.ListAdministradoresScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        composable(route = AppScreens.ProfesorList.route) {
+            com.tfg.umeegunero.feature.common.users.screen.ListProfesoresScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        composable(route = AppScreens.AlumnoList.route) {
+            com.tfg.umeegunero.feature.common.users.screen.ListAlumnosScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        composable(route = AppScreens.FamiliarList.route) {
+            com.tfg.umeegunero.feature.common.users.screen.ListFamiliaresScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
             )
         }
 

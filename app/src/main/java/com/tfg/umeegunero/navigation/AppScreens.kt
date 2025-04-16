@@ -562,4 +562,7 @@ sealed class AppScreens(val route: String) {
     
     /** Pantalla de configuración de email de soporte */
     object EmailConfigSoporte : AppScreens("email_config_soporte")
+    
+    /** Pantalla de gestión de usuarios */
+    object GestionUsuarios : AppScreens("gestion_usuarios")
 } 
