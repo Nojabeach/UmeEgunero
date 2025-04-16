@@ -274,10 +274,9 @@ fun Navigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
             com.tfg.umeegunero.feature.admin.screen.EditCentroScreen(
+                navController = navController,
                 centroId = centroId,
-                viewModel = hiltViewModel(),
-                onNavigateBack = { navController.popBackStack() },
-                onCentroUpdated = { navController.popBackStack() }
+                viewModel = hiltViewModel()
             )
         }
         

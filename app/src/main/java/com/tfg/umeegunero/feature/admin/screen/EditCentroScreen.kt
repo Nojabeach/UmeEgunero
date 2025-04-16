@@ -1,536 +1,273 @@
 package com.tfg.umeegunero.feature.admin.screen
 
-import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tfg.umeegunero.data.model.Centro
-import com.tfg.umeegunero.feature.admin.viewmodel.AdminViewModel
-import com.tfg.umeegunero.ui.components.LoadingIndicator
-import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError
-import androidx.compose.ui.tooling.preview.Preview
-import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavController
+import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
+import kotlin.math.max
+import com.tfg.umeegunero.feature.admin.screen.AddCentroScreenContent
+import com.tfg.umeegunero.feature.admin.screen.DeleteCentroConfirmationDialog
 
-// Clase para gestionar el estado de la pantalla
-class EditCentroState(private val viewModel: AdminViewModel, private val centroId: String, private val onNavigateBack: () -> Unit) {
-    // Estados del formulario
-    var currentStep by mutableStateOf(0)
-    val totalSteps = 3
-    
-    // Datos del formulario
-    var nombre by mutableStateOf("")
-    var direccion by mutableStateOf("")
-    var telefono by mutableStateOf("")
-    var email by mutableStateOf("")
-    var latitud by mutableStateOf("")
-    var longitud by mutableStateOf("")
-    
-    // Estados de validación
-    var nombreError by mutableStateOf("")
-    var direccionError by mutableStateOf("")
-    var telefonoError by mutableStateOf("")
-    var emailError by mutableStateOf("")
-    var latitudError by mutableStateOf("")
-    var longitudError by mutableStateOf("")
-    
-    // Estado de carga
-    var isLoading by mutableStateOf(true)
-    
-    // Cargar datos iniciales
-    fun loadCentro(onComplete: () -> Unit = {}) {
-        isLoading = true
-        viewModel.getCentro(centroId) { centro ->
-            if (centro != null) {
-                nombre = centro.nombre
-                direccion = centro.direccion
-                telefono = centro.telefono ?: ""
-                email = centro.email ?: ""
-                latitud = centro.latitud.toString()
-                longitud = centro.longitud.toString()
-                isLoading = false
-                onComplete()
-            } else {
-                isLoading = false
-                onNavigateBack()
-            }
-        }
-    }
-    
-    // Funciones de validación
-    fun validateStep0(): Boolean {
-        var isValid = true
-        
-        if (nombre.isEmpty()) {
-            nombreError = "El nombre es obligatorio"
-            isValid = false
-        } else {
-            nombreError = ""
-        }
-        
-        return isValid
-    }
-    
-    fun validateStep1(): Boolean {
-        var isValid = true
-        
-        if (direccion.isEmpty()) {
-            direccionError = "La dirección es obligatoria"
-            isValid = false
-        } else {
-            direccionError = ""
-        }
-        
-        if (telefono.isNotEmpty() && !telefono.matches(Regex("^[0-9]{9}$"))) {
-            telefonoError = "Formato inválido (9 dígitos)"
-            isValid = false
-        } else {
-            telefonoError = ""
-        }
-        
-        if (email.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            emailError = "Email inválido"
-            isValid = false
-        } else {
-            emailError = ""
-        }
-        
-        return isValid
-    }
-    
-    fun validateStep2(): Boolean {
-        var isValid = true
-        
-        if (latitud.isNotEmpty()) {
-            try {
-                val lat = latitud.toDouble()
-                if (lat < -90 || lat > 90) {
-                    latitudError = "Latitud debe estar entre -90 y 90"
-                    isValid = false
-                } else {
-                    latitudError = ""
-                }
-            } catch (e: NumberFormatException) {
-                latitudError = "Formato numérico inválido"
-                isValid = false
-            }
-        }
-        
-        if (longitud.isNotEmpty()) {
-            try {
-                val lng = longitud.toDouble()
-                if (lng < -180 || lng > 180) {
-                    longitudError = "Longitud debe estar entre -180 y 180"
-                    isValid = false
-                } else {
-                    longitudError = ""
-                }
-            } catch (e: NumberFormatException) {
-                longitudError = "Formato numérico inválido"
-                isValid = false
-            }
-        }
-        
-        return isValid
-    }
-    
-    fun validateForm(): Boolean {
-        return validateStep0() && validateStep1() && validateStep2()
-    }
-    
-    fun nextStep() {
-        if (currentStep < totalSteps - 1) {
-            when (currentStep) {
-                0 -> {
-                    if (validateStep0()) {
-                        currentStep += 1
-                    }
-                }
-                1 -> {
-                    if (validateStep1()) {
-                        currentStep += 1
-                    }
-                }
-            }
-        }
-    }
-    
-    fun previousStep() {
-        if (currentStep > 0) {
-            currentStep -= 1
-        }
-    }
-    
-    fun actualizarCentro(context: android.content.Context, onCentroUpdated: () -> Unit) {
-        if (validateForm()) {
-            val centro = Centro(
-                id = centroId,
-                nombre = nombre,
-                direccion = direccion,
-                telefono = telefono,
-                email = email,
-                latitud = latitud.toDoubleOrNull() ?: 0.0,
-                longitud = longitud.toDoubleOrNull() ?: 0.0
-            )
-            
-            isLoading = true
-            
-            viewModel.actualizarCentro(centro) { success ->
-                isLoading = false
-                
-                if (success) {
-                    Toast.makeText(context, "Centro actualizado correctamente", Toast.LENGTH_SHORT).show()
-                    onCentroUpdated()
-                } else {
-                    Toast.makeText(context, "Error al actualizar el centro", Toast.LENGTH_LONG).show()
-                }
-            }
-        } else {
-            Toast.makeText(context, "Por favor, corrija los errores del formulario", Toast.LENGTH_SHORT).show()
-        }
-    }
-}
-
+/**
+ * Pantalla para editar un centro educativo existente.
+ * Esta pantalla reutiliza los componentes de AddCentroScreen pero precarga los datos del centro a editar.
+ * 
+ * @param navController Controlador de navegación
+ * @param centroId ID del centro a editar
+ * @param viewModel ViewModel para la edición de centros
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditCentroScreen(
+    navController: NavController,
     centroId: String,
-    viewModel: AdminViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit = {},
-    onCentroUpdated: () -> Unit = {}
+    viewModel: AddCentroViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    val focusManager = LocalFocusManager.current
-    val scrollState = rememberScrollState()
+    val uiState by viewModel.uiState.collectAsState()
+    val provinciasLista by viewModel.provincias.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     
-    // Crear estado de la pantalla
-    val state = remember { EditCentroState(viewModel, centroId, onNavigateBack) }
-    
-    // Cargar datos iniciales
-    DisposableEffect(key1 = centroId) {
-        state.loadCentro()
-        onDispose { }
+    // Cargar los datos del centro al iniciar
+    LaunchedEffect(centroId) {
+        if (!centroId.isBlank() && uiState.id.isBlank()) {
+            viewModel.loadCentro(centroId)
+        }
     }
-
+    
+    // Observar cambios en el estado y navegar de vuelta si la operación fue exitosa
+    LaunchedEffect(uiState.success) {
+        if (uiState.success) {
+            navController.popBackStack()
+        }
+    }
+    
+    // Calcular el porcentaje de completado del formulario
+    val porcentajeCompletado = calcularPorcentajeCompletado(uiState)
+    
+    // Efecto para mostrar errores en el Snackbar
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearError()
+        }
+    }
+    
+    // Estado para el diálogo de confirmación de eliminación
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Editar Centro") },
+                title = { 
+                    Text(
+                        text = "Editar Centro Educativo",
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
-                }
+                },
+                actions = {
+                    // Botón de eliminar
+                    IconButton(
+                        onClick = {
+                            showDeleteConfirmation = true
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar centro",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    
+                    // Botón de guardar
+                    IconButton(
+                        onClick = { 
+                            viewModel.guardarCentro()
+                        },
+                        enabled = !uiState.isLoading
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = "Guardar cambios"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        if (state.isLoading) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "Cargando datos del centro...")
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp)
-                    .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Indicador de progreso
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Paso ${state.currentStep + 1} de ${state.totalSteps}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { (state.currentStep + 1).toFloat() / state.totalSteps },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+        // Reutilizamos el contenido principal de AddCentroScreen
+        AddCentroScreenContent(
+            uiState = uiState,
+            provincias = provinciasLista,
+            porcentajeCompletado = porcentajeCompletado,
+            isEditMode = true,
+            onNombreChange = viewModel::updateNombre,
+            onCalleChange = viewModel::updateCalle,
+            onNumeroChange = viewModel::updateNumero,
+            onCodigoPostalChange = viewModel::updateCodigoPostal,
+            onCiudadChange = viewModel::updateCiudad,
+            onProvinciaChange = viewModel::updateProvincia,
+            onTelefonoChange = viewModel::updateTelefono,
+            onCiudadSelected = viewModel::seleccionarCiudad,
+            onToggleMapa = viewModel::toggleMapa,
+            onSaveClick = {
+                viewModel.guardarCentro()
+            },
+            onCancelClick = { navController.popBackStack() },
+            onAddAdminCentro = viewModel::addAdminCentro,
+            onRemoveAdminCentro = viewModel::removeAdminCentro,
+            onUpdateAdminCentroDni = viewModel::updateAdminCentroDni,
+            onUpdateAdminCentroNombre = viewModel::updateAdminCentroNombre,
+            onUpdateAdminCentroApellidos = viewModel::updateAdminCentroApellidos,
+            onUpdateAdminCentroEmail = viewModel::updateAdminCentroEmail,
+            onUpdateAdminCentroTelefono = viewModel::updateAdminCentroTelefono,
+            onUpdateAdminCentroPassword = viewModel::updateAdminCentroPassword,
+            modifier = Modifier.padding(paddingValues)
+        )
+        
+        // Diálogo de confirmación para eliminar centro
+        if (showDeleteConfirmation) {
+            DeleteCentroConfirmationDialog(
+                onConfirm = {
+                    viewModel.deleteCentro(uiState.id)
+                    showDeleteConfirmation = false
+                },
+                onDismiss = {
+                    showDeleteConfirmation = false
                 }
-                
-                // Contenido según el paso actual
-                when (state.currentStep) {
-                    0 -> {
-                        // Paso 1: Nombre del centro
-                        Text(
-                            text = "Información Básica",
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        OutlinedTextFieldWithError(
-                            value = state.nombre,
-                            onValueChange = { state.nombre = it },
-                            label = "Nombre del Centro",
-                            errorMessage = state.nombreError,
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.School,
-                                    contentDescription = null
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                imeAction = ImeAction.Next
-                            )
-                        )
-                    }
-                    
-                    1 -> {
-                        // Paso 2: Datos de contacto
-                        Text(
-                            text = "Datos de Contacto",
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        OutlinedTextFieldWithError(
-                            value = state.direccion,
-                            onValueChange = { state.direccion = it },
-                            label = "Dirección",
-                            errorMessage = state.direccionError,
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = null
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                imeAction = ImeAction.Next
-                            )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        OutlinedTextFieldWithError(
-                            value = state.telefono,
-                            onValueChange = { state.telefono = it },
-                            label = "Teléfono",
-                            errorMessage = state.telefonoError,
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Phone,
-                                    contentDescription = null
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Phone,
-                                imeAction = ImeAction.Next
-                            )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        OutlinedTextFieldWithError(
-                            value = state.email,
-                            onValueChange = { state.email = it },
-                            label = "Email",
-                            errorMessage = state.emailError,
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Email,
-                                    contentDescription = null
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Email,
-                                imeAction = ImeAction.Done
-                            )
-                        )
-                    }
-                    
-                    2 -> {
-                        // Paso 3: Ubicación
-                        Text(
-                            text = "Ubicación",
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "Coordenadas (opcional)",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        OutlinedTextFieldWithError(
-                            value = state.latitud,
-                            onValueChange = { state.latitud = it },
-                            label = "Latitud",
-                            errorMessage = state.latitudError,
-                            modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Next
-                            )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        OutlinedTextFieldWithError(
-                            value = state.longitud,
-                            onValueChange = { state.longitud = it },
-                            label = "Longitud",
-                            errorMessage = state.longitudError,
-                            modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Done
-                            )
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Botones de navegación
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    if (state.currentStep > 0) {
-                        TextButton(
-                            onClick = { state.previousStep() }
-                        ) {
-                            Text("Anterior")
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.width(64.dp))
-                    }
-                    
-                    if (state.currentStep < state.totalSteps - 1) {
-                        Button(
-                            onClick = { state.nextStep() }
-                        ) {
-                            Text("Siguiente")
-                        }
-                    } else {
-                        Button(
-                            onClick = { state.actualizarCentro(context, onCentroUpdated) }
-                        ) {
-                            Text("Actualizar")
-                        }
-                    }
-                }
-            }
-            
-            // Indicador de carga durante la actualización
-            if (state.isLoading) {
-                LoadingIndicator(message = "Actualizando centro...")
-            }
-        }
-    }
-}
-
-/**
- * Preview de la pantalla de edición de centro
- */
-@Preview(showBackground = true)
-@Composable
-fun EditCentroScreenPreview() {
-    UmeEguneroTheme {
-        Surface {
-            EditCentroScreen(
-                centroId = "1",
-                viewModel = hiltViewModel(),
-                onNavigateBack = {},
-                onCentroUpdated = {}
             )
         }
     }
 }
 
 /**
- * Preview del estado de carga
+ * Calcula el porcentaje de llenado del formulario
  */
-@Preview(showBackground = true)
-@Composable
-fun EditCentroLoadingPreview() {
-    UmeEguneroTheme {
-        Surface {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "Cargando datos del centro...")
-            }
+private fun calcularPorcentajeCompletado(uiState: AddCentroViewModel.AddCentroState): Float {
+    var camposRequeridos = 7 // Nombre, calle, número, CP, ciudad, provincia, admin principal
+    var camposLlenos = 0
+    
+    // Campos básicos del centro
+    if (uiState.nombre.isNotBlank()) camposLlenos++
+    if (uiState.calle.isNotBlank()) camposLlenos++
+    if (uiState.numero.isNotBlank()) camposLlenos++
+    if (uiState.codigoPostal.isNotBlank()) camposLlenos++
+    if (uiState.ciudad.isNotBlank()) camposLlenos++
+    if (uiState.provincia.isNotBlank()) camposLlenos++
+    
+    // Verificar el administrador principal
+    val adminPrincipal = uiState.adminCentro.firstOrNull()
+    if (adminPrincipal != null) {
+        var camposAdmin = 5
+        var camposAdminLlenos = 0
+        
+        if (adminPrincipal.dni.isNotBlank()) camposAdminLlenos++
+        if (adminPrincipal.nombre.isNotBlank()) camposAdminLlenos++
+        if (adminPrincipal.apellidos.isNotBlank()) camposAdminLlenos++
+        if (adminPrincipal.email.isNotBlank()) camposAdminLlenos++
+        
+        // La contraseña solo es obligatoria para centros nuevos
+        if (uiState.isEdit && adminPrincipal.password.isBlank()) {
+            camposAdmin--
+        } else if (adminPrincipal.password.isNotBlank()) {
+            camposAdminLlenos++
         }
+        
+        // Sumar fracción de los campos del admin principal completos
+        camposLlenos += (camposAdminLlenos.toFloat() / camposAdmin * 1).toInt()
     }
+    
+    // Peso adicional para verificar si hay errores
+    val tieneErrores = uiState.nombreError != null ||
+            uiState.calleError != null ||
+            uiState.numeroError != null ||
+            uiState.codigoPostalError != null ||
+            uiState.ciudadError != null ||
+            uiState.provinciaError != null ||
+            uiState.telefonoError != null ||
+            uiState.adminCentroError != null
+    
+    // Si hay errores, reducir el porcentaje
+    val porcentaje = if (tieneErrores) {
+        max(0.1f, camposLlenos.toFloat() / camposRequeridos - 0.2f)
+    } else {
+        camposLlenos.toFloat() / camposRequeridos
+    }
+    
+    return porcentaje.coerceIn(0f, 1f)
+}
+
+/**
+ * Cuenta el número de errores en todos los campos del formulario
+ */
+private fun countErrors(uiState: AddCentroViewModel.AddCentroState): Int {
+    var errorCount = 0
+    
+    // Errores en los campos principales
+    if (uiState.nombreError != null) errorCount++
+    if (uiState.calleError != null) errorCount++
+    if (uiState.numeroError != null) errorCount++
+    if (uiState.codigoPostalError != null) errorCount++
+    if (uiState.ciudadError != null) errorCount++
+    if (uiState.provinciaError != null) errorCount++
+    if (uiState.telefonoError != null) errorCount++
+    
+    // Errores en administradores
+    uiState.adminCentro.forEach { admin ->
+        if (admin.dniError != null) errorCount++
+        if (admin.nombreError != null) errorCount++
+        if (admin.apellidosError != null) errorCount++
+        if (admin.emailError != null) errorCount++
+        if (admin.telefonoError != null) errorCount++
+        if (admin.passwordError != null) errorCount++
+    }
+    
+    // Error global de administradores
+    if (uiState.adminCentroError != null) errorCount++
+    
+    return errorCount
 } 
