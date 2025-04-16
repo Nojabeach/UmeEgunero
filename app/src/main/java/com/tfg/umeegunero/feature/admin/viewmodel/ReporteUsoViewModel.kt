@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -58,6 +61,10 @@ class ReporteUsoViewModel @Inject constructor(
                         val sesionesPromedio = estadisticas["sesionesPromedio"] as? Double ?: 0.0
                         val tiempoPromedioSesion = estadisticas["tiempoPromedioSesion"] as? String ?: "0 min"
                         val ultimaActualizacion = estadisticas["ultimaActualizacion"] as? Timestamp
+                        val fechaActualizacionStr = ultimaActualizacion?.let {
+                            val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                            sdf.format(Date(it.seconds * 1000))
+                        } ?: "No disponible"
                         
                         // Cargar características más usadas
                         when (val resultadoCaracteristicas = estadisticasRepository.obtenerCaracteristicasUsadas()) {
@@ -70,7 +77,8 @@ class ReporteUsoViewModel @Inject constructor(
                                     usuariosActivos = usuariosActivos,
                                     sesionesPromedio = sesionesPromedio,
                                     tiempoPromedioSesion = tiempoPromedioSesion,
-                                    ultimaActualizacion = ultimaActualizacion
+                                    ultimaActualizacion = ultimaActualizacion,
+                                    fechaActualizacion = fechaActualizacionStr
                                 ) }
                             }
                             is Result.Error -> {
@@ -130,13 +138,18 @@ class ReporteUsoViewModel @Inject constructor(
                         CaracteristicaUsada("Reportes", 49, 5.7f)
                     )
 
+                    val timestamp = Timestamp.now()
+                    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                    val fechaActualizacionStr = sdf.format(Date(timestamp.seconds * 1000))
+
                     _uiState.update { it.copy(
                         isLoading = false,
                         caracteristicasUsadas = caracteristicas,
                         usuariosActivos = 127,
                         sesionesPromedio = 4.3,
                         tiempoPromedioSesion = "12 min",
-                        ultimaActualizacion = Timestamp.now()
+                        ultimaActualizacion = timestamp,
+                        fechaActualizacion = fechaActualizacionStr
                     ) }
                 }
                 is Result.Loading -> {

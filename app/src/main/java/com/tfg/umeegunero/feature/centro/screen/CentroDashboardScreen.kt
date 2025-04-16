@@ -156,7 +156,7 @@ fun CentroDashboardScreen(
                         navController.navigate(AppScreens.GestionCursosYClases.route) 
                     },
                     onNavigateToVinculacionFamiliar = { 
-                        navController.navigate(AppScreens.VinculacionFamiliar.route) 
+                        navController.navigate(AppScreens.VincularAlumnoFamiliar.route) 
                     },
                     onNavigateToCalendario = { 
                         navController.navigate(AppScreens.Calendario.route) 

@@ -234,6 +234,7 @@ fun Navigation(
             )
         }
 
+        /* Pantallas de vinculación - temporalmente deshabilitadas
         composable(route = AppScreens.ListaProfesoresClases.route) {
             com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
                 navController = navController,
@@ -247,6 +248,7 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
+        */
 
         composable(route = AppScreens.CrearUsuarioRapido.route) {
             com.tfg.umeegunero.feature.centro.screen.CrearUsuarioRapidoScreen(
@@ -569,6 +571,21 @@ fun Navigation(
                     viewModel.loadUserForEdit(dni)
                 }
             }
+        }
+
+        // Pantallas de vinculación
+        composable(route = AppScreens.VincularProfesorClase.route) {
+            com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.VincularAlumnoFamiliar.route) {
+            com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
         }
     }
 } 

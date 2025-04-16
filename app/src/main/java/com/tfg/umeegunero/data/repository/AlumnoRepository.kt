@@ -41,6 +41,42 @@ interface AlumnoRepository {
      * @return Resultado con la lista de alumnos
      */
     suspend fun obtenerAlumnosPorClase(claseId: String): Result<List<Alumno>>
+
+    /**
+     * Obtiene todos los alumnos del sistema
+     */
+    suspend fun getAlumnos(): Result<List<Alumno>>
+    
+    /**
+     * Obtiene todos los alumnos de un curso específico
+     * @param cursoId ID del curso
+     * @return Lista de alumnos
+     */
+    suspend fun getAlumnosByCursoId(cursoId: String): Result<List<Alumno>>
+    
+    /**
+     * Obtiene todos los alumnos de una clase específica
+     * @param claseId ID de la clase
+     * @return Lista de alumnos
+     */
+    suspend fun getAlumnosByClaseId(claseId: String): Result<List<Alumno>>
+    
+    /**
+     * Crea un nuevo alumno en el sistema
+     * @param nombre Nombre del alumno
+     * @param apellidos Apellidos del alumno
+     * @param dni DNI o documento de identidad
+     * @param fechaNacimiento Fecha de nacimiento en formato string
+     * @param cursoId ID del curso al que pertenece
+     * @return ID del alumno creado
+     */
+    suspend fun crearAlumno(
+        nombre: String,
+        apellidos: String,
+        dni: String,
+        fechaNacimiento: String,
+        cursoId: String
+    ): Result<String>
 }
 
 /**
@@ -120,6 +156,99 @@ class AlumnoRepositoryImpl @Inject constructor(
             return@withContext Result.Success(alumnos)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener alumnos por clase")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene todos los alumnos del sistema
+     */
+    override suspend fun getAlumnos(): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .get()
+                .await()
+
+            val alumnos = query.toObjects(Alumno::class.java)
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumnos del sistema")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene todos los alumnos de un curso específico
+     * @param cursoId ID del curso
+     * @return Lista de alumnos
+     */
+    override suspend fun getAlumnosByCursoId(cursoId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("cursoId", cursoId)
+                .get()
+                .await()
+
+            val alumnos = query.toObjects(Alumno::class.java)
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumnos por curso")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene todos los alumnos de una clase específica
+     * @param claseId ID de la clase
+     * @return Lista de alumnos
+     */
+    override suspend fun getAlumnosByClaseId(claseId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("aulaId", claseId)
+                .get()
+                .await()
+
+            val alumnos = query.toObjects(Alumno::class.java)
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumnos por clase")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Crea un nuevo alumno en el sistema
+     * @param nombre Nombre del alumno
+     * @param apellidos Apellidos del alumno
+     * @param dni DNI o documento de identidad
+     * @param fechaNacimiento Fecha de nacimiento en formato string
+     * @param cursoId ID del curso al que pertenece
+     * @return ID del alumno creado
+     */
+    override suspend fun crearAlumno(
+        nombre: String,
+        apellidos: String,
+        dni: String,
+        fechaNacimiento: String,
+        cursoId: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val alumno = Alumno(
+                id = "",
+                dni = dni,
+                nombre = nombre,
+                apellidos = apellidos,
+                centroId = "",
+                aulaId = "",
+                fechaNacimiento = fechaNacimiento
+            )
+            val documento = firestore.collection(COLLECTION_ALUMNOS)
+                .add(alumno)
+                .await()
+            return@withContext Result.Success(documento.id)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al crear alumno")
             return@withContext Result.Error(e)
         }
     }

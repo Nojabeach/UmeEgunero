@@ -172,4 +172,19 @@ object RepositoryModule {
     ): ActividadPreescolarRepository {
         return ActividadPreescolarRepository(firestore)
     }
+    
+    /**
+     * Proporciona una instancia del repositorio para la gestión de familiares.
+     * Este repositorio maneja las operaciones de vinculación entre familiares y alumnos.
+     *
+     * @param firestore Instancia de FirebaseFirestore
+     * @return Instancia de FamiliarRepository
+     */
+    @Provides
+    @Singleton
+    fun provideFamiliarRepository(
+        firestore: FirebaseFirestore
+    ): com.tfg.umeegunero.data.repository.FamiliarRepository {
+        return com.tfg.umeegunero.data.repository.FamiliarRepositoryImpl(firestore)
+    }
 } 

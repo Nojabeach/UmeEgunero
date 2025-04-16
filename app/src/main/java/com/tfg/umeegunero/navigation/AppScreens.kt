@@ -333,7 +333,7 @@ sealed class AppScreens(val route: String) {
     }
     
     /** Pantalla para vincular alumnos con familiares */
-    object VinculacionFamiliar : AppScreens("vinculacion_familiar")
+    object VincularAlumnoFamiliar : AppScreens("vincular_alumno_familiar")
     
     /** Gestión unificada de cursos y clases */
     object GestionCursosYClases : AppScreens("gestion_cursos_clases")
@@ -553,4 +553,7 @@ sealed class AppScreens(val route: String) {
 
     /** Creación rápida de usuarios */
     object CrearUsuarioRapido : AppScreens("gestion_centro/crear_usuario")
+
+    /** Pantalla para vincular profesores a clases */
+    object VincularProfesorClase : AppScreens("vincular_profesor_clase")
 } 

@@ -1,29 +1,22 @@
 package com.tfg.umeegunero.data.model
 
 /**
- * Modelo que representa una dirección postal completa en el sistema UmeEgunero.
+ * Modelo de datos para una dirección postal
  * 
- * Esta clase define una estructura de datos estandarizada para almacenar
- * direcciones físicas utilizadas por diferentes entidades del sistema, como
- * centros educativos, domicilios de usuarios, etc. Proporciona un formato
- * consistente para el almacenamiento y validación de datos de localización.
+ * Incluye toda la información necesaria para localizar una dirección física
+ * y sus coordenadas geográficas (latitud y longitud).
+ *
+ * @param calle Nombre de la calle o vía
+ * @param numero Número del portal o edificio
+ * @param piso Piso y puerta (opcional)
+ * @param codigoPostal Código postal
+ * @param ciudad Ciudad o localidad
+ * @param provincia Provincia o estado
+ * @param pais País (por defecto "España")
+ * @param latitud Coordenada de latitud para geolocalización
+ * @param longitud Coordenada de longitud para geolocalización
  * 
- * El modelo incluye todos los componentes necesarios para una dirección postal
- * completa en el contexto español, facilitando la integración con servicios
- * de geolocalización y envío de correspondencia.
- * 
- * Se utiliza como componente dentro de otras entidades más complejas y puede
- * combinarse con coordenadas geográficas para funcionalidades de mapas.
- * 
- * @property calle Nombre de la vía (calle, avenida, plaza, etc.)
- * @property numero Número del edificio o portal
- * @property piso Planta, piso y/o puerta (opcional)
- * @property codigoPostal Código postal (CP) de la dirección
- * @property ciudad Localidad o municipio
- * @property provincia Provincia o región administrativa
- * 
- * @see Centro Entidad que utiliza este modelo para su dirección física
- * @see Usuario Entidad que puede utilizar este modelo para domicilio
+ * @author Maitane (Estudiante 2º DAM)
  */
 data class Direccion(
     val calle: String = "",
@@ -31,5 +24,37 @@ data class Direccion(
     val piso: String = "",
     val codigoPostal: String = "",
     val ciudad: String = "",
-    val provincia: String = ""
-) 
+    val provincia: String = "",
+    val pais: String = "España",
+    val latitud: String = "",
+    val longitud: String = ""
+) {
+    /**
+     * Devuelve la dirección formateada como texto
+     */
+    override fun toString(): String {
+        val calleNumero = if (numero.isNotEmpty()) "$calle, $numero" else calle
+        val pisoText = if (piso.isNotEmpty()) ", $piso" else ""
+        val cpCiudad = if (codigoPostal.isNotEmpty() && ciudad.isNotEmpty()) "$codigoPostal $ciudad" 
+                       else codigoPostal + ciudad
+        
+        return "$calleNumero$pisoText\n$cpCiudad\n$provincia, $pais"
+    }
+    
+    /**
+     * Comprueba si la dirección está completa con los campos mínimos necesarios
+     */
+    fun estaCompleta(): Boolean {
+        return calle.isNotEmpty() && 
+               codigoPostal.isNotEmpty() && 
+               ciudad.isNotEmpty() && 
+               provincia.isNotEmpty()
+    }
+    
+    /**
+     * Comprueba si la geolocalización está disponible con datos válidos
+     */
+    fun tieneGeolocalizacion(): Boolean {
+        return latitud.isNotEmpty() && longitud.isNotEmpty()
+    }
+} 

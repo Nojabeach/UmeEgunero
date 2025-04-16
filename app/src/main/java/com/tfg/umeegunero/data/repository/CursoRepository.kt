@@ -286,4 +286,26 @@ class CursoRepository @Inject constructor(
             throw Exception("Error al actualizar el estado del curso: ${e.message}")
         }
     }
+
+    /**
+     * Obtiene todos los cursos
+     */
+    suspend fun getCursos(): Result<List<Curso>> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = cursosCollection
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+                
+            val cursos = snapshot.documents.mapNotNull { doc ->
+                val curso = doc.toObject(Curso::class.java)
+                curso?.copy(id = doc.id)
+            }
+            
+            return@withContext Result.Success(cursos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener cursos: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
 }

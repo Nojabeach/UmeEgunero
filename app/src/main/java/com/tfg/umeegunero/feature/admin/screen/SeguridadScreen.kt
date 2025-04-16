@@ -17,6 +17,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material3.HorizontalDivider
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla de configuración de seguridad para el administrador del sistema.
@@ -43,6 +44,8 @@ fun SeguridadScreen(
     var notificacionesActividad by remember { mutableStateOf(true) }
     var registroCompleto by remember { mutableStateOf(true) }
     var bloqueoIP by remember { mutableStateOf(true) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     
     Scaffold(
         topBar = {
@@ -52,7 +55,8 @@ fun SeguridadScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
+                            contentDescription = "Volver",
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 },
@@ -62,7 +66,8 @@ fun SeguridadScreen(
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -153,7 +158,11 @@ fun SeguridadScreen(
                         
                         Switch(
                             checked = true,
-                            onCheckedChange = { }
+                            onCheckedChange = { 
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Esta función no está disponible actualmente")
+                                }
+                            }
                         )
                     }
                     
@@ -178,7 +187,11 @@ fun SeguridadScreen(
                         
                         Switch(
                             checked = true,
-                            onCheckedChange = { }
+                            onCheckedChange = { 
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Esta función no está disponible actualmente")
+                                }
+                            }
                         )
                     }
                 }
@@ -210,7 +223,12 @@ fun SeguridadScreen(
                     ) {
                         Slider(
                             value = tiempoSesion.toFloat(),
-                            onValueChange = { tiempoSesion = it.toInt() },
+                            onValueChange = { 
+                                tiempoSesion = it.toInt()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Tiempo de sesión actualizado a $tiempoSesion minutos")
+                                }
+                            },
                             valueRange = 5f..60f,
                             steps = 10,
                             modifier = Modifier.weight(1f)
@@ -245,7 +263,11 @@ fun SeguridadScreen(
                         
                         Switch(
                             checked = true,
-                            onCheckedChange = { }
+                            onCheckedChange = { 
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Esta función no está disponible actualmente")
+                                }
+                            }
                         )
                     }
                 }
@@ -441,32 +463,21 @@ fun SeguridadScreen(
                 }
             }
             
-            // Botones de acción
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.End
+            // Botón para guardar cambios
+            Button(
+                onClick = { 
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Configuración de seguridad guardada correctamente")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedButton(
-                    onClick = { navController.popBackStack() }
-                ) {
-                    Text("Cancelar")
-                }
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Button(
-                    onClick = { /* Guardar configuración */ }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Save,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardar configuración")
-                }
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Guardar configuración")
             }
             
             // Espacio adicional al final

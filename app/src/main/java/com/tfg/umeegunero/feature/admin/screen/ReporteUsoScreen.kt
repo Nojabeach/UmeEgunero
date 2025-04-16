@@ -333,13 +333,7 @@ fun LoadingIndicator() {
  */
 @Composable
 fun FechaActualizacionBadge(uiState: com.tfg.umeegunero.data.model.ReporteUsoUiState) {
-    val timestamp = uiState.ultimaActualizacion 
-    val fechaFormateada = if (timestamp != null) {
-        val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-        dateFormat.format(Date(timestamp.seconds * 1000))
-    } else {
-        "No disponible"
-    }
+    val fechaFormateada = uiState.fechaActualizacion
     
     Surface(
         shape = MaterialTheme.shapes.small,

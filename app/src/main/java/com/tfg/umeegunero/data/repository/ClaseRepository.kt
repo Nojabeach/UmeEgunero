@@ -4,7 +4,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObject
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.util.Result
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,6 +44,21 @@ interface ClaseRepository {
      * Elimina una clase de Firestore
      */
     suspend fun eliminarClase(claseId: String): Result<Boolean>
+
+    /**
+     * Asigna un profesor a una clase como auxiliar
+     */
+    suspend fun asignarProfesorAClase(profesorId: String, claseId: String): Result<Unit>
+
+    /**
+     * Desasigna un profesor de una clase
+     */
+    suspend fun desasignarProfesorDeClase(profesorId: String, claseId: String): Result<Unit>
+
+    /**
+     * Obtiene los profesores asignados a una clase
+     */
+    suspend fun getProfesoresByClaseId(claseId: String): Result<List<String>>
 }
 
 /**
@@ -177,6 +194,96 @@ class ClaseRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener clases del profesor $profesorId")
             Result.Error(e)
+        }
+    }
+
+    override suspend fun asignarProfesorAClase(profesorId: String, claseId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val claseDoc = clasesCollection.document(claseId).get().await()
+            
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+            
+            val clase = claseDoc.toObject<Clase>()
+            
+            // Si la clase ya tiene este profesor como titular, no hacemos nada
+            if (clase?.profesorTitularId == profesorId) {
+                return@withContext Result.Success(Unit)
+            }
+            
+            // Comprobamos si el profesor ya está en la lista de auxiliares
+            val profesoresAuxiliares = clase?.profesoresAuxiliaresIds?.toMutableList() ?: mutableListOf()
+            
+            if (!profesoresAuxiliares.contains(profesorId)) {
+                profesoresAuxiliares.add(profesorId)
+                
+                clasesCollection.document(claseId)
+                    .update("profesoresAuxiliaresIds", profesoresAuxiliares)
+                    .await()
+            }
+            
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al asignar profesor a clase")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    override suspend fun desasignarProfesorDeClase(profesorId: String, claseId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val claseDoc = clasesCollection.document(claseId).get().await()
+            
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+            
+            val clase = claseDoc.toObject<Clase>()
+            
+            // Si el profesor es el titular, no permitimos eliminarlo por esta vía
+            if (clase?.profesorTitularId == profesorId) {
+                return@withContext Result.Error(Exception("No se puede eliminar al profesor titular mediante esta operación"))
+            }
+            
+            // Eliminamos al profesor de la lista de auxiliares
+            val profesoresAuxiliares = clase?.profesoresAuxiliaresIds?.toMutableList() ?: mutableListOf()
+            
+            if (profesoresAuxiliares.contains(profesorId)) {
+                profesoresAuxiliares.remove(profesorId)
+                
+                clasesCollection.document(claseId)
+                    .update("profesoresAuxiliaresIds", profesoresAuxiliares)
+                    .await()
+            }
+            
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al desasignar profesor de clase")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    override suspend fun getProfesoresByClaseId(claseId: String): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val claseDoc = clasesCollection.document(claseId).get().await()
+            
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+            
+            val clase = claseDoc.toObject<Clase>()
+            
+            // Combinamos el titular y los auxiliares
+            val todosLosProfesores = mutableListOf<String>()
+            clase?.profesorTitularId?.let { 
+                if (it.isNotEmpty()) todosLosProfesores.add(it) 
+            }
+            clase?.profesoresAuxiliaresIds?.let { todosLosProfesores.addAll(it) }
+            
+            return@withContext Result.Success(todosLosProfesores.distinct())
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener profesores de clase")
+            return@withContext Result.Error(e)
         }
     }
 }

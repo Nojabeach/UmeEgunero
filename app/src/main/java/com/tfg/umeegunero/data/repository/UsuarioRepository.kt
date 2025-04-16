@@ -1599,4 +1599,32 @@ open class UsuarioRepository @Inject constructor(
             emptyList()
         }
     }
+
+    /**
+     * Obtiene todos los profesores activos del sistema
+     * @return Lista de profesores o error
+     */
+    suspend fun getProfesores(): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = usuariosCollection
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+                
+            val profesores = snapshot.documents.mapNotNull { doc ->
+                val usuario = doc.toObject(Usuario::class.java)
+                // Filtrar solo los que tienen perfil de profesor
+                if (usuario != null && usuario.perfiles.any { it.tipo == TipoUsuario.PROFESOR }) {
+                    usuario.copy(dni = doc.id)
+                } else {
+                    null
+                }
+            }
+            
+            return@withContext Result.Success(profesores)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener profesores: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
 }

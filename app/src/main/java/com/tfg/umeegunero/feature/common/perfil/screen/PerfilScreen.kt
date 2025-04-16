@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -29,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.common.perfil.viewmodel.PerfilViewModel
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -38,7 +42,13 @@ import java.util.*
 
 /**
  * Pantalla que muestra el perfil del usuario
- * Permite visualizar y editar la información del perfil
+ * Permite visualizar y editar la información del perfil, incluida la ubicación
+ * con latitud y longitud, además de visualizar un mapa de Google Maps
+ * 
+ * @param navController Controlador de navegación para gestionar la navegación entre pantallas
+ * @param viewModel ViewModel que contiene la lógica de negocio
+ * 
+ * @author Maitane (Estudiante 2º DAM)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +83,13 @@ fun PerfilScreen(
                 snackbarHostState.showSnackbar(successMsg)
                 viewModel.clearMensaje()
             }
+        }
+    }
+    
+    // Efecto para cargar automáticamente la ciudad al completar el código postal
+    LaunchedEffect(uiState.direccionCP) {
+        if (uiState.direccionCP.length == 5) {
+            viewModel.obtenerCiudadPorCP(uiState.direccionCP)
         }
     }
 
@@ -311,10 +328,11 @@ fun PerfilScreen(
                                 value = uiState.direccionCP,
                                 onValueChange = { viewModel.actualizarDireccionCP(it) },
                                 editable = editMode,
-                                keyboardType = KeyboardType.Number
+                                keyboardType = KeyboardType.Number,
+                                helperText = if (uiState.loadingCiudad) "Buscando ciudad..." else null
                             )
                             
-                            // Ciudad
+                            // Ciudad (se rellena automáticamente con el CP)
                             ProfileField(
                                 icon = Icons.Default.LocationCity,
                                 label = "Ciudad",
@@ -331,6 +349,107 @@ fun PerfilScreen(
                                 onValueChange = { viewModel.actualizarDireccionProvincia(it) },
                                 editable = editMode
                             )
+                            
+                            // Latitud
+                            ProfileField(
+                                icon = Icons.Default.MyLocation,
+                                label = "Latitud",
+                                value = uiState.latitud,
+                                onValueChange = { viewModel.actualizarLatitud(it) },
+                                editable = editMode,
+                                keyboardType = KeyboardType.Decimal
+                            )
+                            
+                            // Longitud
+                            ProfileField(
+                                icon = Icons.Default.MyLocation,
+                                label = "Longitud",
+                                value = uiState.longitud,
+                                onValueChange = { viewModel.actualizarLongitud(it) },
+                                editable = editMode,
+                                keyboardType = KeyboardType.Decimal
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Mapa de Google Maps (se muestra si hay coordenadas válidas)
+                            if (uiState.latitud.isNotEmpty() && uiState.longitud.isNotEmpty()) {
+                                Text(
+                                    text = "Ubicación en mapa",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                
+                                // Imagen del mapa usando la API estática de Google Maps
+                                val context = LocalContext.current
+                                val mapUrl = remember(uiState.latitud, uiState.longitud) {
+                                    "https://maps.googleapis.com/maps/api/staticmap" +
+                                    "?center=${uiState.latitud},${uiState.longitud}" +
+                                    "&zoom=15&size=600x300&scale=2" +
+                                    "&markers=color:red|${uiState.latitud},${uiState.longitud}" +
+                                    "&key=YOUR_API_KEY" // Aquí iría la clave de API real
+                                }
+                                
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(mapUrl)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Ubicación en mapa",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                // Botón para obtener coordenadas actuales (en modo edición)
+                                if (editMode) {
+                                    Button(
+                                        onClick = { viewModel.obtenerCoordenadasDeDireccion() },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.secondary
+                                        )
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.GpsFixed,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        
+                                        Text("Obtener coordenadas de la dirección")
+                                    }
+                                }
+                            } else if (editMode) {
+                                // Botón para obtener coordenadas cuando no hay datos
+                                Button(
+                                    onClick = { viewModel.obtenerCoordenadasDeDireccion() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.GpsFixed,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    Text("Obtener coordenadas de la dirección")
+                                }
+                            }
                         }
                     }
                     
@@ -427,132 +546,162 @@ fun PerfilScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
-            
-            // Diálogo para cambiar contraseña
-            if (showChangePasswordDialog) {
-                var currentPassword by remember { mutableStateOf("") }
-                var newPassword by remember { mutableStateOf("") }
-                var confirmPassword by remember { mutableStateOf("") }
-                var passwordError by remember { mutableStateOf<String?>(null) }
-                
-                AlertDialog(
-                    onDismissRequest = { showChangePasswordDialog = false },
-                    title = { Text("Cambiar contraseña") },
-                    text = {
-                        Column {
-                            if (passwordError != null) {
-                                Text(
-                                    text = passwordError!!,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-                            }
-                            
-                            OutlinedTextField(
-                                value = currentPassword,
-                                onValueChange = { currentPassword = it },
-                                label = { Text("Contraseña actual") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    imeAction = ImeAction.Next
-                                ),
-                                singleLine = true
-                            )
-                            
-                            OutlinedTextField(
-                                value = newPassword,
-                                onValueChange = { newPassword = it },
-                                label = { Text("Nueva contraseña") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    imeAction = ImeAction.Next
-                                ),
-                                singleLine = true
-                            )
-                            
-                            OutlinedTextField(
-                                value = confirmPassword,
-                                onValueChange = { confirmPassword = it },
-                                label = { Text("Confirmar contraseña") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    imeAction = ImeAction.Done
-                                ),
-                                singleLine = true
-                            )
-                        }
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                if (newPassword != confirmPassword) {
-                                    passwordError = "Las contraseñas no coinciden"
-                                    return@Button
-                                }
-                                
-                                if (newPassword.length < 6) {
-                                    passwordError = "La contraseña debe tener al menos 6 caracteres"
-                                    return@Button
-                                }
-                                
-                                // Aquí llamaríamos a la función del viewModel para cambiar la contraseña
-                                // viewModel.cambiarContraseña(currentPassword, newPassword)
-                                showChangePasswordDialog = false
-                            }
-                        ) {
-                            Text("Cambiar")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showChangePasswordDialog = false }) {
-                            Text("Cancelar")
-                        }
-                    }
-                )
-            }
-            
-            // Diálogo para confirmar cierre de sesión
-            if (showLogoutConfirmDialog) {
-                AlertDialog(
-                    onDismissRequest = { showLogoutConfirmDialog = false },
-                    title = { Text("Cerrar sesión") },
-                    text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                // viewModel.cerrarSesion()
-                                showLogoutConfirmDialog = false
-                                // Navegar a la pantalla de login o welcome
-                                // navController.navigate(AppScreens.Welcome.route) { ... }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            )
-                        ) {
-                            Text("Cerrar sesión")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showLogoutConfirmDialog = false }) {
-                            Text("Cancelar")
-                        }
-                    }
-                )
+        }
+    }
+    
+    // Mostrar diálogos condicionales
+    MostrarDialogos(
+        showChangePasswordDialog = showChangePasswordDialog,
+        onChangePasswordDismiss = { showChangePasswordDialog = false },
+        onChangePassword = { current, new ->
+            viewModel.cambiarContrasena(current, new)
+            showChangePasswordDialog = false
+        },
+        showLogoutConfirmDialog = showLogoutConfirmDialog,
+        onLogoutDismiss = { showLogoutConfirmDialog = false },
+        onLogoutConfirm = {
+            viewModel.cerrarSesion()
+            showLogoutConfirmDialog = false
+            // Navegar a la pantalla de inicio
+            navController.navigate("welcome") {
+                popUpTo(0) { inclusive = true }
             }
         }
+    )
+}
+
+/**
+ * Componente para mostrar los diálogos de la pantalla de perfil
+ */
+@Composable
+private fun MostrarDialogos(
+    showChangePasswordDialog: Boolean,
+    onChangePasswordDismiss: () -> Unit,
+    onChangePassword: (String, String) -> Unit,
+    showLogoutConfirmDialog: Boolean,
+    onLogoutDismiss: () -> Unit,
+    onLogoutConfirm: () -> Unit
+) {
+    // Diálogo para cambiar contraseña
+    if (showChangePasswordDialog) {
+        var currentPassword by remember { mutableStateOf("") }
+        var newPassword by remember { mutableStateOf("") }
+        var confirmPassword by remember { mutableStateOf("") }
+        var passwordError by remember { mutableStateOf<String?>(null) }
+        
+        AlertDialog(
+            onDismissRequest = onChangePasswordDismiss,
+            title = { Text("Cambiar contraseña") },
+            text = {
+                Column {
+                    if (passwordError != null) {
+                        Text(
+                            text = passwordError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
+                    
+                    OutlinedTextField(
+                        value = currentPassword,
+                        onValueChange = { currentPassword = it },
+                        label = { Text("Contraseña actual") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Next
+                        ),
+                        singleLine = true
+                    )
+                    
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text("Nueva contraseña") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Next
+                        ),
+                        singleLine = true
+                    )
+                    
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text("Confirmar contraseña") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done
+                        ),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newPassword != confirmPassword) {
+                            passwordError = "Las contraseñas no coinciden"
+                            return@Button
+                        }
+                        onChangePassword(currentPassword, newPassword)
+                    }
+                ) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = onChangePasswordDismiss) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+    
+    // Diálogo para confirmar cierre de sesión
+    if (showLogoutConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = onLogoutDismiss,
+            title = { Text("Cerrar sesión") },
+            text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+            confirmButton = {
+                Button(
+                    onClick = onLogoutConfirm,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Cerrar sesión")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = onLogoutDismiss) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
+/**
+ * Campo para mostrar y editar información del perfil
+ * 
+ * @param icon Icono para mostrar junto al campo
+ * @param label Etiqueta del campo
+ * @param value Valor actual del campo
+ * @param onValueChange Función a llamar cuando cambia el valor
+ * @param editable Si el campo es editable o no
+ * @param keyboardType Tipo de teclado a mostrar
+ * @param helperText Texto de ayuda opcional
+ */
 @Composable
 fun ProfileField(
     icon: ImageVector,
@@ -560,63 +709,88 @@ fun ProfileField(
     value: String,
     onValueChange: (String) -> Unit,
     editable: Boolean,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    helperText: String? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Icono
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier
+                .size(24.dp)
+                .padding(end = 8.dp)
         )
         
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            if (editable) {
+        // Campo editable o texto
+        if (editable) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
+            ) {
                 OutlinedTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    textStyle = MaterialTheme.typography.bodyMedium,
+                    label = { Text(label) },
+                    modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = keyboardType
+                        keyboardType = keyboardType,
+                        imeAction = ImeAction.Next
                     ),
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                    )
+                    supportingText = helperText?.let { { Text(it) } }
                 )
-            } else {
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
                 Text(
                     text = value.ifEmpty { "-" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 4.dp)
+                    style = MaterialTheme.typography.bodyLarge
                 )
+                
+                if (helperText != null) {
+                    Text(
+                        text = helperText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
         }
     }
+    
+    Divider(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        color = MaterialTheme.colorScheme.outlineVariant
+    )
 }
 
 @Preview(showBackground = true)
 @Composable
 fun PerfilScreenPreview() {
     UmeEguneroTheme {
-        PerfilScreen(navController = rememberNavController())
+        PerfilScreen(
+            navController = rememberNavController()
+        )
     }
 } 

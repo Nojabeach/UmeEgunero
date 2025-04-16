@@ -148,7 +148,8 @@ fun AdminDashboardScreen(
                     onNavigateToComunicados = { navController.navigate(AppScreens.ComunicadosCirculares.route) },
                     onNavigateToNotificaciones = { navController.navigate(AppScreens.Notificaciones.route) },
                     onNavigateToPerfil = { navController.navigate(AppScreens.Perfil.route) },
-                    modifier = Modifier.padding(paddingValues)
+                    modifier = Modifier.padding(paddingValues),
+                    navController = navController
                 )
             }
         }
@@ -169,7 +170,8 @@ fun AdminDashboardContent(
     onNavigateToComunicados: () -> Unit,
     onNavigateToNotificaciones: () -> Unit,
     onNavigateToPerfil: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    navController: NavController = rememberNavController()
 ) {
     Column(
         modifier = modifier
@@ -205,13 +207,79 @@ fun AdminDashboardContent(
             color = MaterialTheme.colorScheme.secondary,
             onClick = onNavigateToAddCentro
         )
+
+        AdminOptionCard(
+            title = "Gestión de Cursos",
+            description = "Administrar cursos académicos",
+            icon = Icons.Default.School,
+            color = MaterialTheme.colorScheme.tertiary,
+            onClick = { navController.navigate(AppScreens.ListaCursos.route) }
+        )
+        
+        AdminOptionCard(
+            title = "Gestión de Clases",
+            description = "Administrar clases y aulas",
+            icon = Icons.Default.Group,
+            color = MaterialTheme.colorScheme.errorContainer,
+            onClick = { navController.navigate(AppScreens.ListaClases.route) }
+        )
+        
+        // Título para sección de gestión de usuarios
+        Text(
+            text = "Gestión de Usuarios",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+        )
+        
+        // Opciones para gestión de usuarios
+        AdminOptionCard(
+            title = "Crear Usuario",
+            description = "Añadir administradores, profesores o familiares",
+            icon = Icons.Default.PersonAdd,
+            color = MaterialTheme.colorScheme.primary,
+            onClick = { navController.navigate(AppScreens.AddUser.createRoute(true)) }
+        )
+        
+        AdminOptionCard(
+            title = "Listado de Usuarios",
+            description = "Ver todos los usuarios del sistema",
+            icon = Icons.Default.People,
+            color = MaterialTheme.colorScheme.secondary,
+            onClick = { navController.navigate(AppScreens.GestionProfesores.route) }
+        )
+        
+        // Título para sección de vinculaciones
+        Text(
+            text = "Vinculaciones",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+        )
+        
+        // Opciones para vinculaciones
+        AdminOptionCard(
+            title = "Profesores - Clases",
+            description = "Asignar profesores a clases",
+            icon = Icons.Default.School,
+            color = Color(0xFF009688),
+            onClick = { navController.navigate(AppScreens.VincularProfesorClase.route) }
+        )
+        
+        AdminOptionCard(
+            title = "Familiares - Alumnos",
+            description = "Vincular familiares con alumnos",
+            icon = Icons.Default.ChildCare,
+            color = Color(0xFF2196F3),
+            onClick = { navController.navigate(AppScreens.VincularAlumnoFamiliar.route) }
+        )
         
         // Título para sección de análisis
         Text(
             text = "Análisis y Reportes",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
         )
         
         // Opciones de análisis en formato lista vertical
@@ -469,7 +537,8 @@ fun AdminDashboardContentPreview() {
                 onNavigateToSeguridad = {},
                 onNavigateToComunicados = {},
                 onNavigateToNotificaciones = {},
-                onNavigateToPerfil = {}
+                onNavigateToPerfil = {},
+                navController = rememberNavController()
             )
         }
     }

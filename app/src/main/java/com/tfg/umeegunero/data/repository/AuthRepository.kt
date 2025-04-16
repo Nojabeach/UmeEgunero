@@ -118,6 +118,11 @@ interface AuthRepository {
      * @return Usuario autenticado o null si no hay ninguno
      */
     suspend fun getUsuarioActual(): Usuario?
+
+    /**
+     * Obtiene el ID del centro educativo al que pertenece el usuario actual
+     */
+    suspend fun getCurrentCentroId(): String
 }
 
 /**
@@ -398,5 +403,13 @@ class AuthRepositoryImpl @Inject constructor(
             Timber.e(e, "Error al obtener usuario actual")
             null
         }
+    }
+
+    /**
+     * Obtiene el ID del centro educativo al que pertenece el usuario actual
+     */
+    override suspend fun getCurrentCentroId(): String {
+        val currentUser = getCurrentUser() ?: return ""
+        return currentUser.perfiles.firstOrNull()?.centroId ?: ""
     }
 } 
