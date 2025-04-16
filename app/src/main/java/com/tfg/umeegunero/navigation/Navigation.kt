@@ -28,6 +28,14 @@ import com.tfg.umeegunero.feature.common.comunicacion.screen.BandejaEntradaScree
 import com.tfg.umeegunero.feature.common.comunicacion.screen.ComponerMensajeScreen
 import com.tfg.umeegunero.feature.familiar.screen.ComunicadosFamiliaScreen
 import java.time.LocalDate
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserUiState
 
 /**
  * Navegación principal de la aplicación
@@ -254,6 +262,24 @@ fun Navigation(
             com.tfg.umeegunero.feature.centro.screen.CrearUsuarioRapidoScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla para añadir usuario
+        composable(
+            route = AppScreens.AddUser.route,
+            arguments = listOf(
+                navArgument("isAdminApp") { type = NavType.BoolType }
+            )
+        ) { backStackEntry ->
+            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
+            val tipoUsuario = backStackEntry.arguments?.getString("tipo")
+            
+            com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
+                navController = navController,
+                viewModel = hiltViewModel(),
+                isAdminApp = isAdminApp,
+                tipoPreseleccionado = tipoUsuario
             )
         }
         
@@ -575,26 +601,7 @@ fun Navigation(
             val viewModel: com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel = hiltViewModel()
             
             com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
-                uiState = com.tfg.umeegunero.feature.common.users.screen.AddUserUiState(
-                    dni = viewModel.uiState.collectAsState().value.dni,
-                    dniError = viewModel.uiState.collectAsState().value.dniError,
-                    email = viewModel.uiState.collectAsState().value.email,
-                    emailError = viewModel.uiState.collectAsState().value.emailError,
-                    password = viewModel.uiState.collectAsState().value.password,
-                    passwordError = viewModel.uiState.collectAsState().value.passwordError,
-                    confirmPassword = viewModel.uiState.collectAsState().value.confirmPassword,
-                    confirmPasswordError = viewModel.uiState.collectAsState().value.confirmPasswordError,
-                    nombre = viewModel.uiState.collectAsState().value.nombre,
-                    nombreError = viewModel.uiState.collectAsState().value.nombreError,
-                    apellidos = viewModel.uiState.collectAsState().value.apellidos,
-                    apellidosError = viewModel.uiState.collectAsState().value.apellidosError,
-                    telefono = viewModel.uiState.collectAsState().value.telefono,
-                    telefonoError = viewModel.uiState.collectAsState().value.telefonoError,
-                    tipoUsuario = viewModel.uiState.collectAsState().value.tipoUsuario,
-                    isLoading = viewModel.uiState.collectAsState().value.isLoading,
-                    error = viewModel.uiState.collectAsState().value.error,
-                    success = viewModel.uiState.collectAsState().value.success
-                ),
+                uiState = viewModel.uiState.collectAsState().value,
                 onUpdateDni = viewModel::updateDni,
                 onUpdateEmail = viewModel::updateEmail,
                 onUpdatePassword = viewModel::updatePassword,
@@ -603,9 +610,10 @@ fun Navigation(
                 onUpdateApellidos = viewModel::updateApellidos,
                 onUpdateTelefono = viewModel::updateTelefono,
                 onUpdateTipoUsuario = viewModel::updateTipoUsuario,
-                onUpdateCentroSeleccionado = { centro -> 
-                    centro?.id?.let { viewModel.updateCentroSeleccionado(it) }
-                },
+                onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
+                onUpdateCursoSeleccionado = viewModel::updateCursoSeleccionado,
+                onUpdateClaseSeleccionada = viewModel::updateClaseSeleccionada,
+                onUpdateFechaNacimiento = viewModel::updateFechaNacimiento,
                 onSaveUser = viewModel::saveUser,
                 onClearError = viewModel::clearError,
                 onNavigateBack = { navController.popBackStack() }
@@ -614,7 +622,8 @@ fun Navigation(
             // Cargar los datos del usuario para edición
             LaunchedEffect(dni) {
                 if (dni.isNotBlank()) {
-                    viewModel.loadUserForEdit(dni)
+                    // Temporalmente comentado hasta implementar la función
+                    //viewModel.loadUserForEdit(dni)
                 }
             }
         }
@@ -622,14 +631,13 @@ fun Navigation(
         // Pantallas de vinculación
         composable(route = AppScreens.VincularProfesorClase.route) {
             com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() }
             )
         }
 
         composable(route = AppScreens.VincularAlumnoFamiliar.route) {
             com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
+                onBack = { navController.popBackStack() }
             )
         }
 

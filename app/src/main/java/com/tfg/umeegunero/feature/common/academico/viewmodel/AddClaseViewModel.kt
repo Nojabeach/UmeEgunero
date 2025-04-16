@@ -30,7 +30,7 @@ data class AddClaseUiState(
     val nombre: String = "",
     val aula: String = "",
     val horario: String = "",
-    val capacidadMaxima: String = "25",
+    val capacidadMaxima: String = "",
     val profesorTitularId: String = "",
     val profesoresAuxiliaresIds: List<String> = emptyList(),
     val alumnosIds: List<String> = emptyList(),
@@ -76,7 +76,8 @@ class AddClaseViewModel @Inject constructor(
         if (!claseId.isNullOrEmpty()) {
             cargarClase(claseId)
         } else {
-            // Si no estamos en modo edición, cargamos los profesores disponibles
+            // Si no estamos en modo edición, establecemos un valor predeterminado para capacidadMaxima y cargamos los profesores
+            _uiState.update { it.copy(capacidadMaxima = "25") }
             if (!cursoId.isNullOrEmpty()) {
                 cargarProfesoresDisponibles()
             }
@@ -173,6 +174,9 @@ class AddClaseViewModel @Inject constructor(
             when (val result = claseRepository.getClaseById(claseId)) {
                 is Result.Success -> {
                     val clase = result.data
+                    // Convertimos la capacidad máxima a string de forma segura
+                    val capacidadMaximaStr = clase.capacidadMaxima.takeIf { it > 0 }?.toString() ?: ""
+                    
                     _uiState.update {
                         it.copy(
                             id = clase.id,
@@ -181,7 +185,7 @@ class AddClaseViewModel @Inject constructor(
                             nombre = clase.nombre,
                             aula = clase.aula,
                             horario = clase.horario,
-                            capacidadMaxima = clase.capacidadMaxima.toString(),
+                            capacidadMaxima = capacidadMaximaStr,
                             profesorTitularId = clase.profesorTitularId,
                             profesoresAuxiliaresIds = clase.profesoresAuxiliaresIds,
                             alumnosIds = clase.alumnosIds,
@@ -247,9 +251,58 @@ class AddClaseViewModel @Inject constructor(
      * Actualiza la capacidad máxima de la clase
      */
     fun updateCapacidadMaxima(capacidadMaxima: String) {
+        // Eliminamos cualquier espacio en blanco y validamos el contenido
+        val sanitizedValue = capacidadMaxima.trim()
+        
+        // Si está en blanco, solo actualizamos el valor sin error
+        if (sanitizedValue.isEmpty()) {
+            _uiState.update { 
+                it.copy(
+                    capacidadMaxima = sanitizedValue,
+                    capacidadMaximaError = "La capacidad máxima es obligatoria"
+                )
+            }
+            return
+        }
+        
+        // Verificamos que no contenga caracteres no numéricos
+        if (!sanitizedValue.all { it.isDigit() }) {
+            _uiState.update { 
+                it.copy(
+                    capacidadMaxima = sanitizedValue,
+                    capacidadMaximaError = "Introduce un número válido"
+                )
+            }
+            return
+        }
+        
+        // Verificamos que sea un número válido
+        val capacidadInt = sanitizedValue.toIntOrNull()
+        if (capacidadInt == null) {
+            _uiState.update { 
+                it.copy(
+                    capacidadMaxima = sanitizedValue,
+                    capacidadMaximaError = "Introduce un número válido"
+                )
+            }
+            return
+        }
+        
+        // Verificamos que sea mayor que cero
+        if (capacidadInt <= 0) {
+            _uiState.update { 
+                it.copy(
+                    capacidadMaxima = sanitizedValue,
+                    capacidadMaximaError = "La capacidad debe ser mayor que 0"
+                )
+            }
+            return
+        }
+        
+        // Si todo está correcto, actualizamos el valor sin error
         _uiState.update { 
             it.copy(
-                capacidadMaxima = capacidadMaxima,
+                capacidadMaxima = sanitizedValue,
                 capacidadMaximaError = null
             )
         }
@@ -368,13 +421,19 @@ class AddClaseViewModel @Inject constructor(
         }
         
         // Validar capacidad máxima
-        val capacidadMaxima = state.capacidadMaxima.toIntOrNull()
-        if (capacidadMaxima == null) {
-            _uiState.update { it.copy(capacidadMaximaError = "Introduce un número válido") }
+        val capacidadMaximaStr = state.capacidadMaxima.trim()
+        if (capacidadMaximaStr.isEmpty()) {
+            _uiState.update { it.copy(capacidadMaximaError = "La capacidad máxima es obligatoria") }
             isValid = false
-        } else if (capacidadMaxima <= 0) {
-            _uiState.update { it.copy(capacidadMaximaError = "La capacidad debe ser mayor que 0") }
-            isValid = false
+        } else {
+            val capacidadMaxima = capacidadMaximaStr.toIntOrNull()
+            if (capacidadMaxima == null) {
+                _uiState.update { it.copy(capacidadMaximaError = "Introduce un número válido") }
+                isValid = false
+            } else if (capacidadMaxima <= 0) {
+                _uiState.update { it.copy(capacidadMaximaError = "La capacidad debe ser mayor que 0") }
+                isValid = false
+            }
         }
         
         // Validar profesor titular

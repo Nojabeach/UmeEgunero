@@ -112,18 +112,6 @@ fun AddClaseScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Capacidad máxima
-                OutlinedTextFieldWithError(
-                    value = uiState.capacidadMaxima,
-                    onValueChange = viewModel::updateCapacidadMaxima,
-                    label = "Capacidad máxima",
-                    placeholder = "Número máximo de alumnos",
-                    errorMessage = uiState.capacidadMaximaError ?: "",
-                    isError = uiState.capacidadMaximaError != null,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-
                 // Selector de profesor titular
                 Text(
                     text = "Profesor Titular",
@@ -150,20 +138,79 @@ fun AddClaseScreen(
                 }
 
                 // Estado activo
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(
-                        checked = uiState.activo,
-                        onCheckedChange = viewModel::updateActivo
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = uiState.activo,
+                            onCheckedChange = viewModel::updateActivo
+                        )
+                        Text(
+                            text = "Clase activa",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                    
                     Text(
-                        text = "Clase activa",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(start = 8.dp)
+                        text = "Una clase activa está operativa y visible para profesores y el centro educativo. Si se desactiva, la información se conserva pero no estará disponible para asignación de profesores.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 40.dp, top = 4.dp, end = 16.dp)
+                    )
+                }
+
+                // Capacidad máxima con información adicional
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextFieldWithError(
+                        value = uiState.capacidadMaxima,
+                        onValueChange = { newValue ->
+                            // Solo permitir dígitos y no más de 3 caracteres
+                            if ((newValue.isEmpty() || newValue.all { it.isDigit() }) && newValue.length <= 3) {
+                                viewModel.updateCapacidadMaxima(newValue)
+                            }
+                        },
+                        label = "Capacidad máxima",
+                        placeholder = "Ej: 25",
+                        isError = uiState.capacidadMaximaError != null,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        supportingText = {
+                            if (uiState.capacidadMaximaError != null) {
+                                Text(
+                                    text = when (uiState.capacidadMaximaError) {
+                                        "La capacidad máxima es obligatoria" -> "⚠️ Este campo no puede estar vacío"
+                                        "Introduce un número válido" -> "⚠️ Solo números enteros son permitidos"
+                                        "La capacidad debe ser mayor que 0" -> "⚠️ El valor debe ser al menos 1"
+                                        else -> "⚠️ ${uiState.capacidadMaximaError}"
+                                    },
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            } else {
+                                Text(
+                                    text = "Introduce un número positivo (máximo 999)",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Define el número máximo de alumnos que pueden asignarse a esta clase.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp)
                     )
                 }
 

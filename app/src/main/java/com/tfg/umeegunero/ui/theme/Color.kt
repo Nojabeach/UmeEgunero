@@ -19,6 +19,7 @@ val AdminColor = Color(0xFF6200EA)    // Púrpura intenso para administradores
 val CentroColor = Color(0xFF2962FF)   // Azul intenso para centros
 val ProfesorColor = Color(0xFF00B8D4) // Cian intenso para profesores
 val FamiliarColor = Color(0xFF00C853) // Verde intenso para familiares
+val AlumnoColor = Color(0xFFFF9800)   // Naranja intenso para alumnos
 
 // Colores para módulos académicos
 val AcademicoColor = Color(0xFF7C4DFF) // Violeta para sección académica

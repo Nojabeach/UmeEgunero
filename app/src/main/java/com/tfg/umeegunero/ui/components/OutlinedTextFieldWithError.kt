@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
  * @param keyboardActions Acciones de teclado
  * @param visualTransformation Transformación visual del texto (por ejemplo, para contraseñas)
  * @param leadingIcon Icono a mostrar al inicio del campo
+ * @param supportingText Contenido personalizable para mostrar como texto de soporte (sobreescribe el comportamiento predeterminado del mensaje de error)
  * @param modifier Modificador para personalizar el componente
  */
 @Composable
@@ -55,6 +56,7 @@ fun OutlinedTextFieldWithError(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     leadingIcon: @Composable (() -> Unit)? = null,
+    supportingText: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val hasError = isError || errorMessage != null
@@ -87,7 +89,7 @@ fun OutlinedTextFieldWithError(
                 }
             } else null,
             leadingIcon = leadingIcon,
-            supportingText = if (errorMessage != null) {
+            supportingText = supportingText ?: if (errorMessage != null) {
                 { Text(text = errorMessage) }
             } else null,
             modifier = Modifier.fillMaxWidth()
@@ -117,7 +119,8 @@ fun OutlinedTextFieldWithError(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = true,
     maxLines: Int = 1,
-    placeholder: String = ""
+    placeholder: String = "",
+    supportingText: (@Composable () -> Unit)? = null
 ) {
     val effectiveErrorMessage = if (errorMessage.isNotEmpty()) errorMessage else error
     val hasError = isError || effectiveErrorMessage.isNotEmpty()
@@ -140,6 +143,7 @@ fun OutlinedTextFieldWithError(
         keyboardActions = keyboardActions,
         visualTransformation = visualTransformation,
         leadingIcon = leadingIcon,
+        supportingText = supportingText,
         modifier = modifier
     )
 } 
