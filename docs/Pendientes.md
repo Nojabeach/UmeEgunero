@@ -452,6 +452,14 @@ Se recomienda revisar y consolidar los siguientes elementos:
    - Prioridad: Media
    - Tiempo estimado: 1 día
 
+6. **Implementación de Mantenimiento de Soporte** ⚠️
+   - Se necesita añadir una opción de "Mantenimiento de Soporte" en el menú de Comunicación del dashboard de administrador
+   - Vincular esta opción con la pantalla existente `EmailConfigScreen.kt`
+   - Permitir configurar el email de soporte técnico desde esta sección
+   - Implementar navegación a esta pantalla desde el dashboard
+   - Prioridad: Alta
+   - Tiempo estimado: 1 día
+
 ## Conclusiones y prioridades para TFG
 
 El proyecto UmeEgunero, como Trabajo de Fin de Grado para 2º de DAM, se encuentra en una fase avanzada pero requiere completar estas tareas pendientes para ser considerado un proyecto profesional completo que demuestre las competencias adquiridas durante la formación.
@@ -460,7 +468,6 @@ Las prioridades recomendadas son:
 
 1. **CRÍTICO**: Corregir los problemas que provocan cierre de la aplicación
    - Pantalla de Seguridad en el Dashboard de Administrador
-   - Opción de Centros en el panel de administrador
    - Cualquier otra navegación que provoque cierre inesperado
 
 2. **ALTA**: Actualizar pantallas rudimentarias o incorrectas

@@ -559,4 +559,7 @@ sealed class AppScreens(val route: String) {
     
     /** Pantalla de configuración de seguridad */
     object Seguridad : AppScreens("seguridad")
+    
+    /** Pantalla de configuración de email de soporte */
+    object EmailConfigSoporte : AppScreens("email_config_soporte")
 } 

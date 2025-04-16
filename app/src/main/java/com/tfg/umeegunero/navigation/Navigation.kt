@@ -306,6 +306,13 @@ fun Navigation(
             )
         }
         
+        // Pantalla de configuración de email de soporte
+        composable(route = AppScreens.EmailConfigSoporte.route) {
+            com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
         // Pantalla de perfil de usuario
         composable(route = AppScreens.Perfil.route) {
             com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen(

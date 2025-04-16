@@ -144,7 +144,7 @@ fun AdminDashboardScreen(
                     onNavigateToAddCentro = { navController.navigate(AppScreens.AddCentro.route) },
                     onNavigateToEstadisticas = { navController.navigate(AppScreens.Estadisticas.route) },
                     onNavigateToReporteUso = { navController.navigate(AppScreens.ReporteUso.route) },
-                    onNavigateToSeguridad = { navController.navigate(AppScreens.Config.route) },
+                    onNavigateToSeguridad = { navController.navigate(AppScreens.Seguridad.route) },
                     onNavigateToComunicados = { navController.navigate(AppScreens.ComunicadosCirculares.route) },
                     onNavigateToNotificaciones = { navController.navigate(AppScreens.Notificaciones.route) },
                     onNavigateToPerfil = { navController.navigate(AppScreens.Perfil.route) },
@@ -330,6 +330,14 @@ fun AdminDashboardContent(
             icon = Icons.Default.Notifications,
             color = Color(0xFFD32F2F),
             onClick = onNavigateToNotificaciones
+        )
+        
+        AdminOptionCard(
+            title = "Mantenimiento de Soporte",
+            description = "Configuración de email de soporte técnico",
+            icon = Icons.Default.Email,
+            color = Color(0xFF00796B),
+            onClick = { navController.navigate(AppScreens.EmailConfigSoporte.route) }
         )
         
         // Perfil
