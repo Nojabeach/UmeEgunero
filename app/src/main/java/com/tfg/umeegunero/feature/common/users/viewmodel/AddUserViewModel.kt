@@ -6,8 +6,11 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.Perfil
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +21,8 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.time.LocalDate
 import javax.inject.Inject
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 /**
  * Estado de UI para la pantalla de creación y edición de usuarios
@@ -103,7 +108,8 @@ data class AddUserUiState(
 @HiltViewModel
 class AddUserViewModel @Inject constructor(
     private val centroRepository: CentroRepository,
-    private val cursoRepository: CursoRepository
+    private val cursoRepository: CursoRepository,
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddUserUiState())
@@ -154,25 +160,37 @@ class AddUserViewModel @Inject constructor(
     fun loadCursos(centroId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+            Timber.d("⏳ Iniciando carga de cursos para centroId: $centroId")
             
             when (val result = cursoRepository.getCursosByCentro(centroId)) {
                 is Result.Success -> {
+                    val cursos = result.data
+                    Timber.d("✅ Cursos cargados exitosamente: ${cursos.size} cursos")
+                    cursos.forEach { curso ->
+                        Timber.d("   → Curso: ${curso.nombre} (ID: ${curso.id})")
+                    }
+                    
                     _uiState.update { 
                         it.copy(
-                            cursosDisponibles = result.data,
+                            cursosDisponibles = cursos,
                             isLoading = false
                         )
                     }
-                    Timber.d("Cursos cargados: ${result.data.size}")
+                    
+                    if (cursos.isNotEmpty()) {
+                        // Si hay cursos, seleccionamos automáticamente el primero
+                        updateCursoSeleccionado(cursos.first().id)
+                        Timber.d("🔄 Seleccionado automáticamente el primer curso: ${cursos.first().nombre}")
+                    }
                 }
                 is Result.Error -> {
+                    Timber.e(result.exception, "❌ Error al cargar cursos: ${result.exception?.message}")
                     _uiState.update { 
                         it.copy(
                             error = "Error al cargar los cursos: ${result.exception?.message}",
                             isLoading = false
                         )
                     }
-                    Timber.e(result.exception, "Error al cargar cursos")
                 }
                 is Result.Loading -> {
                     // Ya estamos mostrando el estado de carga
@@ -378,24 +396,157 @@ class AddUserViewModel @Inject constructor(
         ) }
     }
     
-    // Simula guardar un usuario
+    // Guarda un usuario en Firebase Authentication y Firestore
     fun saveUser() {
         if (!_uiState.value.isFormValid) return
         
         viewModelScope.launch {
-            // Simulamos un proceso de guardado
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             
-            // Delay para simular proceso
-            kotlinx.coroutines.delay(1000)
-            
-            _uiState.update { 
-                it.copy(
-                    isLoading = false,
-                    success = true
-                )
+            try {
+                // 1. Crear usuario en Firebase Authentication
+                val email = _uiState.value.email
+                val password = _uiState.value.password
+                
+                // Usar el repositorio adecuado según el tipo de usuario
+                val authResult = if (_uiState.value.tipoUsuario == TipoUsuario.ADMIN_CENTRO || 
+                                    _uiState.value.tipoUsuario == TipoUsuario.PROFESOR) {
+                    // Para profesores y admin de centro, usamos CentroRepository
+                    centroRepository.createUserWithEmailAndPassword(email, password)
+                } else {
+                    // Para otros usuarios (admins, familiares), usamos UsuarioRepository
+                    usuarioRepository.crearUsuarioConEmailYPassword(email, password)
+                }
+                
+                when (authResult) {
+                    is Result.Success -> {
+                        // 2. Crear objeto Usuario
+                        val usuario = Usuario(
+                            dni = _uiState.value.dni,
+                            email = _uiState.value.email,
+                            nombre = _uiState.value.nombre,
+                            apellidos = _uiState.value.apellidos,
+                            telefono = _uiState.value.telefono,
+                            fechaRegistro = com.google.firebase.Timestamp.now(),
+                            perfiles = createPerfiles()
+                        )
+                        
+                        // 3. Guardar usuario en Firestore
+                        val saveResult = usuarioRepository.guardarUsuario(usuario)
+                        
+                        when (saveResult) {
+                            is Result.Success -> {
+                                _uiState.update { 
+                                    it.copy(
+                                        isLoading = false,
+                                        success = true,
+                                        error = null
+                                    )
+                                }
+                                Timber.d("Usuario guardado correctamente con DNI: ${usuario.dni}")
+                            }
+                            is Result.Error -> {
+                                _uiState.update { 
+                                    it.copy(
+                                        isLoading = false,
+                                        error = "Error al guardar usuario en Firestore: ${saveResult.exception?.message}"
+                                    )
+                                }
+                                Timber.e(saveResult.exception, "Error al guardar usuario en Firestore")
+                            }
+                            else -> { /* Ignorar estado Loading */ }
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                error = "Error al crear cuenta en Firebase: ${authResult.exception?.message}"
+                            )
+                        }
+                        Timber.e(authResult.exception, "Error al crear cuenta en Firebase")
+                    }
+                    else -> { /* Ignorar estado Loading */ }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error inesperado: ${e.message}"
+                    )
+                }
+                Timber.e(e, "Error inesperado al guardar usuario")
             }
         }
+    }
+    
+    // Crea la lista de perfiles según el tipo de usuario
+    private fun createPerfiles(): List<Perfil> {
+        val perfiles = mutableListOf<Perfil>()
+        
+        // Crear perfil según el tipo de usuario
+        when (_uiState.value.tipoUsuario) {
+            TipoUsuario.ADMIN_APP -> {
+                perfiles.add(Perfil(
+                    tipo = TipoUsuario.ADMIN_APP,
+                    verificado = true
+                ))
+                Timber.d("Creando perfil de ADMIN_APP")
+            }
+            TipoUsuario.ADMIN_CENTRO -> {
+                val centroId = _uiState.value.centroSeleccionado?.id ?: ""
+                if (centroId.isNotBlank()) {
+                    perfiles.add(Perfil(
+                        tipo = TipoUsuario.ADMIN_CENTRO,
+                        centroId = centroId,
+                        verificado = true
+                    ))
+                    Timber.d("Creando perfil de ADMIN_CENTRO para centro: $centroId")
+                } else {
+                    Timber.e("Error: No hay centroId para ADMIN_CENTRO")
+                }
+            }
+            TipoUsuario.PROFESOR -> {
+                val centroId = _uiState.value.centroSeleccionado?.id ?: ""
+                if (centroId.isNotBlank()) {
+                    perfiles.add(Perfil(
+                        tipo = TipoUsuario.PROFESOR,
+                        centroId = centroId,
+                        verificado = true
+                    ))
+                    Timber.d("Creando perfil de PROFESOR para centro: $centroId")
+                    
+                    // Mostrar información adicional para depuración
+                    val centro = _uiState.value.centroSeleccionado
+                    Timber.d("Información del centro seleccionado: ID=${centro?.id}, Nombre=${centro?.nombre}")
+                } else {
+                    Timber.e("Error: No hay centroId para PROFESOR")
+                }
+            }
+            TipoUsuario.FAMILIAR -> {
+                perfiles.add(Perfil(
+                    tipo = TipoUsuario.FAMILIAR,
+                    verificado = true
+                ))
+                Timber.d("Creando perfil de FAMILIAR")
+            }
+            TipoUsuario.ALUMNO -> {
+                // Para alumnos se creará una entrada en la colección de alumnos
+                // en otro método si es necesario
+                Timber.d("No se crea perfil para ALUMNO (se gestiona aparte)")
+            }
+            TipoUsuario.DESCONOCIDO -> {
+                // No crear ningún perfil para tipo desconocido
+                Timber.w("Tipo de usuario DESCONOCIDO, no se crea perfil")
+            }
+        }
+        
+        // Mostrar perfiles creados para depuración
+        perfiles.forEachIndexed { index, perfil ->
+            Timber.d("Perfil #${index+1}: tipo=${perfil.tipo}, centroId=${perfil.centroId}, verificado=${perfil.verificado}")
+        }
+        
+        return perfiles
     }
 
     // Limpia los mensajes de error

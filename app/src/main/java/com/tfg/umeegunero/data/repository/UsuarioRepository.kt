@@ -611,17 +611,45 @@ open class UsuarioRepository @Inject constructor(
     // En UsuarioRepository.kt
     suspend fun getProfesoresByCentro(centroId: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
         try {
-            // Obtener profesores por centro
-            // Por ejemplo, buscar usuarios que tengan el perfil de profesor y el centroId correspondiente
-            val query = usuariosCollection
-                .whereArrayContains("perfiles.centroId", centroId)
-                .whereEqualTo("perfiles.tipo", TipoUsuario.PROFESOR)
-                .get()
-                .await()
-
-            val profesores = query.documents.mapNotNull { it.toObject(Usuario::class.java) }
-            return@withContext Result.Success(profesores)
+            Timber.d("Buscando profesores para el centro: $centroId")
+            
+            // Enfoque más simple para encontrar profesores
+            val usuariosConPerfil = mutableListOf<Usuario>()
+            
+            // Obtener todos los usuarios
+            val todosLosUsuarios = usuariosCollection.get().await().documents
+            Timber.d("Total usuarios encontrados: ${todosLosUsuarios.size}")
+            
+            // Examinar cada documento manualmente
+            for (doc in todosLosUsuarios) {
+                try {
+                    // Convertir a usuario
+                    val usuario = doc.toObject(Usuario::class.java) ?: continue
+                    Timber.d("Revisando usuario: ${usuario.nombre} ${usuario.apellidos} (DNI: ${usuario.dni})")
+                    
+                    // Verificar cada perfil manualmente
+                    for (perfil in usuario.perfiles) {
+                        val tipo = perfil.tipo
+                        val perfilCentroId = perfil.centroId
+                        
+                        Timber.d("  - Perfil: tipo=$tipo, centroId=$perfilCentroId")
+                        
+                        // Si es profesor y del centro correcto, agregar a la lista
+                        if (tipo == TipoUsuario.PROFESOR && perfilCentroId == centroId) {
+                            Timber.d("  ✓ MATCH: Encontrado profesor para centro $centroId")
+                            usuariosConPerfil.add(usuario)
+                            break  // Solo necesitamos encontrar un perfil que coincida
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error procesando usuario: ${doc.id}")
+                }
+            }
+            
+            Timber.d("RESULTADO FINAL: Encontrados ${usuariosConPerfil.size} profesores para el centro $centroId")
+            return@withContext Result.Success(usuariosConPerfil)
         } catch (e: Exception) {
+            Timber.e(e, "Error general buscando profesores para centro $centroId: ${e.message}")
             return@withContext Result.Error(e)
         }
     }

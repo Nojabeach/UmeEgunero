@@ -106,6 +106,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import timber.log.Timber
 
 /**
  * ViewModel de muestra para el preview
@@ -1188,6 +1189,14 @@ fun CursoDropdown(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    
+    // Registrar para depuración
+    LaunchedEffect(cursos) {
+        Timber.d("CursoDropdown: ${cursos.size} cursos disponibles")
+        cursos.forEach { curso ->
+            Timber.d("   - Curso: ${curso.nombre} (ID: ${curso.id}, CentroID: ${curso.centroId})")
+        }
+    }
     
     Column(modifier = modifier) {
         Text(

@@ -88,15 +88,17 @@ class AddClaseViewModel @Inject constructor(
      * Obtiene el centroId del curso para la clase
      */
     private fun obtenerCentroIdDelCurso(cursoId: String) {
+        Timber.d("Obteniendo centroId para el curso: $cursoId")
         viewModelScope.launch {
             when (val resultado = cursoRepository.getCursoById(cursoId)) {
                 is Result.Success -> {
                     val centroId = resultado.data.centroId
+                    Timber.d("Centro encontrado para el curso $cursoId: centroId=$centroId")
                     _uiState.update { it.copy(centroId = centroId) }
                     cargarProfesoresDisponibles()
                 }
                 is Result.Error -> {
-                    Timber.e(resultado.exception, "Error al obtener el centro del curso")
+                    Timber.e(resultado.exception, "Error al obtener el centro del curso $cursoId")
                     _uiState.update {
                         it.copy(error = "Error al obtener información del curso: ${resultado.exception?.message}")
                     }
@@ -112,13 +114,14 @@ class AddClaseViewModel @Inject constructor(
      * Carga los profesores disponibles para seleccionar
      */
     private fun cargarProfesoresDisponibles() {
+        val centroId = _uiState.value.centroId
+        Timber.d("Iniciando carga de profesores para el centro: $centroId")
         _uiState.update { it.copy(isLoadingProfesores = true) }
         
         viewModelScope.launch {
             try {
-                val centroId = _uiState.value.centroId
-                
                 if (centroId.isEmpty()) {
+                    Timber.e("Error: No se puede cargar profesores sin centroId")
                     _uiState.update {
                         it.copy(
                             isLoadingProfesores = false,
@@ -129,9 +132,22 @@ class AddClaseViewModel @Inject constructor(
                 }
                 
                 // Obtener los profesores del centro
+                Timber.d("Consultando profesores del centro $centroId...")
                 when (val resultado = usuarioRepository.getProfesoresByCentro(centroId)) {
                     is Result.Success -> {
                         val profesores = resultado.data
+                        Timber.d("Profesores obtenidos del centro $centroId: ${profesores.size}")
+                        
+                        // Mostrar detalles de cada profesor encontrado
+                        profesores.forEachIndexed { index, profesor ->
+                            Timber.d("Profesor #${index+1}: ${profesor.nombre} ${profesor.apellidos} (DNI: ${profesor.dni})")
+                            Timber.d("   - Email: ${profesor.email}")
+                            Timber.d("   - Perfiles: ${profesor.perfiles.size}")
+                            profesor.perfiles.forEach { perfil -> 
+                                Timber.d("   - Perfil: tipo=${perfil.tipo}, centroId=${perfil.centroId}")
+                            }
+                        }
+                        
                         _uiState.update {
                             it.copy(
                                 profesoresDisponibles = profesores,
@@ -140,7 +156,7 @@ class AddClaseViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        Timber.e(resultado.exception, "Error al cargar profesores")
+                        Timber.e(resultado.exception, "Error al cargar profesores para el centro $centroId")
                         _uiState.update {
                             it.copy(
                                 isLoadingProfesores = false,
@@ -153,7 +169,7 @@ class AddClaseViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar profesores")
+                Timber.e(e, "Excepción al cargar profesores para el centro $centroId")
                 _uiState.update {
                     it.copy(
                         isLoadingProfesores = false,
