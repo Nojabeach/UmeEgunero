@@ -556,4 +556,7 @@ sealed class AppScreens(val route: String) {
 
     /** Pantalla para vincular profesores a clases */
     object VincularProfesorClase : AppScreens("vincular_profesor_clase")
+    
+    /** Pantalla de configuración de seguridad */
+    object Seguridad : AppScreens("seguridad")
 } 

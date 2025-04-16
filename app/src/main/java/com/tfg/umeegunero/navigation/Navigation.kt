@@ -536,6 +536,15 @@ fun Navigation(
             )
         }
 
+        // Pantalla de seguridad
+        composable(route = AppScreens.Seguridad.route) {
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Configuración de Seguridad",
+                description = "Esta pantalla permitirá gestionar los ajustes de seguridad de la aplicación, incluyendo configuración biométrica y políticas de acceso. Estará disponible próximamente.",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         // Pantalla Dummy para desarrollo
         composable(
             route = AppScreens.Dummy.route,

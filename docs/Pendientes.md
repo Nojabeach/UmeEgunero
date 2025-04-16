@@ -409,32 +409,105 @@ Se recomienda revisar y consolidar los siguientes elementos:
    - Prioridad: Baja
    - Tiempo estimado: 2 días
 
+## Problemas identificados en pruebas del Dashboard de Administrador
+
+1. **Pantalla de Edición de Centro Obsoleta** ⚠️
+   - La pantalla de edición de centro es rudimentaria y no ofrece la misma funcionalidad que la de añadir centro
+   - Se debe actualizar `EditCentroScreen.kt` usando como referencia el diseño y funcionalidades de `AddCentroScreen.kt`
+   - Implementar campos de edición completos con validaciones
+   - Mostrar información actual del centro para edición
+   - Prioridad: Alta
+   - Tiempo estimado: 2 días
+
+2. **Mejoras en Gestión de Cursos y Clases** ⚠️
+   - Al añadir un curso, debe incluirse un botón para añadir clase si no tiene clase vinculada
+   - Implementar opciones para visualizar o eliminar la clase vinculada desde el listado de cursos
+   - Mejorar la navegación entre entidades relacionadas (Curso -> Clase -> Alumnos)
+   - Prioridad: Alta
+   - Tiempo estimado: 2 días
+
+3. **Error en Sección de Seguridad** ⚠️
+   - Al hacer clic en la opción de seguridad, la aplicación se cierra
+   - Implementar redirección temporal a DummyScreen mientras se desarrolla la funcionalidad completa
+   - Analizar y corregir la causa del cierre de la aplicación
+   - Prioridad: Crítica
+   - Tiempo estimado: 1 día
+
+4. **Falta Menú de Configuración Administrativa** ⚠️
+   - No existe menú para modificar configuraciones administrativas como el email de soporte
+   - Desarrollar pantalla de ajustes administrativos
+   - Incluir configuración de email de soporte y otras opciones administrativas globales
+   - Prioridad: Alta
+   - Tiempo estimado: 2 días
+
+5. **Unificación de estética en DummyScreens** ⚠️
+   - Todas las pantallas DummyScreen deben tener diseño consistente:
+     - Gestión de clases
+     - Listar usuarios
+     - Añadir usuarios
+     - Vincular profesores-clases
+     - Vincular padres-alumnos
+   - Actualizar todas las implementaciones para usar un estilo visual coherente
+   - Asegurar que los mensajes informativos sean claros y profesionales
+   - Prioridad: Media
+   - Tiempo estimado: 1 día
+
 ## Conclusiones y prioridades para TFG
 
 El proyecto UmeEgunero, como Trabajo de Fin de Grado para 2º de DAM, se encuentra en una fase avanzada pero requiere completar estas tareas pendientes para ser considerado un proyecto profesional completo que demuestre las competencias adquiridas durante la formación.
 
 Las prioridades recomendadas son:
 
-1. Implementar las pantallas que actualmente usan DummyScreen
-2. Completar la revisión de funcionalidades por perfil de usuario
-3. Verificar el correcto funcionamiento de los gráficos y datos en tiempo real
-4. Mejorar los sistemas de comunicación y notificaciones
+1. **CRÍTICO**: Corregir los problemas que provocan cierre de la aplicación
+   - Pantalla de Seguridad en el Dashboard de Administrador
+   - Opción de Centros en el panel de administrador
+   - Cualquier otra navegación que provoque cierre inesperado
+
+2. **ALTA**: Actualizar pantallas rudimentarias o incorrectas
+   - Actualizar pantalla de edición de centro con las funcionalidades completas
+   - Implementar correctamente la gestión de cursos y clases con las opciones requeridas
+   - Desarrollar menú de configuración administrativa
+
+3. **ALTA**: Implementar las pantallas que actualmente usan DummyScreen
+   - Asegurar que todas las DummyScreen tienen un diseño visual consistente
+   - Priorizar: Gestión de usuarios, Vinculación de profesores-clases, Vinculación de familiares-alumnos
+
+4. **ALTA**: Completar la revisión de funcionalidades por perfil de usuario
+   - Verificar todas las funcionalidades del administrador de aplicación
+   - Completar funcionalidades del administrador de centro
+   - Revisar y completar funcionalidades del profesor
+   - Validar operaciones del perfil familiar
+
+5. **MEDIA**: Verificar el correcto funcionamiento de los gráficos y datos en tiempo real
+   - Asegurar que las visualizaciones de datos muestran información real y actualizada
+
+6. **MEDIA**: Mejorar los sistemas de comunicación y notificaciones
    - **Progreso**: Se ha completado la implementación del sistema de confirmación de lectura de comunicados.
-5. Completar la implementación y verificación de la autenticación biométrica
+   - Completar sistema de notificaciones push
+
+7. **MEDIA**: Completar la implementación y verificación de la autenticación biométrica
    - Implementar la integración completa con BiometricPrompt de AndroidX
    - Verificar su funcionamiento en todos los tipos de usuario
    - Probar con el Extended Control Finger1 del emulador de Android
-6. Resolver problemas específicos de interfaz
+
+8. **MEDIA**: Resolver problemas específicos de interfaz
    - Implementar o eliminar el botón "Más información" en FAQ 
    - Corregir el envío de correos al soporte técnico
    - Desarrollar una pantalla real para los Términos y Condiciones
-7. Completar la implementación de formularios de alta/modificación
-8. Ampliar la suite de pruebas (unitarias, integración y UI)
-9. Documentar adecuadamente la estructura de la base de datos
-10. Optimizar rendimiento y experiencia de usuario
-11. Refactorizar y limpiar el código para corregir advertencias de compilación
-   - Actualizar APIs obsoletas
-   - Eliminar código redundante y mejorar la calidad general
+
+9. **MEDIA**: Completar la documentación técnica y de usuario
+   - Documentar adecuadamente la estructura de la base de datos
+   - Completar manuales de usuario para cada perfil
+
+10. **BAJA**: Optimizar rendimiento y experiencia de usuario
+    - Mejorar tiempos de carga
+    - Optimizar consultas a Firestore
+    - Implementar caché eficiente
+
+11. **BAJA**: Refactorizar y limpiar el código
+    - Actualizar APIs obsoletas
+    - Eliminar código redundante
+    - Mejorar la calidad general del código
 
 Es fundamental garantizar una cobertura de pruebas suficiente para demostrar la robustez de la implementación y documentar adecuadamente el código para facilitar su evaluación académica y mostrar las buenas prácticas de desarrollo aprendidas durante el ciclo formativo.
 
