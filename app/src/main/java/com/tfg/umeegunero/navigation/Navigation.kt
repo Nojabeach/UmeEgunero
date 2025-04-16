@@ -503,6 +503,39 @@ fun Navigation(
             )
         }
         
+        // Pantalla de gestión de profesores
+        composable(route = AppScreens.GestionProfesores.route) {
+            // Usar una pantalla dummy como solución temporal
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Gestión de Profesores",
+                description = "Esta pantalla permitirá gestionar los profesores del centro educativo. Estará disponible próximamente.",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla para añadir usuarios
+        composable(
+            route = AppScreens.AddUser.route,
+            arguments = listOf(
+                navArgument("isAdminApp") { type = NavType.BoolType },
+                navArgument("tipo") { 
+                    type = NavType.StringType 
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
+            val tipoUsuario = backStackEntry.arguments?.getString("tipo")
+            
+            // Usar una pantalla dummy como solución temporal
+            com.tfg.umeegunero.feature.common.screen.DummyScreen(
+                title = "Añadir ${tipoUsuario ?: "Usuario"}",
+                description = "Esta pantalla permitirá la creación de nuevos usuarios. Estará disponible próximamente.",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         // Pantalla Dummy para desarrollo
         composable(
             route = AppScreens.Dummy.route,
@@ -576,8 +609,7 @@ fun Navigation(
         // Pantallas de vinculación
         composable(route = AppScreens.VincularProfesorClase.route) {
             com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -585,37 +617,6 @@ fun Navigation(
             com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
-            )
-        }
-
-        // Pantalla de gestión de profesores
-        composable(route = AppScreens.GestionProfesores.route) {
-            // Usar una pantalla dummy como solución temporal
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Gestión de Profesores",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Pantalla para añadir usuarios
-        composable(
-            route = AppScreens.AddUser.route,
-            arguments = listOf(
-                navArgument("isAdminApp") { type = NavType.BoolType },
-                navArgument("tipo") { 
-                    type = NavType.StringType 
-                    nullable = true
-                    defaultValue = null
-                }
-            )
-        ) { backStackEntry ->
-            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
-            val tipoUsuario = backStackEntry.arguments?.getString("tipo")
-            
-            // Usar una pantalla dummy como solución temporal
-            com.tfg.umeegunero.feature.common.screen.DummyScreen(
-                title = "Añadir ${tipoUsuario ?: "Usuario"}",
-                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
