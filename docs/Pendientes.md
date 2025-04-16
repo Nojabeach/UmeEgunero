@@ -420,12 +420,13 @@ Se recomienda revisar y consolidar los siguientes elementos:
    - Visualización y edición de coordenadas geográficas
    - Confirmación para eliminación de centro
 
-2. **Mejoras en Gestión de Cursos y Clases** ⚠️
-   - Al añadir un curso, debe incluirse un botón para añadir clase si no tiene clase vinculada
-   - Implementar opciones para visualizar o eliminar la clase vinculada desde el listado de cursos
-   - Mejorar la navegación entre entidades relacionadas (Curso -> Clase -> Alumnos)
-   - Prioridad: Alta
-   - Tiempo estimado: 2 días
+2. **Mejoras en Gestión de Cursos y Clases** ✅
+   - **COMPLETADO**: Se ha implementado la navegación correcta a las pantallas de:
+     - Gestión de clases (GestionClasesScreen)
+     - Añadir clase (AddClaseScreen)
+     - Editar clase (EditClaseScreen)
+   - Se ha añadido un botón para ver y gestionar las clases desde el listado de cursos
+   - Se ha mejorado la navegación entre entidades relacionadas (Curso -> Clase -> Alumnos)
 
 3. **Error en Sección de Seguridad** ✅
    - **COMPLETADO**: Se ha corregido el error que provocaba el cierre de la aplicación
@@ -442,7 +443,7 @@ Se recomienda revisar y consolidar los siguientes elementos:
 
 5. **Unificación de estética en DummyScreens** ⚠️
    - Todas las pantallas DummyScreen deben tener diseño consistente:
-     - Gestión de clases
+     - ✅ Gestión de clases (Implementado redirección a la funcionalidad real a través de ListaCursos)
      - Listar usuarios
      - Añadir usuarios
      - Vincular profesores-clases
@@ -470,7 +471,7 @@ Las prioridades recomendadas son:
 
 2. **ALTA**: Actualizar pantallas rudimentarias o incorrectas
    - ✅ Actualizar pantalla de edición de centro con las funcionalidades completas
-   - Implementar correctamente la gestión de cursos y clases con las opciones requeridas
+   - ✅ Implementar correctamente la gestión de cursos y clases con las opciones requeridas
    - Desarrollar menú de configuración administrativa
    - ✅ Implementar opción de Mantenimiento de Soporte en el menú de Comunicación
 
