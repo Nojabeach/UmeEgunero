@@ -411,13 +411,14 @@ Se recomienda revisar y consolidar los siguientes elementos:
 
 ## Problemas identificados en pruebas del Dashboard de Administrador
 
-1. **Pantalla de Edición de Centro Obsoleta** ⚠️
-   - La pantalla de edición de centro es rudimentaria y no ofrece la misma funcionalidad que la de añadir centro
-   - Se debe actualizar `EditCentroScreen.kt` usando como referencia el diseño y funcionalidades de `AddCentroScreen.kt`
-   - Implementar campos de edición completos con validaciones
-   - Mostrar información actual del centro para edición
-   - Prioridad: Alta
-   - Tiempo estimado: 2 días
+1. **Pantalla de Edición de Centro Obsoleta** ✅
+   - **COMPLETADO**: La pantalla de edición de centro ha sido actualizada
+   - Implementación de `EditCentroScreen.kt` usando el mismo ViewModel que `AddCentroScreen.kt`
+   - Reutilización de componentes y estructura visual moderna
+   - Implementación de validaciones y campos completos 
+   - Soporte para gestión de administradores de centro
+   - Visualización y edición de coordenadas geográficas
+   - Confirmación para eliminación de centro
 
 2. **Mejoras en Gestión de Cursos y Clases** ⚠️
    - Al añadir un curso, debe incluirse un botón para añadir clase si no tiene clase vinculada
@@ -426,12 +427,11 @@ Se recomienda revisar y consolidar los siguientes elementos:
    - Prioridad: Alta
    - Tiempo estimado: 2 días
 
-3. **Error en Sección de Seguridad** ⚠️
-   - Al hacer clic en la opción de seguridad, la aplicación se cierra
-   - Implementar redirección temporal a DummyScreen mientras se desarrolla la funcionalidad completa
-   - Analizar y corregir la causa del cierre de la aplicación
-   - Prioridad: Crítica
-   - Tiempo estimado: 1 día
+3. **Error en Sección de Seguridad** ✅
+   - **COMPLETADO**: Se ha corregido el error que provocaba el cierre de la aplicación
+   - Se ha implementado correctamente la navegación a la pantalla SeguridadScreen en lugar de la DummyScreen temporal
+   - La pantalla ahora permite configurar diversos parámetros de seguridad como políticas de contraseñas, tiempo de sesión, e intentos de acceso
+   - Se incluyen opciones para activación de verificación en dos pasos y registro de actividad sospechosa
 
 4. **Falta Menú de Configuración Administrativa** ⚠️
    - No existe menú para modificar configuraciones administrativas como el email de soporte
@@ -452,13 +452,11 @@ Se recomienda revisar y consolidar los siguientes elementos:
    - Prioridad: Media
    - Tiempo estimado: 1 día
 
-6. **Implementación de Mantenimiento de Soporte** ⚠️
-   - Se necesita añadir una opción de "Mantenimiento de Soporte" en el menú de Comunicación del dashboard de administrador
-   - Vincular esta opción con la pantalla existente `EmailConfigScreen.kt`
-   - Permitir configurar el email de soporte técnico desde esta sección
-   - Implementar navegación a esta pantalla desde el dashboard
-   - Prioridad: Alta
-   - Tiempo estimado: 1 día
+6. **Implementación de Mantenimiento de Soporte** ✅
+   - **COMPLETADO**: Se ha añadido una opción de "Mantenimiento de Soporte" en el menú de Comunicación
+   - Se ha vinculado esta opción con la pantalla existente `EmailConfigScreen.kt`
+   - La navegación funciona correctamente, permitiendo configurar el email de soporte técnico
+   - El acceso está habilitado desde el dashboard de administrador en la sección de Comunicación
 
 ## Conclusiones y prioridades para TFG
 
@@ -467,13 +465,14 @@ El proyecto UmeEgunero, como Trabajo de Fin de Grado para 2º de DAM, se encuent
 Las prioridades recomendadas son:
 
 1. **CRÍTICO**: Corregir los problemas que provocan cierre de la aplicación
-   - Pantalla de Seguridad en el Dashboard de Administrador
+   - ✅ Pantalla de Seguridad en el Dashboard de Administrador
    - Cualquier otra navegación que provoque cierre inesperado
 
 2. **ALTA**: Actualizar pantallas rudimentarias o incorrectas
-   - Actualizar pantalla de edición de centro con las funcionalidades completas
+   - ✅ Actualizar pantalla de edición de centro con las funcionalidades completas
    - Implementar correctamente la gestión de cursos y clases con las opciones requeridas
    - Desarrollar menú de configuración administrativa
+   - ✅ Implementar opción de Mantenimiento de Soporte en el menú de Comunicación
 
 3. **ALTA**: Implementar las pantallas que actualmente usan DummyScreen
    - Asegurar que todas las DummyScreen tienen un diseño visual consistente
