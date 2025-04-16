@@ -6,12 +6,16 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.repository.CentroRepository
+import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -97,57 +101,113 @@ data class AddUserUiState(
  * NOTA: Esta es una versión simplificada para propósitos de desarrollo.
  */
 @HiltViewModel
-class AddUserViewModel @Inject constructor() : ViewModel() {
+class AddUserViewModel @Inject constructor(
+    private val centroRepository: CentroRepository,
+    private val cursoRepository: CursoRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddUserUiState())
     val uiState: StateFlow<AddUserUiState> = _uiState.asStateFlow()
+
+    init {
+        // Cargar los centros al inicializar
+        loadCentros()
+    }
 
     // Establece si el usuario es admin de la app
     fun setIsAdminApp(isAdminApp: Boolean) {
         _uiState.update { it.copy(isAdminApp = isAdminApp) }
     }
 
-    // Carga los centros disponibles (simulado)
+    // Carga los centros disponibles desde Firestore
     fun loadCentros() {
         viewModelScope.launch {
-            _uiState.update { 
-                it.copy(
-                    centrosDisponibles = listOf(
-                        Centro(id = "1", nombre = "Colegio San José"),
-                        Centro(id = "2", nombre = "Escuela Infantil Luna")
-                    ),
-                    isLoading = false
-                )
+            _uiState.update { it.copy(isLoading = true) }
+            
+            when (val result = centroRepository.getActiveCentros()) {
+                is Result.Success -> {
+                    _uiState.update { 
+                        it.copy(
+                            centrosDisponibles = result.data,
+                            isLoading = false
+                        )
+                    }
+                    Timber.d("Centros cargados: ${result.data.size}")
+                }
+                is Result.Error -> {
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cargar los centros: ${result.exception?.message}",
+                            isLoading = false
+                        )
+                    }
+                    Timber.e(result.exception, "Error al cargar centros")
+                }
+                is Result.Loading -> {
+                    // No hacemos nada, ya estamos mostrando el estado de carga
+                }
             }
         }
     }
 
-    // Simulación de carga de cursos
+    // Carga los cursos del centro seleccionado
     fun loadCursos(centroId: String) {
         viewModelScope.launch {
-            _uiState.update { 
-                it.copy(
-                    cursosDisponibles = listOf(
-                        Curso(id = "1", nombre = "1º de Infantil", centroId = centroId),
-                        Curso(id = "2", nombre = "2º de Infantil", centroId = centroId)
-                    ),
-                    isLoading = false
-                )
+            _uiState.update { it.copy(isLoading = true) }
+            
+            when (val result = cursoRepository.getCursosByCentro(centroId)) {
+                is Result.Success -> {
+                    _uiState.update { 
+                        it.copy(
+                            cursosDisponibles = result.data,
+                            isLoading = false
+                        )
+                    }
+                    Timber.d("Cursos cargados: ${result.data.size}")
+                }
+                is Result.Error -> {
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cargar los cursos: ${result.exception?.message}",
+                            isLoading = false
+                        )
+                    }
+                    Timber.e(result.exception, "Error al cargar cursos")
+                }
+                is Result.Loading -> {
+                    // Ya estamos mostrando el estado de carga
+                }
             }
         }
     }
 
-    // Simulación de carga de clases
+    // Carga las clases del curso seleccionado
     fun loadClases(cursoId: String) {
         viewModelScope.launch {
-            _uiState.update { 
-                it.copy(
-                    clasesDisponibles = listOf(
-                        Clase(id = "1", nombre = "Clase A", cursoId = cursoId),
-                        Clase(id = "2", nombre = "Clase B", cursoId = cursoId)
-                    ),
-                    isLoading = false
-                )
+            _uiState.update { it.copy(isLoading = true) }
+            
+            when (val result = cursoRepository.obtenerClasesPorCurso(cursoId)) {
+                is Result.Success -> {
+                    _uiState.update { 
+                        it.copy(
+                            clasesDisponibles = result.data,
+                            isLoading = false
+                        )
+                    }
+                    Timber.d("Clases cargadas: ${result.data.size}")
+                }
+                is Result.Error -> {
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cargar las clases: ${result.exception?.message}",
+                            isLoading = false
+                        )
+                    }
+                    Timber.e(result.exception, "Error al cargar clases")
+                }
+                is Result.Loading -> {
+                    // Ya estamos mostrando el estado de carga
+                }
             }
         }
     }

@@ -130,6 +130,9 @@ sealed class AppScreens(val route: String) {
     
     /** Lista de administradores dentro del dashboard de administración */
     object AdminList : AppScreens("admin_dashboard/administradores")
+    
+    /** Lista de administradores de centro dentro del dashboard de administración */
+    object AdminCentroList : AppScreens("admin_dashboard/administradores_centro")
 
     /**
      * Sección: Pantallas de gestión académica

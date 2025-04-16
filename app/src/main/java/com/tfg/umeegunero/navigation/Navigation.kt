@@ -608,6 +608,13 @@ fun Navigation(
             )
         }
         
+        composable(route = AppScreens.AdminCentroList.route) {
+            com.tfg.umeegunero.feature.common.users.screen.ListAdministradoresCentroScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
         composable(route = AppScreens.ProfesorList.route) {
             com.tfg.umeegunero.feature.common.users.screen.ListProfesoresScreen(
                 navController = navController,

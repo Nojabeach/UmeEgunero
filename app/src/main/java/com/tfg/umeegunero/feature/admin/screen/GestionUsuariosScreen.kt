@@ -83,6 +83,17 @@ fun GestionUsuariosScreen(
                 }
             )
             
+            // Administradores de Centro
+            UserCategoryCard(
+                title = "Administradores de Centro",
+                subtitle = "Gestión de administradores de centros educativos",
+                icon = Icons.Default.Business,
+                onClick = {
+                    // Navegar a la lista de administradores de centro
+                    navController.navigate(AppScreens.AdminCentroList.route)
+                }
+            )
+            
             // Profesores
             UserCategoryCard(
                 title = "Profesores",
