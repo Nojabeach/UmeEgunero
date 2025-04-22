@@ -3,20 +3,24 @@ package com.tfg.umeegunero.feature.common.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Construction
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -131,6 +135,118 @@ fun DummyScreen(
     }
 }
 
+/**
+ * Pantalla genérica para funcionalidades aún no implementadas, con botón para ir al dashboard
+ * 
+ * @param title Título de la pantalla
+ * @param description Descripción de la pantalla
+ * @param onBackClick Función para volver atrás
+ * @param onDashboardClick Función para ir al dashboard
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DummyScreenWithDashboard(
+    title: String,
+    description: String? = null,
+    onBackClick: () -> Unit,
+    onDashboardClick: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(title, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver atrás",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Construction,
+                contentDescription = "En construcción",
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .padding(bottom = 24.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            
+            Text(
+                text = "Esta funcionalidad se encuentra en desarrollo",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "$title próximamente disponible",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+            
+            if (description != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OutlinedButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Volver",
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Text("Volver")
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Button(onClick = onDashboardClick) {
+                    Icon(
+                        imageVector = Icons.Default.Dashboard,
+                        contentDescription = "Dashboard",
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Text("Dashboard")
+                }
+            }
+        }
+    }
+}
+
 @Preview(showSystemUi = true)
 @Composable
 fun DummyScreenPreview() {
@@ -138,6 +254,19 @@ fun DummyScreenPreview() {
         DummyScreen(
             title = "Gestión de Cursos",
             onNavigateBack = {}
+        )
+    }
+}
+
+@Preview(showSystemUi = true)
+@Composable
+fun DummyScreenWithDashboardPreview() {
+    UmeEguneroTheme {
+        DummyScreenWithDashboard(
+            title = "Gestión de Cursos",
+            description = "Esta funcionalidad estará disponible pronto",
+            onBackClick = {},
+            onDashboardClick = {}
         )
     }
 }
