@@ -2,6 +2,35 @@
 
 Este documento detalla todas las tareas pendientes identificadas tras el análisis del proyecto UmeEgunero para completar su desarrollo como Trabajo de Fin de Grado de 2º de DAM.
 
+## Plan de Desarrollo Prioritario
+
+Después de analizar el estado actual del proyecto, he identificado las siguientes prioridades para completar la aplicación:
+
+1. **Completar pantallas críticas pendientes**
+   - Finalizar pantallas dummy y resolver puntos de cierre de aplicación
+   - Completar la integración de pantallas de gestión administrativa
+   - Prioridad: Crítica
+   - Tiempo estimado: 5 días
+
+2. **Integración completa entre módulos**
+   - Asegurar que todas las características estén correctamente conectadas
+   - Validar flujos de trabajo entre diferentes perfiles de usuario
+   - Prioridad: Alta
+   - Tiempo estimado: 3 días
+
+3. **Mejoras de usabilidad y experiencia**
+   - Implementar validaciones completas en todos los formularios
+   - Mejorar la navegación y retroalimentación al usuario
+   - Optimizar rendimiento en carga de datos
+   - Prioridad: Alta
+   - Tiempo estimado: 4 días
+
+4. **Pruebas y depuración**
+   - Realizar pruebas exhaustivas con diferentes perfiles
+   - Identificar y corregir errores
+   - Prioridad: Alta
+   - Tiempo estimado: 3 días
+
 ## Pantallas del Dashboard de Administración pendientes de implementación
 
 ### Gestión de Usuarios
@@ -39,20 +68,32 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
   - Prioridad: Completada
   - Tiempo estimado: Finalizado
 
-## Pantallas temporales (DummyScreen) pendientes de implementación
+## Pantallas con problemas críticos
 
 1. **Pantalla de Detalle de Clase**
-   - Aunque existe una ruta en `AppScreens.DetalleClase` y está configurada en Navigation.kt, el documento Sprint_Consolidado.md menciona que aún se navega hacia una pantalla Dummy en algunos casos
+   - Aunque existe una ruta en `AppScreens.DetalleClase` y está configurada en Navigation.kt, el documento menciona que aún se navega hacia una pantalla Dummy en algunos casos
    - Es necesario revisar todas las referencias a DetalleClase y asegurar que se use la implementación real en lugar de Dummy
-   - Prioridad: Alta
+   - Prioridad: Crítica
    - Tiempo estimado: 1 día
 
 2. **Pantalla de Gestión de Centros en el Panel de Administrador**
    - Actualmente al hacer clic en el card de "Centros" en el panel de administrador, la aplicación se cierra
-   - Se requiere implementar una redirección a DummyScreen o la pantalla correspondiente
+   - Corregir la navegación para que dirija a la pantalla ListCentrosScreen
    - Revisar el resto de cards y botones del panel para asegurar que no cierren la aplicación
-   - Prioridad: Alta
+   - Prioridad: Crítica
    - Tiempo estimado: 1 día
+
+3. **ComunicadosScreen para Profesor**
+   - El archivo ComunicadosScreen.kt en feature/profesor/screen está vacío (0 bytes)
+   - Es necesario implementar esta pantalla crucial ya que la comunicación es una característica principal
+   - Prioridad: Crítica
+   - Tiempo estimado: 2 días
+
+4. **IncidenciasScreen para Profesor**
+   - El archivo IncidenciasScreen.kt en feature/profesor/screen está vacío (0 bytes)
+   - Es necesario implementar esta pantalla para registrar y gestionar incidencias
+   - Prioridad: Alta
+   - Tiempo estimado: 2 días
 
 ## Revisión de Funcionalidades por Perfil
 
@@ -63,7 +104,7 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - **URGENTE**: Corregir el card de "Centros" que actualmente causa cierre de la aplicación
    - Comprobar que las estadísticas mostradas se actualizan con datos reales
    - Revisar la visualización de centros educativos registrados
-   - Prioridad: Alta
+   - Prioridad: Crítica
    - Tiempo estimado: 1 día
 
 2. **Gestión de Centros Educativos**
@@ -134,25 +175,26 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Tiempo estimado: 1 día
 
 3. **Comunicaciones** ⚠️
+   - Implementar la pantalla ComunicadosScreen para profesores (actualmente vacía)
    - Verificar envío de mensajes a familias
    - Comprobar creación y difusión de comunicados
    - Implementar visualización de estadísticas de lectura y confirmación de comunicados
    - Validar notificaciones de respuestas
-   - **Pendiente**: Implementar panel de administración para monitorizar confirmaciones de lectura
-   - Prioridad: Alta
-   - Tiempo estimado: 1 día
+   - Prioridad: Crítica
+   - Tiempo estimado: 2 días
 
-4. **Actividades Preescolares**
+4. **Incidencias** ⚠️
+   - Implementar la pantalla IncidenciasScreen para profesores (actualmente vacía)
+   - Desarrollar sistema de registro y seguimiento de incidencias
+   - Crear flujo de notificación a familias
+   - Implementar histórico de incidencias por alumno
+   - Prioridad: Alta
+   - Tiempo estimado: 2 días
+
+5. **Actividades Preescolares**
    - Revisar creación y asignación de actividades
    - Validar seguimiento del progreso por alumno
    - Comprobar notificaciones a familias
-   - Prioridad: Media
-   - Tiempo estimado: 1 día
-
-5. **Funcionalidades de seguridad**
-   - Verificar el funcionamiento de la autenticación biométrica
-   - Comprobar el flujo de activación y desactivación de la biometría
-   - Validar la seguridad en el acceso a datos de alumnos
    - Prioridad: Media
    - Tiempo estimado: 1 día
 
@@ -172,7 +214,7 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Prioridad: Alta
    - Tiempo estimado: 1 día
 
-3. **Comunicaciones** ⚠️
+3. **Comunicaciones** 
    - Verificar recepción de mensajes y comunicados ✅
    - Comprobar sistema de chat con profesores
    - Validar notificaciones de nuevos mensajes
@@ -187,59 +229,77 @@ Este documento detalla todas las tareas pendientes identificadas tras el anális
    - Prioridad: Media
    - Tiempo estimado: 1 día
 
-5. **Funcionalidades de seguridad**
-   - Verificar el funcionamiento de la autenticación biométrica
-   - Comprobar el flujo de activación y desactivación de la biometría
-   - Validar la seguridad en el acceso a información familiar
-   - Prioridad: Media
-   - Tiempo estimado: 1 día
+## Mejoras técnicas necesarias
 
-## Mejoras en módulos existentes
-
-### Administración
-
-1. **Formularios de alta/modificación**
-   - Completar formularios para gestión de usuarios y centros
-   - Mejorar validaciones de formularios
-   - Prioridad: Media
-   - Tiempo estimado: 3 días
-
-2. **Mejoras en gestión de usuarios**
-   - Implementar sistema robusto de roles y permisos
-   - Completar vinculación entre familiares y alumnos
-   - Añadir sistema de invitaciones para nuevos usuarios
-   - Prioridad: Alta
-   - Tiempo estimado: 4 días
-
-### Comunicación
-
-1. **Implementación de ComunicadosScreen**
-   - Finalizar la implementación para todos los perfiles de usuario
-   - Añadir sistema de filtrado y búsqueda
-   - Implementar historial de comunicados anteriores
+1. **Optimización de rendimiento**
+   - Implementar paginación para listas largas de datos
+   - Optimizar consultas a Firestore
+   - Implementar caché local para datos frecuentes
    - Prioridad: Alta
    - Tiempo estimado: 2 días
 
-2. **Confirmación de lectura de comunicados** ✅
-   - **COMPLETADO**: Se ha implementado el sistema de confirmación de lectura para comunicados importantes, incluyendo:
-     - Modelo de datos actualizado para tracking de lecturas/confirmaciones
-     - ViewModel para gestionar la lógica de filtrado y confirmación
-     - UI con indicadores visuales de estado (leído/no leído, confirmado/pendiente)
-     - Componentes para confirmar lecturas con diálogo informativo
-     - Filtros para mostrar comunicados por estado
-
-### Calendario
-
-1. **Sincronización con calendario del dispositivo**
-   - Implementar exportación e importación de eventos
-   - Prioridad: Baja
-   - Tiempo estimado: 3 días
-
-2. **Notificaciones de eventos próximos**
-   - Configurar recordatorios automáticos
-   - Permitir personalización por usuario
+2. **Mejoras de UI/UX**
+   - Revisar y estandarizar diseños entre diferentes pantallas
+   - Implementar animaciones y transiciones fluidas
+   - Mejorar la experiencia en dispositivos pequeños
    - Prioridad: Media
    - Tiempo estimado: 2 días
+
+3. **Documentación técnica del código**
+   - Mejorar la documentación KDoc para clases principales
+   - Preparar el código para generación de documentación con Dokka
+   - Añadir comentarios explicativos en secciones complejas
+   - Prioridad: Media
+   - Tiempo estimado: 2 días
+
+4. **Testing**
+   - Implementar pruebas unitarias para ViewModels principales
+   - Añadir pruebas de integración para flujos críticos
+   - Configurar pruebas de UI con Compose Testing
+   - Prioridad: Alta
+   - Tiempo estimado: 3 días
+
+## Resumen de Prioridades
+
+### Tareas Críticas (Inmediatas)
+1. Corregir navegación en Dashboard de Administrador (card de Centros)
+2. Implementar ComunicadosScreen para Profesor
+3. Implementar pantalla de Detalle de Clase
+4. Implementar IncidenciasScreen para Profesor
+
+### Tareas de Alta Prioridad
+1. Completar gestión de usuarios y vinculaciones
+2. Optimizar rendimiento de consultas y visualización
+3. Implementar pruebas para flujos críticos
+4. Finalizar funcionalidades de comunicación entre perfiles
+
+### Tareas de Media Prioridad
+1. Mejorar experiencia de usuario y diseño consistente
+2. Ampliar funcionalidades de seguridad
+3. Mejorar documentación técnica
+4. Desarrollar características adicionales de cada perfil
+
+## Plan de Implementación Recomendado
+
+**Semana 1: Corrección de problemas críticos**
+- Corregir navegación en Dashboard de Administración
+- Implementar pantallas pendientes críticas (Comunicados, Incidencias)
+- Resolver problemas de cierre inesperado de la aplicación
+
+**Semana 2: Completar funcionalidades principales**
+- Finalizar vinculación de profesores con aulas
+- Completar gestión de usuarios
+- Implementar pruebas para flujos críticos
+
+**Semana 3: Optimización y mejoras**
+- Optimizar rendimiento
+- Mejorar UI/UX
+- Completar documentación técnica
+
+**Semana 4: Testing y ajustes finales**
+- Probar la aplicación con usuarios reales
+- Corregir errores y realizar ajustes
+- Preparar documentación final del proyecto
 
 ## Revisión de Visualización de Datos en Tiempo Real
 

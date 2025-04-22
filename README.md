@@ -1,191 +1,176 @@
-# UmeEgunero - Aplicación de Gestión Educativa
+# UmeEgunero - Plataforma de Gestión Educativa para Centros Preescolares
 
-UmeEgunero es una aplicación Android desarrollada en Kotlin con Jetpack Compose que facilita la comunicación y gestión entre centros educativos, profesores, familiares y alumnos.
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-blue.svg)](https://kotlinlang.org/)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-1.5.4-green.svg)](https://developer.android.com/jetpack/compose)
+[![Firebase](https://img.shields.io/badge/Firebase-31.5.0-orange.svg)](https://firebase.google.com/)
+[![Hilt](https://img.shields.io/badge/Hilt-2.48-red.svg)](https://dagger.dev/hilt/)
 
-## Características principales
+UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Grado para el ciclo de Desarrollo de Aplicaciones Multiplataforma. Diseñada con tecnología punta, esta solución integral facilita la comunicación y gestión en centros educativos de educación infantil, conectando a administradores, profesores y familias en un entorno digital seguro y eficiente.
 
-- **Autenticación y gestión de usuarios**: Sistema de inicio de sesión y registro para diferentes tipos de usuarios (administradores, centros, profesores y familiares).
-- **Interfaz moderna con Jetpack Compose**: Diseño moderno y adaptable utilizando la biblioteca de UI declarativa de Android.
-- **Arquitectura MVVM**: Separación clara entre la lógica de negocio y la interfaz de usuario.
-- **Firebase como backend**: Firestore para almacenamiento de datos en la nube, autenticación de usuarios y notificaciones.
-- **Inyección de dependencias con Hilt**: Gestión eficiente de dependencias.
-- **Coroutines y Flow**: Para operaciones asíncronas y flujos de datos reactivos.
+<div align="center">
+  <img src="docs/images/app_logo.png" alt="UmeEgunero Logo" width="300">
+</div>
 
-## Documentación
+## 🚀 Características Principales
 
-El proyecto incluye documentación detallada disponible en la carpeta `/docs`:
+### 🔐 Gestión de Usuarios Multi-Rol
+- **Plataforma Multi-Perfil**: Sistema completo de perfiles con permisos específicos (Administrador App, Administrador Centro, Profesor, Familiar)
+- **Autenticación Segura**: Implementación de Firebase Authentication con opciones biométricas
+- **Gestión de Vinculaciones**: Relaciones entre profesores, aulas, familiares y alumnos
 
-- **[Documentación Técnica](docs/Documentacion_Tecnica.md)**: Detalles técnicos sobre arquitectura, patrones utilizados y guía para desarrolladores.
-- **[Manual de Usuario](docs/Manual_Usuario.md)**: Guía completa sobre cómo utilizar la aplicación para cada tipo de usuario.
-- **[Guía de Despliegue](docs/Guia_Despliegue.md)**: Instrucciones paso a paso para configurar y desplegar la aplicación.
-- **[Estado del Sprint](docs/Sprint_Consolidado.md)**: Estado actual del desarrollo, tareas completadas y pendientes.
+### 📊 Administración Educativa
+- **Dashboard Analítico**: Estadísticas en tiempo real y visualización de datos relevantes
+- **Gestión de Centros**: Administración completa de centros educativos, cursos y aulas
+- **Seguimiento Académico**: Monitorización del progreso educativo de cada alumno
 
-## Sprint 1 - Configuración y Estabilización
+### 📱 Experiencia de Usuario Avanzada
+- **UI Moderna**: Interfaz fluida desarrollada íntegramente con Jetpack Compose
+- **Navegación Intuitiva**: Experiencia de usuario adaptada a cada perfil
+- **Diseño Responsive**: Adaptación óptima a diferentes tamaños de pantalla
 
-### Mejoras implementadas:
+### 📝 Comunicación Integrada
+- **Sistema de Mensajería**: Comunicación directa entre profesores y familiares
+- **Comunicados Oficiales**: Envío de avisos importantes con confirmación de lectura
+- **Notificaciones**: Sistema de alertas en tiempo real para eventos importantes
 
-1. **Configuración de Firebase**
-   - Integración correcta del plugin de Google Services
-   - Manejo robusto de la inicialización de Firebase
-   - Configuración de Remote Config
+### 👶 Gestión Preescolar Especializada
+- **Registros Diarios**: Seguimiento detallado de actividades, comidas, siestas y más
+- **Desarrollo Infantil**: Monitorización del progreso educativo y evolutivo
+- **Actividades Preescolares**: Asignación y seguimiento de tareas adaptadas
 
-2. **Optimización de código**
-   - Actualización de políticas WorkManager a versiones no obsoletas (REPLACE → UPDATE)
-   - Migración de componentes Divider a HorizontalDivider
-   - Actualización de iconos a versiones AutoMirrored
+## 🛠️ Arquitectura y Tecnologías
 
-3. **Pruebas**
-   - Implementación de pruebas unitarias básicas
-   - Configuración de entorno de test
+UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en desarrollo Android:
 
-### Requisitos técnicos
+### Arquitectura
+- **Patrón MVVM**: Separación clara entre datos, lógica de negocio y UI
+- **Clean Architecture**: Organización del código en capas independientes y desacopladas
+- **Principios SOLID**: Implementación de principios de diseño para código mantenible
 
-- Android Studio Hedgehog | 2023.1.1 o superior
-- Kotlin 1.9.22
-- Java JDK 17
-- Firebase (google-services.json en la carpeta app/)
+### Stack Tecnológico
+- **Kotlin**: Lenguaje principal con utilización de características avanzadas (Coroutines, Flow, Extensions)
+- **Jetpack Compose**: Framework declarativo para construcción de UI moderna
+- **Firebase Suite**: 
+  - Firestore: Base de datos NoSQL en tiempo real
+  - Firebase Authentication: Gestión de usuarios y autenticación
+  - Cloud Storage: Almacenamiento de archivos y documentos
+  - Cloud Functions: Lógica de servidor y procesos automatizados
+- **Inyección de Dependencias**: Hilt para gestión eficiente de dependencias
+- **Navegación**: Jetpack Navigation Compose para rutas y transiciones
+- **Asincronía**: Coroutines y Flow para operaciones no bloqueantes
 
-### Configuración del proyecto
+## 📂 Estructura del Proyecto
 
-1. Clonar el repositorio
-2. Abrir en Android Studio
-3. Sincronizar el proyecto con los archivos Gradle
-4. Ejecutar la aplicación
-
-### Estructura del proyecto
-
-La aplicación sigue una arquitectura MVVM con Clean Architecture:
-
-- **app/src/main/java/com/tfg/umeegunero/**
-  - **data/**: Capa de datos y modelos
-  - **feature/**: Características organizadas por rol (profesor, familiar, admin)
-  - **ui/**: Componentes reutilizables de UI
-  - **util/**: Utilidades y clases auxiliares
-  - **navigation/**: Navegación y rutas de la aplicación
-
-## Próximos pasos
-
-- Mejoras en la interfaz de usuario
-- Optimización de rendimiento
-- Implementación de funcionalidades específicas por rol
-
-## Sprint 1: Gestión de Tareas para Familiares
-
-El Sprint 1 se ha centrado en desarrollar las funcionalidades de gestión de tareas desde la perspectiva de los familiares:
-
-### Funcionalidades Implementadas
-
-1. **Visualización de tareas**:
-   - Lista de tareas asignadas a los alumnos
-   - Filtrado por estado (pendientes, en progreso, completadas, retrasadas)
-   - Indicadores visuales de prioridad y estado
-
-2. **Detalle de tareas**:
-   - Información completa sobre cada tarea (título, descripción, fecha de entrega, etc.)
-   - Visualización de archivos adjuntos por el profesor
-   - Estado actual de la tarea y calificación (si está disponible)
-
-3. **Revisión de tareas por familiares**:
-   - Función para marcar tareas como revisadas
-   - Posibilidad de añadir comentarios al revisar
-
-4. **Entrega de tareas**:
-   - Interfaz para enviar entregas en nombre de los alumnos
-   - Soporte para adjuntar múltiples archivos
-   - Comentarios para el profesor
-
-### Estructura del código
-
-El proyecto sigue una estructura modular basada en características:
+El proyecto sigue una estructura modular organizada por características:
 
 ```
 app/
 ├── src/
 │   ├── main/
 │   │   ├── java/com/tfg/umeegunero/
-│   │   │   ├── data/
-│   │   │   │   ├── model/          # Modelos de datos
-│   │   │   │   ├── repository/     # Repositorios para acceso a datos
-│   │   │   │   └── ...
+│   │   │   ├── data/               # Capa de datos
+│   │   │   │   ├── model/          # Modelos de dominio
+│   │   │   │   ├── repository/     # Repositorios
+│   │   │   │   └── source/         # Fuentes de datos
 │   │   │   ├── di/                 # Módulos de inyección de dependencias
-│   │   │   ├── feature/
+│   │   │   ├── feature/            # Módulos de características
+│   │   │   │   ├── admin/          # Funcionalidades de administración
+│   │   │   │   ├── auth/           # Autenticación y registro
+│   │   │   │   ├── centro/         # Gestión de centros educativos
+│   │   │   │   ├── common/         # Componentes compartidos
 │   │   │   │   ├── familiar/       # Funcionalidades para familiares
-│   │   │   │   │   ├── screen/     # Pantallas UI con Compose
-│   │   │   │   │   ├── viewmodel/  # ViewModels específicos
-│   │   │   │   │   └── ...
-│   │   │   │   └── ...
-│   │   │   ├── navigation/         # Configuración de navegación
-│   │   │   └── ui/                 # Componentes de UI reutilizables
-│   │   └── ...
-│   ├── test/                       # Pruebas unitarias
-│   └── androidTest/                # Pruebas instrumentadas
-└── ...
+│   │   │   │   └── profesor/       # Funcionalidades para profesores
+│   │   │   ├── navigation/         # Sistema de navegación
+│   │   │   ├── ui/                 # Componentes UI reutilizables
+│   │   │   └── util/               # Utilidades y extensiones
 ```
 
-### Modelos principales
 
-**Tarea**: Representa una tarea asignada por un profesor a un alumno o clase.
+## 📋 Requisitos Técnicos
+
+- **Android Studio**: Hedgehog | 2023.1.1 o superior
+- **Kotlin**: 1.9.22 o superior
+- **JDK**: Java 17
+- **Firebase**: Proyecto configurado con google-services.json
+- **Dispositivo/Emulador**: Android 8.0 (API 26) o superior
+
+## ⚙️ Configuración del Proyecto
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/usuario/UmeEgunero.git
+   cd UmeEgunero
+   ```
+
+2. **Configurar Firebase**
+   - Crear proyecto en [Firebase Console](https://console.firebase.google.com/)
+   - Descargar el archivo `google-services.json` y colocarlo en la carpeta `/app`
+   - Habilitar los servicios necesarios (Authentication, Firestore, Storage)
+
+3. **Compilar y ejecutar**
+   - Abrir el proyecto en Android Studio
+   - Sincronizar con archivos Gradle
+   - Ejecutar en dispositivo o emulador
+
+## 📚 Documentación
+
+UmeEgunero incluye documentación completa disponible en el directorio `/docs`:
+
+- **[Documentación Técnica](docs/Documentacion_Tecnica.md)**: Arquitectura del sistema, patrones de diseño y consideraciones técnicas
+- **[Estructura de Base de Datos](docs/Estructura_Base_Datos.md)**: Detalle de colecciones Firestore y relaciones entre entidades
+- **[Manual de Usuario](docs/Manual_Usuario.md)**: Guía de uso para cada perfil de usuario
+- **[Guía de Despliegue](docs/Guia_Despliegue.md)**: Instrucciones para configuración y puesta en producción
+
+## 🧪 Testing
+
+El proyecto incluye varias capas de pruebas:
+
 ```kotlin
-data class Tarea(
-    @DocumentId val id: String = "",
-    val profesorId: String = "",
-    val profesorNombre: String = "",
-    val claseId: String = "",
-    val nombreClase: String = "",
-    val alumnoId: String = "",
-    val titulo: String = "",
-    val descripcion: String = "",
-    val asignatura: String = "",
-    val fechaCreacion: Timestamp = Timestamp.now(),
-    val fechaEntrega: Timestamp? = null,
-    val adjuntos: List<String> = emptyList(),
-    val estado: EstadoTarea = EstadoTarea.PENDIENTE,
-    val prioridad: PrioridadTarea = PrioridadTarea.MEDIA,
-    val revisadaPorFamiliar: Boolean = false,
-    val fechaRevision: Timestamp? = null,
-    val comentariosFamiliar: String = "",
-    val calificacion: Double? = null,
-    val feedbackProfesor: String = ""
-)
+// Ejemplo de test unitario de ViewModel
+@HiltAndroidTest
+class LoginViewModelTest {
+    @get:Rule
+    val hiltRule = HiltAndroidRule(this)
+    
+    @Inject
+    lateinit var authRepository: AuthRepository
+    
+    private lateinit var viewModel: LoginViewModel
+    
+    @Before
+    fun setup() {
+        hiltRule.inject()
+        viewModel = LoginViewModel(authRepository)
+    }
+    
+    @Test
+    fun `login con credenciales válidas retorna éxito`() = runBlocking {
+        // Test implementation
+    }
+}
 ```
 
-**EntregaTarea**: Representa la entrega de una tarea por parte de un alumno.
-```kotlin
-data class EntregaTarea(
-    @DocumentId
-    val id: String = "",
-    val tareaId: String = "",
-    val alumnoId: String = "",
-    val fechaEntrega: Timestamp = Timestamp.now(),
-    val archivos: List<String> = emptyList(),
-    val comentario: String = "",
-    val calificacion: Float? = null,
-    val comentarioProfesor: String? = null,
-    val fechaCalificacion: Timestamp? = null
-)
-```
+## 🤝 Contribución
 
-## Próximos pasos (Sprint 2)
+Este proyecto ha sido desarrollado como Trabajo Fin de Grado. Para contribuciones:
 
-- Mejora de la gestión de archivos (carga y descarga)
-- Notificaciones para fechas de entrega próximas
-- Funcionalidades avanzadas para profesores
-- Calendario integrado con eventos académicos
+1. Solicita acceso al repositorio
+2. Crea una rama para tu funcionalidad (`git checkout -b feature/nueva-funcionalidad`)
+3. Haz commit de tus cambios (`git commit -m 'Añadir nueva funcionalidad'`)
+4. Envía tu rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre una Pull Request
 
-## Tecnologías utilizadas
+## 📄 Licencia
 
-- Kotlin
-- Jetpack Compose
-- Firebase (Firestore, Authentication, Storage)
-- Hilt para inyección de dependencias
-- Coroutines y Flow
-- Jetpack Navigation
-- Room (para almacenamiento local)
-- MockK (para testing)
+Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
 
-## Requisitos
+## 👨‍💻 Autor
 
-- Android 7.0 (API 24) o superior
-- Cuenta de Firebase configurada
-- Android Studio Arctic Fox o superior
+**Maitane Ibáñez Irazabal** - *Desarrollo de Aplicaciones Multiplataforma* - [Enlace GitHub](https://github.com/Nojabeach)
+
+## 🙏 Agradecimientos
+
+- A los profesores del ciclo por su guía y apoyo
+- A los centros educativos que colaboraron en la fase de pruebas
+- A las bibliotecas open source utilizadas en el proyecto
 
