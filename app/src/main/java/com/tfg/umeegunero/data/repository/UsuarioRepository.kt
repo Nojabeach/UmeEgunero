@@ -632,9 +632,10 @@ open class UsuarioRepository @Inject constructor(
                         val tipo = perfil.tipo
                         val perfilCentroId = perfil.centroId
                         
-                        Timber.d("  - Perfil: tipo=$tipo, centroId=$perfilCentroId")
+                        Timber.d("  - Perfil: tipo=$tipo, centroId=$perfilCentroId, activo=${usuario.activo}")
                         
                         // Si es profesor y del centro correcto, agregar a la lista
+                        // No filtramos por activo para mostrar todos los profesores
                         if (tipo == TipoUsuario.PROFESOR && perfilCentroId == centroId) {
                             Timber.d("  ✓ MATCH: Encontrado profesor para centro $centroId")
                             usuariosConPerfil.add(usuario)
@@ -1652,6 +1653,34 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Success(profesores)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener profesores: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene todos los administradores activos del sistema
+     * @return Lista de administradores o error
+     */
+    suspend fun getAdministradores(): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = usuariosCollection
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+                
+            val administradores = snapshot.documents.mapNotNull { doc ->
+                val usuario = doc.toObject(Usuario::class.java)
+                // Filtrar solo los que tienen perfil de administrador
+                if (usuario != null && usuario.perfiles.any { it.tipo == TipoUsuario.ADMIN_APP }) {
+                    usuario.copy(dni = doc.id)
+                } else {
+                    null
+                }
+            }
+            
+            return@withContext Result.Success(administradores)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener administradores: ${e.message}")
             return@withContext Result.Error(e)
         }
     }

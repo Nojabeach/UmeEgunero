@@ -28,6 +28,7 @@ import com.google.firebase.firestore.DocumentId
  * @property preferencias Configuraciones personalizadas del usuario (tema, notificaciones, etc).
  * @property documentId Campo utilizado por Firestore para mapear el ID del documento.
  *                      Por defecto se establece igual al DNI.
+ * @property avatarUrl URL del avatar del usuario (opcional).
  *
  * @see Perfil
  * @see Direccion
@@ -44,7 +45,8 @@ data class Usuario(
     val activo: Boolean = true,
     val perfiles: List<Perfil> = emptyList(),
     val direccion: Direccion? = null,
-    val preferencias: Preferencias = Preferencias()
+    val preferencias: Preferencias = Preferencias(),
+    var avatarUrl: String? = null
 ) {
     @field:DocumentId
     var documentId: String = dni

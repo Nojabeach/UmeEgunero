@@ -152,11 +152,27 @@ class VincularProfesorClaseViewModel @Inject constructor(
             
             when (val result = centroRepository.getProfesoresByCentro(centroId)) {
                 is Result.Success -> {
+                    // Ordenamos los profesores: primero los activos y luego los inactivos
+                    val profesoresOrdenados = result.data.sortedWith(
+                        compareByDescending<Usuario> { it.activo }
+                            .thenBy { it.nombre }
+                            .thenBy { it.apellidos }
+                    )
+                    
                     _uiState.update { 
                         it.copy(
-                            profesores = result.data,
+                            profesores = profesoresOrdenados,
                             isLoading = false
                         )
+                    }
+                    
+                    // Si no hay profesores, mostrar mensaje de error
+                    if (profesoresOrdenados.isEmpty()) {
+                        _uiState.update { 
+                            it.copy(
+                                error = "No hay profesores disponibles para este centro"
+                            )
+                        }
                     }
                 }
                 is Result.Error -> {

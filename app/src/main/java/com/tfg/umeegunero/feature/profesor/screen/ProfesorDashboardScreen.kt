@@ -69,12 +69,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -113,6 +112,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.TemaPref
@@ -120,7 +120,6 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import androidx.compose.material3.HorizontalDivider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
 import com.tfg.umeegunero.ui.components.TemaSelector
@@ -139,7 +138,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.unit.sp
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 
 /**
