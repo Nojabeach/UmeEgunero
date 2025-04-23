@@ -2,8 +2,12 @@ package com.tfg.umeegunero.feature.auth.screen
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,15 +21,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -36,6 +41,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -47,10 +54,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -76,10 +85,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
+import com.tfg.umeegunero.ui.theme.AdminColor
+import com.tfg.umeegunero.ui.theme.CentroColor
+import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de inicio de sesión para la aplicación UmeEgunero.
@@ -90,12 +100,11 @@ import androidx.compose.material3.HorizontalDivider
  * específicos para mejorar la experiencia de usuario.
  * 
  * Características principales:
+ * - Diseño Material 3 con animaciones y efectos visuales modernos
+ * - Adaptación visual según tipo de usuario con colores distintivos
  * - Formulario con validación en tiempo real
- * - Adaptación visual según tipo de usuario
  * - Soporte para recordar credenciales
- * - Opción para recuperar contraseña
  * - Manejo de errores con Snackbars
- * - Animaciones y feedback visual durante la autenticación
  * - Soporte para diferentes modos (claro/oscuro)
  * 
  * @param userType Tipo de usuario que intenta iniciar sesión, determina la apariencia y comportamiento
@@ -104,8 +113,8 @@ import androidx.compose.material3.HorizontalDivider
  * @param onLoginSuccess Callback que se ejecuta cuando la autenticación es exitosa
  * @param onForgotPassword Callback que se ejecuta cuando el usuario pulsa "Olvidé mi contraseña"
  * 
- * @see LoginViewModel Para la lógica de negocio
- * @see TipoUsuario Para los diferentes tipos de usuario
+ * @author Maitane (Estudiante 2º DAM)
+ * @version 3.0
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,18 +129,26 @@ fun LoginScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val scrollState = rememberScrollState()
 
+    // Estados para la interfaz
     var showPassword by remember { mutableStateOf(false) }
     var rememberUser by remember { mutableStateOf(false) }
-    var showBiometricInfo by remember { mutableStateOf(false) }
+    var showContent by remember { mutableStateOf(false) }
+    
+    // Animación para la tarjeta principal
+    val cardElevation by animateFloatAsState(
+        targetValue = if (uiState.isLoading) 8f else 4f,
+        label = "Card Elevation Animation"
+    )
 
     // Color según tipo de usuario
     val userTypeColor = when (userType) {
-        TipoUsuario.ADMIN_APP -> MaterialTheme.colorScheme.tertiary
-        TipoUsuario.ADMIN_CENTRO-> Color(0xFF007AFF) // Azul iOS
-        TipoUsuario.PROFESOR -> Color(0xFF34C759) // Verde iOS
-        TipoUsuario.FAMILIAR -> Color(0xFF5856D6) // Púrpura iOS
-        TipoUsuario.ALUMNO -> Color(0xFFFF9500) // Naranja iOS
+        TipoUsuario.ADMIN_APP -> AdminColor
+        TipoUsuario.ADMIN_CENTRO -> CentroColor
+        TipoUsuario.PROFESOR -> ProfesorColor
+        TipoUsuario.FAMILIAR -> Color(0xFF00C853) // Verde intenso para familiares (mismo valor que FamiliaColor)
+        TipoUsuario.ALUMNO -> Color(0xFFFF9800) // Naranja para alumnos
         TipoUsuario.DESCONOCIDO -> Color.Gray
     }
 
@@ -148,6 +165,8 @@ fun LoginScreen(
     // Verificar si hay credenciales guardadas
     LaunchedEffect(Unit) {
         viewModel.checkSavedCredentials()
+        // Animación de entrada para el contenido
+        showContent = true
     }
     
     // Cuando cambia el valor de rememberUser, actualizar en el ViewModel
@@ -194,23 +213,28 @@ fun LoginScreen(
     val gradientColors = if (!isLight) {
         // Gradiente para modo oscuro
         listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+            userTypeColor.copy(alpha = 0.2f),
             MaterialTheme.colorScheme.background,
             MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
         )
     } else {
         // Gradiente para modo claro
         listOf(
-            Color(0xFFF0F4FF), // Azul muy claro
+            userTypeColor.copy(alpha = 0.1f),
             Color(0xFFF8F9FF), // Casi blanco con tinte azul
-            Color(0xFFF0FAFF)  // Azul muy claro con tinte cyan
+            userTypeColor.copy(alpha = 0.05f)
         )
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Acceso $userTypeTitle") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Acceso $userTypeTitle",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -218,10 +242,16 @@ fun LoginScreen(
                             contentDescription = "Volver"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = userTypeColor,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -232,413 +262,290 @@ fun LoginScreen(
                         colors = gradientColors
                     )
                 ),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn() + slideInVertically(
+                    initialOffsetY = { it / 2 },
+                    animationSpec = spring(stiffness = Spring.StiffnessLow)
+                ),
+                exit = fadeOut()
             ) {
-                // Logo e icono de perfil
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .verticalScroll(scrollState),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    androidx.compose.foundation.Image(
-                        painter = painterResource(id = R.drawable.app_icon),
-                        contentDescription = "App Logo",
+                    // Logo e icono de perfil
+                    Box(
                         modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "UmeEgunero",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Text(
-                        text = "Acceso $userTypeTitle",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = userTypeColor,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                // Formulario de login
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    ),
-                    elevation = CardDefaults.cardElevation(4.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(top = 24.dp, bottom = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Campo de email
-                        OutlinedTextField(
-                            value = uiState.email,
-                            onValueChange = { viewModel.updateEmail(it) },
-                            label = { Text("Email") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Email,
-                                    contentDescription = null,
-                                    tint = userTypeColor
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Email,
-                                imeAction = ImeAction.Next
-                            ),
-                            isError = uiState.emailError != null,
-                            supportingText = {
-                                if (uiState.emailError != null) {
-                                    Text(text = uiState.emailError!!)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-
-                        // Campo de contraseña
-                        OutlinedTextField(
-                            value = uiState.password,
-                            onValueChange = { viewModel.updatePassword(it) },
-                            label = { Text("Contraseña") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = userTypeColor
-                                )
-                            },
-                            trailingIcon = {
-                                IconButton(onClick = { showPassword = !showPassword }) {
-                                    Icon(
-                                        imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = if (showPassword) "Ocultar contraseña" else "Mostrar contraseña"
-                                    )
-                                }
-                            },
-                            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Password,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    keyboardController?.hide()
-                                    if (uiState.isLoginEnabled) {
-                                        viewModel.login(userType, rememberUser)
-                                    }
-                                }
-                            ),
-                            isError = uiState.passwordError != null,
-                            supportingText = {
-                                if (uiState.passwordError != null) {
-                                    Text(text = uiState.passwordError!!)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-
-                        // Recuperar contraseña
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Checkbox para recordar usuario
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            androidx.compose.material3.Checkbox(
-                                checked = rememberUser,
-                                onCheckedChange = { 
-                                    rememberUser = it
-                                    // Si activamos recordar usuario y hay credenciales guardadas, habilitamos login
-                                    if (it && !uiState.email.isNullOrEmpty() && !uiState.password.isNullOrEmpty()) {
-                                        viewModel.validateCredentials()
-                                    }
-                                }
-                            )
-                            Text(
-                                text = "Recordar mi usuario",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                        }
-
-                        // Botón para autenticación biométrica (mostrado solo como UI, sin implementación real)
-                        // Row(
-                        //     modifier = Modifier
-                        //         .fillMaxWidth()
-                        //         .padding(top = 8.dp),
-                        //     horizontalArrangement = Arrangement.End,
-                        //     verticalAlignment = Alignment.CenterVertically
-                        // ) {
-                        //     Icon(
-                        //         imageVector = Icons.Default.Fingerprint,
-                        //         contentDescription = "Acceso biométrico",
-                        //         modifier = Modifier.size(24.dp),
-                        //         tint = userTypeColor
-                        //     )
-                        //     
-                        //     Spacer(modifier = Modifier.width(4.dp))
-                        //     
-                        //     Icon(
-                        //         imageVector = Icons.Default.Info,
-                        //         contentDescription = "Información biométrica",
-                        //         modifier = Modifier
-                        //             .size(20.dp)
-                        //             .clickable(
-                        //                 interactionSource = remember { MutableInteractionSource() },
-                        //                 indication = null,
-                        //                 onClick = { /* Acción de información biométrica */ }
-                        //             ),
-                        //         tint = userTypeColor.copy(alpha = 0.7f)
-                        //     )
-                        // }
-
-                        // Comentar todo el diálogo de información biométrica
-                        // if (showBiometricInfo) {
-                        //     androidx.compose.material3.AlertDialog(
-                        //         onDismissRequest = { showBiometricInfo = false },
-                        //         title = { 
-                        //             Row(
-                        //                 verticalAlignment = Alignment.CenterVertically
-                        //             ) {
-                        //                 Icon(
-                        //                     imageVector = Icons.Default.Fingerprint,
-                        //                     contentDescription = null,
-                        //                     tint = MaterialTheme.colorScheme.primary,
-                        //                     modifier = Modifier.size(24.dp)
-                        //                 )
-                        //                 Spacer(modifier = Modifier.width(8.dp))
-                        //                 Text(
-                        //                     "Acceso Biométrico",
-                        //                     fontWeight = FontWeight.Bold
-                        //                 )
-                        //             }
-                        //         },
-                        //         text = {
-                        //             Column {
-                        //                 Text(
-                        //                     "Para utilizar el acceso biométrico:",
-                        //                     fontWeight = FontWeight.Medium,
-                        //                     modifier = Modifier.padding(bottom = 8.dp)
-                        //                 )
-                        //                 
-                        //                 HorizontalDivider(
-                        //                     modifier = Modifier.padding(vertical = 8.dp),
-                        //                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                        //                 )
-                        //                 
-                        //                 Row(
-                        //                     modifier = Modifier.padding(vertical = 4.dp),
-                        //                     verticalAlignment = Alignment.CenterVertically
-                        //                 ) {
-                        //                     Box(
-                        //                         modifier = Modifier
-                        //                             .size(24.dp)
-                        //                             .background(
-                        //                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        //                                 CircleShape
-                        //                             ),
-                        //                         contentAlignment = Alignment.Center
-                        //                     ) {
-                        //                         Text(
-                        //                             "1",
-                        //                             fontWeight = FontWeight.Bold,
-                        //                             color = MaterialTheme.colorScheme.primary
-                        //                         )
-                        //                     }
-                        //                     Spacer(modifier = Modifier.width(8.dp))
-                        //                     Text("Inicia sesión normalmente primero")
-                        //                 }
-                        //                 
-                        //                 Row(
-                        //                     modifier = Modifier.padding(vertical = 4.dp),
-                        //                     verticalAlignment = Alignment.CenterVertically
-                        //                 ) {
-                        //                     Box(
-                        //                         modifier = Modifier
-                        //                             .size(24.dp)
-                        //                             .background(
-                        //                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        //                                 CircleShape
-                        //                             ),
-                        //                         contentAlignment = Alignment.Center
-                        //                     ) {
-                        //                         Text(
-                        //                             "2",
-                        //                             fontWeight = FontWeight.Bold,
-                        //                             color = MaterialTheme.colorScheme.primary
-                        //                         )
-                        //                     }
-                        //                     Spacer(modifier = Modifier.width(8.dp))
-                        //                     Text("Ve a Configuración > Seguridad")
-                        //                 }
-                        //                 
-                        //                 Row(
-                        //                     modifier = Modifier.padding(vertical = 4.dp),
-                        //                     verticalAlignment = Alignment.CenterVertically
-                        //                 ) {
-                        //                     Box(
-                        //                         modifier = Modifier
-                        //                             .size(24.dp)
-                        //                             .background(
-                        //                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        //                                 CircleShape
-                        //                             ),
-                        //                         contentAlignment = Alignment.Center
-                        //                     ) {
-                        //                         Text(
-                        //                             "3",
-                        //                             fontWeight = FontWeight.Bold,
-                        //                             color = MaterialTheme.colorScheme.primary
-                        //                         )
-                        //                     }
-                        //                     Spacer(modifier = Modifier.width(8.dp))
-                        //                     Text("Activa la autenticación biométrica")
-                        //                 }
-                        //                 
-                        //                 Row(
-                        //                     modifier = Modifier.padding(vertical = 4.dp),
-                        //                     verticalAlignment = Alignment.CenterVertically
-                        //                 ) {
-                        //                     Box(
-                        //                         modifier = Modifier
-                        //                             .size(24.dp)
-                        //                             .background(
-                        //                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        //                                 CircleShape
-                        //                             ),
-                        //                         contentAlignment = Alignment.Center
-                        //                     ) {
-                        //                         Text(
-                        //                             "4",
-                        //                             fontWeight = FontWeight.Bold,
-                        //                             color = MaterialTheme.colorScheme.primary
-                        //                         )
-                        //                     }
-                        //                     Spacer(modifier = Modifier.width(8.dp))
-                        //                     Text("La próxima vez podrás acceder usando tu huella dactilar")
-                        //                 }
-                        //             }
-                        //         },
-                        //         confirmButton = {
-                        //             Button(
-                        //                 onClick = { showBiometricInfo = false },
-                        //                 colors = ButtonDefaults.buttonColors(
-                        //                     containerColor = MaterialTheme.colorScheme.primary
-                        //                 )
-                        //             ) {
-                        //                 Text("Entendido")
-                        //             }
-                        //         },
-                        //         dismissButton = {
-                        //             TextButton(
-                        //                 onClick = { showBiometricInfo = false }
-                        //             ) {
-                        //                 Text("Cerrar")
-                        //             }
-                        //         }
-                        //     )
-                        // }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        TextButton(
-                            onClick = onForgotPassword,
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        ) {
-                            Text(
-                                text = "¿Olvidaste tu contraseña?",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        // Botón de inicio de sesión
-                        Button(
-                            onClick = { 
-                                viewModel.login(userType, rememberUser) 
-                            },
-                            enabled = uiState.isLoginEnabled && !uiState.isLoading,
+                        // Fondo circular con color del usuario
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = userTypeColor
-                            ),
-                            shape = RoundedCornerShape(12.dp)
+                                .size(110.dp)
+                                .background(
+                                    color = userTypeColor.copy(alpha = 0.1f),
+                                    shape = CircleShape
+                                )
+                        )
+                        
+                        // Logo
+                        Box(
+                            modifier = Modifier
+                                .size(88.dp)
+                                .clip(CircleShape)
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
                         ) {
-                            AnimatedVisibility(
-                                visible = uiState.isLoading,
-                                enter = fadeIn(),
-                                exit = fadeOut()
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
-                                )
-                            }
-
-                            AnimatedVisibility(
-                                visible = !uiState.isLoading,
-                                enter = fadeIn(),
-                                exit = fadeOut()
-                            ) {
-                                Text(
-                                    "Iniciar Sesión",
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                            androidx.compose.foundation.Image(
+                                painter = painterResource(id = R.drawable.app_icon),
+                                contentDescription = "App Logo",
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
                         }
                     }
-                }
 
-                // Instrucciones para acceso
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                    // Título de la app y subtítulo
                     Column(
-                        modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        val instructionText = when (userType) {
-                            TipoUsuario.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación."
-                            TipoUsuario.ADMIN_CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
-                            TipoUsuario.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo."
-                            TipoUsuario.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro."
-                            else -> "Introduce tus credenciales para acceder."
-                        }
+                        Text(
+                            text = "UmeEgunero",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
 
                         Text(
-                            text = instructionText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "Acceso $userTypeTitle",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = userTypeColor,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
+
+                    // Formulario de login
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                shadowElevation = cardElevation
+                                translationY = if (uiState.isLoading) -2f else 0f
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Campo de email
+                            OutlinedTextField(
+                                value = uiState.email,
+                                onValueChange = { viewModel.updateEmail(it) },
+                                label = { Text("Email") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Email,
+                                        contentDescription = null,
+                                        tint = userTypeColor
+                                    )
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Email,
+                                    imeAction = ImeAction.Next
+                                ),
+                                isError = uiState.emailError != null,
+                                supportingText = {
+                                    if (uiState.emailError != null) {
+                                        Text(text = uiState.emailError!!)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            // Campo de contraseña
+                            OutlinedTextField(
+                                value = uiState.password,
+                                onValueChange = { viewModel.updatePassword(it) },
+                                label = { Text("Contraseña") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = userTypeColor
+                                    )
+                                },
+                                trailingIcon = {
+                                    IconButton(onClick = { showPassword = !showPassword }) {
+                                        Icon(
+                                            imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (showPassword) "Ocultar contraseña" else "Mostrar contraseña",
+                                            tint = userTypeColor.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        keyboardController?.hide()
+                                        if (uiState.isLoginEnabled) {
+                                            viewModel.login(userType, rememberUser)
+                                        }
+                                    }
+                                ),
+                                isError = uiState.passwordError != null,
+                                supportingText = {
+                                    if (uiState.passwordError != null) {
+                                        Text(text = uiState.passwordError!!)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            // Checkbox para recordar usuario
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = rememberUser,
+                                    onCheckedChange = { 
+                                        rememberUser = it
+                                        // Si activamos recordar usuario y hay credenciales guardadas, habilitamos login
+                                        if (it && !uiState.email.isNullOrEmpty() && !uiState.password.isNullOrEmpty()) {
+                                            viewModel.validateCredentials()
+                                        }
+                                    }
+                                )
+                                Text(
+                                    text = "Recordar mis credenciales",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Enlace para recuperar contraseña
+                            TextButton(
+                                onClick = onForgotPassword,
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text(
+                                    text = "¿Olvidaste tu contraseña?",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = userTypeColor
+                                )
+                            }
+
+                            // Botón de inicio de sesión
+                            Button(
+                                onClick = { 
+                                    viewModel.login(userType, rememberUser) 
+                                },
+                                enabled = uiState.isLoginEnabled && !uiState.isLoading,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = userTypeColor
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                if (uiState.isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text(
+                                        "Iniciar Sesión",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Instrucciones para acceso
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = userTypeColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Text(
+                                    text = "Información de acceso",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = userTypeColor
+                                )
+                            }
+                            
+                            val instructionText = when (userType) {
+                                TipoUsuario.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación para gestionar el sistema en su totalidad."
+                                TipoUsuario.ADMIN_CENTRO -> "Utiliza las credenciales proporcionadas para la gestión del centro educativo y su configuración."
+                                TipoUsuario.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo para acceder a tus clases y alumnos."
+                                TipoUsuario.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro para ver la información de tus hijos."
+                                TipoUsuario.ALUMNO -> "Utiliza los datos de acceso proporcionados por tu centro educativo."
+                                else -> "Introduce tus credenciales para acceder al sistema."
+                            }
+
+                            Text(
+                                text = instructionText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    // Espaciador final para scroll
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
@@ -657,8 +564,11 @@ private fun Color.luminance(): Float {
 @Composable
 fun LoginScreenLightPreview() {
     UmeEguneroTheme(darkTheme = false) {
-        // Usar una versión simplificada sin dependencia del ViewModel
-        LoginScreenPreview(userType = TipoUsuario.ADMIN_APP, darkTheme = false)
+        LoginScreen(
+            userType = TipoUsuario.PROFESOR,
+            onNavigateBack = {},
+            onLoginSuccess = {}
+        )
     }
 }
 
@@ -666,267 +576,10 @@ fun LoginScreenLightPreview() {
 @Composable
 fun LoginScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        // Usar una versión simplificada sin dependencia del ViewModel
-        LoginScreenPreview(userType = TipoUsuario.ADMIN_APP, darkTheme = true)
-    }
-}
-
-@Composable
-fun LoginScreenPreview(userType: TipoUsuario, darkTheme: Boolean) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var showPassword by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Color según tipo de usuario
-    val userTypeColor = when (userType) {
-        TipoUsuario.ADMIN_APP -> MaterialTheme.colorScheme.tertiary
-        TipoUsuario.ADMIN_CENTRO-> Color(0xFF007AFF) // Azul iOS
-        TipoUsuario.PROFESOR -> Color(0xFF34C759) // Verde iOS
-        TipoUsuario.FAMILIAR -> Color(0xFF5856D6) // Púrpura iOS
-        TipoUsuario.ALUMNO -> Color(0xFFFF9500) // Naranja iOS
-        TipoUsuario.DESCONOCIDO -> Color.Gray
-    }
-
-    // Título según tipo de usuario
-    val userTypeTitle = when (userType) {
-        TipoUsuario.ADMIN_APP -> "Administrador"
-        TipoUsuario.ADMIN_CENTRO -> "Centro Educativo"
-        TipoUsuario.PROFESOR -> "Profesorado"
-        TipoUsuario.FAMILIAR -> "Familiar"
-        TipoUsuario.ALUMNO -> "Alumno"
-        TipoUsuario.DESCONOCIDO -> "Usuario"
-    }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Iniciar Sesión") },
-                navigationIcon = {
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Fondo gradiente
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                userTypeColor.copy(alpha = 0.1f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top
-            ) {
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Avatar/ícono
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .background(userTypeColor.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Usar iconos de Material en lugar de recursos drawable
-                    // ya que parece que faltan esos recursos
-                    val icon = when (userType) {
-                        TipoUsuario.ADMIN_APP -> Icons.Default.AccountCircle
-                        TipoUsuario.ADMIN_CENTRO -> Icons.Default.School
-                        TipoUsuario.PROFESOR -> Icons.Default.Person
-                        TipoUsuario.FAMILIAR -> Icons.Default.Person // Family icon no está en el Material Icons por defecto
-                        TipoUsuario.ALUMNO -> Icons.Default.Person // Icono para alumno
-                        TipoUsuario.DESCONOCIDO -> Icons.Default.Person // Icono para desconocido
-                    }
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = "Icono de $userTypeTitle",
-                        modifier = Modifier.size(64.dp),
-                        tint = userTypeColor
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Título
-                Text(
-                    text = userTypeTitle,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = userTypeColor,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Formulario
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = 4.dp
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // Email
-                        OutlinedTextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            label = { Text("Email") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Email,
-                                    contentDescription = null,
-                                    tint = userTypeColor
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Email,
-                                imeAction = ImeAction.Next
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Password
-                        OutlinedTextField(
-                            value = password,
-                            onValueChange = { password = it },
-                            label = { Text("Contraseña") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = userTypeColor
-                                )
-                            },
-                            trailingIcon = {
-                                IconButton(onClick = { showPassword = !showPassword }) {
-                                    Icon(
-                                        imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = if (showPassword) "Ocultar contraseña" else "Mostrar contraseña"
-                                    )
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Password,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {}
-                            ),
-                            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Botón olvidé contraseña
-                        TextButton(
-                            onClick = {},
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Text("¿Olvidaste la contraseña?")
-                        }
-
-                        // Botón de inicio de sesión
-                        Button(
-                            onClick = {},
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = userTypeColor
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Iniciar Sesión")
-                        }
-
-                        // Botón para autenticación biométrica (en preview)
-                        // Row(
-                        //     modifier = Modifier
-                        //         .fillMaxWidth()
-                        //         .padding(top = 16.dp),
-                        //     horizontalArrangement = Arrangement.Center,
-                        //     verticalAlignment = Alignment.CenterVertically
-                        // ) {
-                        //     Icon(
-                        //         imageVector = Icons.Default.Fingerprint,
-                        //         contentDescription = "Acceso biométrico",
-                        //         modifier = Modifier.size(24.dp),
-                        //         tint = userTypeColor
-                        //     )
-                        //     
-                        //     Spacer(modifier = Modifier.width(8.dp))
-                        //     
-                        //     Icon(
-                        //         imageVector = Icons.Default.Info,
-                        //         contentDescription = "Información biométrica",
-                        //         modifier = Modifier
-                        //             .size(20.dp)
-                        //             .clickable(
-                        //                 interactionSource = remember { MutableInteractionSource() },
-                        //                 indication = null,
-                        //                 onClick = { /* Acción de información biométrica */ }
-                        //             ),
-                        //         tint = userTypeColor.copy(alpha = 0.7f)
-                        //     )
-                        // }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Instrucciones según el tipo de usuario
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        val instructionText = when (userType) {
-                            TipoUsuario.ADMIN_APP -> "Accede con tus credenciales de administrador de la aplicación."
-                            TipoUsuario.ADMIN_CENTRO -> "Accede con las credenciales proporcionadas para la gestión del centro educativo."
-                            TipoUsuario.PROFESOR -> "Introduce las credenciales asignadas por tu centro educativo."
-                            TipoUsuario.FAMILIAR -> "Accede con el email y contraseña que utilizaste en el registro."
-                            else -> "Introduce tus credenciales para acceder."
-                        }
-
-                        Text(
-                            text = instructionText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
+        LoginScreen(
+            userType = TipoUsuario.FAMILIAR,
+            onNavigateBack = {},
+            onLoginSuccess = {}
+        )
     }
 }
