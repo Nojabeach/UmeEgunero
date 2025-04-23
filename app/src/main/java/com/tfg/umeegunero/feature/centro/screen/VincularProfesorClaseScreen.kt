@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.feature.centro.screen
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,11 +11,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,9 +25,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Clase
@@ -34,6 +36,7 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.centro.viewmodel.VincularProfesorClaseViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * Pantalla para vincular profesores a clases
@@ -71,9 +74,33 @@ fun VincularProfesorClaseScreen(
                 title = { Text("Vincular Profesores a Clases") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.Close, contentDescription = "Volver")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
-                }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        // Recargar datos
+                        scope.launch {
+                            val centroId = uiState.centroId
+                            if (centroId.isNotEmpty()) {
+                                viewModel.cargarCursos(centroId)
+                                viewModel.cargarProfesores(centroId)
+                                if (uiState.cursoSeleccionado != null) {
+                                    viewModel.cargarClases(uiState.cursoSeleccionado!!.id)
+                                }
+                            }
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Recargar datos"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
         }
     ) { paddingValues ->
@@ -82,7 +109,20 @@ fun VincularProfesorClaseScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Cargando datos...",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             }
         } else {
             Column(
@@ -95,7 +135,19 @@ fun VincularProfesorClaseScreen(
                 CursoSelector(
                     cursos = uiState.cursos,
                     cursoSeleccionado = uiState.cursoSeleccionado,
-                    onCursoSelected = { viewModel.seleccionarCurso(it) }
+                    onCursoSelected = { curso -> 
+                        if (curso.id.isNotEmpty()) {
+                            viewModel.seleccionarCurso(curso)
+                        } else {
+                            // Si se recibe un curso vacío, recargar los datos
+                            val centroId = uiState.centroId
+                            if (centroId.isNotEmpty()) {
+                                scope.launch {
+                                    viewModel.cargarCursos(centroId)
+                                }
+                            }
+                        }
+                    }
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -111,7 +163,10 @@ fun VincularProfesorClaseScreen(
                     ProfesorList(
                         profesores = uiState.profesores,
                         profesorSeleccionado = uiState.profesorSeleccionado,
-                        onProfesorSelected = { viewModel.seleccionarProfesor(it) },
+                        onProfesorSelected = { 
+                            Timber.d("Profesor seleccionado: ${it.nombre} ${it.apellidos}")
+                            viewModel.seleccionarProfesor(it) 
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
@@ -145,19 +200,64 @@ fun VincularProfesorClaseScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.surface)
+                                .background(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clip(RoundedCornerShape(12.dp))
                                 .border(
                                     width = 1.dp,
                                     color = MaterialTheme.colorScheme.outlineVariant,
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = RoundedCornerShape(12.dp)
                                 )
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Selecciona un curso y un profesor para gestionar las asignaciones de clases",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Información y estadísticas
+                if (uiState.profesorSeleccionado != null) {
+                    val clasesAsignadas = uiState.clasesAsignadas[uiState.profesorSeleccionado?.documentId] ?: emptyList()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = RoundedCornerShape(8.dp),
+                        tonalElevation = 2.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "Selecciona un curso y un profesor para gestionar las asignaciones de clases",
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                text = "Profesor: ${uiState.profesorSeleccionado?.nombre} ${uiState.profesorSeleccionado?.apellidos}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Clases asignadas: ${clasesAsignadas.size}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
@@ -204,41 +304,87 @@ fun CursoSelector(
     var expanded by remember { mutableStateOf(false) }
     
     Column {
-        Text(
-            text = "Curso",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Curso",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Mostrar contador de cursos
+                Text(
+                    text = "${cursos.size} cursos disponibles",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (cursos.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // Botón para recargar cursos
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = { 
+                        // Aquí no podemos llamar directamente al ViewModel, 
+                        // pero esto será manejado por el composable padre
+                        onCursoSelected(cursoSeleccionado ?: Curso())
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recargar cursos",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(4.dp))
         
         Box {
-            Row(
+            OutlinedCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { expanded = !expanded }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .clickable { expanded = !expanded },
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = if (cursos.isEmpty()) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (cursos.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
+                )
             ) {
-                Text(
-                    text = cursoSeleccionado?.nombre ?: "Selecciona un curso",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                
-                Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Ocultar opciones" else "Mostrar opciones"
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (cursos.isEmpty()) 
+                            "No hay cursos disponibles" 
+                        else 
+                            cursoSeleccionado?.nombre ?: "Selecciona un curso",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (cursos.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (expanded) "Ocultar opciones" else "Mostrar opciones",
+                        tint = if (cursos.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             
             DropdownMenu(
-                expanded = expanded,
+                expanded = expanded && cursos.isNotEmpty(),
                 onDismissRequest = { expanded = false },
                 modifier = Modifier
                     .fillMaxWidth(0.9f)
@@ -253,6 +399,17 @@ fun CursoSelector(
                     )
                 }
             }
+        }
+        
+        // Mensaje de ayuda si no hay cursos
+        if (cursos.isEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Primero debe crear cursos en la sección de 'Gestión de Cursos'",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 4.dp)
+            )
         }
     }
 }
@@ -272,9 +429,9 @@ fun ProfesorList(
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
-        Card(
+        ElevatedCard(
             modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(8.dp)
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -282,6 +439,7 @@ fun ProfesorList(
                     .padding(8.dp)
             ) {
                 items(profesores) { profesor ->
+                    Timber.d("Renderizando profesor: ${profesor.nombre} ${profesor.apellidos}, documentId: ${profesor.documentId}")
                     ProfesorItem(
                         profesor = profesor,
                         isSelected = profesor.documentId == profesorSeleccionado?.documentId,
@@ -297,7 +455,22 @@ fun ProfesorList(
                                 .height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No hay profesores disponibles")
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    "No hay profesores disponibles",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Comprueba tu conexión a Firebase",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -312,13 +485,13 @@ fun ProfesorItem(
     isSelected: Boolean,
     onProfesorSelected: (Usuario) -> Unit
 ) {
-    Card(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onProfesorSelected(profesor) },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         )
     ) {
         Row(
@@ -373,9 +546,9 @@ fun ClasesList(
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
-        Card(
+        ElevatedCard(
             modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(8.dp)
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -415,12 +588,15 @@ fun ClaseItem(
     isAsignada: Boolean,
     onAsignarClase: () -> Unit
 ) {
-    Card(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isAsignada) Color(0xFFE8F5E9).copy(alpha = 0.7f) else MaterialTheme.colorScheme.surfaceVariant
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isAsignada) 
+                MaterialTheme.colorScheme.tertiaryContainer 
+            else 
+                MaterialTheme.colorScheme.surface
         )
     ) {
         Row(
@@ -435,7 +611,11 @@ fun ClaseItem(
                 Text(
                     text = clase.nombre,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = if (isAsignada) 
+                        MaterialTheme.colorScheme.onTertiaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.onSurface
                 )
                 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -443,29 +623,35 @@ fun ClaseItem(
                 clase.aula?.let {
                     Text(
                         text = "Aula: $it",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isAsignada) 
+                            MaterialTheme.colorScheme.onTertiaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             
             if (isAsignada) {
-                IconButton(
-                    onClick = onAsignarClase
+                FilledTonalIconButton(
+                    onClick = onAsignarClase,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Desasignar profesor",
-                        tint = Color.Red
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             } else {
-                IconButton(
+                FilledIconButton(
                     onClick = onAsignarClase
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Asignar profesor",
-                        tint = MaterialTheme.colorScheme.primary
+                        contentDescription = "Asignar profesor"
                     )
                 }
             }
@@ -480,56 +666,37 @@ fun ConfirmacionDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = onDismiss
-                    ) {
-                        Text("Cancelar")
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Button(
-                        onClick = {
-                            onConfirm()
-                            onDismiss()
-                        }
-                    ) {
-                        Text("Confirmar")
-                    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm()
+                    onDismiss()
                 }
+            ) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss
+            ) {
+                Text("Cancelar")
             }
         }
-    }
+    )
 } 

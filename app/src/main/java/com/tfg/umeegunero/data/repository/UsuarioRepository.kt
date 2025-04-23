@@ -613,27 +613,50 @@ open class UsuarioRepository @Inject constructor(
         try {
             Timber.d("Buscando profesores para el centro: $centroId")
             
-            // Enfoque más simple para encontrar profesores
+            // Enfoque mejorado para encontrar profesores
             val usuariosConPerfil = mutableListOf<Usuario>()
             
             // Obtener todos los usuarios
-            val todosLosUsuarios = usuariosCollection.get().await().documents
-            Timber.d("Total usuarios encontrados: ${todosLosUsuarios.size}")
+            val todosLosUsuarios = usuariosCollection.get().await()
+            Timber.d("Total usuarios encontrados: ${todosLosUsuarios.size()}")
+            
+            // Logging detallado para depuración
+            Timber.d("============== DEPURACIÓN BÚSQUEDA DE PROFESORES ==============")
+            Timber.d("Centro ID buscado: $centroId")
+            Timber.d("Total documentos de usuarios: ${todosLosUsuarios.documents.size}")
             
             // Examinar cada documento manualmente
-            for (doc in todosLosUsuarios) {
+            for (doc in todosLosUsuarios.documents) {
                 try {
-                    // Convertir a usuario
-                    val usuario = doc.toObject(Usuario::class.java) ?: continue
-                    Timber.d("Revisando usuario: ${usuario.nombre} ${usuario.apellidos} (DNI: ${usuario.dni})")
-                    
+                    // Verificar si el documento existe y tiene datos
+                    if (!doc.exists()) {
+                        Timber.d("Documento no existe: ${doc.id}")
+                        continue
+                    }
+                        
+                    // Convertir a usuario con el ID explícitamente
+                    val usuario = doc.toObject(Usuario::class.java)
+                    if (usuario == null) {
+                        Timber.d("No se pudo convertir el documento a Usuario: ${doc.id}")
+                        continue
+                    }
+                        
+                    // Asignar manualmente el documentId
+                    usuario.documentId = doc.id
+                        
+                    Timber.d("Revisando usuario: ${usuario.nombre} ${usuario.apellidos} (ID: ${usuario.documentId})")
+                        
+                    // Verificar si es profesor sin importar el centro - para depuración
+                    val esProfesorGeneral = usuario.perfiles.any { it.tipo == TipoUsuario.PROFESOR }
+                    Timber.d("  - ¿Es profesor en general?: $esProfesorGeneral")
+                        
                     // Verificar cada perfil manualmente
                     for (perfil in usuario.perfiles) {
                         val tipo = perfil.tipo
                         val perfilCentroId = perfil.centroId
-                        
+                            
                         Timber.d("  - Perfil: tipo=$tipo, centroId=$perfilCentroId, activo=${usuario.activo}")
-                        
+                            
                         // Si es profesor y del centro correcto, agregar a la lista
                         // No filtramos por activo para mostrar todos los profesores
                         if (tipo == TipoUsuario.PROFESOR && perfilCentroId == centroId) {
@@ -647,13 +670,63 @@ open class UsuarioRepository @Inject constructor(
                 }
             }
             
+            // Si no se encontraron profesores, intentar un enfoque alternativo con el campo centroId
+            if (usuariosConPerfil.isEmpty()) {
+                Timber.d("No se encontraron profesores con perfil. Intentando enfoque alternativo...")
+                
+                // Buscar usuarios que tengan TipoUsuario.PROFESOR en su campo tipo
+                val queryProfesores = usuariosCollection
+                    .whereEqualTo("tipo", TipoUsuario.PROFESOR.name)
+                    .get()
+                    .await()
+                    
+                Timber.d("Profesores encontrados por tipo: ${queryProfesores.size()}")
+                    
+                for (doc in queryProfesores.documents) {
+                    try {
+                        val usuario = doc.toObject(Usuario::class.java) ?: continue
+                        usuario.documentId = doc.id
+                        
+                        Timber.d("Profesor por tipo: ${usuario.nombre} ${usuario.apellidos}")
+                        usuariosConPerfil.add(usuario)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error procesando profesor por tipo: ${doc.id}")
+                    }
+                }
+            }
+            
+            // Si todavía no hay resultados, intentemos obtener cualquier usuario con rol de profesor
+            if (usuariosConPerfil.isEmpty()) {
+                Timber.d("Intentando último enfoque: buscar cualquier usuario con rol de profesor...")
+                
+                // Obtener todos los usuarios y filtrar manualmente
+                val todosLosDocs = usuariosCollection.get().await().documents
+                    
+                for (doc in todosLosDocs) {
+                    try {
+                        val data = doc.data
+                        if (data != null && (data["rol"] == "PROFESOR" || data["tipo"] == "PROFESOR")) {
+                            val usuario = doc.toObject(Usuario::class.java)
+                            if (usuario != null) {
+                                usuario.documentId = doc.id
+                                Timber.d("Encontrado profesor por rol/tipo: ${usuario.nombre}")
+                                usuariosConPerfil.add(usuario)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error en último enfoque: ${doc.id}")
+                    }
+                }
+            }
+            
             Timber.d("RESULTADO FINAL: Encontrados ${usuariosConPerfil.size} profesores para el centro $centroId")
             return@withContext Result.Success(usuariosConPerfil)
         } catch (e: Exception) {
-            Timber.e(e, "Error general buscando profesores para centro $centroId: ${e.message}")
+            Timber.e(e, "Error general al buscar profesores: ${e.message}")
             return@withContext Result.Error(e)
         }
     }
+
     /**
      * Obtiene los registros de actividad de un alumno
      */

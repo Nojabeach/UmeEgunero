@@ -39,16 +39,32 @@ class CursoRepository @Inject constructor(
     /**
      * Obtiene los cursos de un centro específico
      */
-    suspend fun getCursosByCentro(centroId: String): Result<List<Curso>> = withContext(Dispatchers.IO) {
+    suspend fun obtenerCursosPorCentro(centroId: String): Result<List<Curso>> = withContext(Dispatchers.IO) {
         try {
-            val cursosSnapshot = cursosCollection
+            Timber.d("Consultando cursos para centro: $centroId")
+            
+            val querySnapshot = cursosCollection
                 .whereEqualTo("centroId", centroId)
-                .whereEqualTo("activo", true)
-                .get().await()
-
-            val cursos = cursosSnapshot.toObjects(Curso::class.java)
+                .whereEqualTo("activo", true)  // Solo cursos activos por defecto
+                .orderBy("nombre", Query.Direction.ASCENDING)
+                .get()
+                .await()
+            
+            val cursos = querySnapshot.documents.mapNotNull { doc ->
+                val curso = doc.toObject(Curso::class.java)
+                curso?.copy(id = doc.id)
+            }
+            
+            Timber.d("Se encontraron ${cursos.size} cursos para el centro $centroId en consulta directa")
+            
+            // Logging detallado para depuración
+            cursos.forEach { curso ->
+                Timber.d("  - Curso encontrado: ${curso.id} - ${curso.nombre} (activo: ${curso.activo})")
+            }
+            
             return@withContext Result.Success(cursos)
         } catch (e: Exception) {
+            Timber.e(e, "Error al obtener cursos por centro: ${e.message}")
             return@withContext Result.Error(e)
         }
     }
@@ -244,21 +260,37 @@ class CursoRepository @Inject constructor(
     }
     
     /**
-     * Obtiene todos los cursos de un centro educativo
+     * Obtiene todos los cursos de un centro educativo, incluyendo activos e inactivos
      * @param centroId ID del centro educativo
      * @return Lista de cursos del centro
      */
-    suspend fun obtenerCursosPorCentro(centroId: String): List<Curso> {
-        return try {
+    suspend fun obtenerTodosCursosPorCentro(centroId: String): Result<List<Curso>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Consultando TODOS los cursos para centro: $centroId")
+            
             val querySnapshot = cursosCollection
                 .whereEqualTo("centroId", centroId)
+                // Sin filtro de activo
                 .orderBy("nombre", Query.Direction.ASCENDING)
                 .get()
                 .await()
             
-            querySnapshot.documents.mapNotNull { it.toObject(Curso::class.java) }
-        } catch (e: FirebaseFirestoreException) {
-            throw Exception("Error al obtener los cursos: ${e.message}")
+            val cursos = querySnapshot.documents.mapNotNull { doc ->
+                val curso = doc.toObject(Curso::class.java)
+                curso?.copy(id = doc.id)
+            }
+            
+            Timber.d("Se encontraron ${cursos.size} cursos totales para el centro $centroId")
+            
+            // Logging detallado para depuración
+            cursos.forEach { curso ->
+                Timber.d("  - Curso encontrado: ${curso.id} - ${curso.nombre} (activo: ${curso.activo})")
+            }
+            
+            return@withContext Result.Success(cursos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener todos los cursos por centro: ${e.message}")
+            return@withContext Result.Error(e)
         }
     }
     

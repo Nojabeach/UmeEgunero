@@ -1017,4 +1017,40 @@ class CentroRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene los centros donde un usuario es administrador o profesor
+     */
+    suspend fun getCentrosByAdminOrProfesor(usuarioId: String): Result<List<Centro>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando centros donde el usuario $usuarioId es admin o profesor")
+            
+            // Buscar centros donde el usuario es administrador
+            val centrosAdminSnapshot = centrosCollection
+                .whereArrayContains("adminIds", usuarioId)
+                .get()
+                .await()
+                
+            val centrosAdmin = centrosAdminSnapshot.toObjects(Centro::class.java)
+            Timber.d("Se encontraron ${centrosAdmin.size} centros donde el usuario es admin")
+            
+            // Buscar centros donde el usuario es profesor
+            val centrosProfesorSnapshot = centrosCollection
+                .whereArrayContains("profesorIds", usuarioId)
+                .get()
+                .await()
+                
+            val centrosProfesor = centrosProfesorSnapshot.toObjects(Centro::class.java)
+            Timber.d("Se encontraron ${centrosProfesor.size} centros donde el usuario es profesor")
+            
+            // Combinar y eliminar duplicados
+            val todosCentros = (centrosAdmin + centrosProfesor).distinctBy { it.id }
+            Timber.d("Total de centros encontrados (sin duplicados): ${todosCentros.size}")
+            
+            return@withContext Result.Success(todosCentros)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar centros para el usuario $usuarioId: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
 }
