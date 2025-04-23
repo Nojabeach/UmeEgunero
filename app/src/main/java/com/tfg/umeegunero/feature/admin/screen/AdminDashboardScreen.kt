@@ -37,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.ui.theme.AdminColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,7 +57,7 @@ import java.util.Locale
  * @param viewModel ViewModel que contiene la lógica de negocio del dashboard de administración
  * 
  * @author Maitane (Estudiante 2º DAM)
- * @version 2.0
+ * @version 3.0
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,19 +91,30 @@ fun AdminDashboardScreen(
     
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = "Panel de Administración",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        fontWeight = FontWeight.Bold
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = AdminColor,
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 ),
                 actions = {
+                    // Configuración
+                    IconButton(onClick = { 
+                        navController.navigate(AppScreens.Perfil.route)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Configuración"
+                        )
+                    }
+                    
+                    // Cerrar sesión
                     IconButton(onClick = { 
                         viewModel.logout()
                         navController.navigate(AppScreens.Welcome.route) {
@@ -111,14 +123,14 @@ fun AdminDashboardScreen(
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Cerrar sesión",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            contentDescription = "Cerrar sesión"
                         )
                     }
                 }
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.isLoading) {
             Box(
@@ -127,7 +139,7 @@ fun AdminDashboardScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = AdminColor)
             }
         } else {
             AnimatedVisibility(
@@ -138,231 +150,169 @@ fun AdminDashboardScreen(
                 ),
                 exit = fadeOut()
             ) {
-                AdminDashboardContent(
-                    currentDate = currentDate,
-                    onNavigateToGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
-                    onNavigateToAddCentro = { navController.navigate(AppScreens.AddCentro.route) },
-                    onNavigateToEstadisticas = { navController.navigate(AppScreens.Estadisticas.route) },
-                    onNavigateToReporteUso = { navController.navigate(AppScreens.ReporteUso.route) },
-                    onNavigateToSeguridad = { navController.navigate(AppScreens.Seguridad.route) },
-                    onNavigateToComunicados = { navController.navigate(AppScreens.ComunicadosCirculares.route) },
-                    onNavigateToNotificaciones = { navController.navigate(AppScreens.Notificaciones.route) },
-                    onNavigateToPerfil = { navController.navigate(AppScreens.Perfil.route) },
-                    modifier = Modifier.padding(paddingValues),
-                    navController = navController
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Tarjeta de bienvenida
+                    WelcomeCard(currentDate = currentDate)
+                    
+                    // Sección de accesos rápidos
+                    SectionHeader(
+                        title = "Accesos Rápidos",
+                        icon = Icons.Default.Dashboard
+                    )
+                    
+                    QuickActionsGrid(
+                        onGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
+                        onAddCentro = { navController.navigate(AppScreens.AddCentro.route) },
+                        onGestionCursos = { navController.navigate(AppScreens.ListaCursos.route) },
+                        onGestionClases = { navController.navigate(AppScreens.ListaClases.route) },
+                        onGestionUsuarios = { navController.navigate(AppScreens.GestionUsuarios.route) },
+                        onAddUsuario = { navController.navigate(AppScreens.AddUser.createRoute(true)) }
+                    )
+                    
+                    // Sección de vinculaciones
+                    SectionHeader(
+                        title = "Vinculaciones",
+                        icon = Icons.Default.Link
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CategoryCard(
+                            title = "Profesores - Clases",
+                            description = "Asignar profesores a clases",
+                            icon = Icons.Default.School,
+                            color = Color(0xFF009688),
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate(AppScreens.VincularProfesorClase.route) }
+                        )
+                        
+                        CategoryCard(
+                            title = "Familiares - Alumnos",
+                            description = "Vincular familiares con alumnos",
+                            icon = Icons.Default.ChildCare,
+                            color = Color(0xFF2196F3),
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate(AppScreens.VincularAlumnoFamiliar.route) }
+                        )
+                    }
+                    
+                    // Sección de análisis y reportes
+                    SectionHeader(
+                        title = "Análisis y Reportes",
+                        icon = Icons.Default.Assessment
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CategoryCard(
+                            title = "Estadísticas",
+                            description = "Datos generales del sistema",
+                            icon = Icons.Default.PieChart,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate(AppScreens.Estadisticas.route) }
+                        )
+                        
+                        CategoryCard(
+                            title = "Uso del Sistema",
+                            description = "Métricas de uso y actividad",
+                            icon = Icons.Default.Timeline,
+                            color = Color(0xFFE65100),
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate(AppScreens.ReporteUso.route) }
+                        )
+                    }
+                    
+                    CategoryCard(
+                        title = "Seguridad",
+                        description = "Configuración de accesos y permisos",
+                        icon = Icons.Default.Security,
+                        color = Color(0xFF7B1FA2),
+                        onClick = { navController.navigate(AppScreens.Seguridad.route) }
+                    )
+                    
+                    // Sección de comunicación
+                    SectionHeader(
+                        title = "Comunicación",
+                        icon = Icons.Default.Chat
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CategoryCard(
+                            title = "Comunicados",
+                            description = "Gestión de anuncios y mensajes",
+                            icon = Icons.Default.Campaign,
+                            color = Color(0xFF1565C0),
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate(AppScreens.ComunicadosCirculares.route) }
+                        )
+                        
+                        CategoryCard(
+                            title = "Notificaciones",
+                            description = "Configuración de alertas",
+                            icon = Icons.Default.Notifications,
+                            color = Color(0xFFD32F2F),
+                            modifier = Modifier.weight(1f),
+                            onClick = { navController.navigate(AppScreens.Notificaciones.route) }
+                        )
+                    }
+                    
+                    CategoryCard(
+                        title = "Soporte Técnico",
+                        description = "Configuración de email de soporte",
+                        icon = Icons.Default.Email,
+                        color = Color(0xFF00796B),
+                        onClick = { navController.navigate(AppScreens.EmailConfigSoporte.route) }
+                    )
+                    
+                    // Espaciador final para scroll
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
     }
 }
 
-/**
- * Contenido principal del Dashboard de Administración
- */
 @Composable
-fun AdminDashboardContent(
-    currentDate: String,
-    onNavigateToGestionCentros: () -> Unit,
-    onNavigateToAddCentro: () -> Unit,
-    onNavigateToEstadisticas: () -> Unit,
-    onNavigateToReporteUso: () -> Unit,
-    onNavigateToSeguridad: () -> Unit,
-    onNavigateToComunicados: () -> Unit,
-    onNavigateToNotificaciones: () -> Unit,
-    onNavigateToPerfil: () -> Unit,
-    modifier: Modifier = Modifier,
-    navController: NavController = rememberNavController()
+fun SectionHeader(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
 ) {
-    Column(
+    Row(
         modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Tarjeta de bienvenida
-        AdminWelcomeCard(currentDate = currentDate)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = AdminColor,
+            modifier = Modifier.size(28.dp)
+        )
         
-        // Título para sección de gestión de centros
+        Spacer(modifier = Modifier.width(8.dp))
+        
         Text(
-            text = "Gestión de Centros",
+            text = title,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            fontWeight = FontWeight.Bold
         )
-        
-        // Opciones de gestión de centros en formato lista
-        AdminOptionCard(
-            title = "Ver Centros",
-            description = "Consultar listado de centros educativos",
-            icon = Icons.Default.Business,
-            color = MaterialTheme.colorScheme.primary,
-            onClick = onNavigateToGestionCentros
-        )
-        
-        AdminOptionCard(
-            title = "Añadir Centro",
-            description = "Crear nuevo centro educativo",
-            icon = Icons.Default.Add,
-            color = MaterialTheme.colorScheme.secondary,
-            onClick = onNavigateToAddCentro
-        )
-
-        AdminOptionCard(
-            title = "Gestión de Cursos",
-            description = "Administrar cursos académicos",
-            icon = Icons.Default.School,
-            color = MaterialTheme.colorScheme.tertiary,
-            onClick = { navController.navigate(AppScreens.ListaCursos.route) }
-        )
-        
-        AdminOptionCard(
-            title = "Gestión de Clases",
-            description = "Administrar clases y aulas",
-            icon = Icons.Default.Group,
-            color = MaterialTheme.colorScheme.errorContainer,
-            onClick = { navController.navigate(AppScreens.ListaClases.route) }
-        )
-        
-        // Título para sección de gestión de usuarios
-        Text(
-            text = "Gestión de Usuarios",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
-        )
-        
-        // Opciones para gestión de usuarios
-        AdminOptionCard(
-            title = "Crear Usuario",
-            description = "Añadir administradores, profesores o familiares",
-            icon = Icons.Default.PersonAdd,
-            color = MaterialTheme.colorScheme.primary,
-            onClick = { navController.navigate(AppScreens.AddUser.createRoute(true)) }
-        )
-        
-        AdminOptionCard(
-            title = "Listado de Usuarios",
-            description = "Ver todos los usuarios del sistema",
-            icon = Icons.Default.People,
-            color = MaterialTheme.colorScheme.secondary,
-            onClick = { navController.navigate(AppScreens.GestionUsuarios.route) }
-        )
-        
-        // Título para sección de vinculaciones
-        Text(
-            text = "Vinculaciones",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
-        )
-        
-        // Opciones para vinculaciones
-        AdminOptionCard(
-            title = "Profesores - Clases",
-            description = "Asignar profesores a clases",
-            icon = Icons.Default.School,
-            color = Color(0xFF009688),
-            onClick = { navController.navigate(AppScreens.VincularProfesorClase.route) }
-        )
-        
-        AdminOptionCard(
-            title = "Familiares - Alumnos",
-            description = "Vincular familiares con alumnos",
-            icon = Icons.Default.ChildCare,
-            color = Color(0xFF2196F3),
-            onClick = { navController.navigate(AppScreens.VincularAlumnoFamiliar.route) }
-        )
-        
-        // Título para sección de análisis
-        Text(
-            text = "Análisis y Reportes",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
-        )
-        
-        // Opciones de análisis en formato lista vertical
-        AdminOptionCard(
-            title = "Estadísticas",
-            description = "Datos generales del sistema",
-            icon = Icons.Default.PieChart,
-            color = MaterialTheme.colorScheme.tertiary,
-            onClick = onNavigateToEstadisticas
-        )
-        
-        AdminOptionCard(
-            title = "Uso del Sistema",
-            description = "Métricas de uso y actividad",
-            icon = Icons.Default.Timeline,
-            color = Color(0xFFE65100),
-            onClick = onNavigateToReporteUso
-        )
-        
-        AdminOptionCard(
-            title = "Seguridad",
-            description = "Configuración de accesos y permisos",
-            icon = Icons.Default.Security,
-            color = Color(0xFF7B1FA2),
-            onClick = onNavigateToSeguridad
-        )
-        
-        // Título para sección de comunicación
-        Text(
-            text = "Comunicación",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-        )
-        
-        // Opciones de comunicación en formato lista
-        AdminOptionCard(
-            title = "Comunicados y circulares",
-            description = "Gestión de anuncios y mensajes generales",
-            icon = Icons.Default.Campaign,
-            color = Color(0xFF1565C0),
-            onClick = onNavigateToComunicados
-        )
-        
-        AdminOptionCard(
-            title = "Notificaciones",
-            description = "Configuración de alertas del sistema",
-            icon = Icons.Default.Notifications,
-            color = Color(0xFFD32F2F),
-            onClick = onNavigateToNotificaciones
-        )
-        
-        AdminOptionCard(
-            title = "Mantenimiento de Soporte",
-            description = "Configuración de email de soporte técnico",
-            icon = Icons.Default.Email,
-            color = Color(0xFF00796B),
-            onClick = { navController.navigate(AppScreens.EmailConfigSoporte.route) }
-        )
-        
-        // Perfil
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Button(
-            onClick = onNavigateToPerfil,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Mi Perfil")
-        }
-        
-        // Espaciador final para scroll
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -370,18 +320,19 @@ fun AdminDashboardContent(
  * Tarjeta de bienvenida para el dashboard de administración
  */
 @Composable
-fun AdminWelcomeCard(currentDate: String) {
+fun WelcomeCard(currentDate: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = AdminColor.copy(alpha = 0.15f)
         ),
-        elevation = CardDefaults.cardElevation(4.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Información de bienvenida
@@ -390,16 +341,23 @@ fun AdminWelcomeCard(currentDate: String) {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
+                    text = "Bienvenido/a",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                Text(
                     text = "Panel de Administración",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 
                 Text(
                     text = currentDate,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
@@ -408,13 +366,13 @@ fun AdminWelcomeCard(currentDate: String) {
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                    .background(AdminColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.AdminPanelSettings,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -422,11 +380,127 @@ fun AdminWelcomeCard(currentDate: String) {
     }
 }
 
-/**
- * Tarjeta de opción para el dashboard de administración
- */
 @Composable
-fun AdminOptionCard(
+fun QuickActionsGrid(
+    onGestionCentros: () -> Unit,
+    onAddCentro: () -> Unit,
+    onGestionCursos: () -> Unit,
+    onGestionClases: () -> Unit,
+    onGestionUsuarios: () -> Unit,
+    onAddUsuario: () -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        userScrollEnabled = false,
+        modifier = Modifier.height(240.dp)
+    ) {
+        item {
+            ActionButton(
+                icon = Icons.Default.Business,
+                text = "Centros",
+                onClick = onGestionCentros
+            )
+        }
+        
+        item {
+            ActionButton(
+                icon = Icons.Default.AddBusiness,
+                text = "Añadir Centro",
+                onClick = onAddCentro
+            )
+        }
+        
+        item {
+            ActionButton(
+                icon = Icons.Default.School,
+                text = "Cursos",
+                onClick = onGestionCursos
+            )
+        }
+        
+        item {
+            ActionButton(
+                icon = Icons.Default.Groups,
+                text = "Clases",
+                onClick = onGestionClases
+            )
+        }
+        
+        item {
+            ActionButton(
+                icon = Icons.Default.People,
+                text = "Usuarios",
+                onClick = onGestionUsuarios
+            )
+        }
+        
+        item {
+            ActionButton(
+                icon = Icons.Default.PersonAdd,
+                text = "Añadir Usuario",
+                onClick = onAddUsuario
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionButton(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxSize()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(AdminColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = text,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+fun CategoryCard(
     title: String,
     description: String,
     icon: ImageVector,
@@ -437,66 +511,57 @@ fun AdminOptionCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(80.dp)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Icono con fondo circular
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(color.copy(alpha = 0.1f)),
+                    .background(color.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
                     tint = color,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             
-            // Textos
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 11.sp,
-                        lineHeight = 14.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Spacer(modifier = Modifier.height(8.dp))
             
-            // Flecha indicadora para la navegación
-            Icon(
-                imageVector = Icons.Default.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp)
+            // Título
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Descripción
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -528,26 +593,5 @@ data class AdminDashboardUiState(
 fun AdminDashboardScreenPreview() {
     UmeEguneroTheme {
         AdminDashboardScreen(navController = rememberNavController())
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AdminDashboardContentPreview() {
-    UmeEguneroTheme {
-        Surface {
-            AdminDashboardContent(
-                currentDate = "Lunes, 10 de abril",
-                onNavigateToGestionCentros = {},
-                onNavigateToAddCentro = {},
-                onNavigateToEstadisticas = {},
-                onNavigateToReporteUso = {},
-                onNavigateToSeguridad = {},
-                onNavigateToComunicados = {},
-                onNavigateToNotificaciones = {},
-                onNavigateToPerfil = {},
-                navController = rememberNavController()
-            )
-        }
     }
 }
