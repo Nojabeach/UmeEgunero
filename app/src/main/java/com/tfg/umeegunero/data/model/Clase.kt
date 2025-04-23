@@ -16,7 +16,8 @@ import com.google.firebase.firestore.DocumentId
  * Relaciones principales:
  * - Una clase pertenece a un único curso ([cursoId])
  * - Una clase está asociada a un único centro educativo ([centroId])
- * - Una clase tiene un profesor titular ([profesorTitularId]) y puede tener varios auxiliares
+ * - Una clase puede tener asignado un profesor titular opcional ([profesorTitularId])
+ *   y puede tener varios profesores auxiliares
  * - Una clase agrupa a múltiples alumnos ([alumnosIds])
  * - Una clase se imparte en un espacio físico específico ([aula])
  * 
@@ -27,7 +28,7 @@ import com.google.firebase.firestore.DocumentId
  * @property cursoId Identificador del curso académico al que pertenece esta clase
  * @property centroId Identificador del centro educativo al que pertenece
  * @property nombre Nombre distintivo de la clase (ej. "A", "B", "Mañana", "Tarde")
- * @property profesorTitularId Identificador del profesor principal responsable de la clase
+ * @property profesorTitularId Identificador del profesor principal responsable de la clase (opcional)
  * @property profesoresAuxiliaresIds Lista de identificadores de profesores de apoyo asignados
  * @property alumnosIds Lista de identificadores de alumnos matriculados en esta clase
  * @property capacidadMaxima Número máximo de alumnos permitidos en la clase

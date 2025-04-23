@@ -325,7 +325,8 @@ class AddClaseViewModel @Inject constructor(
     }
     
     /**
-     * Actualiza el profesor titular de la clase
+     * Actualiza el profesor titular de la clase (opcional)
+     * El profesor se puede asignar posteriormente en la pantalla de vinculación de profesores
      */
     fun updateProfesorTitular(profesorId: String) {
         _uiState.update { 
@@ -452,11 +453,7 @@ class AddClaseViewModel @Inject constructor(
             }
         }
         
-        // Validar profesor titular
-        if (state.profesorTitularId.isBlank()) {
-            _uiState.update { it.copy(profesorTitularError = "Selecciona un profesor titular") }
-            isValid = false
-        }
+        // Ya no validamos el profesor titular, ahora es opcional
         
         return isValid
     }

@@ -23,6 +23,7 @@ import com.tfg.umeegunero.data.model.Usuario
 
 /**
  * Pantalla para añadir una nueva clase a un curso
+ * El profesor titular es opcional y se puede asignar posteriormente
  * 
  * @param navController Controlador de navegación
  * @param viewModel ViewModel para la gestión de clases
@@ -112,29 +113,55 @@ fun AddClaseScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Selector de profesor titular
-                Text(
-                    text = "Profesor Titular",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                
-                if (uiState.isLoadingProfesores) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                } else if (uiState.profesoresDisponibles.isEmpty()) {
-                    Text(
-                        text = "No hay profesores disponibles",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                } else {
-                    ProfesorDropdown(
-                        profesores = uiState.profesoresDisponibles,
-                        selectedProfesorId = uiState.profesorTitularId,
-                        onProfesorSelected = viewModel::updateProfesorTitular,
-                        error = uiState.profesorTitularError,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                // Selector de profesor titular (ahora opcional)
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Profesor Titular (Opcional)",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Text(
+                            text = "Se puede asignar posteriormente",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    if (uiState.isLoadingProfesores) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    } else if (uiState.profesoresDisponibles.isEmpty()) {
+                        Text(
+                            text = "No hay profesores disponibles",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        ProfesorDropdown(
+                            profesores = uiState.profesoresDisponibles,
+                            selectedProfesorId = uiState.profesorTitularId,
+                            onProfesorSelected = viewModel::updateProfesorTitular,
+                            error = uiState.profesorTitularError,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Text(
+                            text = "El profesor titular puede asignarse posteriormente en la pantalla de vinculación de profesores a clases",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 8.dp, top = 4.dp, end = 8.dp)
+                        )
+                    }
                 }
 
                 // Estado activo
@@ -237,6 +264,7 @@ fun AddClaseScreen(
 
 /**
  * Componente para seleccionar un profesor de una lista desplegable
+ * La selección es opcional
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -256,7 +284,7 @@ fun ProfesorDropdown(
             onExpandedChange = { expanded = it }
         ) {
             OutlinedTextField(
-                value = selectedProfesor?.let { "${it.nombre} ${it.apellidos}" } ?: "Seleccionar profesor",
+                value = selectedProfesor?.let { "${it.nombre} ${it.apellidos}" } ?: "Sin profesor asignado (Opcional)",
                 onValueChange = {},
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -270,6 +298,16 @@ fun ProfesorDropdown(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
+                // Opción para "Sin profesor"
+                DropdownMenuItem(
+                    text = { Text("Sin profesor asignado") },
+                    onClick = {
+                        onProfesorSelected("")
+                        expanded = false
+                    }
+                )
+
+                // Opciones de profesores
                 profesores.forEach { profesor ->
                     DropdownMenuItem(
                         text = { Text("${profesor.nombre} ${profesor.apellidos}") },
