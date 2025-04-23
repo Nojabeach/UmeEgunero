@@ -215,6 +215,38 @@ Gestiona las conversaciones entre usuarios.
 }
 ```
 
+## Ejemplo de Consulta Firestore
+
+Obtener todos los alumnos de un centro:
+
+```kotlin
+val alumnosRef = db.collection("alumnos")
+    .whereEqualTo("centroId", centroId)
+alumnosRef.get().addOnSuccessListener { ... }
+```
+
+## Reglas de Seguridad Firestore (fragmento)
+
+```js
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /usuarios/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+    match /alumnos/{alumnoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.role in ["ADMIN_CENTRO", "PROFESOR"];
+    }
+  }
+}
+```
+
+## Relación de Entidades (resumen)
+
+- Un centro tiene muchos cursos y clases.
+- Un alumno pertenece a una clase y puede estar vinculado a varios familiares.
+- Los comunicados pueden estar dirigidos a usuarios, clases o cursos.
+
 ## Equivalente Relacional: Diagrama Entidad-Relación
 
 A continuación se presenta la estructura de datos anterior adaptada a un modelo entidad-relación tradicional, que puede utilizarse para la memoria del TFG.

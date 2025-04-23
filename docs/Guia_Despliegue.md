@@ -192,6 +192,23 @@ Verificar que todos los permisos y funcionalidades funcionan correctamente:
 3. Enviar para revisión
 4. Una vez aprobada, publicar la aplicación
 
+## Checklist de Publicación en Google Play
+
+- [ ] Incrementar versión y nombre de versión
+- [ ] Firmar APK/AAB con keystore de producción
+- [ ] Revisar permisos solicitados
+- [ ] Probar la app en dispositivos reales y emuladores
+- [ ] Revisar strings y metadatos
+- [ ] Subir capturas de pantalla y descripción
+- [ ] Completar clasificación de contenido
+- [ ] Revisar políticas de privacidad y protección de datos
+
+## Recomendaciones para el TFG
+
+- Documentar todos los pasos y decisiones de despliegue.
+- Adjuntar capturas de la app publicada y validación en Play Console.
+- Incluir en la memoria referencias a esta guía y checklist.
+
 ## Monitorización Post-Despliegue
 
 ### 1. Monitorizar Firebase Analytics
@@ -277,4 +294,3 @@ umeegunero/
 - [ ] Metadatos de Google Play Store actualizados
 - [ ] Recursos visuales preparados para Google Play
 - [ ] Notas de la versión escritas y traducidas
-``` 

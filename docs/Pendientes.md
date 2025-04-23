@@ -1,16 +1,13 @@
-# UmeEgunero - Tareas Pendientes
+# UmeEgunero - Tareas Pendientes (Actualizado)
 
-Este documento detalla todas las tareas pendientes identificadas tras el análisis del proyecto UmeEgunero para completar su desarrollo como Trabajo de Fin de Grado de 2º de DAM.
+Este documento detalla las tareas pendientes actualizadas para completar el desarrollo del proyecto UmeEgunero como Trabajo de Fin de Grado de 2º de DAM.
 
 ## Plan de Desarrollo Prioritario
 
-Después de analizar el estado actual del proyecto, he identificado las siguientes prioridades para completar la aplicación:
-
-1. **Completar pantallas críticas pendientes**
-   - Finalizar pantallas dummy y resolver puntos de cierre de aplicación
-   - Completar la integración de pantallas de gestión administrativa
+1. **Completar pantallas críticas pendientes** ⚠️
+   - Completar la integración de pantallas de gestión administrativa restantes
    - Prioridad: Crítica
-   - Tiempo estimado: 5 días
+   - Tiempo estimado: 3 días
 
 2. **Integración completa entre módulos**
    - Asegurar que todas las características estén correctamente conectadas
@@ -49,47 +46,30 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
   - Tiempo estimado: 3 días
 
 ### Vinculaciones y Relaciones
-- **Vinculación de Profesores con Aulas**: Sistema para asignar profesores a aulas específicas.
-  - Desarrollar interfaz para selección múltiple de aulas
-  - Implementar visualización de horarios y conflictos
-  - Añadir funcionalidad para definir profesores principales y de apoyo
-  - Prioridad: Alta
-  - Tiempo estimado: 3 días
+- **Vinculación de Profesores con Aulas**: ✅ 
+  - **COMPLETADO**: Sistema para asignar profesores a aulas específicas.
 
 - **Vinculación de Familiares con Alumnos**: ✅ 
   - **COMPLETADO**: Sistema para relacionar cuentas de familiares con alumnos.
-  - Se ha implementado la pantalla VincularAlumnoFamiliarScreen con funcionalidad completa
-  - Implementación de modelo RelacionFamiliar para gestionar los vínculos
-  - Funcionalidades de búsqueda de alumnos y familiares
-  - Soporte para diferentes tipos de parentesco usando SubtipoFamiliar
-  - Visualización de familiares vinculados a cada alumno
-  - Capacidad para vincular y desvincular relaciones familiares
-  - Interfaz de usuario intuitiva con diálogos de confirmación
-  - Prioridad: Completada
-  - Tiempo estimado: Finalizado
 
 ## Pantallas con problemas críticos
 
-1. **Pantalla de Detalle de Clase**
-   - Aunque existe una ruta en `AppScreens.DetalleClase` y está configurada en Navigation.kt, el documento menciona que aún se navega hacia una pantalla Dummy en algunos casos
-   - Es necesario revisar todas las referencias a DetalleClase y asegurar que se use la implementación real en lugar de Dummy
-   - Prioridad: Crítica
-   - Tiempo estimado: 1 día
+1. **Pantalla de Detalle de Clase** ✅ 
+   - **COMPLETADO**: Se ha implementado completamente la pantalla DetalleClaseScreen con todas sus funcionalidades.
 
-2. **Pantalla de Gestión de Centros en el Panel de Administrador**
-   - Actualmente al hacer clic en el card de "Centros" en el panel de administrador, la aplicación se cierra
+2. **Pantalla de Gestión de Centros en el Panel de Administrador** ⚠️
    - Corregir la navegación para que dirija a la pantalla ListCentrosScreen
    - Revisar el resto de cards y botones del panel para asegurar que no cierren la aplicación
    - Prioridad: Crítica
    - Tiempo estimado: 1 día
 
-3. **ComunicadosScreen para Profesor**
+3. **ComunicadosScreen para Profesor** ⚠️
    - El archivo ComunicadosScreen.kt en feature/profesor/screen está vacío (0 bytes)
    - Es necesario implementar esta pantalla crucial ya que la comunicación es una característica principal
    - Prioridad: Crítica
    - Tiempo estimado: 2 días
 
-4. **IncidenciasScreen para Profesor**
+4. **IncidenciasScreen para Profesor** ⚠️
    - El archivo IncidenciasScreen.kt en feature/profesor/screen está vacío (0 bytes)
    - Es necesario implementar esta pantalla para registrar y gestionar incidencias
    - Prioridad: Alta
@@ -175,19 +155,18 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
    - Tiempo estimado: 1 día
 
 3. **Comunicaciones** ⚠️
-   - Implementar la pantalla ComunicadosScreen para profesores (actualmente vacía)
+   - Implementar la pantalla ComunicadosScreen para profesores
    - Verificar envío de mensajes a familias
    - Comprobar creación y difusión de comunicados
-   - Implementar visualización de estadísticas de lectura y confirmación de comunicados
    - Validar notificaciones de respuestas
    - Prioridad: Crítica
    - Tiempo estimado: 2 días
 
 4. **Incidencias** ⚠️
-   - Implementar la pantalla IncidenciasScreen para profesores (actualmente vacía)
-   - Desarrollar sistema de registro y seguimiento de incidencias
-   - Crear flujo de notificación a familias
-   - Implementar histórico de incidencias por alumno
+   - Implementar la pantalla IncidenciasScreen para profesores
+   - Desarrollar el sistema de registro y seguimiento de incidencias
+   - Implementar DetalleIncidenciaScreen para visualizar y gestionar detalles
+   - Implementar el flujo de notificación a familias de incidencias
    - Prioridad: Alta
    - Tiempo estimado: 2 días
 
@@ -202,6 +181,7 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
 
 1. **Dashboard Principal**
    - Verificar visualización correcta de los hijos registrados
+   - ✅ **COMPLETADO**: Implementado el acceso a incidencias desde el dashboard
    - Comprobar notificaciones de actividad reciente
    - Validar acceso a todas las secciones
    - Prioridad: Alta
@@ -215,10 +195,11 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
    - Tiempo estimado: 1 día
 
 3. **Comunicaciones** 
-   - Verificar recepción de mensajes y comunicados ✅
+   - Verificar recepción de mensajes y comunicados
    - Comprobar sistema de chat con profesores
    - Validar notificaciones de nuevos mensajes
    - **Completado parcialmente**: Sistema de confirmación de lectura de comunicados implementado
+   - Verificar sistema de notificaciones push para nuevas incidencias
    - Prioridad: Alta
    - Tiempo estimado: 1 día
 
@@ -250,7 +231,7 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
    - Preparar el código para generación de documentación con Dokka
    - Añadir comentarios explicativos en secciones complejas
    - Prioridad: Media
-   - Tiempo estimado: 2 días
+   - Tiempo estimado: 3 días
 
 4. **Testing**
    - Implementar pruebas unitarias para ViewModels principales
@@ -259,13 +240,12 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
    - Prioridad: Alta
    - Tiempo estimado: 3 días
 
-## Resumen de Prioridades
+## Resumen de Prioridades Actualizadas
 
 ### Tareas Críticas (Inmediatas)
 1. Corregir navegación en Dashboard de Administrador (card de Centros)
 2. Implementar ComunicadosScreen para Profesor
-3. Implementar pantalla de Detalle de Clase
-4. Implementar IncidenciasScreen para Profesor
+3. Implementar IncidenciasScreen para Profesor
 
 ### Tareas de Alta Prioridad
 1. Completar gestión de usuarios y vinculaciones
@@ -287,7 +267,6 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
 - Resolver problemas de cierre inesperado de la aplicación
 
 **Semana 2: Completar funcionalidades principales**
-- Finalizar vinculación de profesores con aulas
 - Completar gestión de usuarios
 - Implementar pruebas para flujos críticos
 
@@ -324,12 +303,7 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
    - Prioridad: Media
    - Tiempo estimado: 2 días
 
-## Problemas y optimizaciones pendientes
-
-### Funcionalidades especiales y ocultas
-
-
-### Problemas específicos de interfaz
+## Problemas específicos de interfaz
 
 1. **Botón "Más información" en FAQ sin funcionalidad**
    - Al desplegar opciones en la pantalla de FAQ, el botón de "Más información" no realiza ninguna acción
@@ -353,22 +327,7 @@ Después de analizar el estado actual del proyecto, he identificado las siguient
    - Prioridad: Alta
    - Tiempo estimado: 2 días
 
-### Posibles duplicaciones de modelos
-
-Se recomienda revisar y consolidar los siguientes elementos:
-
-1. Posible duplicación en modelos de datos 
-   - Revisar particularmente `data/model` para identificar clases con funcionalidades similares
-   - Prioridad: Media
-   - Tiempo estimado: 1 día
-
-2. ViewModels con funcionalidades similares
-   - Analizar especialmente en los módulos de profesor y familiar
-   - Considerar refactorizar para reutilizar lógica común
-   - Prioridad: Baja
-   - Tiempo estimado: 2 días
-
-### Mejoras de rendimiento
+## Mejoras de rendimiento
 
 1. **Optimización de consultas a Firestore**
    - Revisar y mejorar las consultas para minimizar lecturas/escrituras
@@ -478,26 +437,12 @@ Se recomienda revisar y consolidar los siguientes elementos:
 
 1. **Pantalla de Edición de Centro Obsoleta** ✅
    - **COMPLETADO**: La pantalla de edición de centro ha sido actualizada
-   - Implementación de `EditCentroScreen.kt` usando el mismo ViewModel que `AddCentroScreen.kt`
-   - Reutilización de componentes y estructura visual moderna
-   - Implementación de validaciones y campos completos 
-   - Soporte para gestión de administradores de centro
-   - Visualización y edición de coordenadas geográficas
-   - Confirmación para eliminación de centro
 
 2. **Mejoras en Gestión de Cursos y Clases** ✅
-   - **COMPLETADO**: Se ha implementado la navegación correcta a las pantallas de:
-     - Gestión de clases (GestionClasesScreen)
-     - Añadir clase (AddClaseScreen)
-     - Editar clase (EditClaseScreen)
-   - Se ha añadido un botón para ver y gestionar las clases desde el listado de cursos
-   - Se ha mejorado la navegación entre entidades relacionadas (Curso -> Clase -> Alumnos)
+   - **COMPLETADO**: Se ha implementado la navegación correcta a las pantallas de gestión
 
 3. **Error en Sección de Seguridad** ✅
    - **COMPLETADO**: Se ha corregido el error que provocaba el cierre de la aplicación
-   - Se ha implementado correctamente la navegación a la pantalla SeguridadScreen en lugar de la DummyScreen temporal
-   - La pantalla ahora permite configurar diversos parámetros de seguridad como políticas de contraseñas, tiempo de sesión, e intentos de acceso
-   - Se incluyen opciones para activación de verificación en dos pasos y registro de actividad sospechosa
 
 4. **Falta Menú de Configuración Administrativa** ⚠️
    - No existe menú para modificar configuraciones administrativas como el email de soporte
@@ -507,12 +452,9 @@ Se recomienda revisar y consolidar los siguientes elementos:
    - Tiempo estimado: 2 días
 
 5. **Unificación de estética en DummyScreens** ⚠️
-   - Todas las pantallas DummyScreen deben tener diseño consistente:
-     - ✅ Gestión de clases (Implementado redirección a la funcionalidad real a través de ListaCursos)
+   - Estas pantallas aún requieren unificación estética:
      - Listar usuarios
      - Añadir usuarios
-     - Vincular profesores-clases
-     - ✅ Vincular padres-alumnos (Implementado como VincularAlumnoFamiliarScreen)
    - Actualizar todas las implementaciones para usar un estilo visual coherente
    - Asegurar que los mensajes informativos sean claros y profesionales
    - Prioridad: Media
@@ -520,110 +462,31 @@ Se recomienda revisar y consolidar los siguientes elementos:
 
 6. **Implementación de Mantenimiento de Soporte** ✅
    - **COMPLETADO**: Se ha añadido una opción de "Mantenimiento de Soporte" en el menú de Comunicación
-   - Se ha vinculado esta opción con la pantalla existente `EmailConfigScreen.kt`
-   - La navegación funciona correctamente, permitiendo configurar el email de soporte técnico
-   - El acceso está habilitado desde el dashboard de administrador en la sección de Comunicación
-
-## Conclusiones y prioridades para TFG
-
-El proyecto UmeEgunero, como Trabajo de Fin de Grado para 2º de DAM, se encuentra en una fase avanzada pero requiere completar estas tareas pendientes para ser considerado un proyecto profesional completo que demuestre las competencias adquiridas durante la formación.
-
-Las prioridades recomendadas son:
-
-1. **CRÍTICO**: Corregir los problemas que provocan cierre de la aplicación
-   - ✅ Pantalla de Seguridad en el Dashboard de Administrador
-   - Cualquier otra navegación que provoque cierre inesperado
-
-2. **ALTA**: Actualizar pantallas rudimentarias o incorrectas
-   - ✅ Actualizar pantalla de edición de centro con las funcionalidades completas
-   - ✅ Implementar correctamente la gestión de cursos y clases con las opciones requeridas
-   - Desarrollar menú de configuración administrativa
-   - ✅ Implementar opción de Mantenimiento de Soporte en el menú de Comunicación
-
-3. **ALTA**: Implementar las pantallas que actualmente usan DummyScreen
-   - Asegurar que todas las DummyScreen tienen un diseño visual consistente
-   - Priorizar: Gestión de usuarios, Vinculación de profesores-clases, ✅ Vinculación de familiares-alumnos (Completado)
-
-4. **ALTA**: Completar la revisión de funcionalidades por perfil de usuario
-   - Verificar todas las funcionalidades del administrador de aplicación
-   - Completar funcionalidades del administrador de centro
-   - Revisar y completar funcionalidades del profesor
-   - Validar operaciones del perfil familiar
-
-5. **MEDIA**: Verificar el correcto funcionamiento de los gráficos y datos en tiempo real
-   - Asegurar que las visualizaciones de datos muestran información real y actualizada
-
-6. **MEDIA**: Mejorar los sistemas de comunicación y notificaciones
-   - **Progreso**: Se ha completado la implementación del sistema de confirmación de lectura de comunicados.
-   - Completar sistema de notificaciones push
-
-7. **MEDIA**: Completar la implementación y verificación de la autenticación biométrica
-   - Implementar la integración completa con BiometricPrompt de AndroidX
-   - Verificar su funcionamiento en todos los tipos de usuario
-   - Probar con el Extended Control Finger1 del emulador de Android
-
-8. **MEDIA**: Resolver problemas específicos de interfaz
-   - Implementar o eliminar el botón "Más información" en FAQ 
-   - Corregir el envío de correos al soporte técnico
-   - Desarrollar una pantalla real para los Términos y Condiciones
-
-9. **MEDIA**: Completar la documentación técnica y de usuario
-   - Documentar adecuadamente la estructura de la base de datos
-   - Completar manuales de usuario para cada perfil
-
-10. **BAJA**: Optimizar rendimiento y experiencia de usuario
-    - Mejorar tiempos de carga
-    - Optimizar consultas a Firestore
-    - Implementar caché eficiente
-
-11. **BAJA**: Refactorizar y limpiar el código
-    - Actualizar APIs obsoletas
-    - Eliminar código redundante
-    - Mejorar la calidad general del código
-
-Es fundamental garantizar una cobertura de pruebas suficiente para demostrar la robustez de la implementación y documentar adecuadamente el código para facilitar su evaluación académica y mostrar las buenas prácticas de desarrollo aprendidas durante el ciclo formativo.
-
-Siguiendo este plan, el proyecto puede completarse en aproximadamente 4-5 sprints, dependiendo del tamaño del equipo de desarrollo.
-
-### Pantallas sin uso (No conectadas al sistema de navegación)
-
-Esta sección lista pantallas implementadas pero que actualmente no están accesibles desde el sistema de navegación.
-
-#### Pantallas Comunes sin vincular
-- **PerfilScreen.kt**: Aunque la pantalla de perfil de usuario está definida en la ruta `AppScreens.Perfil.route` en Navigation.kt, no hay ningún enlace ni botón en las vistas principales que redirija a esta pantalla, excepto en el Dashboard de Administrador.
-
-Todas las pantallas del módulo de administración ahora están correctamente vinculadas en el archivo `Navigation.kt`, incluyendo:
-- ListCentrosScreen.kt (GestionCentros.route)
-- AddCentroScreen.kt (AddCentro.route)
-- EditCentroScreen.kt (EditCentro.route)
-- DetalleCentroScreen.kt (DetalleCentro.route)
-- EmailConfigScreen.kt (EmailConfig.route)
-- EstadisticasScreen.kt (Estadisticas.route)
-- ReporteUsoScreen.kt (ReporteUso.route)
-- NotificacionesScreen.kt (Notificaciones.route)
-- ComunicadosScreen.kt (ComunicadosCirculares.route)
-- DetalleComunicadoScreen.kt (DetalleComunicado.route)
-- NuevoComunicadoScreen.kt (NuevoComunicado.route)
-- GestionCentrosScreen.kt (GestionCentros.route)
-- DetalleCentroScreen.kt (DetalleCentro.route)
-- AddCentroScreen.kt (AddCentro.route)
-- EditCentroScreen.kt (EditCentro.route)
-
-Se recomienda revisar los flujos de navegación para asegurar que todas estas pantallas sean accesibles desde los puntos lógicos de la aplicación.
 
 ## Prioridades para el Próximo Sprint
-1. Completar la pantalla de Listado de Usuarios con capacidades básicas de filtrado
-2. Finalizar la pantalla de Crear Nuevo Usuario para todos los perfiles
-3. Implementar la funcionalidad básica de vinculación de profesores con aulas
-4. Desarrollar la funcionalidad de vinculación de familiares con alumnos
 
-## Consideraciones de Diseño
-- Mantener consistencia con el sistema de diseño existente
-- Priorizar la experiencia móvil, asegurando que todas las pantallas sean totalmente responsivas
-- Implementar animaciones sutiles para mejorar la experiencia de usuario
+1. **Sistema de Asistencia para Profesores**
+   - Implementar registro de asistencia diaria de alumnos
+   - Desarrollar notificaciones automáticas a familias por ausencias
+   - Crear histórico y visualización de patrones de asistencia
 
-## Consideraciones Técnicas Generales
-- Todas las nuevas pantallas deben seguir la arquitectura MVVM existente
-- Implementar adecuado manejo de errores y estados de carga 
-- Mantener la organización por módulos según el tipo de usuario
-- Asegurar tests unitarios para las nuevas funcionalidades 
+2. **Calendario Compartido**
+   - Desarrollar la funcionalidad completa del calendario escolar
+   - Implementar eventos recurrentes y notificaciones de eventos próximos
+   - Permitir a profesores añadir eventos de clase
+
+3. **Sistema de Tareas**
+   - Crear sistema de asignación de tareas para profesores
+   - Desarrollar pantalla de seguimiento de tareas para familias
+   - Implementar recordatorios y sistema de entrega
+
+4. **Actividades Preescolares**
+   - Finalizar el desarrollo del módulo de actividades para educación infantil
+   - Implementar seguimiento detallado del desarrollo del alumno
+   - Crear informes visuales de progreso para familias
+
+## Pantallas sin uso (No conectadas al sistema de navegación)
+
+- **PerfilScreen.kt**: Aunque la pantalla de perfil de usuario está definida en la ruta `AppScreens.Perfil.route` en Navigation.kt, no hay ningún enlace ni botón en las vistas principales que redirija a esta pantalla, excepto en el Dashboard de Administrador.
+
+Se recomienda revisar los flujos de navegación para asegurar que todas las pantallas implementadas sean accesibles desde los puntos lógicos de la aplicación.

@@ -93,166 +93,49 @@ Para mayor seguridad, puede activar la autenticación de dos factores:
 3. Active "Autenticación de dos factores".
 4. Siga las instrucciones para configurar la autenticación por SMS o aplicación autenticadora.
 
-## Perfiles de Usuario
+## Perfiles de Usuario (actualizado)
 
-UmeEgunero ofrece cuatro perfiles de usuario principales, cada uno con funcionalidades específicas adaptadas a sus necesidades:
+UmeEgunero distingue entre diferentes perfiles, cada uno con funcionalidades y flujos adaptados a sus necesidades:
 
 ### Administrador de Aplicación
-
-Este perfil tiene control total sobre la plataforma y es responsable de la configuración global del sistema.
-
-#### Dashboard Principal
-
-![Dashboard Administrador](https://ejemplo.com/dashboard_admin.jpg)
-
-Desde el dashboard principal puede acceder a:
-
-1. **Gestión de Centros**: Añadir, editar o desactivar centros educativos.
-2. **Gestión de Usuarios**: Administrar todos los tipos de usuarios.
-3. **Estadísticas Globales**: Ver estadísticas de uso de la plataforma.
-4. **Configuración del Sistema**: Ajustes generales de la aplicación.
-5. **Auditoría y Seguridad**: Registros de actividad y configuración de seguridad.
-
-#### Funciones Clave
-
-- **Gestión de Centros Educativos**:
-  1. Pulse "Centros" en el menú lateral.
-  2. Para añadir un centro, pulse el botón "+" en la esquina inferior.
-  3. Para editar, pulse el icono de lápiz junto al centro deseado.
-  4. Para desactivar, pulse el interruptor de estado.
-
-- **Gestión de Administradores de Centro**:
-  1. Seleccione un centro de la lista.
-  2. Pulse "Administradores".
-  3. Para añadir, pulse "+" y complete el formulario.
-  4. Puede revocar permisos o cambiar administradores existentes.
-
-- **Configuración Global**:
-  1. Pulse "Configuración" en el menú lateral.
-  2. Ajuste parámetros como política de contraseñas, tiempo de sesión, etc.
-  3. Configure los servicios de correo electrónico y notificaciones.
+- Acceso completo a la gestión global de la plataforma.
+- Alta/baja de centros y usuarios administradores de centro.
+- Auditoría y seguridad.
 
 ### Administrador de Centro
-
-Este perfil gestiona un centro educativo específico, incluyendo su estructura académica, profesorado y alumnado.
-
-#### Dashboard Principal
-
-![Dashboard Centro](https://ejemplo.com/dashboard_centro.jpg)
-
-Desde el dashboard principal puede acceder a:
-
-1. **Gestión Académica**: Cursos, clases y horarios.
-2. **Profesorado**: Lista y gestión de profesores.
-3. **Alumnado**: Lista y gestión de alumnos.
-4. **Comunicaciones**: Sistema de avisos y circulares.
-5. **Calendario**: Eventos y actividades del centro.
-
-#### Funciones Clave
-
-- **Estructura Académica**:
-  1. Pulse "Gestión Académica" en el menú lateral.
-  2. Para crear un curso, pulse "Añadir Curso" y complete el formulario.
-  3. Dentro de cada curso, puede añadir clases mediante "Añadir Clase".
-  4. Configure la capacidad y asigne un tutor a cada clase.
-
-- **Gestión de Profesores**:
-  1. Pulse "Profesores" en el menú lateral.
-  2. Para añadir un profesor, pulse "+" y complete sus datos.
-  3. Asigne clases y materias a cada profesor desde su ficha.
-  4. Gestione permisos y responsabilidades específicas.
-
-- **Comunicados Generales**:
-  1. Pulse "Comunicaciones" en el menú lateral.
-  2. Cree comunicados para todo el centro, cursos específicos o clases.
-  3. Adjunte documentos si es necesario.
-  4. Monitorice la recepción y lectura de comunicados.
+- Gestión de profesores, familias y alumnos.
+- Creación y gestión de cursos, clases y eventos del centro.
+- Visualización de estadísticas globales y panel de bienestar.
+- Envío de comunicados y gestión de incidencias.
 
 ### Profesor
-
-Este perfil permite a los docentes gestionar sus clases, comunicarse con las familias y realizar seguimiento académico de los alumnos.
-
-#### Dashboard Principal
-
-![Dashboard Profesor](https://ejemplo.com/dashboard_profesor.jpg)
-
-Desde el dashboard principal puede acceder a:
-
-1. **Mis Clases**: Listado de grupos asignados.
-2. **Comunicaciones**: Mensajes y circulares.
-3. **Asistencia**: Control de asistencia de alumnos.
-4. **Actividades**: Asignación y seguimiento de actividades.
-5. **Calendario**: Eventos y horario personal.
-6. **Chat**: Comunicación con familias.
-
-#### Funciones Clave
-
-- **Gestión de Clases**:
-  1. Pulse sobre una clase en el dashboard o en "Mis Clases".
-  2. Verá la lista completa de alumnos.
-  3. Pulse sobre un alumno para ver su ficha detallada.
-  4. Puede filtrar por diversos criterios (asistencia, evaluaciones, etc.).
-
-- **Control de Asistencia**:
-  1. Dentro de una clase, pulse "Asistencia".
-  2. Seleccione la fecha (por defecto es el día actual).
-  3. Marque presentes/ausentes/retrasos para cada alumno.
-  4. Puede añadir observaciones en cada caso.
-  5. Pulse "Guardar" para registrar la asistencia.
-
-- **Comunicación con Familias**:
-  1. Seleccione un alumno de la lista.
-  2. Pulse "Contactar con Familia" o acceda al Chat desde el menú.
-  3. Redacte el mensaje y pulse enviar.
-  4. Para mensajes a toda la clase, use "Comunicado Grupal".
-
-- **Actividades Preescolares**:
-  1. Pulse "Actividades" en el menú.
-  2. Cree una nueva actividad con "+" y complete los detalles.
-  3. Asigne la actividad a alumnos específicos o a toda la clase.
-  4. Establezca fechas y haga seguimiento de su realización.
+- Registro y seguimiento emocional/social de alumnos (pantalla nueva).
+- Resumen diario/semanal de rutinas (pantalla nueva).
+- Comunicación directa con familias.
+- Gestión de asistencia, incidencias y actividades.
 
 ### Familiar
+- Visualización del bienestar y evolución del niño/a (pantalla nueva).
+- Solicitud de reuniones/tutorías (pantalla nueva).
+- Acceso a recursos familiares (pantalla nueva).
+- Consulta de asistencia, comunicados y chat con profesorado.
 
-Este perfil permite a padres, madres y tutores legales seguir la actividad académica de sus hijos y comunicarse con el centro.
+## Nuevas Pantallas y Mejoras UX
 
-#### Dashboard Principal
+Se han añadido nuevas pantallas orientadas a la etapa infantil (2-4 años):
+- Seguimiento emocional y social (profesor)
+- Resumen de rutinas (profesor)
+- Bienestar del niño/a (familia)
+- Solicitud de reunión (familia)
+- Centro de recursos familiares
 
-![Dashboard Familiar](https://ejemplo.com/dashboard_familiar.jpg)
+Todas las pantallas siguen las directrices de Material 3 y buenas prácticas de accesibilidad.
 
-Desde el dashboard principal puede acceder a:
+## Accesibilidad y Usabilidad
 
-1. **Mis Hijos**: Acceso a la información de cada hijo registrado.
-2. **Comunicados**: Mensajes del centro y profesores.
-3. **Calendario**: Eventos, reuniones y actividades.
-4. **Actividades**: Seguimiento de actividades asignadas.
-5. **Chat**: Comunicación directa con profesores.
-
-#### Funciones Clave
-
-- **Seguimiento de Hijos**:
-  1. Pulse sobre la tarjeta de un hijo en el dashboard.
-  2. Acceda a información detallada: asistencia, actividades, comunicaciones.
-  3. Vea el progreso y evolución a través de los gráficos disponibles.
-  4. Configure notificaciones específicas para cada hijo.
-
-- **Consulta de Asistencia**:
-  1. Dentro de la ficha de un hijo, pulse "Asistencia".
-  2. Visualice el historial por meses y semanas.
-  3. Reciba alertas automáticas sobre ausencias no justificadas.
-  4. Justifique ausencias mediante el formulario correspondiente.
-
-- **Comunicación con Profesores**:
-  1. Dentro de la ficha de un hijo, pulse "Profesores".
-  2. Seleccione el profesor con quien desea comunicarse.
-  3. Utilice el chat para enviar mensajes directos.
-  4. Solicite tutorías o reuniones mediante la opción correspondiente.
-
-- **Seguimiento de Actividades**:
-  1. Pulse "Actividades" en la ficha de su hijo.
-  2. Vea las actividades pendientes y completadas.
-  3. Marque como realizadas las actividades finalizadas.
-  4. Añada comentarios o consultas sobre cada actividad.
+- Contraste de colores y fuentes adaptadas a infantil.
+- Botones grandes y navegación sencilla.
+- Compatibilidad con lectores de pantalla.
 
 ## Módulos Principales
 
@@ -479,5 +362,57 @@ R: Sí, muchas funciones están disponibles offline. Los cambios se sincronizar�
 
 ---
 
-© 2025 UmeEgunero - Todos los derechos reservados  
-Versión del manual: 2.3.1 (actualizado a la versión 4.2.0 de la aplicación) 
+## Ejemplo de Caso de Uso
+
+**Escenario:** Un familiar consulta el estado emocional y rutinas de su hijo/a y solicita una reunión con el tutor.
+
+1. Accede al perfil del niño/a y visualiza su evolución reciente.
+2. Consulta las rutinas diarias y mensajes del profesorado.
+3. Solicita una reunión usando el formulario integrado.
+
+---
+
+## Ejemplo de Uso para Reflejar Mejoras y Enfoque Infantil
+
+**Escenario:** Un profesor utiliza la aplicación para registrar el seguimiento emocional y social de sus alumnos y compartirlo con las familias.
+
+1. Accede a la pantalla de seguimiento emocional y social.
+2. Registra las observaciones y comentarios sobre el desarrollo de cada alumno.
+3. Comparte el informe con las familias a través de la aplicación.
+
+---
+
+## Accesibilidad y Usabilidad
+
+- Contraste de colores y fuentes adaptadas a infantil.
+- Botones grandes y navegación sencilla.
+- Compatibilidad con lectores de pantalla.
+
+---
+
+## Nuevas Pantallas y Mejoras UX
+
+Se han añadido nuevas pantallas orientadas a la etapa infantil (2-4 años):
+- Seguimiento emocional y social (profesor)
+- Resumen de rutinas (profesor)
+- Bienestar del niño/a (familia)
+- Solicitud de reunión (familia)
+- Centro de recursos familiares
+
+Todas las pantallas siguen las directrices de Material 3 y buenas prácticas de accesibilidad.
+
+---
+
+## Ejemplo de Caso de Uso
+
+**Escenario:** Un familiar consulta el bienestar y evolución de su hijo/a y solicita una reunión con el tutor.
+
+1. Accede al perfil del niño/a y visualiza su evolución reciente.
+2. Consulta las rutinas diarias y mensajes del profesorado.
+3. Solicita una reunión usando el formulario integrado.
+
+---
+
+---
+
+## Versión del manual: 2.3.1 (actualizado a la versión 4.2.0 de la aplicación) 

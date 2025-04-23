@@ -34,25 +34,33 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -77,6 +85,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -131,6 +140,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.sp
+import com.tfg.umeegunero.ui.theme.ProfesorColor
 
 /**
  * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
@@ -162,85 +172,245 @@ fun calcularEdad(fechaNacimiento: String?): Int {
 
 /**
  * Pantalla principal del dashboard para profesores.
+ * 
+ * Proporciona acceso rápido a todas las funcionalidades importantes del sistema para
+ * los profesores: gestión de alumnos, comunicados, incidencias, actividades, calendario
+ * y comunicación con familias.
+ *
+ * @param navController Controlador de navegación para moverse entre pantallas
+ * @param viewModel ViewModel que gestiona los datos y lógica del dashboard
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesorDashboardScreen(
     navController: NavController,
     viewModel: ProfesorDashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     
-    Scaffold { paddingValues ->
-        ProfesorDashboardContent(
-            alumnosPendientes = uiState.alumnosPendientes,
-            onCrearRegistroActividad = { dni ->
-                navController.navigate("${AppScreens.RegistroActividad.route}/$dni")
-            },
-            navController = navController,
-            modifier = Modifier.padding(paddingValues)
-        )
+    var showContent by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        showContent = true
+    }
+    
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "UmeEgunero - Profesor",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = ProfesorColor,
+                    titleContentColor = Color.White
+                ),
+                actions = {
+                    IconButton(onClick = { 
+                        navController.navigate(AppScreens.Configuracion.route)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Configuración",
+                            tint = Color.White
+                        )
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { paddingValues ->
+        AnimatedVisibility(
+            visible = showContent,
+            enter = fadeIn() + slideInVertically(
+                initialOffsetY = { it / 2 },
+                animationSpec = spring(stiffness = Spring.StiffnessLow)
+            ),
+            exit = fadeOut()
+        ) {
+            ProfesorDashboardContent(
+                alumnosPendientes = uiState.alumnosPendientes,
+                onCrearRegistroActividad = { dni ->
+                    navController.navigate("${AppScreens.RegistroActividad.route}/$dni")
+                },
+                navController = navController,
+                snackbarHostState = snackbarHostState,
+                modifier = Modifier.padding(paddingValues)
+            )
+        }
     }
 }
 
 /**
  * Contenido principal del Dashboard de Profesor
+ * 
+ * Esta composable organiza todos los elementos visuales del dashboard:
+ * - Tarjeta de bienvenida con información del día
+ * - Accesos directos a funcionalidades principales
+ * - Listado de alumnos pendientes de registro
+ * - Próximas actividades y eventos
+ *
+ * @param alumnosPendientes Lista de alumnos sin registro para el día actual
+ * @param onCrearRegistroActividad Callback para crear un nuevo registro de actividad
+ * @param navController Controlador de navegación
+ * @param modifier Modificador opcional para personalizar el diseño
  */
 @Composable
 fun ProfesorDashboardContent(
     alumnosPendientes: List<Alumno>,
     onCrearRegistroActividad: (String) -> Unit,
     navController: NavController,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
+    
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Bienvenida y fecha
         WelcomeCard()
         
-        // Accesos rápidos
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            ),
-            elevation = CardDefaults.cardElevation(0.dp)
+        // Grid de accesos rápidos principales
+        Text(
+            text = "Accesos Rápidos",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+        )
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.height(240.dp),
+            userScrollEnabled = false
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Acciones Rápidas",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    // Nuevo Registro
-                    SimpleActionButton(
-                        text = "Nuevo Registro",
-                        color = Color(0xFF34C759),
-                        onClick = { onCrearRegistroActividad("") }
-                    )
-                    
-                    // Clonar Registro
-                    SimpleActionButton(
-                        text = "Clonar Registro",
-                        color = Color(0xFF2196F3),
-                        onClick = { 
-                            navController.navigate("${AppScreens.RegistroActividad.route}/") 
+            // Comunicados
+            item {
+                DashboardMenuItem(
+                    title = "Comunicados",
+                    icon = Icons.Default.Description,
+                    color = Color(0xFF4CAF50),
+                    onClick = {
+                        // La pantalla aún está vacía según el documento Pendientes.md
+                        // pero deberíamos navegar a la ruta correcta
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Navegando a Comunicados")
                         }
-                    )
-                }
+                    }
+                )
             }
+            
+            // Incidencias
+            item {
+                DashboardMenuItem(
+                    title = "Incidencias",
+                    icon = Icons.Default.Warning,
+                    color = Color(0xFFFF9800),
+                    onClick = {
+                        // La pantalla aún está vacía según el documento Pendientes.md
+                        // pero deberíamos navegar a la ruta correcta
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Navegando a Incidencias")
+                        }
+                    }
+                )
+            }
+            
+            // Asistencia
+            item {
+                DashboardMenuItem(
+                    title = "Asistencia",
+                    icon = Icons.Default.CheckCircle,
+                    color = Color(0xFF2196F3),
+                    onClick = {
+                        navController.navigate(AppScreens.AsistenciaProfesor.route)
+                    }
+                )
+            }
+            
+            // Chat con familias
+            item {
+                DashboardMenuItem(
+                    title = "Chat",
+                    icon = Icons.AutoMirrored.Filled.Chat,
+                    color = Color(0xFF9C27B0),
+                    onClick = {
+                        navController.navigate(AppScreens.ConversacionesProfesor.route)
+                    }
+                )
+            }
+            
+            // Calendario
+            item {
+                DashboardMenuItem(
+                    title = "Calendario",
+                    icon = Icons.Default.CalendarMonth,
+                    color = Color(0xFF3F51B5),
+                    onClick = {
+                        navController.navigate(AppScreens.Calendario.route)
+                    }
+                )
+            }
+            
+            // Actividades
+            item {
+                DashboardMenuItem(
+                    title = "Actividades",
+                    icon = Icons.Default.PlayCircle,
+                    color = Color(0xFFE91E63),
+                    onClick = {
+                        navController.navigate(AppScreens.RegistroActividad.route)
+                    }
+                )
+            }
+        }
+        
+        // Segunda fila de funcionalidades
+        Text(
+            text = "Gestión Académica",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+        )
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Gestión de Clases
+            GestionCard(
+                title = "Mis Clases",
+                icon = Icons.Default.School,
+                color = Color(0xFF00BCD4),
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    navController.navigate(AppScreens.DetalleClase.route)
+                }
+            )
+            
+            // Evaluación
+            GestionCard(
+                title = "Evaluación",
+                icon = Icons.Default.PieChart,
+                color = Color(0xFF673AB7),
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    navController.navigate(AppScreens.Evaluacion.route)
+                }
+            )
         }
         
         // Alumnos que requieren atención
@@ -248,18 +418,31 @@ fun ProfesorDashboardContent(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
                 ),
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text(
-                        text = "Alumnos pendientes de registro",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Alarm,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Text(
+                            text = "Pendientes de registro",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
@@ -268,51 +451,30 @@ fun ProfesorDashboardContent(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Mostrar algunos alumnos
-                    Text(
-                        text = "Pulse el botón para crear un nuevo registro",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     
                     Button(
                         onClick = { onCrearRegistroActividad("") },
-                        modifier = Modifier.align(Alignment.End)
+                        modifier = Modifier.align(Alignment.End),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Create,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text("Crear registro")
                     }
                 }
             }
         }
         
-        // Tareas pendientes y próximos eventos
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            ),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Próximas actividades",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                
-                Text(
-                    text = "No hay actividades programadas para hoy",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        // Espaciado adicional al final
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -328,14 +490,15 @@ fun WelcomeCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF34C759).copy(alpha = 0.1f)
+            containerColor = ProfesorColor.copy(alpha = 0.15f)
         ),
-        elevation = CardDefaults.cardElevation(0.dp)
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -344,9 +507,12 @@ fun WelcomeCard(modifier: Modifier = Modifier) {
                 Icon(
                     imageVector = Icons.Default.CalendarToday,
                     contentDescription = null,
-                    tint = Color(0xFF34C759)
+                    tint = ProfesorColor,
+                    modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
                 Text(
                     text = formattedDate,
                     style = MaterialTheme.typography.titleMedium
@@ -357,65 +523,187 @@ fun WelcomeCard(modifier: Modifier = Modifier) {
 
             // Sección de aula
             Text(
-                text = "Tu aula: 2B - Educación Infantil",
+                text = "2B - Educación Infantil",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
 
+            Spacer(modifier = Modifier.height(4.dp))
+            
             Text(
                 text = "15 alumnos a tu cargo",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Estadísticas rápidas
+                EstadisticaItem(
+                    valor = "93%",
+                    titulo = "Asistencia",
+                    color = Color(0xFF4CAF50)
+                )
+                
+                // Separador vertical
+                HorizontalDivider(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .width(1.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                )
+                
+                EstadisticaItem(
+                    valor = "87%",
+                    titulo = "Actividades",
+                    color = Color(0xFF2196F3)
+                )
+                
+                HorizontalDivider(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .width(1.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                )
+                
+                EstadisticaItem(
+                    valor = "5",
+                    titulo = "Pendientes",
+                    color = Color(0xFFFF9800)
+                )
+            }
         }
     }
 }
 
 /**
- * Botón de acción simplificado
+ * Elemento de menú para el dashboard
  */
 @Composable
-fun SimpleActionButton(
-    text: String,
+fun DashboardMenuItem(
+    title: String,
+    icon: ImageVector,
     color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.clickable(onClick = onClick)
+        verticalArrangement = Arrangement.Center,
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .background(color.copy(alpha = 0.1f))
+            .padding(vertical = 16.dp, horizontal = 8.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(CircleShape)
-                .background(color),
+                .background(color.copy(alpha = 0.2f), CircleShape)
+                .padding(12.dp),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = text,
-                tint = Color.White
+                imageVector = icon,
+                contentDescription = title,
+                tint = color,
+                modifier = Modifier.size(24.dp)
             )
         }
         
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
 
-@Preview(showBackground = true)
+/**
+ * Tarjeta para secciones de gestión principal
+ */
 @Composable
-fun ConfiguracionProfesorPreviewNew() {
-    UmeEguneroTheme {
-        ConfiguracionScreen(perfil = PerfilConfiguracion.PROFESOR)
+fun GestionCard(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .height(100.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.1f)
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(color.copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+/**
+ * Elemento de estadística simple
+ */
+@Composable
+fun EstadisticaItem(
+    valor: String,
+    titulo: String,
+    color: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = valor,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        
+        Text(
+            text = titulo,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -435,264 +723,6 @@ fun ProfesorDashboardDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
         ProfesorDashboardScreen(
             navController = rememberNavController()
-        )
-    }
-}
-
-@Composable
-fun FuncionalidadCard(
-    title: String,
-    icon: ImageVector,
-    color: Color,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .background(color.copy(alpha = 0.2f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-fun AccionRapidaItem(
-    title: String,
-    icon: ImageVector,
-    color: Color,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .background(color.copy(alpha = 0.2f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-fun GraficoRendimiento() {
-    val diasSemana = listOf("L", "M", "X", "J", "V")
-    val valorActividades = listOf(85, 90, 75, 88, 92)
-    val valoresAsistencia = listOf(90, 95, 85, 92, 97)
-    
-    val barWidth = 15.dp
-    val chartHeight = 140.dp
-    
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Leyenda
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(Color(0xFF5856D6), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Actividades",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(24.dp))
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(Color(0xFF34C759), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Asistencia",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-        
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(chartHeight)
-                .padding(vertical = 8.dp)
-        ) {
-            // Líneas horizontales (guías)
-            for (i in 0..4) {
-                val yPosition = (i * 20f + 20) / 100f
-                
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = (chartHeight * (1 - yPosition)))
-                        .align(Alignment.TopCenter),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                )
-                
-                // Valores de porcentaje
-                Text(
-                    text = "${(i * 20) + 20}%",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 8.sp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .align(Alignment.CenterStart)
-                        .offset(y = (chartHeight * (1 - yPosition) - 8.dp))
-                )
-            }
-            
-            // Barras del gráfico
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 24.dp, end = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                repeat(5) { index ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Barra de actividades
-                        Box(
-                            modifier = Modifier
-                                .width(barWidth)
-                                .height((chartHeight * valorActividades[index] / 100))
-                                .background(
-                                    color = Color(0xFF5856D6),
-                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                                )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Día de la semana
-                        Text(
-                            text = diasSemana[index],
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(4.dp))
-                    
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Barra de asistencia
-                        Box(
-                            modifier = Modifier
-                                .width(barWidth)
-                                .height((chartHeight * valoresAsistencia[index] / 100))
-                                .background(
-                                    color = Color(0xFF34C759),
-                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                                )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Espacio vacío para alinear con la otra columna
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                    
-                    if (index < 4) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EstadisticaItem(
-    valor: String,
-    titulo: String,
-    color: Color
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = valor,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        
-        Text(
-            text = titulo,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

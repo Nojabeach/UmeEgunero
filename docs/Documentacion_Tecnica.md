@@ -427,12 +427,137 @@ La aplicación requiere varios permisos para funcionar correctamente:
 
 ## Seguridad
 
-La aplicación implementa varias medidas de seguridad:
+### Autenticación y Autorización
 
-1. **Autenticación**: Firebase Authentication para gestión segura de usuarios
-2. **Reglas de Firestore**: Para controlar el acceso a datos
-3. **Cifrado de datos sensibles**: Utilizando la biblioteca Security Crypto
-4. **Validación de entradas**: Para prevenir inyecciones y ataques
+UmeEgunero implementa un sistema completo de seguridad basado en Firebase Authentication y reglas personalizadas de Firestore:
+
+#### Autenticación
+
+```kotlin
+class AuthRepositoryImpl @Inject constructor(
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
+) : AuthRepository {
+    
+    override fun login(email: String, password: String): Flow<Result<User>> = flow {
+        emit(Result.Loading)
+        try {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            // Verificar si la cuenta está activa
+            val userDoc = firestore.collection("usuarios")
+                .document(result.user!!.uid)
+                .get().await()
+            
+            if (userDoc.exists() && userDoc.getBoolean("activo") == true) {
+                emit(Result.Success(result.user!!))
+            } else {
+                auth.signOut()
+                emit(Result.Error("La cuenta ha sido desactivada"))
+            }
+        } catch (e: Exception) {
+            emit(Result.Error(e.message))
+        }
+    }
+    
+    // Otros métodos de autenticación...
+}
+```
+
+#### Reglas de Seguridad de Firestore
+
+La aplicación utiliza reglas de seguridad detalladas en Firestore para proteger los datos:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Función para verificar rol de usuario
+    function hasRole(role) {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.tipoUsuario == role;
+    }
+    
+    // Función para verificar pertenencia a centro
+    function belongsToCenter(centerId) {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.centroId == centerId;
+    }
+    
+    // Reglas para colección de usuarios
+    match /usuarios/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || hasRole("ADMIN_APP"));
+      allow create: if hasRole("ADMIN_APP") || hasRole("ADMIN_CENTRO");
+      allow update: if request.auth != null && 
+                    (request.auth.uid == userId || 
+                     hasRole("ADMIN_APP") || 
+                     (hasRole("ADMIN_CENTRO") && belongsToCenter(resource.data.centroId)));
+      allow delete: if hasRole("ADMIN_APP");
+    }
+    
+    // Reglas para centros educativos
+    match /centros/{centroId} {
+      allow read: if request.auth != null;
+      allow write: if hasRole("ADMIN_APP");
+      
+      // Subcolección cursos
+      match /cursos/{cursoId} {
+        allow read: if request.auth != null && 
+                   (hasRole("ADMIN_APP") || 
+                    belongsToCenter(centroId));
+        allow write: if hasRole("ADMIN_APP") || 
+                    (hasRole("ADMIN_CENTRO") && belongsToCenter(centroId));
+      }
+      
+      // Otras subcolecciones...
+    }
+    
+    // Más reglas para otras colecciones...
+  }
+}
+```
+
+### Protección de Datos Sensibles
+
+1. **Encriptación de Datos**:
+   - Toda la comunicación con Firebase utiliza HTTPS
+   - Datos sensibles como contraseñas nunca se almacenan en texto plano
+   - Se utilizan Firebase Security Rules para restringir acceso a documentos
+
+2. **Protección en la Aplicación**:
+   - Información sensible como tokens de sesión se almacena en EncryptedSharedPreferences
+   - No se permite captura de pantalla en pantallas con información sensible
+   - Cierre automático de sesión por inactividad
+
+```kotlin
+class SecurityManager @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+    
+    private val encryptedPrefs = EncryptedSharedPreferences.create(
+        context,
+        "secure_prefs",
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+    
+    fun saveSecureToken(token: String) {
+        encryptedPrefs.edit().putString("auth_token", token).apply()
+    }
+    
+    fun getSecureToken(): String? {
+        return encryptedPrefs.getString("auth_token", null)
+    }
+    
+    fun clearSecureData() {
+        encryptedPrefs.edit().clear().apply()
+    }
+}
+```
 
 ## Rendimiento
 
@@ -752,398 +877,72 @@ class SecurityManager @Inject constructor(
 }
 ```
 
-## Testing
+## Buenas Prácticas en Desarrollo Android
 
-UmeEgunero implementa una estrategia de pruebas integral que abarca múltiples niveles:
+- Uso de Material 3 y Jetpack Compose en toda la UI.
+- Arquitectura MVVM + Clean Architecture.
+- Separación estricta de capas y responsabilidades.
+- Inyección de dependencias con Hilt.
+- Internacionalización (strings.xml) y soporte multilenguaje.
+- Accesibilidad (contentDescription, contraste, tamaño mínimo de touch targets).
 
-### Pruebas Unitarias
+## Testing y Cobertura
 
-Se utilizan pruebas unitarias para validar componentes individuales, especialmente repositorios y ViewModels:
+- Pruebas unitarias en ViewModel y lógica de dominio.
+- Pruebas instrumentadas con Jetpack Compose Test.
+- Cobertura mínima recomendada: 80% en lógica crítica.
 
-```kotlin
-@RunWith(MockitoJUnitRunner::class)
-class AlumnoViewModelTest {
-    
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
-    
-    @get:Rule
-    val mainCoroutineRule = MainCoroutineRule()
-    
-    @Mock
-    private lateinit var alumnoRepository: AlumnoRepository
-    
-    private lateinit var viewModel: AlumnoViewModel
-    
-    @Before
-    fun setup() {
-        viewModel = AlumnoViewModel("alumno123", alumnoRepository)
-    }
-    
-    @Test
-    fun `cuando se carga un alumno existente, el estado UI se actualiza correctamente`() = runBlockingTest {
-        // Given
-        val alumno = Alumno("alumno123", "Nombre", "Apellidos", /* otros campos */)
-        whenever(alumnoRepository.obtenerAlumnoPorId("alumno123"))
-            .thenReturn(flowOf(Result.Success(alumno)))
-        
-        // When
-        viewModel.loadAlumno()
-        
-        // Then
-        val state = viewModel.uiState.value
-        assert(!state.isLoading)
-        assert(state.error == null)
-        assert(state.alumno == alumno)
-    }
-    
-    @Test
-    fun `cuando hay un error al cargar un alumno, el estado UI muestra el error`() = runBlockingTest {
-        // Given
-        whenever(alumnoRepository.obtenerAlumnoPorId("alumno123"))
-            .thenReturn(flowOf(Result.Error("Error al cargar alumno")))
-        
-        // When
-        viewModel.loadAlumno()
-        
-        // Then
-        val state = viewModel.uiState.value
-        assert(!state.isLoading)
-        assert(state.error == "Error al cargar alumno")
-        assert(state.alumno == null)
-    }
-}
-```
+## Integración y Seguridad con Firebase
 
-### Pruebas de Integración
+- Uso de reglas de seguridad en Firestore.
+- Validación de roles y permisos en el backend.
+- Manejo seguro de credenciales y datos personales.
 
-Para validar la interacción entre componentes:
+## Tabla de Librerías Clave
 
-```kotlin
-@RunWith(AndroidJUnit4::class)
-class FirestoreIntegrationTest {
-    
-    private lateinit var firestore: FirebaseFirestore
-    private lateinit var repository: AlumnoRepository
-    
-    @Before
-    fun setup() {
-        // Configurar Firestore para tests
-        val settings = FirebaseFirestoreSettings.Builder()
-            .setPersistenceEnabled(false)
-            .build()
-        
-        firestore = FirebaseFirestore.getInstance()
-        firestore.firestoreSettings = settings
-        
-        val dataSource = AlumnoLocalDataSource(mockk(relaxed = true))
-        repository = AlumnoRepositoryImpl(firestore, dataSource)
-    }
-    
-    @Test
-    fun testRegistrarYObtenerAlumno() = runBlocking {
-        // Given
-        val alumno = Alumno(
-            id = "test_${UUID.randomUUID()}",
-            nombre = "Test",
-            apellidos = "Integration",
-            // Otros campos
-        )
-        
-        // When - Registrar
-        val registerResult = repository.registrarAlumno(alumno)
-            .first { it !is Result.Loading }
-        
-        // Then - Verificar registro
-        assertThat(registerResult).isInstanceOf(Result.Success::class.java)
-        
-        // When - Obtener
-        val getResult = repository.obtenerAlumnoPorId(alumno.id)
-            .first { it !is Result.Loading }
-        
-        // Then - Verificar obtención
-        assertThat(getResult).isInstanceOf(Result.Success::class.java)
-        assertThat((getResult as Result.Success).data.nombre).isEqualTo("Test")
-        
-        // Cleanup
-        repository.eliminarAlumno(alumno.id).collect {}
-    }
-}
-```
+| Librería               | Versión   | Uso principal           |
+|------------------------|-----------|------------------------|
+| Jetpack Compose        | 1.x       | UI declarativa         |
+| Material 3             | 1.x       | Componentes UI         |
+| Hilt                   | 2.x       | Inyección dependencias |
+| Firebase (Auth, DB)    | Última    | Backend y auth         |
+| Room                   | 2.x       | BD local               |
+| Navigation Compose     | 2.x       | Navegación             |
+| Coil                   | 2.x       | Carga de imágenes      |
 
-### Pruebas de UI con Compose
+## Internacionalización y Localización
 
-Para validar la interfaz de usuario:
-
-```kotlin
-@RunWith(AndroidJUnit4::class)
-class LoginScreenTest {
-    
-    @get:Rule
-    val composeTestRule = createComposeRule()
-    
-    @Before
-    fun setup() {
-        composeTestRule.setContent {
-            UmeEguneroTheme {
-                LoginScreen(
-                    onLoginSuccess = {},
-                    onNavigateBack = {},
-                    userType = TipoUsuario.FAMILIAR
-                )
-            }
-        }
-    }
-    
-    @Test
-    fun loginButton_isDisabled_whenFieldsAreEmpty() {
-        // Verify login button is disabled initially
-        composeTestRule.onNodeWithText("Iniciar Sesión")
-            .assertIsNotEnabled()
-    }
-    
-    @Test
-    fun loginButton_isEnabled_whenValidCredentialsEntered() {
-        // Enter email
-        composeTestRule.onNodeWithTag("email_field")
-            .performTextInput("test@example.com")
-        
-        // Enter password
-        composeTestRule.onNodeWithTag("password_field")
-            .performTextInput("password123")
-        
-        // Verify login button is enabled
-        composeTestRule.onNodeWithText("Iniciar Sesión")
-            .assertIsEnabled()
-    }
-    
-    @Test
-    fun errorMessage_isDisplayed_whenInvalidEmailEntered() {
-        // Enter invalid email
-        composeTestRule.onNodeWithTag("email_field")
-            .performTextInput("invalid-email")
-        
-        // Click elsewhere to trigger validation
-        composeTestRule.onNodeWithTag("password_field")
-            .performClick()
-        
-        // Verify error is displayed
-        composeTestRule.onNodeWithText("Email no válido")
-            .assertIsDisplayed()
-    }
-}
-```
-
-### Cobertura de Pruebas
-
-El proyecto mantiene una cobertura de pruebas mínima del 70% para code paths críticos:
-
-| Módulo | Cobertura | Áreas Críticas |
-|--------|-----------|----------------|
-| Autenticación | 85% | Login, registro, recuperación |
-| Repositorios | 75% | CRUD operaciones, manejo de errores |
-| ViewModels | 80% | Estados UI, transformaciones de datos |
-| UI Componentes | 60% | Validación de inputs, navegación |
+- Uso de recursos en `strings.xml` para todos los textos.
+- Soporte para español y euskera (añadir más idiomas si es necesario).
 
 ## Accesibilidad
 
-UmeEgunero implementa múltiples características para asegurar la accesibilidad:
-
-### Soporte de TalkBack
-
-Todos los elementos interactivos incluyen descripciones semánticas para compatibilidad con lectores de pantalla:
-
-```kotlin
-Button(
-    onClick = { /* acción */ },
-    modifier = Modifier.semantics { 
-        contentDescription = "Guardar cambios" 
-    }
-) {
-    Icon(Icons.Default.Save, contentDescription = null)
-    Text("Guardar")
-}
-```
-
-### Escalado de Texto
-
-La interfaz soporta el escalado dinámico de texto respetando la configuración de accesibilidad del sistema:
-
-```kotlin
-Text(
-    text = "Título de sección",
-    style = MaterialTheme.typography.titleLarge,
-    // Utiliza SP que respeta la configuración de tamaño de texto del sistema
-    fontSize = TextUnit.Sp(18)
-)
-```
-
-### Contraste y Colores
-
-Se garantiza un ratio de contraste mínimo de 4.5:1 para todo el texto informativo:
-
-```kotlin
-val AccessibilityTokens = ColorScheme(
-    // Colores primarios con alto contraste
-    primary = Color(0xFF0052CC),
-    onPrimary = Color(0xFFFFFFFF),
-    // Otros colores con alto contraste
-    // ...
-)
-
-@Composable
-fun AccessibleTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = AccessibilityTokens,
-        content = content
-    )
-}
-```
-
-### Gestos Alternativos
-
-Se implementan múltiples formas de interacción para cada acción crítica:
-
-```kotlin
-// Ejemplo de múltiples opciones para confirmar una acción
-AlertDialog(
-    onDismissRequest = { /* cancelar */ },
-    title = { Text("Confirmar acción") },
-    text = { Text("¿Está seguro de realizar esta acción?") },
-    confirmButton = {
-        Row {
-            // Botón principal
-            Button(onClick = { /* confirmar */ }) {
-                Text("Confirmar")
-            }
-            
-            // Opción alternativa con keyboard shortcut
-            TextButton(
-                onClick = { /* confirmar */ },
-                modifier = Modifier.semantics {
-                    keyboardShortcut = KeyboardShortcut('C')
-                }
-            ) {
-                Text("(C) Confirmar")
-            }
-        }
-    },
-    dismissButton = {
-        TextButton(onClick = { /* cancelar */ }) {
-            Text("Cancelar")
-        }
-    }
-)
-```
-
-### Tests de Accesibilidad
-
-Se realizan pruebas específicas para validar la accesibilidad:
-
-```kotlin
-@Test
-fun elementosInteractivos_tienenDescripcionesAdecuadas() {
-    composeTestRule.onAllNodesWithTag("interactive")
-        .fetchSemanticsNodes()
-        .forEach { node ->
-            assertThat(node.config.getOrNull(SemanticsProperties.ContentDescription))
-                .isNotNull()
-        }
-}
-
-@Test
-fun textosMuestranContrasteAdecuado() {
-    composeTestRule.onAllNodesWithTag("text")
-        .fetchSemanticsNodes()
-        .forEach { node ->
-            val foreground = node.config.getOrNull(SemanticsProperties.TextForegroundColor) ?: return@forEach
-            val background = node.config.getOrNull(SemanticsProperties.BackgroundColor) ?: return@forEach
-            
-            val contrast = calculateContrast(foreground, background)
-            assertThat(contrast).isAtLeast(4.5f)
-        }
-}
-```
+- Uso de `contentDescription` para todos los elementos interactivos.
+- Contraste mínimo de 4.5:1 para texto informativo.
+- Tamaño mínimo de 48x48dp para touch targets.
 
 ## Optimización y Performance
 
-UmeEgunero implementa diversas estrategias para optimizar el rendimiento en dispositivos Android:
+- Uso de paginación para grandes conjuntos de datos.
+- Caché de imágenes con Coil.
+- Recomposición inteligente en Compose.
+- LazyLists y LazyGrids para renderizado eficiente.
 
-### Lazy Loading de Componentes
+## Generación de Documentación
 
-```kotlin
-@Composable
-fun ListaAlumnos(alumnos: List<Alumno>) {
-    LazyColumn {
-        items(alumnos) { alumno ->
-            AlumnoItem(alumno)
-        }
-    }
-}
-```
+- Uso de Dokka para generar documentación a partir de comentarios KDoc.
 
-### Caché y Persistencia Offline
+## Patrones de Diseño
 
-```kotlin
-@Module
-@InstallIn(SingletonComponent::class)
-object FirestoreModule {
-    @Provides
-    @Singleton
-    fun provideFirestore(): FirebaseFirestore {
-        val settings = FirebaseFirestoreSettings.Builder()
-            .setPersistenceEnabled(true)  // Habilita caché offline
-            .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
-            .build()
-        
-        return FirebaseFirestore.getInstance().apply {
-            firestoreSettings = settings
-        }
-    }
-}
-```
+- Repository Pattern para abstraer lógica de acceso a datos.
+- Factory Pattern para creación de instancias complejas.
+- Adapter Pattern para transformar datos entre capas.
+- Observer Pattern para mantener la UI sincronizada con cambios de estado.
+- Singleton Pattern para proveer instancias únicas de servicios críticos.
+- Strategy Pattern para implementar diferentes estrategias de autenticación.
 
-### Optimización de Imágenes
+## Seguridad
 
-```kotlin
-@Composable
-fun UserProfileImage(photoUrl: String) {
-    AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(photoUrl)
-            .crossfade(true)
-            .size(Size.ORIGINAL)  // Se redimensionará al tamaño del componente
-            .placeholder(R.drawable.profile_placeholder)
-            .build(),
-        contentDescription = "Foto de perfil",
-        contentScale = ContentScale.Crop,
-        modifier = Modifier
-            .size(48.dp)
-            .clip(CircleShape)
-    )
-}
-```
-
-### Métricas de Performance
-
-La aplicación implementa monitoreo de métricas de rendimiento críticas:
-
-```kotlin
-object PerformanceMonitor {
-    private val firebasePerformance = FirebasePerformance.getInstance()
-    
-    fun startTrace(name: String): Trace {
-        return firebasePerformance.newTrace(name).apply {
-            start()
-        }
-    }
-    
-    fun logScreenLoadTime(screenName: String, durationMs: Long) {
-        firebasePerformance.newTrace("screen_load_$screenName").apply {
-            putMetric("duration_ms", durationMs)
-            start()
-            stop()
-        }
-    }
-}
-``` 
+- Autenticación y autorización con Firebase Authentication y reglas de seguridad en Firestore.
+- Protección de datos sensibles con encriptación y restricciones de acceso.
+- Manejo seguro de credenciales y datos personales.
