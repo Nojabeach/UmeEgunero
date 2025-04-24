@@ -216,26 +216,28 @@ class CentroDashboardViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                // Filtrar cursos por centro del usuario
-                when (val result = cursoRepository.getCursosByCentro(centroId)) {
-                    is Result.Success -> {
-                        _uiState.update { 
-                            it.copy(
-                                cursos = result.data,
-                                isLoading = false
-                            ) 
+                if (centroId.isNotEmpty()) {
+                    when (val cursosResult = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
+                        is Result.Success -> {
+                            Timber.d("Cursos cargados: ${cursosResult.data.size}")
+                            _uiState.update { it.copy(cursos = cursosResult.data, isLoading = false) }
                         }
-                    }
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = result.exception?.message ?: "Error al cargar los cursos"
-                            )
+                        is Result.Error -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    error = cursosResult.exception?.message ?: "Error al cargar los cursos"
+                                )
+                            }
+                            Timber.e(cursosResult.exception, "Error al cargar los cursos")
                         }
-                        Timber.e(result.exception, "Error al cargar los cursos")
+                        else -> { /* Ignorar estado loading */ }
                     }
-                    else -> { /* Ignorar estado loading */ }
+                } else {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "No hay centroId disponible"
+                    ) }
                 }
             } catch (e: Exception) {
                 _uiState.update {

@@ -37,39 +37,6 @@ class CursoRepository @Inject constructor(
     }
 
     /**
-     * Obtiene los cursos de un centro específico
-     */
-    suspend fun obtenerCursosPorCentro(centroId: String): Result<List<Curso>> = withContext(Dispatchers.IO) {
-        try {
-            Timber.d("Consultando cursos para centro: $centroId")
-            
-            val querySnapshot = cursosCollection
-                .whereEqualTo("centroId", centroId)
-                .whereEqualTo("activo", true)  // Solo cursos activos por defecto
-                .orderBy("nombre", Query.Direction.ASCENDING)
-                .get()
-                .await()
-            
-            val cursos = querySnapshot.documents.mapNotNull { doc ->
-                val curso = doc.toObject(Curso::class.java)
-                curso?.copy(id = doc.id)
-            }
-            
-            Timber.d("Se encontraron ${cursos.size} cursos para el centro $centroId en consulta directa")
-            
-            // Logging detallado para depuración
-            cursos.forEach { curso ->
-                Timber.d("  - Curso encontrado: ${curso.id} - ${curso.nombre} (activo: ${curso.activo})")
-            }
-            
-            return@withContext Result.Success(cursos)
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener cursos por centro: ${e.message}")
-            return@withContext Result.Error(e)
-        }
-    }
-
-    /**
      * Obtiene un curso por su ID
      */
     suspend fun getCursoById(cursoId: String): Result<Curso> = withContext(Dispatchers.IO) {
@@ -260,36 +227,58 @@ class CursoRepository @Inject constructor(
     }
     
     /**
-     * Obtiene todos los cursos de un centro educativo, incluyendo activos e inactivos
+     * Obtiene todos los cursos de un centro educativo
      * @param centroId ID del centro educativo
+     * @param soloActivos Si true, solo devuelve cursos activos
      * @return Lista de cursos del centro
      */
-    suspend fun obtenerTodosCursosPorCentro(centroId: String): Result<List<Curso>> = withContext(Dispatchers.IO) {
-        try {
-            Timber.d("Consultando TODOS los cursos para centro: $centroId")
+    suspend fun obtenerCursosPorCentro(centroId: String, soloActivos: Boolean = false): List<Curso> {
+        return try {
+            Timber.d("Consultando cursos para centro: $centroId (soloActivos: $soloActivos)")
             
-            val querySnapshot = cursosCollection
+            val query = cursosCollection
                 .whereEqualTo("centroId", centroId)
-                // Sin filtro de activo
+            
+            // Aplicamos el filtro de activos si se solicita
+            val queryFinal = if (soloActivos) {
+                query.whereEqualTo("activo", true)
+            } else {
+                query
+            }
+            
+            val querySnapshot = queryFinal
                 .orderBy("nombre", Query.Direction.ASCENDING)
                 .get()
                 .await()
             
-            val cursos = querySnapshot.documents.mapNotNull { doc ->
-                val curso = doc.toObject(Curso::class.java)
-                curso?.copy(id = doc.id)
-            }
+            val cursos = querySnapshot.documents.mapNotNull { it.toObject(Curso::class.java) }
             
-            Timber.d("Se encontraron ${cursos.size} cursos totales para el centro $centroId")
-            
-            // Logging detallado para depuración
+            Timber.d("Se encontraron ${cursos.size} cursos para el centro $centroId")
             cursos.forEach { curso ->
                 Timber.d("  - Curso encontrado: ${curso.id} - ${curso.nombre} (activo: ${curso.activo})")
             }
             
+            cursos
+        } catch (e: FirebaseFirestoreException) {
+            Timber.e(e, "Error al obtener los cursos: ${e.message}")
+            throw Exception("Error al obtener los cursos: ${e.message}")
+        }
+    }
+    
+    /**
+     * Obtiene todos los cursos de un centro educativo con Result
+     * @param centroId ID del centro educativo
+     * @param soloActivos Si true, solo devuelve cursos activos
+     * @return Result con la lista de cursos del centro
+     */
+    suspend fun obtenerCursosPorCentroResult(centroId: String, soloActivos: Boolean = false): Result<List<Curso>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Consultando cursos para centro: $centroId (soloActivos: $soloActivos)")
+            
+            val cursos = obtenerCursosPorCentro(centroId, soloActivos)
             return@withContext Result.Success(cursos)
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener todos los cursos por centro: ${e.message}")
+            Timber.e(e, "Error al obtener cursos por centro: ${e.message}")
             return@withContext Result.Error(e)
         }
     }

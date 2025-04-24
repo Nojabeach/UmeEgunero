@@ -93,7 +93,7 @@ class VincularProfesorClaseViewModel @Inject constructor(
                 _uiState.update { it.copy(centroId = centroId) }
                 
                 // Cargamos cursos y profesores en paralelo
-                val cursosDeferred = async { cursoRepository.obtenerCursosPorCentro(centroId) }
+                val cursosDeferred = async { cursoRepository.obtenerCursosPorCentroResult(centroId) }
                 val profesoresDeferred = async { usuarioRepository.getProfesoresByCentro(centroId) }
                 
                 // Procesar resultados de cursos
@@ -247,89 +247,96 @@ class VincularProfesorClaseViewModel @Inject constructor(
             Timber.d("=== DIAGNÓSTICO DE CARGA DE CURSOS ===")
             Timber.d("Iniciando carga de cursos para el centro: $centroId")
             
-            // Modificar la consulta para incluir TODOS los cursos sin filtrar por 'activo'
-            val allCursosDeferred = async { 
-                when (val result = cursoRepository.obtenerTodosCursosPorCentro(centroId)) {
-                    is Result.Success -> {
-                        Timber.d("Total de cursos en la base de datos para este centro: ${result.data.size}")
-                        result.data.forEach { curso ->
-                            Timber.d("Curso encontrado: ID=${curso.id}, Nombre=${curso.nombre}, CentroID=${curso.centroId}, Activo=${curso.activo}")
-                        }
-                        result.data
-                    }
-                    else -> emptyList()
-                }
-            }
-            
-            // Consulta original (con filtro de activo)
-            when (val result = cursoRepository.obtenerCursosPorCentro(centroId)) {
+            // Cargar todos los cursos (sin filtrar por activo)
+            when (val result = cursoRepository.obtenerCursosPorCentroResult(centroId, soloActivos = false)) {
                 is Result.Success -> {
                     val cursos = result.data
-                    Timber.d("Consulta original - Cursos activos cargados: ${cursos.size}")
+                    Timber.d("Cursos cargados: ${cursos.size}")
+                    
+                    // Log detallado para cada curso encontrado
                     cursos.forEach { curso ->
-                        Timber.d("Consulta original - Curso: ID=${curso.id}, Nombre=${curso.nombre}, CentroID=${curso.centroId}, Activo=${curso.activo}")
+                        Timber.d("Curso: ID=${curso.id}, Nombre=${curso.nombre}, CentroID=${curso.centroId}, Activo=${curso.activo}")
                     }
                     
-                    // Comparar con todos los cursos
-                    val todosCursos = allCursosDeferred.await()
+                    // Actualizar UI con los cursos obtenidos
+                    _uiState.update { 
+                        it.copy(
+                            cursos = cursos,
+                            isLoading = false
+                        )
+                    }
                     
-                    // Si la consulta original no devuelve cursos pero hay cursos para el centro, usamos esos
-                    if (cursos.isEmpty() && todosCursos.isNotEmpty()) {
-                        Timber.d("Usando consulta alternativa ya que la original no devolvió resultados")
-                        _uiState.update { 
-                            it.copy(
-                                cursos = todosCursos,
-                                isLoading = false
-                            )
-                        }
-                        
-                        // Si hay cursos, cargamos los profesores
-                        if (todosCursos.isNotEmpty()) {
-                            cargarProfesores(centroId)
-                        }
+                    // Si hay cursos, cargar profesores
+                    if (cursos.isNotEmpty()) {
+                        cargarProfesores(centroId)
                     } else {
-                        _uiState.update { 
-                            it.copy(
-                                cursos = cursos,
-                                isLoading = false
-                            )
-                        }
-                        
-                        // Si hay cursos, cargamos los profesores
-                        if (cursos.isNotEmpty()) {
-                            cargarProfesores(centroId)
-                        }
+                        Timber.d("No se encontraron cursos para este centro ($centroId)")
+                        // Intentar usar un método alternativo si no hay cursos
+                        intentarCargarCursosAlternativo(centroId)
                     }
                 }
                 is Result.Error -> {
                     Timber.e(result.exception, "Error al cargar cursos: ${result.exception?.message}")
-                    
-                    // Usar consulta alternativa directamente
-                    val todosCursos = allCursosDeferred.await()
-                    if (todosCursos.isNotEmpty()) {
-                        Timber.d("Recuperación con consulta alternativa tras error")
-                        _uiState.update { 
-                            it.copy(
-                                cursos = todosCursos,
-                                isLoading = false,
-                                error = null
-                            )
-                        }
-                        
-                        // Cargar profesores si hay cursos
-                        cargarProfesores(centroId)
-                    } else {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al cargar cursos: ${result.exception?.message}",
-                                isLoading = false
-                            )
-                        }
-                    }
+                    // Intentar método alternativo en caso de error
+                    intentarCargarCursosAlternativo(centroId)
                 }
                 is Result.Loading -> {
                     // Manejar estado de carga si es necesario
                 }
+            }
+        }
+    }
+    
+    /**
+     * Intenta cargar cursos utilizando un método alternativo (getAllCursos + filtrado manual)
+     */
+    private suspend fun intentarCargarCursosAlternativo(centroId: String) {
+        Timber.d("Intentando cargar cursos con método alternativo")
+        
+        when (val result = cursoRepository.getAllCursos()) {
+            is Result.Success -> {
+                val todosCursos = result.data
+                Timber.d("Total de cursos en la base de datos: ${todosCursos.size}")
+                
+                val cursosDeCentro = todosCursos.filter { it.centroId == centroId }
+                Timber.d("Cursos filtrados para centroId=$centroId: ${cursosDeCentro.size}")
+                
+                cursosDeCentro.forEach { curso ->
+                    Timber.d("Método alternativo - Curso: ID=${curso.id}, Nombre=${curso.nombre}, CentroID=${curso.centroId}, Activo=${curso.activo}")
+                }
+                
+                if (cursosDeCentro.isNotEmpty()) {
+                    Timber.d("Recuperación exitosa con método alternativo")
+                    _uiState.update { 
+                        it.copy(
+                            cursos = cursosDeCentro,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+                    
+                    // Cargar profesores
+                    cargarProfesores(centroId)
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            error = "No se encontraron cursos para este centro"
+                        )
+                    }
+                }
+            }
+            is Result.Error -> {
+                Timber.e(result.exception, "Error en método alternativo: ${result.exception?.message}")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar cursos: ${result.exception?.message}",
+                        isLoading = false
+                    )
+                }
+            }
+            is Result.Loading -> {
+                // Manejar estado de carga si es necesario
             }
         }
     }

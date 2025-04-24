@@ -162,20 +162,13 @@ class AddUserViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             Timber.d("⏳ Iniciando carga de cursos para centroId: $centroId")
             
-            when (val result = cursoRepository.getCursosByCentro(centroId)) {
+            when (val result = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
                 is Result.Success -> {
                     val cursos = result.data
-                    Timber.d("✅ Cursos cargados exitosamente: ${cursos.size} cursos")
-                    cursos.forEach { curso ->
-                        Timber.d("   → Curso: ${curso.nombre} (ID: ${curso.id})")
+                    cursos.forEach { curso -> 
+                        Timber.d("Curso: ${curso.nombre}, id: ${curso.id}")
                     }
-                    
-                    _uiState.update { 
-                        it.copy(
-                            cursosDisponibles = cursos,
-                            isLoading = false
-                        )
-                    }
+                    _uiState.update { it.copy(cursosDisponibles = cursos) }
                     
                     if (cursos.isNotEmpty()) {
                         // Si hay cursos, seleccionamos automáticamente el primero

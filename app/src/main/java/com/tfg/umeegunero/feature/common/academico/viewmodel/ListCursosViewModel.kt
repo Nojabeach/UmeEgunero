@@ -79,7 +79,9 @@ class ListCursosViewModel @Inject constructor(
             }
             
             // Obtener los cursos del centro
-            when (val result = cursoRepository.getCursosByCentro(centroId)) {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            when (val result = cursoRepository.obtenerCursosPorCentroResult(centroId, soloActivos = true)) {
                 is Result.Success -> {
                     Timber.d("Cursos cargados: ${result.data.size}")
                     _uiState.update { 

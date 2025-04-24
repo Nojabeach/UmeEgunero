@@ -100,26 +100,19 @@ class GestionCursosYClasesViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // Obtener cursos por centro
-                val result = cursoRepository.getCursosByCentro(centroId)
-                
-                when (result) {
+                // Cargamos los cursos del centro
+                when (val cursosResult = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
                     is Result.Success -> {
-                        _uiState.update { 
-                            it.copy(
-                                cursos = result.data,
-                                isLoading = false
-                            )
-                        }
+                        _uiState.update { it.copy(cursos = cursosResult.data) }
                     }
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar cursos: ${result.exception?.message}",
+                                error = "Error al cargar cursos: ${cursosResult.exception?.message}",
                                 isLoading = false
                             )
                         }
-                        Timber.e(result.exception, "Error al cargar cursos")
+                        Timber.e(cursosResult.exception, "Error al cargar cursos")
                     }
                     else -> { /* No hacer nada para el estado Loading */ }
                 }

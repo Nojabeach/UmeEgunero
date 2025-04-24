@@ -125,42 +125,26 @@ class AddAlumnoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Obtenemos el centro ID del usuario actual
+                // Obtener cursos
                 val centroId = _uiState.value.centroId
                 
-                if (centroId.isBlank()) {
-                    _uiState.update { 
-                        it.copy(
-                            error = "No se pudo determinar el centro del administrador",
-                            isLoading = false
-                        ) 
-                    }
-                    return@launch
-                }
-                
-                // Obtener los cursos del centro
-                val result = cursoRepository.getCursosByCentro(centroId)
-                
-                when (result) {
-                    is Result.Success -> {
-                        _uiState.update { 
-                            it.copy(
-                                cursos = result.data,
-                                isLoading = false
-                            ) 
+                if (!centroId.isNullOrEmpty()) {
+                    when (val cursoResult = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
+                        is Result.Success -> {
+                            _uiState.update { it.copy(cursos = cursoResult.data) }
                         }
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al cargar los cursos: ${result.exception?.message}",
-                                isLoading = false
-                            ) 
+                        is Result.Error -> {
+                            _uiState.update { 
+                                it.copy(
+                                    error = "Error al cargar los cursos: ${cursoResult.exception?.message}",
+                                    isLoading = false
+                                ) 
+                            }
+                            Timber.e(cursoResult.exception, "Error al cargar cursos")
                         }
-                        Timber.e(result.exception, "Error al cargar cursos")
-                    }
-                    else -> {
-                        // No hacer nada para el estado Loading
+                        else -> {
+                            // No hacer nada para el estado Loading
+                        }
                     }
                 }
             } catch (e: Exception) {

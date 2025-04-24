@@ -63,26 +63,19 @@ class GestionCursosViewModel @Inject constructor(
             }
             
             try {
-                val result = cursoRepository.getCursosByCentro(centroId)
-                
-                when (result) {
+                // Cargar cursos por centro
+                when (val cursosResult = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
                     is Result.Success -> {
-                        _uiState.update { 
-                            it.copy(
-                                cursos = result.data,
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.d("Cursos cargados desde Firestore: ${result.data.size}")
+                        _uiState.update { it.copy(cursos = cursosResult.data) }
                     }
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar los cursos: ${result.exception?.message}",
+                                error = "Error al cargar los cursos: ${cursosResult.exception?.message}",
                                 isLoading = false
                             ) 
                         }
-                        Timber.e(result.exception, "Error al cargar cursos desde Firestore")
+                        Timber.e(cursosResult.exception, "Error al cargar cursos desde Firestore")
                     }
                     else -> {
                         // State Loading, ignoramos
