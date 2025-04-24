@@ -10,6 +10,7 @@ import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.util.UsuarioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,7 +62,8 @@ class ListCursosViewModel @Inject constructor(
                 
                 if (!esAdminApp) {
                     // Si no es admin de app, obtener su centro asignado
-                    val centroId = obtenerCentroIdDelUsuarioActual(userId)
+                    // Usar el método centralizado para obtener el centroId
+                    val centroId = UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
                     if (!centroId.isNullOrEmpty()) {
                         _uiState.update { it.copy(centroId = centroId) }
                         
@@ -93,52 +95,6 @@ class ListCursosViewModel @Inject constructor(
             Timber.e(e, "Error al verificar si es admin app: ${e.message}")
             false
         }
-    }
-    
-    /**
-     * Obtiene el ID del centro asociado al usuario actual
-     */
-    private suspend fun obtenerCentroIdDelUsuarioActual(usuarioId: String): String? {
-        // MÉTODO 1: Buscar en perfiles del usuario
-        val result = usuarioRepository.getUsuarioById(usuarioId)
-        if (result is Result.Success) {
-            val usuario = result.data
-            
-            // Buscar centroId en perfiles, probando diferentes tipos de usuario
-            val perfilConCentroId = usuario.perfiles.find { it.centroId.isNotEmpty() }
-            if (perfilConCentroId != null) {
-                val centroId = perfilConCentroId.centroId
-                Timber.d("CentroId encontrado en perfil: $centroId")
-                return centroId
-            }
-            
-            Timber.d("No se encontró centroId en ningún perfil del usuario")
-        }
-        
-        // MÉTODO 2: Usar método específico del repositorio
-        try {
-            val centroId = usuarioRepository.getCentroIdUsuarioActual()
-            if (!centroId.isNullOrEmpty()) {
-                Timber.d("CentroId obtenido con método alternativo: $centroId")
-                return centroId
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error obteniendo centroId por método alternativo: ${e.message}")
-        }
-        
-        // MÉTODO 3: Buscar centros donde el usuario es admin o profesor
-        try {
-            val centrosResult = centroRepository.getCentrosByAdminOrProfesor(usuarioId)
-            if (centrosResult is Result.Success && centrosResult.data.isNotEmpty()) {
-                val primerCentro = centrosResult.data.first()
-                Timber.d("Centro encontrado como admin/profesor: ${primerCentro.id}")
-                return primerCentro.id
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error buscando centros del usuario: ${e.message}")
-        }
-        
-        return null
     }
     
     /**

@@ -7,8 +7,9 @@ import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
-import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.UsuarioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -95,20 +96,13 @@ class AddAlumnoViewModel @Inject constructor(
                 val currentUser = authRepository.getCurrentUser()
                 
                 if (currentUser != null) {
-                    // Obtener el perfil completo del usuario
-                    val usuarioResult = usuarioRepository.getUsuarioByEmail(currentUser.email)
+                    // Utilizar la utilidad centralizada para obtener el centroId
+                    val centroId = UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
                     
-                    if (usuarioResult is Result.Success) {
-                        val usuario = usuarioResult.data
-                        
-                        // Obtener el centroId del primer perfil de tipo ADMIN_CENTRO
-                        val centroId = usuario?.perfiles
-                            ?.find { it.tipo == com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_CENTRO }
-                            ?.centroId
-                        
-                        centroId?.let {
-                            _uiState.update { state -> state.copy(centroId = it) }
-                        }
+                    if (!centroId.isNullOrEmpty()) {
+                        _uiState.update { state -> state.copy(centroId = centroId) }
+                    } else {
+                        Timber.e("No se pudo obtener el centroId del usuario actual")
                     }
                 }
             } catch (e: Exception) {

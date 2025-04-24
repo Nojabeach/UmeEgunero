@@ -8,6 +8,9 @@ import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.CentroRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.util.UsuarioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,7 +52,9 @@ data class AddCursoUiState(
 @HiltViewModel
 class AddCursoViewModel @Inject constructor(
     private val cursoRepository: CursoRepository,
+    private val centroRepository: CentroRepository,
     private val usuarioRepository: UsuarioRepository,
+    private val authRepository: AuthRepository,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
@@ -57,11 +62,14 @@ class AddCursoViewModel @Inject constructor(
     val uiState: StateFlow<AddCursoUiState> = _uiState.asStateFlow()
     
     init {
-        // Obtener el centro del usuario actual
+        // Al inicializar, intentamos obtener el centroId del usuario actual
         viewModelScope.launch {
-            val centroId = obtenerCentroIdDelUsuarioActual()
-            if (centroId != null) {
+            val centroId = UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
+            if (!centroId.isNullOrEmpty()) {
                 _uiState.update { it.copy(centroId = centroId) }
+                Timber.d("CentroId inicial establecido: $centroId")
+            } else {
+                Timber.e("No se pudo obtener el centroId del usuario actual")
             }
             
             // Verificar si estamos en modo edición
@@ -70,14 +78,6 @@ class AddCursoViewModel @Inject constructor(
                 cargarCurso(cursoId)
             }
         }
-    }
-    
-    /**
-     * Obtiene el ID del centro del usuario actual
-     */
-    private suspend fun obtenerCentroIdDelUsuarioActual(): String? {
-        // Implementación temporal simplificada
-        return "centro_prueba"
     }
     
     /**

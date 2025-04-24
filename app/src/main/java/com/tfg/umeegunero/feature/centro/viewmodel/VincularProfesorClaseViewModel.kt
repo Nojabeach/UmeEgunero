@@ -13,6 +13,7 @@ import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.UsuarioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -96,8 +97,8 @@ class VincularProfesorClaseViewModel @Inject constructor(
                     // Si no es admin de app, obtener solo su centro asignado
                     Timber.d("Usuario no es ADMIN_APP, buscando su centro asignado")
                     
-                    // Intentar obtener el centroId del usuario
-                    val centroId = obtenerCentroIdDelUsuarioActual(usuarioActual.documentId)
+                    // Intentar obtener el centroId del usuario usando la utilidad centralizada
+                    val centroId = UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
                     
                     if (centroId.isNullOrEmpty()) {
                         Timber.e("Error: No se pudo determinar el centro educativo del usuario actual")
@@ -315,84 +316,8 @@ class VincularProfesorClaseViewModel @Inject constructor(
      * Intenta múltiples métodos para obtener el centroId
      */
     private suspend fun obtenerCentroIdDelUsuarioActual(usuarioId: String): String? {
-        Timber.d("=== DIAGNÓSTICO DE OBTENCIÓN DE CENTRO ID ===")
-        Timber.d("Intentando obtener centroId para el usuario: $usuarioId")
-        
-        // MÉTODO 1: Buscar en perfiles del usuario
-        val result = usuarioRepository.getUsuarioById(usuarioId)
-        if (result is Result.Success) {
-            val usuario = result.data
-            Timber.d("Usuario obtenido: ${usuario.nombre} ${usuario.apellidos}")
-            Timber.d("Perfiles en el usuario: ${usuario.perfiles.size}")
-            
-            // Mostrar detalles de cada perfil para diagnóstico
-            usuario.perfiles.forEachIndexed { index, perfil ->
-                Timber.d("Perfil #$index: tipo=${perfil.tipo}, centroId=${perfil.centroId}")
-            }
-            
-            // Buscar centroId en perfiles, probando diferentes tipos de usuario
-            val perfilConCentroId = usuario.perfiles.find { it.centroId.isNotEmpty() }
-            if (perfilConCentroId != null) {
-                val centroId = perfilConCentroId.centroId
-                Timber.d("✅ MÉTODO 1: CentroId encontrado en perfil: $centroId (tipo: ${perfilConCentroId.tipo})")
-                return centroId
-            }
-            
-            Timber.d("❌ MÉTODO 1: No se encontró centroId en ningún perfil del usuario")
-        } else if (result is Result.Error) {
-            Timber.e(result.exception, "❌ MÉTODO 1: Error obteniendo usuario: ${result.exception?.message}")
-        }
-        
-        // MÉTODO 2: Usar método específico del repositorio
-        try {
-            val centroId = usuarioRepository.getCentroIdUsuarioActual()
-            if (!centroId.isNullOrEmpty()) {
-                Timber.d("✅ MÉTODO 2: CentroId obtenido con método alternativo: $centroId")
-                return centroId
-            } else {
-                Timber.d("❌ MÉTODO 2: El método alternativo devolvió null o cadena vacía")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "❌ MÉTODO 2: Error obteniendo centroId por método alternativo: ${e.message}")
-        }
-        
-        // MÉTODO 3: Buscar centros donde el usuario es admin o profesor
-        try {
-            val centrosResult = centroRepository.getCentrosByAdminOrProfesor(usuarioId)
-            if (centrosResult is Result.Success && centrosResult.data.isNotEmpty()) {
-                val primerCentro = centrosResult.data.first()
-                Timber.d("✅ MÉTODO 3: Centro encontrado como admin/profesor: ${primerCentro.id} - ${primerCentro.nombre}")
-                return primerCentro.id
-            } else {
-                Timber.d("❌ MÉTODO 3: No se encontraron centros para el usuario como admin/profesor")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "❌ MÉTODO 3: Error buscando centros del usuario: ${e.message}")
-        }
-        
-        // MÉTODO 4: Intentar obtener todos los centros y buscar en cada uno
-        try {
-            val todosLosCentros = centroRepository.getAllCentros()
-            if (todosLosCentros is Result.Success && todosLosCentros.data.isNotEmpty()) {
-                Timber.d("MÉTODO 4: Verificando en ${todosLosCentros.data.size} centros...")
-                
-                // Buscar un centro donde el usuario sea profesor o admin
-                for (centro in todosLosCentros.data) {
-                    if (centro.adminIds.contains(usuarioId) || centro.profesorIds.contains(usuarioId)) {
-                        Timber.d("✅ MÉTODO 4: Usuario encontrado en centro: ${centro.id} - ${centro.nombre}")
-                        return centro.id
-                    }
-                }
-                Timber.d("❌ MÉTODO 4: Usuario no encontrado en ningún centro")
-            } else {
-                Timber.d("❌ MÉTODO 4: No se pudieron obtener los centros o no hay centros")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "❌ MÉTODO 4: Error verificando centros: ${e.message}")
-        }
-        
-        Timber.e("❌ TODOS LOS MÉTODOS FALLARON: No se pudo determinar el centroId del usuario")
-        return null
+        Timber.d("Utilizando método centralizado para obtener el centroId")
+        return UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
     }
     
     /**
