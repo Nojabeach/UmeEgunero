@@ -7,6 +7,41 @@ Lista simplificada de tareas pendientes para completar el desarrollo del proyect
 1. **Corregir navegación en Dashboard de Administrador**
    - Arreglar el card de "Centros" que provoca cierre de la aplicación
    - Asegurar que todos los botones funcionen correctamente
+   
+   ### Plan de mejora para los 4 dashboards (AdminApp, AdminCentro, Profesor, Familiar)
+   1. **Unificar componentes visuales**
+      - Crear componentes comunes en `ui.components.dashboard`
+      - Aplicar a los cuatro dashboards existentes
+      
+   2. **Estandarizar estructura UI**
+      - Implementar tarjeta de bienvenida consistente
+      - Añadir panel de estadísticas por rol
+      - Reorganizar grid de accesos rápidos
+      - Unificar sección de notificaciones
+      
+   3. **Homogeneizar ViewModels**
+      - Refactorizar para seguir patrón común
+      - Estandarizar estados UI y métodos
+      
+   4. **Mejorar sistema de temas**
+      - Mantener colores distintivos por rol
+      - Implementar paletas complementarias
+      
+   5. **Unificar animaciones**
+      - Aplicar mismas transiciones y tiempos
+      - Estandarizar feedback visual
+      
+   6. **Optimizar carga de datos**
+      - Implementar paginación consistente
+      - Mejorar consultas a Firestore por rol
+      
+   7. **Crear sistema de notificaciones común**
+      - Componente unificado para alertas
+      - Adaptar contenido según rol
+      
+   8. **Mejorar responsividad**
+      - Optimizar layouts para diferentes dispositivos
+      - Implementar soporte landscape
 
 2. **Implementar pantallas pendientes críticas**
    - ComunicadosScreen para Profesor
