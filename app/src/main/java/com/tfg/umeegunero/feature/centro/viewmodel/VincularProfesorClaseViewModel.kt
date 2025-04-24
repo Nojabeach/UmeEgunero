@@ -58,114 +58,99 @@ class VincularProfesorClaseViewModel @Inject constructor(
     
     init {
         viewModelScope.launch {
-            // Obtenemos el ID del centro del usuario actual
+            Timber.d("=== INICIALIZANDO VINCULAR PROFESOR CLASE VIEWMODEL ===")
             _uiState.update { it.copy(isLoading = true) }
             
             try {
+                // Obtener el usuario actual
                 val usuarioActual = authRepository.getCurrentUser()
-                
                 if (usuarioActual == null) {
+                    Timber.e("Error: Usuario no autenticado")
                     _uiState.update { 
                         it.copy(
-                            error = "Usuario no autenticado",
+                            error = "Usuario no autenticado. Inicie sesión nuevamente.",
                             isLoading = false
                         ) 
                     }
                     return@launch
                 }
                 
-                Timber.d("Usuario actual: ${usuarioActual.documentId}")
+                Timber.d("Usuario actual: ${usuarioActual.email} (ID: ${usuarioActual.documentId})")
                 
-                // Intentar obtener el centroId del usuario
+                // Intentar obtener el centroId del usuario con múltiples métodos
                 val centroId = obtenerCentroIdDelUsuarioActual(usuarioActual.documentId)
                 
                 if (centroId.isNullOrEmpty()) {
+                    Timber.e("Error: No se pudo determinar el centro educativo del usuario actual")
                     _uiState.update { 
                         it.copy(
-                            error = "No se pudo determinar el centro educativo",
+                            error = "No se pudo determinar tu centro educativo. Contacta al administrador.",
                             isLoading = false
                         ) 
                     }
                     return@launch
                 }
                 
-                Timber.d("Centro ID obtenido: $centroId")
+                Timber.d("Centro ID obtenido: $centroId - Actualizando estado")
                 _uiState.update { it.copy(centroId = centroId) }
                 
-                // Cargamos cursos y profesores en paralelo
-                val cursosDeferred = async { cursoRepository.obtenerCursosPorCentroResult(centroId) }
-                val profesoresDeferred = async { usuarioRepository.getProfesoresByCentro(centroId) }
+                // Cargar cursos y profesores en paralelo (ambos incluyendo inactivos)
+                Timber.d("Iniciando carga paralela de cursos y profesores")
                 
-                // Procesar resultados de cursos
-                when (val cursoResult = cursosDeferred.await()) {
-                    is Result.Success -> {
-                        val cursos = cursoResult.data
-                        Timber.d("Cursos cargados: ${cursos.size}")
-                        
-                        _uiState.update { it.copy(cursos = cursos) }
-                        
-                        // Si hay cursos, seleccionamos el primero y cargamos sus clases
-                        if (cursos.isNotEmpty()) {
-                            val primerCurso = cursos.first()
-                            _uiState.update { it.copy(cursoSeleccionado = primerCurso) }
+                try {
+                    // Cargar cursos sin filtrar por activos
+                    when (val cursoResult = cursoRepository.obtenerCursosPorCentroResult(centroId, soloActivos = false)) {
+                        is Result.Success -> {
+                            val cursos = cursoResult.data
+                            Timber.d("Cursos cargados: ${cursos.size}")
                             
-                            // Cargar clases del primer curso
-                            when (val clasesResult = claseRepository.getClasesByCursoId(primerCurso.id)) {
-                                is Result.Success -> {
-                                    _uiState.update { it.copy(clases = clasesResult.data) }
-                                    Timber.d("Clases cargadas: ${clasesResult.data.size}")
-                                }
-                                is Result.Error -> {
-                                    Timber.e(clasesResult.exception, "Error al cargar clases iniciales")
-                                }
-                                is Result.Loading -> { /* No hacer nada */ }
+                            // Mostrar todos los cursos para diagnóstico
+                            cursos.forEach { curso ->
+                                Timber.d("Curso: ${curso.nombre} (ID: ${curso.id}, activo: ${curso.activo})")
+                            }
+                            
+                            _uiState.update { it.copy(cursos = cursos) }
+                            
+                            if (cursos.isNotEmpty()) {
+                                // Si hay cursos, seleccionamos el primero y cargamos sus clases
+                                val primerCurso = cursos.first()
+                                Timber.d("Seleccionando primer curso: ${primerCurso.nombre}")
+                                
+                                _uiState.update { it.copy(cursoSeleccionado = primerCurso) }
+                                
+                                // Cargar clases del primer curso seleccionado
+                                cargarClases(primerCurso.id)
+                            } else {
+                                Timber.w("No se encontraron cursos para el centro $centroId")
                             }
                         }
-                    }
-                    is Result.Error -> {
-                        Timber.e(cursoResult.exception, "Error al cargar cursos iniciales")
-                        _uiState.update { 
-                            it.copy(error = "Error al cargar cursos: ${cursoResult.exception?.message}")
+                        is Result.Error -> {
+                            Timber.e(cursoResult.exception, "Error al cargar cursos: ${cursoResult.exception?.message}")
+                            _uiState.update { 
+                                it.copy(error = "Error al cargar cursos: ${cursoResult.exception?.message}")
+                            }
                         }
+                        is Result.Loading -> { /* No hacer nada */ }
                     }
-                    is Result.Loading -> { /* No hacer nada */ }
-                }
-                
-                // Procesar resultados de profesores
-                when (val profesoresResult = profesoresDeferred.await()) {
-                    is Result.Success -> {
-                        val profesores = profesoresResult.data.sortedWith(
-                            compareByDescending<Usuario> { it.activo }
-                                .thenBy { it.nombre }
-                                .thenBy { it.apellidos }
+                    
+                    // Cargar profesores incluyendo inactivos
+                    cargarProfesores(centroId, incluirInactivos = true)
+                    
+                } catch (e: Exception) {
+                    Timber.e(e, "Error durante la carga de datos inicial: ${e.message}")
+                    _uiState.update {
+                        it.copy(
+                            error = "Error durante la carga de datos: ${e.message}",
+                            isLoading = false
                         )
-                        
-                        Timber.d("Profesores cargados inicialmente: ${profesores.size}")
-                        profesores.forEach { profesor ->
-                            Timber.d("- Profesor: ${profesor.nombre} ${profesor.apellidos}, ID: ${profesor.documentId}")
-                        }
-                        
-                        _uiState.update { it.copy(profesores = profesores) }
-                        
-                        // Si no hay profesores con el repositorio de usuarios, intentar con el de centro
-                        if (profesores.isEmpty()) {
-                            Timber.d("No se encontraron profesores en el primer intento, probando repositorio alternativo")
-                            cargarProfesores(centroId)
-                        }
                     }
-                    is Result.Error -> {
-                        Timber.e(profesoresResult.exception, "Error al cargar profesores iniciales")
-                        // Intentamos con el método que ya tiene lógica de fallback
-                        cargarProfesores(centroId)
-                    }
-                    is Result.Loading -> { /* No hacer nada */ }
                 }
                 
                 // Finalizar carga
                 _uiState.update { it.copy(isLoading = false) }
                 
             } catch (e: Exception) {
-                Timber.e(e, "Error general en la inicialización")
+                Timber.e(e, "Error general en la inicialización: ${e.message}")
                 _uiState.update { 
                     it.copy(
                         error = "Error inesperado: ${e.message}",
@@ -178,63 +163,87 @@ class VincularProfesorClaseViewModel @Inject constructor(
     
     /**
      * Obtiene el ID del centro asociado al usuario actual
+     * Intenta múltiples métodos para obtener el centroId
      */
     private suspend fun obtenerCentroIdDelUsuarioActual(usuarioId: String): String? {
+        Timber.d("=== DIAGNÓSTICO DE OBTENCIÓN DE CENTRO ID ===")
         Timber.d("Intentando obtener centroId para el usuario: $usuarioId")
         
-        // Primero intentamos obtener el usuario para ver sus perfiles
-        return when (val result = usuarioRepository.getUsuarioById(usuarioId)) {
-            is Result.Success -> {
-                val usuario = result.data
-                Timber.d("Usuario obtenido: ${usuario.nombre} ${usuario.apellidos}, perfiles: ${usuario.perfiles.size}")
+        // MÉTODO 1: Buscar en perfiles del usuario
+        val result = usuarioRepository.getUsuarioById(usuarioId)
+        if (result is Result.Success) {
+            val usuario = result.data
+            Timber.d("Usuario obtenido: ${usuario.nombre} ${usuario.apellidos}")
+            Timber.d("Perfiles en el usuario: ${usuario.perfiles.size}")
+            
+            // Mostrar detalles de cada perfil para diagnóstico
+            usuario.perfiles.forEachIndexed { index, perfil ->
+                Timber.d("Perfil #$index: tipo=${perfil.tipo}, centroId=${perfil.centroId}")
+            }
+            
+            // Buscar centroId en perfiles, probando diferentes tipos de usuario
+            val perfilConCentroId = usuario.perfiles.find { it.centroId.isNotEmpty() }
+            if (perfilConCentroId != null) {
+                val centroId = perfilConCentroId.centroId
+                Timber.d("✅ MÉTODO 1: CentroId encontrado en perfil: $centroId (tipo: ${perfilConCentroId.tipo})")
+                return centroId
+            }
+            
+            Timber.d("❌ MÉTODO 1: No se encontró centroId en ningún perfil del usuario")
+        } else if (result is Result.Error) {
+            Timber.e(result.exception, "❌ MÉTODO 1: Error obteniendo usuario: ${result.exception?.message}")
+        }
+        
+        // MÉTODO 2: Usar método específico del repositorio
+        try {
+            val centroId = usuarioRepository.getCentroIdUsuarioActual()
+            if (!centroId.isNullOrEmpty()) {
+                Timber.d("✅ MÉTODO 2: CentroId obtenido con método alternativo: $centroId")
+                return centroId
+            } else {
+                Timber.d("❌ MÉTODO 2: El método alternativo devolvió null o cadena vacía")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "❌ MÉTODO 2: Error obteniendo centroId por método alternativo: ${e.message}")
+        }
+        
+        // MÉTODO 3: Buscar centros donde el usuario es admin o profesor
+        try {
+            val centrosResult = centroRepository.getCentrosByAdminOrProfesor(usuarioId)
+            if (centrosResult is Result.Success && centrosResult.data.isNotEmpty()) {
+                val primerCentro = centrosResult.data.first()
+                Timber.d("✅ MÉTODO 3: Centro encontrado como admin/profesor: ${primerCentro.id} - ${primerCentro.nombre}")
+                return primerCentro.id
+            } else {
+                Timber.d("❌ MÉTODO 3: No se encontraron centros para el usuario como admin/profesor")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "❌ MÉTODO 3: Error buscando centros del usuario: ${e.message}")
+        }
+        
+        // MÉTODO 4: Intentar obtener todos los centros y buscar en cada uno
+        try {
+            val todosLosCentros = centroRepository.getAllCentros()
+            if (todosLosCentros is Result.Success && todosLosCentros.data.isNotEmpty()) {
+                Timber.d("MÉTODO 4: Verificando en ${todosLosCentros.data.size} centros...")
                 
-                // Buscamos el primer perfil que tenga un centroId asignado
-                val centroIdFromPerfiles = usuario.perfiles.firstOrNull { it.centroId.isNotEmpty() }?.centroId
-                
-                if (!centroIdFromPerfiles.isNullOrEmpty()) {
-                    Timber.d("CentroId encontrado en perfiles: $centroIdFromPerfiles")
-                    centroIdFromPerfiles
-                } else {
-                    // Si no hay centroId en los perfiles, intentamos obtenerlo de otro lugar
-                    Timber.d("No se encontró centroId en perfiles, intentando método alternativo")
-                    
-                    try {
-                        val centroIdFromRepository = usuarioRepository.getCentroIdUsuarioActual()
-                        if (!centroIdFromRepository.isNullOrEmpty()) {
-                            Timber.d("CentroId obtenido con método alternativo: $centroIdFromRepository")
-                            centroIdFromRepository
-                        } else {
-                            // Último intento: buscar en centros donde el usuario es administrador o profesor
-                            Timber.d("Buscando centros donde el usuario es admin o profesor")
-                            
-                            val centrosResult = centroRepository.getCentrosByAdminOrProfesor(usuarioId)
-                            if (centrosResult is Result.Success && centrosResult.data.isNotEmpty()) {
-                                val primerCentro = centrosResult.data.first()
-                                Timber.d("Centro encontrado como admin/profesor: ${primerCentro.id} - ${primerCentro.nombre}")
-                                primerCentro.id
-                            } else {
-                                Timber.d("No se encontró ningún centro para el usuario")
-                                null
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al obtener centroId por métodos alternativos")
-                        null
+                // Buscar un centro donde el usuario sea profesor o admin
+                for (centro in todosLosCentros.data) {
+                    if (centro.adminIds.contains(usuarioId) || centro.profesorIds.contains(usuarioId)) {
+                        Timber.d("✅ MÉTODO 4: Usuario encontrado en centro: ${centro.id} - ${centro.nombre}")
+                        return centro.id
                     }
                 }
+                Timber.d("❌ MÉTODO 4: Usuario no encontrado en ningún centro")
+            } else {
+                Timber.d("❌ MÉTODO 4: No se pudieron obtener los centros o no hay centros")
             }
-            is Result.Error -> {
-                Timber.e(result.exception, "Error al obtener el usuario: ${result.exception?.message}")
-                _uiState.update { 
-                    it.copy(error = "Error al obtener el usuario: ${result.exception?.message}") 
-                }
-                null
-            }
-            is Result.Loading -> {
-                // Manejo del estado de carga si es necesario
-                null
-            }
+        } catch (e: Exception) {
+            Timber.e(e, "❌ MÉTODO 4: Error verificando centros: ${e.message}")
         }
+        
+        Timber.e("❌ TODOS LOS MÉTODOS FALLARON: No se pudo determinar el centroId del usuario")
+        return null
     }
     
     /**
@@ -343,25 +352,39 @@ class VincularProfesorClaseViewModel @Inject constructor(
     
     /**
      * Carga los profesores del centro
+     * @param centroId ID del centro
+     * @param incluirInactivos Si true, incluye también profesores inactivos
      */
-    fun cargarProfesores(centroId: String) {
+    fun cargarProfesores(centroId: String, incluirInactivos: Boolean = true) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
-            Timber.d("Iniciando carga de profesores para el centro: $centroId")
+            Timber.d("=== DIAGNÓSTICO DE CARGA DE PROFESORES ===")
+            Timber.d("Iniciando carga de profesores para el centro: $centroId (incluirInactivos: $incluirInactivos)")
             
             when (val result = usuarioRepository.getProfesoresByCentro(centroId)) {
                 is Result.Success -> {
-                    // Ordenamos los profesores: primero los activos y luego los inactivos
-                    val profesoresOrdenados = result.data.sortedWith(
-                        compareByDescending<Usuario> { it.activo }
-                            .thenBy { it.nombre }
-                            .thenBy { it.apellidos }
-                    )
+                    // Aplicamos filtro según el parámetro
+                    val profesoresCompletos = result.data
+                    val profesoresOrdenados = if (incluirInactivos) {
+                        // Incluimos todos, ordenados: activos primero, luego por nombre
+                        profesoresCompletos.sortedWith(
+                            compareByDescending<Usuario> { it.activo }
+                                .thenBy { it.nombre }
+                                .thenBy { it.apellidos }
+                        )
+                    } else {
+                        // Filtramos y solo mostramos activos, ordenados por nombre
+                        profesoresCompletos.filter { it.activo }
+                            .sortedWith(
+                                compareBy<Usuario> { it.nombre }
+                                    .thenBy { it.apellidos }
+                            )
+                    }
                     
-                    Timber.d("Profesores cargados: ${profesoresOrdenados.size}")
+                    Timber.d("Profesores totales: ${profesoresCompletos.size}, Profesores tras filtro: ${profesoresOrdenados.size}")
                     profesoresOrdenados.forEach { profesor ->
-                        Timber.d("- Profesor: ${profesor.nombre} ${profesor.apellidos}, ID: ${profesor.documentId}")
+                        Timber.d("- Profesor: ${profesor.nombre} ${profesor.apellidos}, ID: ${profesor.documentId}, Activo: ${profesor.activo}")
                     }
                     
                     _uiState.update { 
@@ -374,63 +397,66 @@ class VincularProfesorClaseViewModel @Inject constructor(
                     // Si no hay profesores, intentar con el repositorio de centro
                     if (profesoresOrdenados.isEmpty()) {
                         Timber.d("No se encontraron profesores en UsuarioRepository, probando CentroRepository")
-                        
-                        val resultCentro = centroRepository.getProfesoresByCentro(centroId)
-                        if (resultCentro is Result.Success && resultCentro.data.isNotEmpty()) {
-                            val profesoresCentro = resultCentro.data.sortedWith(
-                                compareByDescending<Usuario> { it.activo }
-                                    .thenBy { it.nombre }
-                                    .thenBy { it.apellidos }
-                            )
-                            
-                            Timber.d("Profesores encontrados en CentroRepository: ${profesoresCentro.size}")
-                            
-                            _uiState.update { 
-                                it.copy(
-                                    profesores = profesoresCentro,
-                                    isLoading = false
-                                )
-                            }
-                        } else {
-                            _uiState.update { 
-                                it.copy(
-                                    error = "No hay profesores disponibles para este centro"
-                                )
-                            }
-                        }
+                        cargarProfesoresAlternativos(centroId, incluirInactivos)
                     }
                 }
                 is Result.Error -> {
                     Timber.e(result.exception, "Error al cargar profesores: ${result.exception?.message}")
-                    _uiState.update { 
-                        it.copy(
-                            error = "Error al cargar profesores: ${result.exception?.message}",
-                            isLoading = false
-                        )
-                    }
-                    
                     // Intento alternativo con CentroRepository si falla UsuarioRepository
-                    val resultCentro = centroRepository.getProfesoresByCentro(centroId)
-                    if (resultCentro is Result.Success && resultCentro.data.isNotEmpty()) {
-                        Timber.d("Recuperación exitosa con CentroRepository tras error")
-                        
-                        val profesoresCentro = resultCentro.data.sortedWith(
-                            compareByDescending<Usuario> { it.activo }
-                                .thenBy { it.nombre }
-                                .thenBy { it.apellidos }
-                        )
-                        
-                        _uiState.update { 
-                            it.copy(
-                                profesores = profesoresCentro,
-                                isLoading = false,
-                                error = null
-                            )
-                        }
-                    }
+                    cargarProfesoresAlternativos(centroId, incluirInactivos)
                 }
                 is Result.Loading -> {
                     // Manejar estado de carga si es necesario
+                }
+            }
+        }
+    }
+    
+    /**
+     * Método alternativo para cargar profesores usando CentroRepository
+     */
+    private fun cargarProfesoresAlternativos(centroId: String, incluirInactivos: Boolean = true) {
+        viewModelScope.launch {
+            Timber.d("Intentando cargar profesores con método alternativo (CentroRepository)")
+            
+            val resultCentro = centroRepository.getProfesoresByCentro(centroId)
+            if (resultCentro is Result.Success) {
+                val profesoresCompletos = resultCentro.data
+                
+                // Aplicamos el mismo filtro y ordenación
+                val profesoresOrdenados = if (incluirInactivos) {
+                    profesoresCompletos.sortedWith(
+                        compareByDescending<Usuario> { it.activo }
+                            .thenBy { it.nombre }
+                            .thenBy { it.apellidos }
+                    )
+                } else {
+                    profesoresCompletos.filter { it.activo }
+                        .sortedWith(
+                            compareBy<Usuario> { it.nombre }
+                                .thenBy { it.apellidos }
+                        )
+                }
+                
+                Timber.d("Profesores encontrados con método alternativo: ${profesoresOrdenados.size}")
+                profesoresOrdenados.forEach { profesor ->
+                    Timber.d("- (Alt) Profesor: ${profesor.nombre} ${profesor.apellidos}, ID: ${profesor.documentId}, Activo: ${profesor.activo}")
+                }
+                
+                _uiState.update { 
+                    it.copy(
+                        profesores = profesoresOrdenados,
+                        isLoading = false,
+                        error = if (profesoresOrdenados.isEmpty()) "No hay profesores disponibles para este centro" else null
+                    )
+                }
+            } else if (resultCentro is Result.Error) {
+                Timber.e(resultCentro.exception, "Error en método alternativo: ${resultCentro.exception?.message}")
+                _uiState.update { 
+                    it.copy(
+                        error = "No se pudieron cargar los profesores: ${resultCentro.exception?.message}",
+                        isLoading = false
+                    )
                 }
             }
         }
@@ -451,27 +477,79 @@ class VincularProfesorClaseViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
+            Timber.d("=== DIAGNÓSTICO DE CARGA DE CLASES ===")
+            Timber.d("Iniciando carga de clases para el curso: $cursoId")
+            
             when (val result = claseRepository.getClasesByCursoId(cursoId)) {
                 is Result.Success -> {
+                    val clases = result.data
+                    Timber.d("Clases cargadas exitosamente: ${clases.size}")
+                    
+                    // Mostrar detalles de cada clase para diagnóstico
+                    clases.forEach { clase ->
+                        Timber.d("- Clase: ${clase.nombre}, Aula: ${clase.aula}, ProfesorID: ${clase.profesorTitularId}")
+                    }
+                    
                     _uiState.update { 
                         it.copy(
-                            clases = result.data,
+                            clases = clases,
                             isLoading = false
                         )
                     }
+                    
+                    if (clases.isEmpty()) {
+                        Timber.w("⚠️ No hay clases disponibles para el curso $cursoId")
+                        // Intentar método alternativo si es necesario
+                        cargarClasesAlternativo(cursoId)
+                    }
                 }
                 is Result.Error -> {
-                    Timber.e(result.exception, "Error al cargar clases")
+                    Timber.e(result.exception, "Error al cargar clases: ${result.exception?.message}")
                     _uiState.update { 
                         it.copy(
                             error = "Error al cargar clases: ${result.exception?.message}",
                             isLoading = false
                         )
                     }
+                    
+                    // Intentar método alternativo
+                    cargarClasesAlternativo(cursoId)
                 }
                 is Result.Loading -> {
                     // Manejar estado de carga si es necesario
                 }
+            }
+        }
+    }
+    
+    /**
+     * Método alternativo para cargar clases usando obtenerClasesPorCurso
+     */
+    private fun cargarClasesAlternativo(cursoId: String) {
+        viewModelScope.launch {
+            Timber.d("Intentando cargar clases con método alternativo")
+            
+            try {
+                when (val result = cursoRepository.obtenerClasesPorCurso(cursoId)) {
+                    is Result.Success<*> -> {
+                        val clases = result.data as List<Clase>
+                        Timber.d("Clases cargadas con método alternativo: ${clases.size}")
+                        
+                        _uiState.update { 
+                            it.copy(
+                                clases = clases,
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "Error en método alternativo: ${result.exception?.message}")
+                    }
+                    else -> { /* No hacer nada */ }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error en carga alternativa de clases: ${e.message}")
             }
         }
     }

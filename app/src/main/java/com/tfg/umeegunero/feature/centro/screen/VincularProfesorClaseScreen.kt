@@ -318,7 +318,7 @@ fun CursoSelector(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Mostrar contador de cursos
+                // Mostrar contador de cursos con colores adecuados
                 Text(
                     text = "${cursos.size} cursos disponibles",
                     style = MaterialTheme.typography.bodySmall,
@@ -350,13 +350,24 @@ fun CursoSelector(
             OutlinedCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { expanded = !expanded },
+                    .clickable { 
+                        // Solo expandir si hay cursos
+                        if (cursos.isNotEmpty()) {
+                            expanded = !expanded
+                        }
+                    },
                 colors = CardDefaults.outlinedCardColors(
-                    containerColor = if (cursos.isEmpty()) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
+                    containerColor = if (cursos.isEmpty()) 
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) 
+                    else 
+                        MaterialTheme.colorScheme.surface
                 ),
                 border = BorderStroke(
                     width = 1.dp,
-                    color = if (cursos.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
+                    color = if (cursos.isEmpty()) 
+                        MaterialTheme.colorScheme.error 
+                    else 
+                        MaterialTheme.colorScheme.outline
                 )
             ) {
                 Row(
@@ -372,13 +383,25 @@ fun CursoSelector(
                         else 
                             cursoSeleccionado?.nombre ?: "Selecciona un curso",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = if (cursos.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                        color = if (cursos.isEmpty()) 
+                            MaterialTheme.colorScheme.error 
+                        else 
+                            MaterialTheme.colorScheme.onSurface
                     )
                     
                     Icon(
-                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (expanded) "Ocultar opciones" else "Mostrar opciones",
-                        tint = if (cursos.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        imageVector = if (expanded) 
+                            Icons.Default.KeyboardArrowUp 
+                        else 
+                            Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (expanded) 
+                            "Ocultar opciones" 
+                        else 
+                            "Mostrar opciones",
+                        tint = if (cursos.isEmpty()) 
+                            MaterialTheme.colorScheme.error 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -391,7 +414,27 @@ fun CursoSelector(
             ) {
                 cursos.forEach { curso ->
                     DropdownMenuItem(
-                        text = { Text(curso.nombre) },
+                        text = { 
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(curso.nombre)
+                                
+                                if (!curso.activo) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Inactivo",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        },
                         onClick = {
                             onCursoSelected(curso)
                             expanded = false
@@ -404,12 +447,36 @@ fun CursoSelector(
         // Mensaje de ayuda si no hay cursos
         if (cursos.isEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
+            
             Text(
                 text = "Primero debe crear cursos en la sección de 'Gestión de Cursos'",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = 4.dp)
             )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Botón adicional para recargar explícitamente
+            Button(
+                onClick = { onCursoSelected(Curso()) },
+                modifier = Modifier.align(Alignment.End),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recargar",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text("Recargar datos")
+                }
+            }
         }
     }
 }
@@ -422,16 +489,37 @@ fun ProfesorList(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        Text(
-            text = "Profesores",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        // Título con contador de profesores
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Profesores",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            // Mostrar contador con color apropiado
+            Text(
+                text = "${profesores.size} disponibles",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (profesores.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
         
         ElevatedCard(
             modifier = Modifier.fillMaxSize(),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = if (profesores.isEmpty()) 
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                else
+                    MaterialTheme.colorScheme.surface
+            )
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -459,16 +547,38 @@ fun ProfesorList(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
                                 Text(
                                     "No hay profesores disponibles",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.error
+                                    color = MaterialTheme.colorScheme.error,
+                                    textAlign = TextAlign.Center
                                 )
+                                
                                 Spacer(modifier = Modifier.height(8.dp))
+                                
                                 Text(
-                                    "Comprueba tu conexión a Firebase",
+                                    "Comprueba que existan profesores asignados a este centro",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                Text(
+                                    "Puedes añadir profesores en la sección 'Gestión de Personal'",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
@@ -491,7 +601,13 @@ fun ProfesorItem(
             .padding(vertical = 4.dp)
             .clickable { onProfesorSelected(profesor) },
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                if (profesor.activo) 
+                    MaterialTheme.colorScheme.surface
+                else
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
         )
     ) {
         Row(
@@ -503,11 +619,29 @@ fun ProfesorItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = "${profesor.nombre} ${profesor.apellidos}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${profesor.nombre} ${profesor.apellidos}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    if (!profesor.activo) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "Inactivo",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
