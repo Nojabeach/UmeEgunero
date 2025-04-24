@@ -13,10 +13,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.feature.centro.viewmodel.VincularProfesorClaseViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -86,14 +91,17 @@ fun VincularProfesorClaseScreen(
                                 viewModel.cargarCursos(centroId)
                                 viewModel.cargarProfesores(centroId)
                                 if (uiState.cursoSeleccionado != null) {
-                                    viewModel.cargarClases(uiState.cursoSeleccionado!!.id)
+                                    viewModel.cargarClasesPorCurso(uiState.cursoSeleccionado!!.id)
                                 }
+                            } else if (uiState.isAdminApp) {
+                                viewModel.cargarTodosCentros()
                             }
                         }
                     }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Recargar datos"
+                            contentDescription = "Recargar datos",
+                            modifier = Modifier.size(size = 32.dp)
                         )
                     }
                 },
@@ -131,133 +139,193 @@ fun VincularProfesorClaseScreen(
                     .padding(paddingValues)
                     .padding(16.dp)
             ) {
-                // Selector de curso
-                CursoSelector(
-                    cursos = uiState.cursos,
-                    cursoSeleccionado = uiState.cursoSeleccionado,
-                    onCursoSelected = { curso -> 
-                        if (curso.id.isNotEmpty()) {
-                            viewModel.seleccionarCurso(curso)
-                        } else {
-                            // Si se recibe un curso vacío, recargar los datos
-                            val centroId = uiState.centroId
-                            if (centroId.isNotEmpty()) {
-                                scope.launch {
-                                    viewModel.cargarCursos(centroId)
+                // Selector de centro (solo visible para admin de app)
+                if (uiState.isAdminApp) {
+                    CentroSelector(
+                        centros = uiState.centros,
+                        centroSeleccionado = uiState.centroSeleccionado,
+                        onCentroSelected = { centro -> 
+                            viewModel.seleccionarCentro(centro)
+                        }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                
+                // Solo mostrar el resto de la pantalla si hay un centro seleccionado
+                if (uiState.centroId.isNotEmpty()) {
+                    // Selector de curso
+                    CursoSelector(
+                        cursos = uiState.cursos,
+                        cursoSeleccionado = uiState.cursoSeleccionado,
+                        onCursoSelected = { curso -> 
+                            if (curso.id.isNotEmpty()) {
+                                viewModel.seleccionarCurso(curso)
+                            } else {
+                                // Si se recibe un curso vacío, recargar los datos
+                                val centroId = uiState.centroId
+                                if (centroId.isNotEmpty()) {
+                                    scope.launch {
+                                        viewModel.cargarCursos(centroId)
+                                    }
                                 }
                             }
                         }
-                    }
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Contenido principal
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Lista de profesores
-                    ProfesorList(
-                        profesores = uiState.profesores,
-                        profesorSeleccionado = uiState.profesorSeleccionado,
-                        onProfesorSelected = { 
-                            Timber.d("Profesor seleccionado: ${it.nombre} ${it.apellidos}")
-                            viewModel.seleccionarProfesor(it) 
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
                     )
                     
-                    // Lista de clases y asignaciones
-                    if (uiState.profesorSeleccionado != null && uiState.cursoSeleccionado != null) {
-                        ClasesList(
-                            clases = uiState.clases,
-                            clasesAsignadas = uiState.clasesAsignadas[uiState.profesorSeleccionado?.documentId] ?: emptyList(),
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Contenido principal
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Lista de profesores
+                        ProfesorList(
+                            profesores = uiState.profesores,
                             profesorSeleccionado = uiState.profesorSeleccionado,
-                            onAsignarClase = { clase ->
-                                viewModel.seleccionarClase(clase)
-                                
-                                val profesorId = uiState.profesorSeleccionado?.documentId ?: ""
-                                val claseId = clase.id
-                                
-                                if (viewModel.isProfesorAsignadoAClase(profesorId, claseId)) {
-                                    viewModel.mostrarDialogoConfirmarDesasignacion(true)
-                                } else {
-                                    viewModel.mostrarDialogoAsignarClases(true)
-                                }
+                            onProfesorSelected = { 
+                                Timber.d("Profesor seleccionado: ${it.nombre} ${it.apellidos}")
+                                viewModel.seleccionarProfesor(it) 
                             },
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
                         )
-                    } else {
-                        // Mensaje de selección
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(
-                                    color = MaterialTheme.colorScheme.surface,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(
-                                    width = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                        
+                        // Lista de clases y asignaciones
+                        if (uiState.profesorSeleccionado != null && uiState.cursoSeleccionado != null) {
+                            ClasesList(
+                                profesorClases = uiState.clasesAsignadas[uiState.profesorSeleccionado?.documentId] ?: emptyMap(),
+                                onClick = { clase ->
+                                    viewModel.seleccionarClase(clase)
+                                    
+                                    val profesorId = uiState.profesorSeleccionado?.documentId ?: ""
+                                    val claseId = clase.id
+                                    
+                                    if (viewModel.isProfesorAsignadoAClase(profesorId, claseId)) {
+                                        viewModel.mostrarDialogoConfirmarDesasignacion(true)
+                                    } else {
+                                        viewModel.mostrarDialogoAsignarClases(true)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            )
+                        } else {
+                            // Mensaje de selección
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surface,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(size = 48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Selecciona un curso y un profesor para gestionar las asignaciones de clases",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Información y estadísticas
+                    if (uiState.profesorSeleccionado != null) {
+                        val clasesAsignadas = uiState.clasesAsignadas[uiState.profesorSeleccionado?.documentId]
+                        val totalClasesAsignadas = clasesAsignadas?.count { it.value } ?: 0
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(8.dp),
+                            tonalElevation = 2.dp,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
-                                    text = "Selecciona un curso y un profesor para gestionar las asignaciones de clases",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    textAlign = TextAlign.Center
+                                    text = "Profesor: ${uiState.profesorSeleccionado?.nombre} ${uiState.profesorSeleccionado?.apellidos}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Clases asignadas: $totalClasesAsignadas",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
                     }
-                }
-                
-                // Información y estadísticas
-                if (uiState.profesorSeleccionado != null) {
-                    val clasesAsignadas = uiState.clasesAsignadas[uiState.profesorSeleccionado?.documentId] ?: emptyList()
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = RoundedCornerShape(8.dp),
-                        tonalElevation = 2.dp,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Profesor: ${uiState.profesorSeleccionado?.nombre} ${uiState.profesorSeleccionado?.apellidos}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                } else if (uiState.isAdminApp && uiState.centros.isNotEmpty()) {
+                    // Mensaje de selección de centro para admin app
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(12.dp)
                             )
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(size = 48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Clases asignadas: ${clasesAsignadas.size}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                                text = "Selecciona un centro educativo para comenzar",
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Como administrador de la aplicación, debes seleccionar primero un centro educativo para gestionar sus cursos, clases y profesores.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -268,30 +336,223 @@ fun VincularProfesorClaseScreen(
     
     // Diálogo de confirmación para asignar profesor
     if (uiState.showAsignarClasesDialog) {
-        ConfirmacionDialog(
-            title = "Asignar Profesor",
-            message = "¿Estás seguro de que deseas asignar a ${uiState.profesorSeleccionado?.nombre} ${uiState.profesorSeleccionado?.apellidos} a la clase ${uiState.claseSeleccionada?.nombre}?",
+        DialogoConfirmacion(
+            show = uiState.showAsignarClasesDialog,
             onConfirm = {
                 viewModel.asignarProfesorAClase()
             },
             onDismiss = {
                 viewModel.mostrarDialogoAsignarClases(false)
-            }
+            },
+            profesorSeleccionado = uiState.profesorSeleccionado,
+            claseSeleccionada = uiState.claseSeleccionada,
+            isAsignada = false
         )
     }
     
     // Diálogo de confirmación para desasignar profesor
     if (uiState.showConfirmarDesasignacionDialog) {
-        ConfirmacionDialog(
-            title = "Desasignar Profesor",
-            message = "¿Estás seguro de que deseas desasignar a ${uiState.profesorSeleccionado?.nombre} ${uiState.profesorSeleccionado?.apellidos} de la clase ${uiState.claseSeleccionada?.nombre}?",
+        DialogoConfirmacion(
+            show = uiState.showConfirmarDesasignacionDialog,
             onConfirm = {
                 viewModel.desasignarProfesorDeClase()
             },
             onDismiss = {
                 viewModel.mostrarDialogoConfirmarDesasignacion(false)
-            }
+            },
+            profesorSeleccionado = uiState.profesorSeleccionado,
+            claseSeleccionada = uiState.claseSeleccionada,
+            isAsignada = true
         )
+    }
+}
+
+@Composable
+fun CentroSelector(
+    centros: List<Centro>,
+    centroSeleccionado: Centro?,
+    onCentroSelected: (Centro) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Centro Educativo",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Mostrar contador de centros
+                Text(
+                    text = "${centros.size} centros disponibles",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (centros.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // Botón para recargar centros
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = { 
+                        // Aquí no podemos llamar directamente al ViewModel
+                        onCentroSelected(Centro())
+                    },
+                    modifier = Modifier.size(size = 32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recargar centros",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Box {
+            OutlinedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { 
+                        // Solo expandir si hay centros
+                        if (centros.isNotEmpty()) {
+                            expanded = !expanded
+                        }
+                    },
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = if (centros.isEmpty()) 
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) 
+                    else 
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (centros.isEmpty()) 
+                        MaterialTheme.colorScheme.error 
+                    else 
+                        MaterialTheme.colorScheme.outline
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (centros.isEmpty()) 
+                            "No hay centros disponibles" 
+                        else 
+                            centroSeleccionado?.nombre ?: "Selecciona un centro educativo",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (centros.isEmpty()) 
+                            MaterialTheme.colorScheme.error 
+                        else 
+                            MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    Icon(
+                        imageVector = if (expanded) 
+                            Icons.Default.KeyboardArrowUp 
+                        else 
+                            Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (expanded) 
+                            "Ocultar opciones" 
+                        else 
+                            "Mostrar opciones",
+                        tint = if (centros.isEmpty()) 
+                            MaterialTheme.colorScheme.error 
+                        else 
+                            MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            
+            DropdownMenu(
+                expanded = expanded && centros.isNotEmpty(),
+                onDismissRequest = { expanded = false },
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+            ) {
+                centros.forEach { centro ->
+                    DropdownMenuItem(
+                        text = { 
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = centro.nombre,
+                                    fontWeight = if (centro.activo) FontWeight.Normal else FontWeight.Light
+                                )
+                                
+                                if (!centro.activo) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Inactivo",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        onClick = {
+                            onCentroSelected(centro)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+        
+        // Mensaje de ayuda si no hay centros
+        if (centros.isEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "No se encontraron centros educativos. Contacta al administrador.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Botón adicional para recargar explícitamente
+            Button(
+                onClick = { onCentroSelected(Centro()) },
+                modifier = Modifier.align(Alignment.End),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recargar",
+                        modifier = Modifier.size(size = 18.dp)
+                    )
+                    Text("Recargar datos")
+                }
+            }
+        }
     }
 }
 
@@ -333,7 +594,7 @@ fun CursoSelector(
                         // pero esto será manejado por el composable padre
                         onCursoSelected(cursoSeleccionado ?: Curso())
                     },
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(size = 32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
@@ -446,35 +707,68 @@ fun CursoSelector(
         
         // Mensaje de ayuda si no hay cursos
         if (cursos.isEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "Primero debe crear cursos en la sección de 'Gestión de Cursos'",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // Botón adicional para recargar explícitamente
-            Button(
-                onClick = { onCursoSelected(Curso()) },
-                modifier = Modifier.align(Alignment.End),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(size = 36.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No hay cursos disponibles para este centro",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Los cursos deben crearse desde la sección de gestión de cursos",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = { onCursoSelected(Curso()) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Recargar",
-                        modifier = Modifier.size(18.dp)
+                        contentDescription = "Recargar cursos",
+                        modifier = Modifier.size(size = 18.dp)
                     )
-                    Text("Recargar datos")
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Recargar cursos")
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Cursos disponibles: ${cursos.size}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick = { onCursoSelected(cursoSeleccionado ?: Curso()) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recargar cursos",
+                        modifier = Modifier.size(size = 18.dp)
+                    )
                 }
             }
         }
@@ -551,7 +845,7 @@ fun ProfesorList(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(48.dp)
+                                    modifier = Modifier.size(size = 48.dp)
                                 )
                                 
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -664,173 +958,187 @@ fun ProfesorItem(
     }
 }
 
+/**
+ * Lista de clases de un curso
+ */
 @Composable
 fun ClasesList(
-    clases: List<Clase>,
-    clasesAsignadas: List<Clase>,
-    profesorSeleccionado: Usuario?,
-    onAsignarClase: (Clase) -> Unit,
+    profesorClases: Map<Clase, Boolean>,
+    onClick: (Clase) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Clases",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        ElevatedCard(
-            modifier = Modifier.fillMaxSize(),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    if (profesorClases.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp)
-            ) {
-                items(clases) { clase ->
-                    val isAsignada = clasesAsignadas.any { it.id == clase.id }
-                    
-                    ClaseItem(
-                        clase = clase,
-                        isAsignada = isAsignada,
-                        onAsignarClase = { onAsignarClase(clase) }
-                    )
-                }
-                
-                if (clases.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("No hay clases disponibles")
-                        }
-                    }
-                }
+            Text(
+                text = "No hay clases disponibles para este curso",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        ) {
+            items(profesorClases.entries.toList()) { (clase, asignada) ->
+                ClaseItem(
+                    clase = clase,
+                    isAsignada = asignada,
+                    onClick = { onClick(clase) }
+                )
+                Divider()
             }
         }
     }
 }
 
+/**
+ * Componente que representa un elemento de clase en la lista
+ */
 @Composable
 fun ClaseItem(
     clase: Clase,
     isAsignada: Boolean,
-    onAsignarClase: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
-        modifier = Modifier
+    val backgroundColor = if (isAsignada) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    
+    val contentColor = if (isAsignada) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    
+    Card(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isAsignada) 
-                MaterialTheme.colorScheme.tertiaryContainer 
-            else 
-                MaterialTheme.colorScheme.surface
-        )
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = clase.nombre,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isAsignada) 
-                        MaterialTheme.colorScheme.onTertiaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.onSurface
+                    text = "Clase: ${clase.nombre}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
-                
                 Spacer(modifier = Modifier.height(4.dp))
-                
-                clase.aula?.let {
+                Text(
+                    text = "Aula: ${clase.aula}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                if (clase.horario.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Aula: $it",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isAsignada) 
-                            MaterialTheme.colorScheme.onTertiaryContainer 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Horario: ${clase.horario}",
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
             
             if (isAsignada) {
-                FilledTonalIconButton(
-                    onClick = onAsignarClase,
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Desasignar profesor",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = "Profesor asignado",
+                    tint = MaterialTheme.colorScheme.primary
+                )
             } else {
-                FilledIconButton(
-                    onClick = onAsignarClase
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Asignar profesor"
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Asignar profesor",
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
 }
 
+/**
+ * Diálogo de confirmación para asignar o desasignar un profesor a una clase
+ */
 @Composable
-fun ConfirmacionDialog(
-    title: String,
-    message: String,
+fun DialogoConfirmacion(
+    show: Boolean,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    profesorSeleccionado: Usuario?,
+    claseSeleccionada: Clase?,
+    isAsignada: Boolean
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onConfirm()
-                    onDismiss()
+    if (show) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            icon = {
+                Icon(
+                    imageVector = if (isAsignada) Icons.Filled.RemoveCircle else Icons.Filled.AddCircle,
+                    contentDescription = null,
+                    tint = if (isAsignada) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                )
+            },
+            title = {
+                Text(
+                    text = if (isAsignada) "Desasignar profesor" else "Asignar profesor",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = if (isAsignada) 
+                            "¿Estás seguro de que deseas desasignar a ${profesorSeleccionado?.nombre} ${profesorSeleccionado?.apellidos} de la clase ${claseSeleccionada?.nombre}?"
+                        else 
+                            "¿Estás seguro de que deseas asignar a ${profesorSeleccionado?.nombre} ${profesorSeleccionado?.apellidos} a la clase ${claseSeleccionada?.nombre}?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    if (isAsignada) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Esta acción eliminará al profesor de esta clase y los alumnos ya no podrán ver sus asistencias.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
-            ) {
-                Text("Confirmar")
+            },
+            confirmButton = {
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isAsignada) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(text = if (isAsignada) "Desasignar" else "Asignar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = onDismiss) {
+                    Text(text = "Cancelar")
+                }
             }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss
-            ) {
-                Text("Cancelar")
-            }
-        }
-    )
+        )
+    }
 } 

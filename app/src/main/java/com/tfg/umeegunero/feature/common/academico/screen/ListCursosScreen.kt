@@ -1,8 +1,11 @@
 package com.tfg.umeegunero.feature.common.academico.screen
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -10,11 +13,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tfg.umeegunero.R
+import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.feature.common.academico.viewmodel.ListCursosViewModel
 import com.tfg.umeegunero.ui.components.DefaultTopAppBar
@@ -44,6 +49,10 @@ fun ListCursosScreen(
     var cursoToDelete by remember { mutableStateOf<Curso?>(null) }
 
     LaunchedEffect(key1 = true) {
+        // Solo cargamos centros si el usuario es administrador de aplicación
+        if (uiState.isAdminApp) {
+            viewModel.cargarCentros()
+        }
         viewModel.cargarCursos()
     }
 
@@ -56,50 +65,94 @@ fun ListCursosScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    navController.navigate(AppScreens.AddCurso.createRoute(viewModel.uiState.value.centroId))
-                },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Añadir curso"
-                )
+            // Solo mostramos el botón si hay un centro seleccionado o fijo
+            if (uiState.centroId.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = {
+                        navController.navigate(AppScreens.AddCurso.createRoute(uiState.centroId))
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Añadir curso"
+                    )
+                }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(horizontal = 16.dp)
         ) {
-            // Mostrar el indicador de carga
-            if (uiState.isLoading) {
-                LoadingIndicator(fullScreen = true)
-            } else if (uiState.cursos.isEmpty()) {
-                // Mostrar mensaje si no hay cursos
-                EmptyStateMessage(
-                    message = "No hay cursos disponibles",
-                    icon = Icons.Default.School,
-                    buttonText = "Añadir curso",
-                    onButtonClick = {
-                        navController.navigate(AppScreens.AddCurso.createRoute(viewModel.uiState.value.centroId))
+            // Si es admin de app, mostramos selector de centro
+            if (uiState.isAdminApp) {
+                CentroSelector(
+                    centros = uiState.centros,
+                    centroSeleccionado = uiState.centroSeleccionado,
+                    onCentroSelected = { centro -> 
+                        viewModel.seleccionarCentro(centro)
                     }
                 )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            } 
+            // Si es admin de centro o profesor, mostramos el centro fijo
+            else if (uiState.centroSeleccionado != null) {
+                CentroInfo(centro = uiState.centroSeleccionado!!)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            // Mostrar el indicador de carga
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LoadingIndicator(fullScreen = true)
+                }
+            } else if (uiState.cursos.isEmpty()) {
+                // Mostrar mensaje si no hay cursos
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    EmptyStateMessage(
+                        message = if (uiState.centroId.isEmpty() && uiState.isAdminApp) 
+                            "Selecciona un centro para ver sus cursos" 
+                        else if (uiState.isAdminApp)
+                            "Este centro no tiene cursos. Puedes añadir uno nuevo pulsando el botón."
+                        else
+                            "No hay cursos disponibles en tu centro. Contacta con el administrador para crear cursos.",
+                        icon = Icons.Default.School,
+                        buttonText = if (uiState.centroId.isNotEmpty() && uiState.isAdminApp) "Añadir curso" else null,
+                        onButtonClick = {
+                            navController.navigate(AppScreens.AddCurso.createRoute(uiState.centroId))
+                        }
+                    )
+                }
             } else {
                 // Mostrar la lista de cursos
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.cursos) { curso ->
                         CursoCard(
                             curso = curso,
                             onEditClick = {
-                                navController.navigate(AppScreens.AddCurso.createRoute(viewModel.uiState.value.centroId))
+                                navController.navigate(AppScreens.AddCurso.createRoute(curso.centroId, curso.id))
                             },
                             onDeleteClick = {
                                 cursoToDelete = curso
@@ -122,35 +175,271 @@ fun ListCursosScreen(
                     }
                 }
             }
+        }
+    }
 
-            // Diálogo de confirmación para eliminar curso
-            if (showConfirmDialog) {
-                AlertDialog(
-                    onDismissRequest = { showConfirmDialog = false },
-                    title = { Text("Confirmar eliminación") },
-                    text = { Text("¿Está seguro que desea eliminar el curso ${cursoToDelete?.nombre}? Esta acción no se puede deshacer.") },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                cursoToDelete?.let { curso ->
-                                    viewModel.eliminarCurso(curso.id)
-                                    showConfirmDialog = false
-                                    cursoToDelete = null
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Text("Eliminar")
+    // Diálogo de confirmación para eliminar curso
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Confirmar eliminación") },
+            text = { Text("¿Está seguro que desea eliminar el curso ${cursoToDelete?.nombre}? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        cursoToDelete?.let { curso ->
+                            viewModel.eliminarCurso(curso.id)
+                            showConfirmDialog = false
+                            cursoToDelete = null
                         }
                     },
-                    dismissButton = {
-                        TextButton(onClick = { showConfirmDialog = false }) {
-                            Text("Cancelar")
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
+/**
+ * Selector de centro para administradores
+ */
+@Composable
+fun CentroSelector(
+    centros: List<Centro>,
+    centroSeleccionado: Centro?,
+    onCentroSelected: (Centro) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Centro Educativo",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Text(
+                text = "${centros.size} centros disponibles",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (centros.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Box {
+            OutlinedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { 
+                        if (centros.isNotEmpty()) {
+                            expanded = !expanded
                         }
-                    }
+                    },
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = if (centros.isEmpty()) 
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) 
+                    else 
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (centros.isEmpty()) 
+                        MaterialTheme.colorScheme.error 
+                    else 
+                        MaterialTheme.colorScheme.outline
                 )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (centros.isEmpty()) 
+                            "No hay centros disponibles" 
+                        else 
+                            centroSeleccionado?.nombre ?: "Selecciona un centro educativo",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (centros.isEmpty()) 
+                            MaterialTheme.colorScheme.error 
+                        else 
+                            MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    Icon(
+                        imageVector = if (expanded) 
+                            Icons.Default.KeyboardArrowUp 
+                        else 
+                            Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (expanded) 
+                            "Ocultar opciones" 
+                        else 
+                            "Mostrar opciones",
+                        tint = if (centros.isEmpty()) 
+                            MaterialTheme.colorScheme.error 
+                        else 
+                            MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            
+            DropdownMenu(
+                expanded = expanded && centros.isNotEmpty(),
+                onDismissRequest = { expanded = false },
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+            ) {
+                centros.forEach { centro ->
+                    DropdownMenuItem(
+                        text = { 
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = centro.nombre,
+                                    fontWeight = if (centro.activo) FontWeight.Normal else FontWeight.Light
+                                )
+                                
+                                if (!centro.activo) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Inactivo",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        onClick = {
+                            onCentroSelected(centro)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+        
+        if (centros.isEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "No se encontraron centros educativos. Contacta al administrador.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Componente que muestra información de un centro fijo (no seleccionable)
+ */
+@Composable
+fun CentroInfo(centro: Centro) {
+    Column {
+        Text(
+            text = "Centro Educativo",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        OutlinedCard(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.outlinedCardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+            ),
+            border = BorderStroke(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = centro.nombre,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        
+                        Text(
+                            text = centro.getDireccionCiudad(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // Indicador de estado
+                if (centro.activo) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Text(
+                            text = "Activo",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                } else {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.error
+                    ) {
+                        Text(
+                            text = "Inactivo",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
             }
         }
     }

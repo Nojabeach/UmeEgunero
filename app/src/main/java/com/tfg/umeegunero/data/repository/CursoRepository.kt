@@ -227,41 +227,59 @@ class CursoRepository @Inject constructor(
     }
     
     /**
-     * Obtiene todos los cursos de un centro educativo
-     * @param centroId ID del centro educativo
-     * @param soloActivos Si true, solo devuelve cursos activos
-     * @return Lista de cursos del centro
+     * Obtiene los cursos asociados a un centro
+     * @param centroId ID del centro
+     * @param soloActivos si true, solo devuelve cursos activos, si false, devuelve todos
+     * @return lista de cursos del centro
      */
-    suspend fun obtenerCursosPorCentro(centroId: String, soloActivos: Boolean = false): List<Curso> {
-        return try {
-            Timber.d("Consultando cursos para centro: $centroId (soloActivos: $soloActivos)")
+    suspend fun obtenerCursosPorCentro(centroId: String, soloActivos: Boolean = true): List<Curso> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Consultando cursos para el centro ID: $centroId (soloActivos=$soloActivos)")
+            val cursosCollection = FirebaseFirestore.getInstance().collection("cursos")
             
-            val query = cursosCollection
-                .whereEqualTo("centroId", centroId)
+            // Crear query base filtrando por centroId
+            var query = cursosCollection.whereEqualTo("centroId", centroId)
             
-            // Aplicamos el filtro de activos si se solicita
-            val queryFinal = if (soloActivos) {
-                query.whereEqualTo("activo", true)
-            } else {
-                query
+            // Aplicar filtro de activo solo si se solicita
+            if (soloActivos) {
+                query = query.whereEqualTo("activo", true)
             }
             
-            val querySnapshot = queryFinal
-                .orderBy("nombre", Query.Direction.ASCENDING)
-                .get()
-                .await()
+            val snapshot = query.get().await()
             
-            val cursos = querySnapshot.documents.mapNotNull { it.toObject(Curso::class.java) }
+            val cursos = snapshot.documents.mapNotNull { document ->
+                try {
+                    val id = document.id
+                    val nombre = document.getString("nombre") ?: ""
+                    val activo = document.getBoolean("activo") ?: true
+                    
+                    if (id.isNotEmpty() && nombre.isNotEmpty()) {
+                        Curso(
+                            id = id,
+                            nombre = nombre,
+                            descripcion = document.getString("descripcion") ?: "",
+                            edadMinima = document.getLong("edadMinima")?.toInt() ?: 0,
+                            edadMaxima = document.getLong("edadMaxima")?.toInt() ?: 0,
+                            anioAcademico = document.getString("anioAcademico") ?: "",
+                            centroId = document.getString("centroId") ?: "",
+                            activo = activo
+                        )
+                    } else null
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al mapear documento de curso: ${e.message}")
+                    null
+                }
+            }
             
-            Timber.d("Se encontraron ${cursos.size} cursos para el centro $centroId")
+            Timber.d("Encontrados ${cursos.size} cursos para el centro $centroId (soloActivos=$soloActivos)")
             cursos.forEach { curso ->
-                Timber.d("  - Curso encontrado: ${curso.id} - ${curso.nombre} (activo: ${curso.activo})")
+                Timber.d("Curso recuperado: ID=${curso.id}, Nombre=${curso.nombre}, Activo=${curso.activo}")
             }
             
             cursos
-        } catch (e: FirebaseFirestoreException) {
-            Timber.e(e, "Error al obtener los cursos: ${e.message}")
-            throw Exception("Error al obtener los cursos: ${e.message}")
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener cursos por centro: ${e.message}")
+            emptyList()
         }
     }
     

@@ -2,10 +2,14 @@ package com.tfg.umeegunero.feature.common.academico.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Curso
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +24,12 @@ import javax.inject.Inject
  */
 data class ListCursosUiState(
     val cursos: List<Curso> = emptyList(),
+    val centros: List<Centro> = emptyList(),
+    val centroSeleccionado: Centro? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val centroId: String = ""
+    val centroId: String = "",
+    val isAdminApp: Boolean = false // Indica si el usuario es administrador de aplicación
 )
 
 /**
@@ -32,31 +39,185 @@ data class ListCursosUiState(
 @HiltViewModel
 class ListCursosViewModel @Inject constructor(
     private val cursoRepository: CursoRepository,
-    private val usuarioRepository: UsuarioRepository
+    private val centroRepository: CentroRepository,
+    private val usuarioRepository: UsuarioRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ListCursosUiState())
     val uiState: StateFlow<ListCursosUiState> = _uiState.asStateFlow()
     
     init {
-        // Obtener el centro del usuario actual
+        // Verificar el tipo de usuario actual y obtener su centro
         viewModelScope.launch {
-            val centroId = getCentroIdFromCurrentUser()
-            centroId?.let {
-                _uiState.update { state ->
-                    state.copy(centroId = it)
+            // Obtener usuario actual
+            val currentUser = authRepository.getCurrentUser()
+            if (currentUser != null) {
+                val userId = currentUser.documentId
+                
+                // Verificar si es administrador de aplicación
+                val esAdminApp = verificarSiEsAdminApp(userId)
+                _uiState.update { it.copy(isAdminApp = esAdminApp) }
+                
+                if (!esAdminApp) {
+                    // Si no es admin de app, obtener su centro asignado
+                    val centroId = obtenerCentroIdDelUsuarioActual(userId)
+                    if (!centroId.isNullOrEmpty()) {
+                        _uiState.update { it.copy(centroId = centroId) }
+                        
+                        // Cargar información del centro
+                        val centro = obtenerCentroPorId(centroId)
+                        if (centro != null) {
+                            _uiState.update { it.copy(centroSeleccionado = centro) }
+                        }
+                    }
                 }
-                cargarCursos()
             }
         }
     }
     
     /**
-     * Obtiene el ID del centro del usuario actual
+     * Verifica si el usuario es administrador de la aplicación
      */
-    private suspend fun getCentroIdFromCurrentUser(): String? {
-        // Implementación temporal simplificada
-        return "centro_test"
+    private suspend fun verificarSiEsAdminApp(usuarioId: String): Boolean {
+        return try {
+            // Obtener perfil completo del usuario
+            val result = usuarioRepository.getUsuarioById(usuarioId)
+            if (result is Result.Success) {
+                // Verificar si tiene perfil de ADMIN_APP
+                result.data.perfiles.any { it.tipo == TipoUsuario.ADMIN_APP }
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al verificar si es admin app: ${e.message}")
+            false
+        }
+    }
+    
+    /**
+     * Obtiene el ID del centro asociado al usuario actual
+     */
+    private suspend fun obtenerCentroIdDelUsuarioActual(usuarioId: String): String? {
+        // MÉTODO 1: Buscar en perfiles del usuario
+        val result = usuarioRepository.getUsuarioById(usuarioId)
+        if (result is Result.Success) {
+            val usuario = result.data
+            
+            // Buscar centroId en perfiles, probando diferentes tipos de usuario
+            val perfilConCentroId = usuario.perfiles.find { it.centroId.isNotEmpty() }
+            if (perfilConCentroId != null) {
+                val centroId = perfilConCentroId.centroId
+                Timber.d("CentroId encontrado en perfil: $centroId")
+                return centroId
+            }
+            
+            Timber.d("No se encontró centroId en ningún perfil del usuario")
+        }
+        
+        // MÉTODO 2: Usar método específico del repositorio
+        try {
+            val centroId = usuarioRepository.getCentroIdUsuarioActual()
+            if (!centroId.isNullOrEmpty()) {
+                Timber.d("CentroId obtenido con método alternativo: $centroId")
+                return centroId
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error obteniendo centroId por método alternativo: ${e.message}")
+        }
+        
+        // MÉTODO 3: Buscar centros donde el usuario es admin o profesor
+        try {
+            val centrosResult = centroRepository.getCentrosByAdminOrProfesor(usuarioId)
+            if (centrosResult is Result.Success && centrosResult.data.isNotEmpty()) {
+                val primerCentro = centrosResult.data.first()
+                Timber.d("Centro encontrado como admin/profesor: ${primerCentro.id}")
+                return primerCentro.id
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error buscando centros del usuario: ${e.message}")
+        }
+        
+        return null
+    }
+    
+    /**
+     * Obtiene un centro por su ID
+     */
+    private suspend fun obtenerCentroPorId(centroId: String): Centro? {
+        return try {
+            when (val result = centroRepository.getCentroById(centroId)) {
+                is Result.Success -> {
+                    val centro = result.data
+                    centro
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener centro: ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Carga todos los centros disponibles (solo para admin app)
+     */
+    fun cargarCentros() {
+        if (!_uiState.value.isAdminApp) return // Solo permitir a admin app
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                when (val result = centroRepository.getAllCentros()) {
+                    is Result.Success -> {
+                        val centros = result.data
+                        _uiState.update { 
+                            it.copy(
+                                centros = centros,
+                                isLoading = false
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "Error al cargar centros")
+                        _uiState.update { 
+                            it.copy(
+                                error = "Error al cargar centros: ${result.exception?.message}",
+                                isLoading = false
+                            )
+                        }
+                    }
+                    is Result.Loading -> {
+                        // Estado de carga ya establecido
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error general al cargar centros: ${e.message}")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error general al cargar centros: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Selecciona un centro (solo para admin app)
+     */
+    fun seleccionarCentro(centro: Centro) {
+        if (!_uiState.value.isAdminApp) return // Solo permitir a admin app
+        
+        _uiState.update { 
+            it.copy(
+                centroSeleccionado = centro,
+                centroId = centro.id
+            )
+        }
+        
+        cargarCursos()
     }
     
     /**
@@ -67,8 +228,8 @@ class ListCursosViewModel @Inject constructor(
         
         viewModelScope.launch {
             val centroId = _uiState.value.centroId
-            if (centroId.isEmpty()) {
-                // Si no hay centro seleccionado, muestra un error
+            if (centroId.isEmpty() && !_uiState.value.isAdminApp) {
+                // Si no hay centro seleccionado y no es admin app, muestra error
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -78,9 +239,13 @@ class ListCursosViewModel @Inject constructor(
                 return@launch
             }
             
-            // Obtener los cursos del centro
-            _uiState.update { it.copy(isLoading = true) }
+            // Para admin app sin centro seleccionado, no cargamos cursos y dejamos lista vacía
+            if (centroId.isEmpty() && _uiState.value.isAdminApp) {
+                _uiState.update { it.copy(isLoading = false, cursos = emptyList()) }
+                return@launch
+            }
             
+            // Obtener los cursos del centro
             when (val result = cursoRepository.obtenerCursosPorCentroResult(centroId, soloActivos = true)) {
                 is Result.Success -> {
                     Timber.d("Cursos cargados: ${result.data.size}")

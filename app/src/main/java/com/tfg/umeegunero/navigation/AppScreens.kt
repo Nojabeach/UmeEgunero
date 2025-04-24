@@ -152,8 +152,9 @@ sealed class AppScreens(val route: String) {
      * @param centroId Identificador único del centro
      * @param cursoId Identificador del curso (opcional, para edición)
      */
-    object AddCurso : AppScreens("add_curso/{centroId}") {
+    object AddCurso : AppScreens("add_curso/{centroId}?cursoId={cursoId}") {
         fun createRoute(centroId: String) = "add_curso/$centroId"
+        fun createRoute(centroId: String, cursoId: String) = "add_curso/$centroId?cursoId=$cursoId"
     }
     
     /**
