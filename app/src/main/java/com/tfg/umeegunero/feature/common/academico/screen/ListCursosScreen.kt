@@ -49,7 +49,6 @@ fun ListCursosScreen(
     var cursoToDelete by remember { mutableStateOf<Curso?>(null) }
 
     LaunchedEffect(key1 = true) {
-        // Solo cargamos centros si el usuario es administrador de aplicación
         if (uiState.isAdminApp) {
             viewModel.cargarCentros()
         }
@@ -65,7 +64,6 @@ fun ListCursosScreen(
             )
         },
         floatingActionButton = {
-            // Solo mostramos el botón si hay un centro seleccionado o fijo
             if (uiState.centroId.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = {
@@ -162,16 +160,6 @@ fun ListCursosScreen(
                                 navController.navigate(AppScreens.GestionClases.createRoute(curso.id))
                             }
                         )
-                    }
-                }
-            }
-
-            // Mostrar mensaje de error si existe
-            if (uiState.error != null) {
-                LaunchedEffect(uiState.error) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar(uiState.error!!)
-                        viewModel.clearError()
                     }
                 }
             }
