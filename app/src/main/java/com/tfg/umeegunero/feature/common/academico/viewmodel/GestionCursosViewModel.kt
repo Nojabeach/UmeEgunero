@@ -27,14 +27,27 @@ data class GestionCursosUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val cursos: List<Curso> = emptyList(),
+    val cursosFiltrados: List<Curso> = emptyList(),
     val centros: List<Centro> = emptyList(),
     val centroSeleccionado: Centro? = null,
     val isAdminApp: Boolean = false,
-    val isDeleteDialogVisible: Boolean = false,
-    val selectedCurso: Curso? = null,
+    val searchQuery: String = "",
+    val mostrarSoloActivos: Boolean = true,
+    val ordenActual: OrdenCursos = OrdenCursos.NOMBRE_ASC,
     val isSuccess: Boolean = false,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val isDeleteDialogVisible: Boolean = false,
+    val selectedCurso: Curso? = null
 )
+
+enum class OrdenCursos {
+    NOMBRE_ASC,
+    NOMBRE_DESC,
+    EDAD_ASC,
+    EDAD_DESC,
+    AÑO_ACADEMICO_ASC,
+    AÑO_ACADEMICO_DESC
+}
 
 /**
  * ViewModel para la gestión de cursos
@@ -66,7 +79,7 @@ class GestionCursosViewModel @Inject constructor(
         }
     }
     
-    private fun cargarCentros() {
+    fun cargarCentros() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -121,6 +134,7 @@ class GestionCursosViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         cursos = cursos,
+                        cursosFiltrados = filtrarYOrdenarCursos(cursos),
                         isLoading = false
                     )
                 }
@@ -130,7 +144,8 @@ class GestionCursosViewModel @Inject constructor(
                     it.copy(
                         error = "Error al cargar cursos: ${e.message}",
                         isLoading = false,
-                        cursos = emptyList()
+                        cursos = emptyList(),
+                        cursosFiltrados = emptyList()
                     )
                 }
             }
@@ -193,46 +208,29 @@ class GestionCursosViewModel @Inject constructor(
      */
     fun eliminarCurso(cursoId: String) {
         viewModelScope.launch {
-            _uiState.update { 
-                it.copy(isLoading = true, error = null) 
-            }
+            _uiState.update { it.copy(isLoading = true) }
             try {
-                val result = cursoRepository.deleteCurso(cursoId)
-                val centroId = _uiState.value.centroSeleccionado?.id ?: return@launch
-                when (result) {
-                    is Result.Success -> {
-                        _uiState.update { 
-                            it.copy(
-                                isSuccess = true,
-                                successMessage = "Curso eliminado correctamente",
-                                isLoading = false,
-                                isDeleteDialogVisible = false,
-                                selectedCurso = null
-                            ) 
-                        }
-                        cargarCursos(centroId)
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al eliminar el curso: ${result.exception?.message}",
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.e(result.exception, "Error al eliminar curso de Firestore")
-                    }
-                    else -> {
-                        // State Loading, ignoramos
-                    }
+                cursoRepository.deleteCurso(cursoId)
+                _uiState.update { 
+                    it.copy(
+                        isSuccess = true,
+                        successMessage = "Curso eliminado correctamente",
+                        isLoading = false,
+                        isDeleteDialogVisible = false,
+                        selectedCurso = null
+                    ) 
+                }
+                val centroId = _uiState.value.centroSeleccionado?.id
+                if (centroId != null) {
+                    cargarCursos(centroId)
                 }
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        error = "Error inesperado al eliminar curso: ${e.message}",
+                        error = "Error al eliminar curso: ${e.message}",
                         isLoading = false
                     ) 
                 }
-                Timber.e(e, "Error inesperado al eliminar curso")
             }
         }
     }
@@ -278,5 +276,61 @@ class GestionCursosViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.update { 
+            it.copy(
+                searchQuery = query,
+                cursosFiltrados = filtrarYOrdenarCursos(it.cursos)
+            )
+        }
+    }
+
+    fun toggleMostrarSoloActivos() {
+        _uiState.update { 
+            it.copy(
+                mostrarSoloActivos = !it.mostrarSoloActivos,
+                cursosFiltrados = filtrarYOrdenarCursos(it.cursos)
+            )
+        }
+    }
+
+    fun updateOrden(orden: OrdenCursos) {
+        _uiState.update { 
+            it.copy(
+                ordenActual = orden,
+                cursosFiltrados = filtrarYOrdenarCursos(it.cursos)
+            )
+        }
+    }
+
+    private fun filtrarYOrdenarCursos(cursos: List<Curso>): List<Curso> {
+        var resultado = cursos
+
+        // Aplicar filtro de búsqueda
+        if (_uiState.value.searchQuery.isNotEmpty()) {
+            resultado = resultado.filter { curso ->
+                curso.nombre.contains(_uiState.value.searchQuery, ignoreCase = true) ||
+                curso.descripcion.contains(_uiState.value.searchQuery, ignoreCase = true)
+            }
+        }
+
+        // Aplicar filtro de activos
+        if (_uiState.value.mostrarSoloActivos) {
+            resultado = resultado.filter { it.activo }
+        }
+
+        // Aplicar ordenación
+        resultado = when (_uiState.value.ordenActual) {
+            OrdenCursos.NOMBRE_ASC -> resultado.sortedBy { it.nombre }
+            OrdenCursos.NOMBRE_DESC -> resultado.sortedByDescending { it.nombre }
+            OrdenCursos.EDAD_ASC -> resultado.sortedBy { it.edadMinima }
+            OrdenCursos.EDAD_DESC -> resultado.sortedByDescending { it.edadMinima }
+            OrdenCursos.AÑO_ACADEMICO_ASC -> resultado.sortedBy { it.anioAcademico }
+            OrdenCursos.AÑO_ACADEMICO_DESC -> resultado.sortedByDescending { it.anioAcademico }
+        }
+
+        return resultado
     }
 } 
