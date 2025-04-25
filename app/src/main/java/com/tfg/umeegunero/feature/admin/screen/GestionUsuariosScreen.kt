@@ -16,8 +16,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.feature.admin.viewmodel.GestionUsuariosViewModel
 
 /**
  * Pantalla central para la gestión de usuarios del sistema
@@ -26,7 +28,8 @@ import com.tfg.umeegunero.navigation.AppScreens
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GestionUsuariosScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: GestionUsuariosViewModel = hiltViewModel()
 ) {
     Scaffold(
         topBar = {
@@ -89,7 +92,6 @@ fun GestionUsuariosScreen(
                 subtitle = "Gestión de administradores de centros educativos",
                 icon = Icons.Default.Business,
                 onClick = {
-                    // Navegar a la lista de administradores de centro
                     navController.navigate(AppScreens.AdminCentroList.route)
                 }
             )

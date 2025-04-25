@@ -213,7 +213,8 @@ fun FamiliaDashboardScreen(
                     // Tarjeta de bienvenida
                     WelcomeCard(
                         nombreFamiliar = uiState.familiar?.nombre ?: "Familiar",
-                        nombreHijo = uiState.hijoSeleccionado?.nombre ?: "Alumno"
+                        nombreHijo = uiState.hijoSeleccionado?.nombre ?: "Alumno",
+                        onConfigClick = { navController.navigate(AppScreens.Configuracion.route) }
                     )
                     
                     // Selector de hijos (si hay más de uno)
@@ -272,7 +273,7 @@ fun FamiliaDashboardScreen(
                             registrosActividad = uiState.registrosActividad,
                             onVerDetalles = { registroId ->
                                 // Navegar a la pantalla de detalle del registro
-                                navController.navigate("detalle_registro/$registroId")
+                                navController.navigate(AppScreens.DummyGestionUsuarios.route)
                             }
                         )
                     }
@@ -323,9 +324,11 @@ fun SectionHeader(
 }
 
 @Composable
-fun WelcomeCard(nombreFamiliar: String, nombreHijo: String, modifier: Modifier = Modifier) {
+fun WelcomeCard(nombreFamiliar: String, nombreHijo: String, modifier: Modifier = Modifier, onConfigClick: () -> Unit = {}) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onConfigClick),
         colors = CardDefaults.cardColors(
             containerColor = FamiliarColor.copy(alpha = 0.15f)
         ),

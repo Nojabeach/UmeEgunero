@@ -569,4 +569,11 @@ sealed class AppScreens(val route: String) {
     
     /** Pantalla de gestión de usuarios */
     object GestionUsuarios : AppScreens("gestion_usuarios")
+
+    // Pantallas dummy para funcionalidades en desarrollo
+    object DummyGestionCursos : AppScreens("dummy_gestion_cursos")
+    object DummyGestionClases : AppScreens("dummy_gestion_clases")
+    object DummyGestionUsuarios : AppScreens("dummy_gestion_usuarios")
+    object DummyEstadisticas : AppScreens("dummy_estadisticas")
+    object DummyConfiguracion : AppScreens("dummy_configuracion")
 } 

@@ -278,7 +278,10 @@ fun ProfesorDashboardContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Bienvenida y fecha
-        WelcomeCard()
+        WelcomeCard(
+            navController = navController,
+            onCrearRegistroActividad = onCrearRegistroActividad
+        )
         
         // Grid de accesos rápidos principales
         Text(
@@ -302,11 +305,8 @@ fun ProfesorDashboardContent(
                     icon = Icons.Default.Description,
                     color = Color(0xFF4CAF50),
                     onClick = {
-                        // La pantalla aún está vacía según el documento Pendientes.md
-                        // pero deberíamos navegar a la ruta correcta
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Navegando a Comunicados")
-                        }
+                        // Navegar a la pantalla dummy de comunicados
+                        navController.navigate(AppScreens.DummyGestionCursos.route)
                     }
                 )
             }
@@ -318,11 +318,8 @@ fun ProfesorDashboardContent(
                     icon = Icons.Default.Warning,
                     color = Color(0xFFFF9800),
                     onClick = {
-                        // La pantalla aún está vacía según el documento Pendientes.md
-                        // pero deberíamos navegar a la ruta correcta
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Navegando a Incidencias")
-                        }
+                        // Navegar a la pantalla dummy de incidencias
+                        navController.navigate(AppScreens.DummyGestionClases.route)
                     }
                 )
             }
@@ -480,7 +477,11 @@ fun ProfesorDashboardContent(
  * Tarjeta de bienvenida para el profesor con información del día
  */
 @Composable
-fun WelcomeCard(modifier: Modifier = Modifier) {
+fun WelcomeCard(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    onCrearRegistroActividad: (String) -> Unit
+) {
     val today = LocalDate.now()
     val formatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")
     val formattedDate = remember { today.format(formatter).replaceFirstChar { it.uppercase() } }
@@ -544,7 +545,8 @@ fun WelcomeCard(modifier: Modifier = Modifier) {
                 EstadisticaItem(
                     valor = "93%",
                     titulo = "Asistencia",
-                    color = Color(0xFF4CAF50)
+                    color = Color(0xFF4CAF50),
+                    onClick = { navController.navigate(AppScreens.AsistenciaProfesor.route) }
                 )
                 
                 // Separador vertical
@@ -558,7 +560,8 @@ fun WelcomeCard(modifier: Modifier = Modifier) {
                 EstadisticaItem(
                     valor = "87%",
                     titulo = "Actividades",
-                    color = Color(0xFF2196F3)
+                    color = Color(0xFF2196F3),
+                    onClick = { navController.navigate(AppScreens.RegistroActividad.route) }
                 )
                 
                 HorizontalDivider(
@@ -571,7 +574,8 @@ fun WelcomeCard(modifier: Modifier = Modifier) {
                 EstadisticaItem(
                     valor = "5",
                     titulo = "Pendientes",
-                    color = Color(0xFFFF9800)
+                    color = Color(0xFFFF9800),
+                    onClick = { onCrearRegistroActividad("") }
                 )
             }
         }
@@ -685,10 +689,12 @@ fun GestionCard(
 fun EstadisticaItem(
     valor: String,
     titulo: String,
-    color: Color
+    color: Color,
+    onClick: () -> Unit
 ) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
         Text(
             text = valor,
