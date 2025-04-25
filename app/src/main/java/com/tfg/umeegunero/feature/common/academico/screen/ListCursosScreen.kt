@@ -132,9 +132,9 @@ fun ListCursosScreen(
                             "No hay cursos disponibles en tu centro. Contacta con el administrador para crear cursos.",
                         icon = Icons.Default.School,
                         buttonText = if (uiState.centroId.isNotEmpty() && uiState.isAdminApp) "Añadir curso" else null,
-                        onButtonClick = {
-                            navController.navigate(AppScreens.AddCurso.createRoute(uiState.centroId))
-                        }
+                        onButtonClick = if (uiState.centroId.isNotEmpty()) {
+                            { navController.navigate(AppScreens.AddCurso.createRoute(uiState.centroId)) }
+                        } else { {} }
                     )
                 }
             } else {
@@ -150,7 +150,7 @@ fun ListCursosScreen(
                         CursoCard(
                             curso = curso,
                             onEditClick = {
-                                navController.navigate(AppScreens.AddCurso.createRoute(curso.centroId, curso.id))
+                                navController.navigate(AppScreens.EditCurso.createRoute(curso.id))
                             },
                             onDeleteClick = {
                                 cursoToDelete = curso

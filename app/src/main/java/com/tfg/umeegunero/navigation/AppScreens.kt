@@ -152,9 +152,8 @@ sealed class AppScreens(val route: String) {
      * @param centroId Identificador único del centro
      * @param cursoId Identificador del curso (opcional, para edición)
      */
-    object AddCurso : AppScreens("add_curso/{centroId}?cursoId={cursoId}") {
+    object AddCurso : AppScreens("add_curso/{centroId}") {
         fun createRoute(centroId: String) = "add_curso/$centroId"
-        fun createRoute(centroId: String, cursoId: String) = "add_curso/$centroId?cursoId=$cursoId"
     }
     
     /**
@@ -588,4 +587,12 @@ sealed class AppScreens(val route: String) {
     object DummyGestionUsuarios : AppScreens("dummy_gestion_usuarios")
     object DummyEstadisticas : AppScreens("dummy_estadisticas")
     object DummyConfiguracion : AppScreens("dummy_configuracion")
+
+    object EditCurso : AppScreens("edit_curso/{cursoId}") {
+        fun createRoute(cursoId: String) = "edit_curso/$cursoId"
+    }
+
+    object DetalleCurso : AppScreens("detalle_curso/{cursoId}") {
+        fun createRoute(cursoId: String) = "detalle_curso/$cursoId"
+    }
 } 

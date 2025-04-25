@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.feature.common.academico.viewmodel.GestionCursosViewModel
 import com.tfg.umeegunero.navigation.AppScreens
@@ -37,8 +38,19 @@ import com.tfg.umeegunero.ui.theme.AcademicoColor
 @Composable
 fun GestionCursosScreen(
     navController: NavController,
-    centroId: String
+    centroId: String? = null,
+    viewModel: GestionCursosViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    var expandedCentroMenu by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(centroId) {
+        if (!centroId.isNullOrEmpty()) {
+            viewModel.seleccionarCentro(centroId)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -47,81 +59,120 @@ fun GestionCursosScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            contentDescription = "Volver"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = AcademicoColor,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { navController.navigate(AppScreens.AddCurso.createRoute(centroId)) },
-                icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
-                text = { Text("Añadir Curso") },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                    contentDescription = null,
-                    modifier = Modifier.size(100.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Text(
-                    text = "Gestión de Cursos",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "Centro ID: $centroId",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.height(32.dp))
-                
-                Text(
-                    text = "En esta pantalla podrá añadir, editar y eliminar cursos académicos.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "Pulse el botón 'Añadir Curso' para crear un nuevo curso académico.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            if (uiState.centroSeleccionado != null) {
+                ExtendedFloatingActionButton(
+                    onClick = { 
+                        navController.navigate(AppScreens.AddCurso.createRoute(uiState.centroSeleccionado?.id ?: ""))
+                    },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Añadir") },
+                    text = { Text("Añadir Curso") },
+                    containerColor = AcademicoColor,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            if (uiState.isAdminApp) {
+                // Selector de centro para admin
+                ExposedDropdownMenuBox(
+                    expanded = expandedCentroMenu,
+                    onExpandedChange = { expandedCentroMenu = !expandedCentroMenu }
+                ) {
+                    OutlinedTextField(
+                        value = uiState.centroSeleccionado?.nombre ?: "Seleccionar centro",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Centro Educativo") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCentroMenu)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expandedCentroMenu,
+                        onDismissRequest = { expandedCentroMenu = false }
+                    ) {
+                        uiState.centros.forEach { centro ->
+                            DropdownMenuItem(
+                                text = { Text(centro.nombre) },
+                                onClick = { 
+                                    viewModel.seleccionarCentro(centro.id)
+                                    expandedCentroMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (uiState.isLoading) {
+                LoadingIndicator()
+            } else if (uiState.cursos.isEmpty() && uiState.centroSeleccionado != null) {
+                EmptyCursosMessage(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                )
+            } else if (uiState.centroSeleccionado == null && !uiState.isAdminApp) {
+                // Mensaje cuando no hay centro seleccionado
+                Text(
+                    text = "Seleccione un centro para gestionar sus cursos",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    itemsIndexed(uiState.cursos) { _, curso ->
+                        CursoItem(
+                            curso = curso,
+                            onEditClick = {
+                                navController.navigate(AppScreens.EditCurso.createRoute(curso.id))
+                            },
+                            onItemClick = {
+                                navController.navigate(AppScreens.DetalleCurso.createRoute(curso.id))
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(message = error)
+            viewModel.clearError()
         }
     }
 }

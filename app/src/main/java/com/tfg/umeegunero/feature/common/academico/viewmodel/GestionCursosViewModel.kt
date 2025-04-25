@@ -3,10 +3,15 @@ package com.tfg.umeegunero.feature.common.academico.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Curso
-import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,9 +24,12 @@ import javax.inject.Inject
  * Estado UI para la pantalla de gestión de cursos
  */
 data class GestionCursosUiState(
-    val cursos: List<Curso> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
+    val cursos: List<Curso> = emptyList(),
+    val centros: List<Centro> = emptyList(),
+    val centroSeleccionado: Centro? = null,
+    val isAdminApp: Boolean = false,
     val isDeleteDialogVisible: Boolean = false,
     val selectedCurso: Curso? = null,
     val isSuccess: Boolean = false,
@@ -34,61 +42,97 @@ data class GestionCursosUiState(
 @HiltViewModel
 class GestionCursosViewModel @Inject constructor(
     private val cursoRepository: CursoRepository,
-    savedStateHandle: SavedStateHandle
+    private val centroRepository: CentroRepository,
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
-    
-    private val centroId: String = savedStateHandle.get<String>("centroId") ?: ""
     
     private val _uiState = MutableStateFlow(GestionCursosUiState())
     val uiState: StateFlow<GestionCursosUiState> = _uiState.asStateFlow()
     
     init {
-        Timber.d("Inicializando GestionCursosViewModel con centroId: $centroId")
-        if (centroId.isNotEmpty()) {
-            cargarCursos()
-        } else {
-            _uiState.update { 
-                it.copy(error = "ID de centro no válido") 
+        viewModelScope.launch {
+            val usuario = usuarioRepository.obtenerUsuarioActual()
+            val isAdminApp = usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: false
+            _uiState.update { it.copy(isAdminApp = isAdminApp) }
+            
+            if (isAdminApp) {
+                cargarCentros()
+            } else {
+                // Si no es admin, cargar su centro asignado
+                usuario?.perfiles?.firstOrNull()?.centroId?.let { centroId ->
+                    seleccionarCentro(centroId)
+                }
             }
         }
     }
     
-    /**
-     * Carga todos los cursos asociados al centro desde Firestore
-     */
-    private fun cargarCursos() {
+    private fun cargarCentros() {
         viewModelScope.launch {
-            _uiState.update { 
-                it.copy(isLoading = true, error = null) 
-            }
-            
+            _uiState.update { it.copy(isLoading = true) }
             try {
-                // Cargar cursos por centro
-                when (val cursosResult = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
-                    is Result.Success -> {
-                        _uiState.update { it.copy(cursos = cursosResult.data) }
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al cargar los cursos: ${cursosResult.exception?.message}",
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.e(cursosResult.exception, "Error al cargar cursos desde Firestore")
-                    }
-                    else -> {
-                        // State Loading, ignoramos
-                    }
-                }
-            } catch (e: Exception) {
+                val centros = centroRepository.getCentros().first()
                 _uiState.update { 
                     it.copy(
-                        error = "Error inesperado: ${e.message}",
+                        centros = centros,
                         isLoading = false
-                    ) 
+                    )
                 }
-                Timber.e(e, "Error inesperado al cargar cursos desde Firestore")
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar centros")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar centros: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+
+    fun seleccionarCentro(centroId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val centroResult = centroRepository.getCentroById(centroId)
+                val centro = if (centroResult is Result.Success) centroResult.data else null
+                _uiState.update { 
+                    it.copy(
+                        centroSeleccionado = centro,
+                        isLoading = false
+                    )
+                }
+                cargarCursos(centroId)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar centro")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar centro: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+
+    private fun cargarCursos(centroId: String) {
+        viewModelScope.launch {
+            try {
+                val cursos = cursoRepository.obtenerCursosPorCentro(centroId)
+                _uiState.update { 
+                    it.copy(
+                        cursos = cursos,
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar cursos")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar cursos: ${e.message}",
+                        isLoading = false,
+                        cursos = emptyList()
+                    )
+                }
             }
         }
     }
@@ -101,16 +145,13 @@ class GestionCursosViewModel @Inject constructor(
             _uiState.update { 
                 it.copy(isLoading = true, error = null) 
             }
-            
             try {
-                // Asegurarse de que los campos mínimos estén establecidos
+                val centroId = _uiState.value.centroSeleccionado?.id ?: return@launch
                 val cursoCompleto = curso.copy(
                     centroId = centroId,
                     activo = true
                 )
-                
                 val result = cursoRepository.saveCurso(cursoCompleto)
-                
                 when (result) {
                     is Result.Success -> {
                         _uiState.update { 
@@ -120,7 +161,7 @@ class GestionCursosViewModel @Inject constructor(
                                 isLoading = false
                             ) 
                         }
-                        cargarCursos() // Recargar la lista
+                        cargarCursos(centroId)
                     }
                     is Result.Error -> {
                         _uiState.update { 
@@ -155,10 +196,9 @@ class GestionCursosViewModel @Inject constructor(
             _uiState.update { 
                 it.copy(isLoading = true, error = null) 
             }
-            
             try {
                 val result = cursoRepository.deleteCurso(cursoId)
-                
+                val centroId = _uiState.value.centroSeleccionado?.id ?: return@launch
                 when (result) {
                     is Result.Success -> {
                         _uiState.update { 
@@ -170,7 +210,7 @@ class GestionCursosViewModel @Inject constructor(
                                 selectedCurso = null
                             ) 
                         }
-                        cargarCursos() // Recargar la lista
+                        cargarCursos(centroId)
                     }
                     is Result.Error -> {
                         _uiState.update { 
@@ -188,11 +228,11 @@ class GestionCursosViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        error = "Error inesperado: ${e.message}",
+                        error = "Error inesperado al eliminar curso: ${e.message}",
                         isLoading = false
                     ) 
                 }
-                Timber.e(e, "Error inesperado al eliminar curso de Firestore")
+                Timber.e(e, "Error inesperado al eliminar curso")
             }
         }
     }
@@ -237,8 +277,6 @@ class GestionCursosViewModel @Inject constructor(
      * Limpia el mensaje de error
      */
     fun clearError() {
-        _uiState.update { 
-            it.copy(error = null) 
-        }
+        _uiState.update { it.copy(error = null) }
     }
 } 
