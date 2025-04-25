@@ -1053,4 +1053,23 @@ class CentroRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene todos los centros activos
+     * @return Flow con la lista de centros activos
+     */
+    suspend fun getCentros(): Flow<List<Centro>> = flow {
+        try {
+            val centrosSnapshot = centrosCollection
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+            
+            val centros = centrosSnapshot.toObjects(Centro::class.java)
+            emit(centros)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener centros activos")
+            emit(emptyList())
+        }
+    }
 }

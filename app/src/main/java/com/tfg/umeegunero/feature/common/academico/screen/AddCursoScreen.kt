@@ -13,13 +13,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.feature.common.academico.viewmodel.AddCursoViewModel
 import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 
 /**
@@ -35,7 +38,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HiltAddCursoScreen(
     navController: NavController,
-    centroId: String,
+    centroId: String? = null,
     onNavigateBack: () -> Unit = { navController.popBackStack() },
     onCursoAdded: () -> Unit = {},
     viewModel: AddCursoViewModel = hiltViewModel()
@@ -44,10 +47,13 @@ fun HiltAddCursoScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    var expandedCentroMenu by remember { mutableStateOf(false) }
 
-    // Establecer el centroId al iniciar
+    // Establecer el centroId al iniciar si se proporciona
     LaunchedEffect(centroId) {
-        viewModel.updateCentroId(centroId)
+        if (!centroId.isNullOrEmpty()) {
+            viewModel.updateCentroId(centroId)
+        }
     }
 
     // Efecto para manejar la navegación después de un guardado exitoso
@@ -92,6 +98,55 @@ fun HiltAddCursoScreen(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Selector de centro (solo para admin de la app)
+                if (uiState.isAdminApp) {
+                    ExposedDropdownMenuBox(
+                        expanded = expandedCentroMenu,
+                        onExpandedChange = { expandedCentroMenu = !expandedCentroMenu }
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.centros.find { it.id == uiState.centroId }?.nombre ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Centro Educativo") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCentroMenu)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            isError = uiState.centroError != null,
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandedCentroMenu,
+                            onDismissRequest = { expandedCentroMenu = false }
+                        ) {
+                            uiState.centros.forEach { centro ->
+                                DropdownMenuItem(
+                                    text = { Text(centro.nombre) },
+                                    onClick = { 
+                                        viewModel.updateCentroId(centro.id)
+                                        expandedCentroMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (uiState.centroError != null) {
+                        Text(
+                            text = uiState.centroError ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 // Nombre del curso
                 OutlinedTextFieldWithError(
                     value = uiState.nombre,
@@ -186,5 +241,16 @@ fun HiltAddCursoScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddCursoScreenPreview() {
+    UmeEguneroTheme {
+        HiltAddCursoScreen(
+            navController = rememberNavController(),
+            centroId = "centro1"
+        )
     }
 } 

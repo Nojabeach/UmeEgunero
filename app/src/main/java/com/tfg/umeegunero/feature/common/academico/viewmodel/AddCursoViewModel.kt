@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Curso
+import com.tfg.umeegunero.data.model.Centro
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
@@ -33,6 +35,8 @@ data class AddCursoUiState(
     val edadMaxima: String = "",
     val anioAcademico: String = "",
     val centroId: String = "",
+    val centros: List<Centro> = emptyList(),
+    val isAdminApp: Boolean = false,
     val activo: Boolean = true,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
@@ -42,6 +46,7 @@ data class AddCursoUiState(
     val edadMinimaError: String? = null,
     val edadMaximaError: String? = null,
     val anioAcademicoError: String? = null,
+    val centroError: String? = null,
     val isEditMode: Boolean = false
 )
 
@@ -62,14 +67,24 @@ class AddCursoViewModel @Inject constructor(
     val uiState: StateFlow<AddCursoUiState> = _uiState.asStateFlow()
     
     init {
-        // Al inicializar, intentamos obtener el centroId del usuario actual
         viewModelScope.launch {
-            val centroId = UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
-            if (!centroId.isNullOrEmpty()) {
-                _uiState.update { it.copy(centroId = centroId) }
-                Timber.d("CentroId inicial establecido: $centroId")
+            // Determinar si el usuario es admin de la app
+            val usuario = usuarioRepository.obtenerUsuarioActual()
+            val isAdminApp = usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: false
+            _uiState.update { it.copy(isAdminApp = isAdminApp) }
+
+            if (isAdminApp) {
+                // Si es admin de la app, cargar la lista de centros
+                cargarCentros()
             } else {
-                Timber.e("No se pudo obtener el centroId del usuario actual")
+                // Si no es admin, obtener el centro del usuario actual
+                val centroId = UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
+                if (!centroId.isNullOrEmpty()) {
+                    _uiState.update { it.copy(centroId = centroId) }
+                    Timber.d("CentroId inicial establecido: $centroId")
+                } else {
+                    Timber.e("No se pudo obtener el centroId del usuario actual")
+                }
             }
             
             // Verificar si estamos en modo edición
@@ -116,6 +131,31 @@ class AddCursoViewModel @Inject constructor(
                 is Result.Loading -> {
                     // Estado de carga ya fue establecido
                 }
+            }
+        }
+    }
+    
+    /**
+     * Carga la lista de centros educativos
+     */
+    private suspend fun cargarCentros() {
+        _uiState.update { it.copy(isLoading = true) }
+        try {
+            centroRepository.getCentros().collect { centros ->
+                _uiState.update { 
+                    it.copy(
+                        centros = centros,
+                        isLoading = false
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar centros: ${e.message}")
+            _uiState.update { 
+                it.copy(
+                    error = "Error al cargar centros: ${e.message}",
+                    isLoading = false
+                )
             }
         }
     }
@@ -265,52 +305,42 @@ class AddCursoViewModel @Inject constructor(
     }
     
     /**
-     * Valida todos los campos del formulario antes de guardar
-     * @return true si todos los campos son válidos
+     * Valida el formulario antes de guardar
      */
     private fun validarFormulario(): Boolean {
-        val state = _uiState.value
         var isValid = true
-        
-        // Validar nombre
+        val state = _uiState.value
+
         if (state.nombre.isBlank()) {
             _uiState.update { it.copy(nombreError = "El nombre es obligatorio") }
             isValid = false
         }
-        
-        // Validar edades
-        val edadMinima = state.edadMinima.toIntOrNull()
-        if (edadMinima == null) {
-            _uiState.update { it.copy(edadMinimaError = "Introduce una edad válida") }
+
+        if (state.descripcion.isBlank()) {
+            _uiState.update { it.copy(descripcionError = "La descripción es obligatoria") }
             isValid = false
         }
-        
-        val edadMaxima = state.edadMaxima.toIntOrNull()
-        if (edadMaxima == null) {
-            _uiState.update { it.copy(edadMaximaError = "Introduce una edad válida") }
+
+        if (state.edadMinima.isBlank() || state.edadMinima.toIntOrNull() == null) {
+            _uiState.update { it.copy(edadMinimaError = "La edad mínima debe ser un número válido") }
             isValid = false
         }
-        
-        // Comprobar que la edad mínima no sea mayor que la máxima
-        if (edadMinima != null && edadMaxima != null && edadMinima > edadMaxima) {
-            _uiState.update { 
-                it.copy(
-                    edadMinimaError = "La edad mínima no puede ser mayor que la máxima",
-                    edadMaximaError = "La edad máxima no puede ser menor que la mínima"
-                ) 
-            }
+
+        if (state.edadMaxima.isBlank() || state.edadMaxima.toIntOrNull() == null) {
+            _uiState.update { it.copy(edadMaximaError = "La edad máxima debe ser un número válido") }
             isValid = false
         }
-        
-        // Validar año académico
+
         if (state.anioAcademico.isBlank()) {
             _uiState.update { it.copy(anioAcademicoError = "El año académico es obligatorio") }
             isValid = false
-        } else if (!state.anioAcademico.matches(Regex("^\\d{4}-\\d{4}$"))) {
-            _uiState.update { it.copy(anioAcademicoError = "Formato incorrecto. Debe ser YYYY-YYYY") }
+        }
+
+        if (state.isAdminApp && state.centroId.isBlank()) {
+            _uiState.update { it.copy(centroError = "Debe seleccionar un centro") }
             isValid = false
         }
-        
+
         return isValid
     }
     
