@@ -96,6 +96,7 @@ class LoginViewModel @Inject constructor(
     companion object {
         private const val PREF_SAVED_EMAIL = "saved_email"
         private const val PREF_REMEMBER_USER = "remember_user"
+        private const val PREF_IS_ADMIN_APP = "is_admin_app"
     }
 
     // Estado de la UI expuesto como StateFlow inmutable
@@ -323,6 +324,11 @@ class LoginViewModel @Inject constructor(
                             val perfiles = usuario.perfiles
                             Timber.d("Perfiles del usuario (${perfiles.size}): ${perfiles.map { it.tipo }}")
                             
+                            val isAdminApp = usuario.perfiles.any { it.tipo == TipoUsuario.ADMIN_APP }
+                            sharedPreferences.edit()
+                                .putBoolean(PREF_IS_ADMIN_APP, isAdminApp)
+                                .apply()
+
                             val tienePerfil = perfiles.any { it.tipo == tipoUsuarioFirebase }
                             Timber.d("¿Tiene perfil $tipoUsuarioFirebase? $tienePerfil")
 
@@ -422,5 +428,12 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             LoginUiState()
         }
+    }
+
+    /**
+     * Permite consultar si el usuario autenticado es admin app (persistente en sesión)
+     */
+    fun isAdminApp(): Boolean {
+        return sharedPreferences.getBoolean(PREF_IS_ADMIN_APP, false)
     }
 }

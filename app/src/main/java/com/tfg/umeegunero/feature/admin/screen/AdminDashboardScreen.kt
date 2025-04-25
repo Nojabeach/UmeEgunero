@@ -170,7 +170,7 @@ fun AdminDashboardScreen(
                     QuickActionsGrid(
                         onGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
                         onAddCentro = { navController.navigate(AppScreens.AddCentro.route) },
-                        onGestionCursos = { navController.navigate(AppScreens.ListaCursos.route) },
+                        onGestionCursos = { navController.navigate(AppScreens.GestionCursos.route) },
                         onGestionClases = { navController.navigate(AppScreens.ListaClases.route) },
                         onGestionUsuarios = { navController.navigate(AppScreens.GestionUsuarios.route) },
                         onAddUsuario = { navController.navigate(AppScreens.AddUser.createRoute(true)) }

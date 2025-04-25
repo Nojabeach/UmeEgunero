@@ -139,13 +139,8 @@ sealed class AppScreens(val route: String) {
      * 
      * Pantallas para la gestión de cursos, clases y estructura académica
      */
-    /**
-     * Pantalla de gestión de cursos para un centro específico
-     * @param centroId Identificador único del centro
-     */
-    object GestionCursos : AppScreens("gestion_cursos/{centroId}") {
-        fun createRoute(centroId: String) = "gestion_cursos/$centroId"
-    }
+    /** Pantalla de gestión de cursos con selector de centro integrado */
+    object GestionCursos : AppScreens("gestion_cursos")
     
     /**
      * Formulario para añadir o editar un curso

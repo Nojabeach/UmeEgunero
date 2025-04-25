@@ -64,16 +64,36 @@ class GestionCursosViewModel @Inject constructor(
     
     init {
         viewModelScope.launch {
-            val usuario = usuarioRepository.obtenerUsuarioActual()
-            val isAdminApp = usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: false
-            _uiState.update { it.copy(isAdminApp = isAdminApp) }
-            
-            if (isAdminApp) {
-                cargarCentros()
-            } else {
-                // Si no es admin, cargar su centro asignado
-                usuario?.perfiles?.firstOrNull()?.centroId?.let { centroId ->
-                    seleccionarCentro(centroId)
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val usuario = usuarioRepository.obtenerUsuarioActual()
+                val isAdminApp = usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: false
+                _uiState.update { it.copy(isAdminApp = isAdminApp) }
+                
+                if (isAdminApp) {
+                    cargarCentros()
+                } else {
+                    // Si no es admin, cargar su centro asignado
+                    usuario?.perfiles?.firstOrNull()?.centroId?.let { centroId ->
+                        val centroResult = centroRepository.getCentroById(centroId)
+                        if (centroResult is Result.Success) {
+                            _uiState.update { 
+                                it.copy(
+                                    centros = listOf(centroResult.data),
+                                    centroSeleccionado = centroResult.data
+                                )
+                            }
+                            cargarCursos(centroId)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error en la inicialización")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar datos iniciales: ${e.message}",
+                        isLoading = false
+                    )
                 }
             }
         }
@@ -107,19 +127,27 @@ class GestionCursosViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val centroResult = centroRepository.getCentroById(centroId)
-                val centro = if (centroResult is Result.Success) centroResult.data else null
-                _uiState.update { 
-                    it.copy(
-                        centroSeleccionado = centro,
-                        isLoading = false
-                    )
+                if (centroResult is Result.Success) {
+                    _uiState.update { 
+                        it.copy(
+                            centroSeleccionado = centroResult.data,
+                            isLoading = false
+                        )
+                    }
+                    cargarCursos(centroId)
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            error = "No se pudo cargar el centro seleccionado",
+                            isLoading = false
+                        )
+                    }
                 }
-                cargarCursos(centroId)
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar centro")
+                Timber.e(e, "Error al seleccionar centro")
                 _uiState.update { 
                     it.copy(
-                        error = "Error al cargar centro: ${e.message}",
+                        error = "Error al seleccionar centro: ${e.message}",
                         isLoading = false
                     )
                 }
@@ -129,13 +157,15 @@ class GestionCursosViewModel @Inject constructor(
 
     private fun cargarCursos(centroId: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             try {
                 val cursos = cursoRepository.obtenerCursosPorCentro(centroId)
                 _uiState.update { 
                     it.copy(
                         cursos = cursos,
                         cursosFiltrados = filtrarYOrdenarCursos(cursos),
-                        isLoading = false
+                        isLoading = false,
+                        error = null
                     )
                 }
             } catch (e: Exception) {

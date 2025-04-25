@@ -35,7 +35,6 @@ import com.tfg.umeegunero.ui.theme.AcademicoColor
 @Composable
 fun GestionCursosScreen(
     navController: NavController,
-    centroId: String? = null,
     viewModel: GestionCursosViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -45,12 +44,6 @@ fun GestionCursosScreen(
     LaunchedEffect(Unit) {
         if (uiState.isAdminApp) {
             viewModel.cargarCentros()
-        }
-    }
-
-    LaunchedEffect(centroId) {
-        if (!centroId.isNullOrEmpty()) {
-            viewModel.seleccionarCentro(centroId)
         }
     }
 
@@ -94,145 +87,97 @@ fun GestionCursosScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            // Selector de centro siempre visible para admin
-            if (uiState.isAdminApp) {
-                Text(
-                    text = "Selecciona un centro",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                
-                ExposedDropdownMenuBox(
-                    expanded = expandedCentroMenu,
-                    onExpandedChange = { expandedCentroMenu = !expandedCentroMenu }
-                ) {
-                    OutlinedTextField(
-                        value = uiState.centroSeleccionado?.nombre ?: "Seleccionar centro",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Centro Educativo") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Business,
-                                contentDescription = null,
-                                tint = AcademicoColor
-                            )
-                        },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCentroMenu)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                            focusedBorderColor = AcademicoColor,
-                            unfocusedBorderColor = AcademicoColor.copy(alpha = 0.5f)
+            // Selector de centro siempre visible
+            Text(
+                text = "Selecciona un centro",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            ExposedDropdownMenuBox(
+                expanded = expandedCentroMenu,
+                onExpandedChange = { expandedCentroMenu = !expandedCentroMenu }
+            ) {
+                OutlinedTextField(
+                    value = uiState.centroSeleccionado?.nombre ?: "Seleccionar centro",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Centro Educativo") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Business,
+                            contentDescription = null,
+                            tint = AcademicoColor
                         )
+                    },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCentroMenu)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = AcademicoColor,
+                        unfocusedBorderColor = AcademicoColor.copy(alpha = 0.5f)
                     )
+                )
 
-                    ExposedDropdownMenu(
-                        expanded = expandedCentroMenu,
-                        onDismissRequest = { expandedCentroMenu = false }
-                    ) {
-                        uiState.centros.forEach { centro ->
-                            DropdownMenuItem(
-                                text = { 
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = centro.nombre,
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                        if (!centro.activo) {
-                                            Surface(
-                                                color = MaterialTheme.colorScheme.errorContainer,
-                                                shape = MaterialTheme.shapes.small
-                                            ) {
-                                                Text(
-                                                    text = "Inactivo",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                                )
-                                            }
+                ExposedDropdownMenu(
+                    expanded = expandedCentroMenu,
+                    onDismissRequest = { expandedCentroMenu = false }
+                ) {
+                    uiState.centros.forEach { centro ->
+                        DropdownMenuItem(
+                            text = { 
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = centro.nombre,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    if (!centro.activo) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.errorContainer,
+                                            shape = MaterialTheme.shapes.small
+                                        ) {
+                                            Text(
+                                                text = "Inactivo",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                            )
                                         }
                                     }
-                                },
-                                onClick = { 
-                                    viewModel.seleccionarCentro(centro.id)
-                                    expandedCentroMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Business,
-                                        contentDescription = null,
-                                        tint = if (centro.activo) 
-                                            MaterialTheme.colorScheme.primary 
-                                        else 
-                                            MaterialTheme.colorScheme.error
-                                    )
                                 }
-                            )
-                        }
-                    }
-                }
-
-                if (uiState.centros.isEmpty()) {
-                    Text(
-                        text = "No hay centros disponibles",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-
-            // Mostrar información del centro seleccionado
-            if (uiState.centroSeleccionado != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = uiState.centroSeleccionado?.nombre ?: "",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            },
+                            onClick = { 
+                                viewModel.seleccionarCentro(centro.id)
+                                expandedCentroMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Business,
+                                    contentDescription = null,
+                                    tint = if (centro.activo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                )
+                            }
                         )
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = uiState.centroSeleccionado?.direccion ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
             }
+
+            if (uiState.centros.isEmpty()) {
+                Text(
+                    text = "No hay centros disponibles",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Contenido principal
             if (uiState.isLoading) {
