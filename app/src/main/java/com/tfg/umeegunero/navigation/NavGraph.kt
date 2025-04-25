@@ -4,7 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.tfg.umeegunero.ui.components.DummyScreen
+import com.tfg.umeegunero.feature.auth.screen.CambioContrasenaScreen
+import com.tfg.umeegunero.feature.auth.screen.LoginScreen
+import com.tfg.umeegunero.data.model.TipoUsuario
+import androidx.navigation.NavType
 
 @Composable
 fun NavGraph(
@@ -15,7 +20,51 @@ fun NavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
-        // ... existing code ...
+        // Ruta para login
+        composable(
+            route = AppScreens.Login.route,
+            arguments = listOf(
+                navArgument("userType") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val userType = TipoUsuario.valueOf(
+                backStackEntry.arguments?.getString("userType") ?: TipoUsuario.DESCONOCIDO.name
+            )
+            LoginScreen(
+                userType = userType,
+                onNavigateBack = { navController.navigateUp() },
+                onLoginSuccess = { tipo ->
+                    // Navegar al dashboard correspondiente según el tipo de usuario
+                    when (tipo) {
+                        TipoUsuario.ADMIN_APP -> navController.navigate(AppScreens.AdminDashboard.route)
+                        TipoUsuario.ADMIN_CENTRO -> navController.navigate(AppScreens.CentroDashboard.route)
+                        TipoUsuario.PROFESOR -> navController.navigate(AppScreens.ProfesorDashboard.route)
+                        TipoUsuario.FAMILIAR -> navController.navigate(AppScreens.FamiliarDashboard.route)
+                        else -> {}
+                    }
+                },
+                onForgotPassword = { email ->
+                    // Navegar a la pantalla de cambio de contraseña
+                    navController.navigate(AppScreens.CambioContrasena.createRoute(email))
+                }
+            )
+        }
+
+        // Ruta para cambio de contraseña
+        composable(
+            route = AppScreens.CambioContrasena.route,
+            arguments = AppScreens.CambioContrasena.arguments
+        ) { backStackEntry ->
+            val dni = backStackEntry.arguments?.getString("dni") ?: ""
+            CambioContrasenaScreen(
+                dni = dni,
+                onNavigateBack = { navController.navigateUp() },
+                onPasswordChanged = {
+                    // Volver a la pantalla de login después de cambiar la contraseña
+                    navController.popBackStack(AppScreens.Login.route, false)
+                }
+            )
+        }
         
         // Rutas para pantallas dummy
         composable(AppScreens.DummyGestionCursos.route) {

@@ -9,9 +9,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import timber.log.Timber
 
 /**
  * Módulo para proveer la instancia de Firebase Remote Config
+ * 
+ * @author Maitane (Estudiante 2º DAM)
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -22,21 +25,31 @@ object RemoteConfigModule {
     fun provideFirebaseRemoteConfig(): FirebaseRemoteConfig {
         val remoteConfig = Firebase.remoteConfig
         
-        val configSettings = FirebaseRemoteConfigSettings.Builder()
-            .setMinimumFetchIntervalInSeconds(3600) // 1 hora para entorno de producción
-            .build()
+        try {
+            val configSettings = FirebaseRemoteConfigSettings.Builder()
+                .setMinimumFetchIntervalInSeconds(3600) // 1 hora para entorno de producción
+                .build()
             
-        remoteConfig.setConfigSettingsAsync(configSettings)
-        
-        // Valores por defecto (como respaldo si falla Remote Config)
-        val defaults = mapOf<String, Any>(
-            "smtp_password" to ""
-        )
-        
-        remoteConfig.setDefaultsAsync(defaults)
-        
-        // Forzamos una actualización inicial
-        remoteConfig.fetchAndActivate()
+            remoteConfig.setConfigSettingsAsync(configSettings)
+            
+            // Valores por defecto (como respaldo si falla Remote Config)
+            val defaults = mapOf<String, Any>(
+                "smtp_password" to ""
+            )
+            
+            remoteConfig.setDefaultsAsync(defaults)
+            
+            // Forzamos una actualización inicial
+            remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Timber.d("Remote Config inicializado correctamente")
+                } else {
+                    Timber.e(task.exception, "Error al inicializar Remote Config")
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al configurar Remote Config")
+        }
         
         return remoteConfig
     }

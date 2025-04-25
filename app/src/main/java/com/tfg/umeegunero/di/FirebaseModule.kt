@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.AuthRepositoryImpl
 import com.tfg.umeegunero.data.repository.CiudadRepository
@@ -14,6 +15,7 @@ import com.tfg.umeegunero.data.repository.ClaseRepositoryImpl
 import com.tfg.umeegunero.data.repository.ComunicadoRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.service.RemoteConfigService
 import com.tfg.umeegunero.util.DebugUtils
 import com.tfg.umeegunero.util.FirestoreCache
 import com.tfg.umeegunero.util.ErrorHandler
@@ -55,11 +57,20 @@ object FirebaseModule {
 
     @Provides
     @Singleton
+    fun provideRemoteConfigService(remoteConfig: FirebaseRemoteConfig): RemoteConfigService {
+        val service = RemoteConfigService()
+        service.initialize(remoteConfig)
+        return service
+    }
+
+    @Provides
+    @Singleton
     fun provideUsuarioRepository(
         firebaseAuth: FirebaseAuth,
-        firestore: FirebaseFirestore
+        firestore: FirebaseFirestore,
+        remoteConfigService: RemoteConfigService
     ): UsuarioRepository {
-        return UsuarioRepository(firebaseAuth, firestore)
+        return UsuarioRepository(firebaseAuth, firestore, remoteConfigService)
     }
 
     @Provides

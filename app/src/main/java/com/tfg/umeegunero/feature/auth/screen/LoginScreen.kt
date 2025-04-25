@@ -123,7 +123,7 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
     onLoginSuccess: (TipoUsuario) -> Unit,
-    onForgotPassword: () -> Unit = {}
+    onForgotPassword: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -451,15 +451,23 @@ fun LoginScreen(
                             
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Enlace para recuperar contraseña
+                            // Botón "Olvidé mi contraseña"
                             TextButton(
-                                onClick = onForgotPassword,
-                                modifier = Modifier.align(Alignment.End)
+                                onClick = { 
+                                    if (uiState.email.isNotEmpty()) {
+                                        onForgotPassword(uiState.email)
+                                    } else {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Por favor, introduce tu email primero")
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
                                     text = "¿Olvidaste tu contraseña?",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = userTypeColor
+                                    color = userTypeColor,
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                             }
 

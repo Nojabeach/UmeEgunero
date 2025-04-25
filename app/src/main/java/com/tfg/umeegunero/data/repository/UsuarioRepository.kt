@@ -32,6 +32,7 @@ import java.io.IOException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import android.util.Log
+import com.tfg.umeegunero.data.service.RemoteConfigService
 
 /**
  * Repositorio para gestionar usuarios y operaciones relacionadas
@@ -39,7 +40,8 @@ import android.util.Log
 @Singleton
 open class UsuarioRepository @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val remoteConfigService: RemoteConfigService
 ) {
     val usuariosCollection = firestore.collection("usuarios")
     val solicitudesCollection = firestore.collection("solicitudesRegistro")
@@ -62,7 +64,8 @@ open class UsuarioRepository @Inject constructor(
             // Creamos un mock usando Mockito o implementamos una versión simple
             return object : UsuarioRepository(
                 FirebaseAuth.getInstance(),
-                FirebaseFirestore.getInstance()
+                FirebaseFirestore.getInstance(),
+                RemoteConfigService()
             ) {
                 override suspend fun getAlumnoPorId(alumnoId: String): Result<Alumno> {
                     return Result.Success(
@@ -1470,43 +1473,65 @@ open class UsuarioRepository @Inject constructor(
     }
 
     /**
-     * Resetea la contraseña del usuario con el DNI especificado
+     * Resetea la contraseña de un usuario
+     * @param dni DNI del usuario
+     * @param nuevaPassword Nueva contraseña
+     * @return Result<Unit> Resultado de la operación
      */
-    suspend fun resetearPassword(dni: String, newPassword: String): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun resetearPassword(dni: String, nuevaPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            // Obtenemos el usuario por su DNI
-            val usuarioResult = getUsuarioPorDni(dni)
-            if (usuarioResult !is Result.Success) {
+            Timber.d("Iniciando proceso de reseteo de contraseña para DNI: $dni")
+            
+            // 1. Buscar usuario por DNI
+            val usuarioDoc = usuariosCollection.document(dni).get().await()
+            if (!usuarioDoc.exists()) {
+                Timber.e("Usuario no encontrado con DNI: $dni")
                 return@withContext Result.Error(Exception("Usuario no encontrado"))
             }
-            
-            val usuario = usuarioResult.data
-            
-            // Buscamos el usuario en Firebase Auth por su email
-            val userQuery = firebaseAuth.fetchSignInMethodsForEmail(usuario.email).await()
-            
-            if (userQuery.signInMethods?.isNotEmpty() == true) {
-                // Generamos un código de reautenticación
-                val customToken = functions
-                    .getHttpsCallable("generateCustomToken")
-                    .call(hashMapOf("email" to usuario.email))
-                    .await()
-                    .data as String
-                    
-                // Iniciamos sesión con el token personalizado
-                val authResult = firebaseAuth.signInWithCustomToken(customToken).await()
-                
-                // Actualizamos la contraseña
-                authResult.user?.updatePassword(newPassword)?.await()
-                
-                // Volvemos a iniciar sesión con el usuario administrador original si es necesario
-                // Aquí podrías añadir código para volver al usuario admin si lo necesitas
-                
-                return@withContext Result.Success(true)
-            } else {
-                return@withContext Result.Error(Exception("No se pudo encontrar el usuario en Firebase Auth"))
+
+            val usuario = usuarioDoc.toObject(Usuario::class.java)
+                ?: return@withContext Result.Error(Exception("Error al convertir documento a usuario"))
+
+            // 2. Verificar si es administrador
+            val esAdmin = usuario.perfiles.any { it.tipo == TipoUsuario.ADMIN_APP }
+            Timber.d("Usuario con DNI $dni ${if (esAdmin) "es" else "no es"} administrador")
+
+            // 3. Actualizar contraseña en Firebase Auth
+            try {
+                val userRecord = firebaseAuth.fetchSignInMethodsForEmail(usuario.email).await()
+                if (userRecord.signInMethods?.isNotEmpty() == true) {
+                    firebaseAuth.sendPasswordResetEmail(usuario.email).await()
+                    Timber.d("Email de reseteo enviado a: ${usuario.email}")
+                } else {
+                    Timber.e("No se encontró el usuario en Firebase Auth")
+                    return@withContext Result.Error(Exception("Usuario no encontrado en el sistema de autenticación"))
+                }
+            } catch (e: FirebaseAuthException) {
+                Timber.e(e, "Error al actualizar contraseña en Firebase Auth")
+                return@withContext Result.Error(Exception("Error al actualizar la contraseña: ${e.message}"))
             }
+
+            // 4. Si es administrador, actualizar también la contraseña SMTP
+            if (esAdmin) {
+                Timber.d("Actualizando contraseña SMTP para administrador")
+                val smtpUpdated = remoteConfigService.updateSMTPPassword(nuevaPassword)
+                if (!smtpUpdated) {
+                    Timber.e("Error al actualizar la contraseña SMTP")
+                    return@withContext Result.Error(Exception("Error al actualizar la contraseña SMTP"))
+                }
+                Timber.d("Contraseña SMTP actualizada correctamente")
+            }
+
+            // 5. Actualizar último cambio de contraseña en Firestore
+            usuariosCollection.document(dni).update(
+                "ultimoCambioPassword",
+                Timestamp.now()
+            ).await()
+            Timber.d("Último cambio de contraseña actualizado en Firestore")
+
+            return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            Timber.e(e, "Error inesperado durante el reseteo de contraseña")
             return@withContext Result.Error(e)
         }
     }

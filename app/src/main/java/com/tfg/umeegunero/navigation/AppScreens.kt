@@ -223,6 +223,18 @@ sealed class AppScreens(val route: String) {
     /** Pantalla de perfil del usuario actual */
     object Perfil : AppScreens("perfil")
     
+    /** 
+     * Pantalla de cambio de contraseña
+     * @param dni DNI del usuario que cambiará su contraseña
+     */
+    object CambioContrasena : AppScreens("cambio_contrasena/{dni}") {
+        fun createRoute(dni: String) = "cambio_contrasena/$dni"
+        
+        val arguments = listOf(
+            navArgument("dni") { type = NavType.StringType }
+        )
+    }
+
     /**
      * Pantalla de visualización de documentos
      * @param url URL del documento a visualizar (codificada)
