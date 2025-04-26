@@ -46,8 +46,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import com.tfg.umeegunero.feature.admin.screen.components.SectionHeader
-import com.tfg.umeegunero.feature.admin.screen.components.CategoryCard
-import com.tfg.umeegunero.feature.admin.screen.components.ActionButton
+import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCard
+import com.tfg.umeegunero.feature.admin.screen.components.BotonAccion
 import com.tfg.umeegunero.ui.theme.AcademicoColorDark
 import com.tfg.umeegunero.data.model.Usuario
 
@@ -159,112 +159,231 @@ fun AdminDashboardScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .padding(16.dp)
+                        .padding(12.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
                     // Tarjeta de bienvenida
-                    WelcomeCard(currentDate = currentDate, nombreAdmin = uiState.usuario?.nombre)
-                    
-                    // Sección de accesos rápidos
-                    SectionHeader(
-                        title = "Gestión Académica",
-                        icon = Icons.Default.Dashboard
-                    )
-                    
-                    QuickActionsGrid(
-                        onGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
-                        onGestionUsuarios = { navController.navigate(AppScreens.GestionUsuarios.route) },
-                        onConfiguracion = { navController.navigate(AppScreens.Configuracion.route + "/ADMIN") }
-                    )
-                    
-                    // Sección de comunicación
-                    SectionHeader(
-                        title = "Comunicación",
-                        icon = Icons.Default.Chat
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CategoryCard(
-                            title = "Comunicados",
-                            description = "Gestión de anuncios y mensajes",
-                            icon = Icons.Default.Campaign,
-                            color = Color(0xFF1565C0),
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate(AppScreens.ComunicadosCirculares.route) }
+                    WelcomeCardV2(currentDate = currentDate, nombreAdmin = uiState.usuario?.nombre)
+
+                    // --- GESTIÓN ACADÉMICA ---
+                    SectionHeader(title = "Gestión Académica", icon = Icons.Default.Dashboard)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Centros",
+                            descripcion = "Gestión de centros educativos",
+                            icono = Icons.Default.Business,
+                            color = AdminColor,
+                            onClick = { navController.navigate(AppScreens.GestionCentros.route) }
                         )
-                        
-                        CategoryCard(
-                            title = "Notificaciones",
-                            description = "Configuración de alertas",
-                            icon = Icons.Default.Notifications,
+                        CategoriaCard(
+                            titulo = "Usuarios",
+                            descripcion = "Gestión de usuarios",
+                            icono = Icons.Default.People,
+                            color = AdminColor,
+                            onClick = { navController.navigate(AppScreens.GestionUsuarios.route) }
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Cursos",
+                            descripcion = "Listado y gestión de cursos",
+                            icono = Icons.Default.MenuBook,
+                            color = Color(0xFF8E24AA),
+                            onClick = { navController.navigate(AppScreens.Cursos.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Clases",
+                            descripcion = "Listado y gestión de clases",
+                            icono = Icons.Default.School,
+                            color = Color(0xFF3949AB),
+                            onClick = { navController.navigate(AppScreens.Clases.route) }
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Profesores",
+                            descripcion = "Listado de profesores",
+                            icono = Icons.Default.School,
+                            color = Color(0xFF039BE5),
+                            onClick = { navController.navigate(AppScreens.ProfesorList.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Alumnos",
+                            descripcion = "Listado de alumnos",
+                            icono = Icons.Default.ChildCare,
+                            color = Color(0xFF43A047),
+                            onClick = { navController.navigate(AppScreens.AlumnoList.route) }
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Familiares",
+                            descripcion = "Listado de familiares",
+                            icono = Icons.Default.FamilyRestroom,
+                            color = Color(0xFFFB8C00),
+                            onClick = { navController.navigate(AppScreens.FamiliarList.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Administradores",
+                            descripcion = "Administradores de la app",
+                            icono = Icons.Default.AdminPanelSettings,
+                            color = Color(0xFF6D4C41),
+                            onClick = { navController.navigate(AppScreens.AdminList.route) }
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Admins de centro",
+                            descripcion = "Administradores de centro",
+                            icono = Icons.Default.AccountBalance,
+                            color = Color(0xFF00897B),
+                            onClick = { navController.navigate(AppScreens.AdminCentroList.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Estadísticas",
+                            descripcion = "Análisis y datos",
+                            icono = Icons.Default.BarChart,
+                            color = Color(0xFF1976D2),
+                            onClick = { navController.navigate(AppScreens.Estadisticas.route) }
+                        )
+                    }
+
+                    // --- CONFIGURACIÓN ---
+                    SectionHeader(title = "Configuración", icon = Icons.Default.Settings)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Seguridad",
+                            descripcion = "Políticas y ajustes de seguridad",
+                            icono = Icons.Default.Security,
+                            color = Color(0xFF1976D2),
+                            onClick = { navController.navigate(AppScreens.Seguridad.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Tema",
+                            descripcion = "Oscuro / Claro",
+                            icono = Icons.Default.Brightness6,
+                            color = Color(0xFF388E3C),
+                            onClick = { navController.navigate(AppScreens.Configuracion.route) }
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Correo electrónico",
+                            descripcion = "Configurar email de soporte",
+                            icono = Icons.Default.Email,
+                            color = Color(0xFF00796B),
+                            onClick = { navController.navigate(AppScreens.EmailConfig.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Notificaciones",
+                            descripcion = "Configuración de alertas",
+                            icono = Icons.Default.Notifications,
                             color = Color(0xFFD32F2F),
-                            modifier = Modifier.weight(1f),
                             onClick = { navController.navigate(AppScreens.Notificaciones.route) }
                         )
                     }
-                    
-                    CategoryCard(
-                        title = "Soporte Técnico",
-                        description = "Configuración de email de soporte",
-                        icon = Icons.Default.Email,
-                        color = Color(0xFF00796B),
-                        onClick = { navController.navigate(AppScreens.EmailConfigSoporte.route) }
-                    )
-                    
-                    // Espaciador final para scroll
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Perfil",
+                            descripcion = "Mi perfil de usuario",
+                            icono = Icons.Default.Person,
+                            color = Color(0xFF5E35B1),
+                            onClick = { navController.navigate(AppScreens.Perfil.route) }
+                        )
+                        Spacer(modifier = Modifier.width(160.dp))
+                    }
+
+                    // --- COMUNICACIÓN Y SOPORTE ---
+                    SectionHeader(title = "Comunicación y Soporte", icon = Icons.Default.SupportAgent)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Comunicados",
+                            descripcion = "Gestión de anuncios y mensajes",
+                            icono = Icons.Default.Campaign,
+                            color = Color(0xFF1565C0),
+                            onClick = { navController.navigate(AppScreens.ComunicadosCirculares.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Bandeja de entrada",
+                            descripcion = "Mensajes recibidos",
+                            icono = Icons.Default.Inbox,
+                            color = Color(0xFF00838F),
+                            onClick = { navController.navigate(AppScreens.BandejaEntrada.route) }
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "Nuevo mensaje",
+                            descripcion = "Redactar mensaje",
+                            icono = Icons.Default.Edit,
+                            color = Color(0xFF43A047),
+                            onClick = { navController.navigate(AppScreens.ComponerMensaje.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Soporte técnico",
+                            descripcion = "Ayuda y contacto",
+                            icono = Icons.Default.SupportAgent,
+                            color = Color(0xFF6D4C41),
+                            onClick = { navController.navigate(AppScreens.SoporteTecnico.route) }
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CategoriaCard(
+                            titulo = "FAQ",
+                            descripcion = "Preguntas frecuentes",
+                            icono = Icons.Default.Help,
+                            color = Color(0xFF1976D2),
+                            onClick = { navController.navigate(AppScreens.FAQ.route) }
+                        )
+                        CategoriaCard(
+                            titulo = "Términos",
+                            descripcion = "Términos y condiciones",
+                            icono = Icons.Default.Description,
+                            color = Color(0xFF757575),
+                            onClick = { navController.navigate(AppScreens.TerminosCondiciones.route) }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
     }
 }
 
+/**
+ * Grid de acciones rápidas para dashboards, usando el nuevo diseño compacto.
+ */
 @Composable
-fun QuickActionsGrid(
+fun GridAccionesRapidas(
     onGestionCentros: () -> Unit,
     onGestionUsuarios: () -> Unit,
     onConfiguracion: () -> Unit
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        userScrollEnabled = false,
-        modifier = Modifier.height(180.dp)
-    ) {
-        item {
-            ActionButton(
-                icon = Icons.Default.Business,
-                text = "Centros",
-                onClick = onGestionCentros
-            )
-        }
-        item {
-            ActionButton(
-                icon = Icons.Default.People,
-                text = "Usuarios",
-                onClick = onGestionUsuarios
-            )
-        }
-        item {
-            ActionButton(
-                icon = Icons.Default.Security,
-                text = "Configuración",
-                onClick = onConfiguracion
-            )
-        }
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        BotonAccion(
+            icono = Icons.Default.Business,
+            texto = "Centros",
+            onClick = onGestionCentros
+        )
+        BotonAccion(
+            icono = Icons.Default.People,
+            texto = "Usuarios",
+            onClick = onGestionUsuarios
+        )
+        BotonAccion(
+            icono = Icons.Default.Security,
+            texto = "Configuración",
+            onClick = onConfiguracion
+        )
     }
 }
 
 /**
- * Tarjeta de bienvenida para el dashboard de administración
+ * Tarjeta de bienvenida mejorada para el dashboard de administración
  */
 @Composable
-fun WelcomeCard(currentDate: String, nombreAdmin: String?) {
+fun WelcomeCardV2(currentDate: String, nombreAdmin: String?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -279,33 +398,36 @@ fun WelcomeCard(currentDate: String, nombreAdmin: String?) {
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Información de bienvenida
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = "Bienvenido/a, ${nombreAdmin ?: "Administrador/a"}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                
-                Text(
-                    text = "Panel de Administración",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                
+                if (!nombreAdmin.isNullOrBlank()) {
+                    Text(
+                        text = "Bienvenido/a, $nombreAdmin",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Panel de administración",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        text = "Panel de administración",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
                 Text(
                     text = currentDate,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
-            // Icono decorativo
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -346,9 +468,12 @@ data class AdminDashboardUiState(
     val usuario: Usuario? = null
 )
 
+/**
+ * Previsualización profesional del dashboard de administrador.
+ */
 @Preview(showBackground = true)
 @Composable
-fun AdminDashboardScreenPreview() {
+fun VistaPreviaDashboardAdmin() {
     UmeEguneroTheme {
         AdminDashboardScreen(navController = rememberNavController())
     }

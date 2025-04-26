@@ -202,23 +202,27 @@ open class UsuarioRepository @Inject constructor(
     fun getUsuarioActual(): Flow<Result<Usuario>> {
         return flow {
             emit(Result.Loading<Usuario>())
-            
             val usuarioActual = try {
                 val user = firebaseAuth.currentUser
-                
                 if (user != null) {
+                    // Primero intenta buscar por UID (por si coincide con el DNI)
                     val usuarioFromFirestore = obtenerUsuarioPorId(user.uid)
-                    
-                    when (usuarioFromFirestore) {
-                        is Result.Success<*> -> {
-                            val usuario = usuarioFromFirestore.data as Usuario
-                            Result.Success<Usuario>(usuario)
-                        }
-                        is Result.Error -> {
-                            Result.Error(usuarioFromFirestore.exception ?: Exception("Error al obtener usuario de Firestore"))
-                        }
-                        else -> {
-                            Result.Error(Exception("Error inesperado al obtener usuario"))
+                    if (usuarioFromFirestore is Result.Success<*>) {
+                        val usuario = usuarioFromFirestore.data as Usuario
+                        Result.Success<Usuario>(usuario)
+                    } else {
+                        // Si no existe documento con UID, busca por email
+                        val userQuery = usuariosCollection.whereEqualTo("email", user.email).get().await()
+                        if (!userQuery.isEmpty) {
+                            val userDoc = userQuery.documents.first()
+                            val usuario = userDoc.toObject(Usuario::class.java)
+                            if (usuario != null) {
+                                Result.Success<Usuario>(usuario)
+                            } else {
+                                Result.Error(Exception("No se pudo deserializar el usuario actual"))
+                            }
+                        } else {
+                            Result.Error(Exception("Usuario no encontrado en Firestore (por UID ni por email)"))
                         }
                     }
                 } else {
@@ -227,7 +231,6 @@ open class UsuarioRepository @Inject constructor(
             } catch (e: Exception) {
                 Result.Error(e)
             }
-            
             emit(usuarioActual)
         }.flowOn(Dispatchers.IO)
     }
