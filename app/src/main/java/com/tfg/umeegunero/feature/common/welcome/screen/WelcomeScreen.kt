@@ -78,7 +78,7 @@ fun WelcomeScreen(
         ProfesorColorPastel,
         FamiliarColorPastel
     )
-
+    
     // Animación del fondo más notable
     val infiniteTransition = rememberInfiniteTransition(label = "Background Animation")
     val offset by infiniteTransition.animateFloat(
@@ -90,7 +90,7 @@ fun WelcomeScreen(
         ),
         label = "Background Offset"
     )
-
+    
     // Animación adicional para elementos visuales
     val pulseAnimation by infiniteTransition.animateFloat(
         initialValue = 0.7f,
@@ -101,10 +101,10 @@ fun WelcomeScreen(
         ),
         label = "Pulse Animation"
     )
-
+    
     // Estado para la lista desplazable
     val scrollState = rememberLazyListState()
-
+    
     // Efecto de desplazamiento paralaje
     val logoOffset by derivedStateOf {
         if (scrollState.firstVisibleItemIndex > 0) {
@@ -113,7 +113,7 @@ fun WelcomeScreen(
             scrollState.firstVisibleItemScrollOffset * 0.5f
         }
     }
-
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -139,12 +139,12 @@ fun WelcomeScreen(
             ProfesorColorPastel,
             FamiliarColorPastel
         )
-
+        
         // Elementos decorativos de fondo mejorados - usando un Canvas composable
         Canvas(modifier = Modifier.fillMaxSize()) {
             val canvasWidth = size.width
             val canvasHeight = size.height
-
+            
             // Círculos dinámicos con mayor tamaño y visibilidad
             repeat(25) { i ->
                 val xPos =
@@ -152,20 +152,20 @@ fun WelcomeScreen(
                 val yPos = (canvasHeight * ((i % 8) / 8f)) - 50f
                 val radius =
                     (30f + (i % 5) * 25f) * (if (i % 3 == 0) pulseAnimation * 0.7f else 1f)
-
+                
                 val circleColor = when (i % 3) {
                     0 -> primaryColorTransparent
                     1 -> secondaryColorTransparent
                     else -> tertiaryColorTransparent
                 }
-
+                
                 drawCircle(
                     color = circleColor,
                     radius = radius,
                     center = Offset(xPos, yPos)
                 )
             }
-
+            
             // Líneas decorativas más visibles
             repeat(3) { i ->
                 val lineY = canvasHeight * (0.2f + i * 0.25f)
@@ -174,7 +174,7 @@ fun WelcomeScreen(
                     1 -> secondaryLineColor
                     else -> tertiaryLineColor
                 }
-
+                
                 drawLine(
                     color = lineColor,
                     start = Offset(0f, lineY + offset * 50),
@@ -182,22 +182,22 @@ fun WelcomeScreen(
                     strokeWidth = (2 + i).dp.toPx()
                 )
             }
-
+            
             // Añadir ondas horizontales
             repeat(3) { i ->
                 val startY = canvasHeight * (0.3f + i * 0.2f)
                 val amplitude = 50f * (i + 1)
                 val frequency = 0.02f * (i + 1)
-
+                
                 val path = Path()
                 path.moveTo(0f, startY)
-
+                
                 for (x in 0..canvasWidth.toInt() step 5) {
                     val xFloat = x.toFloat()
                     val yOffset = amplitude * sin((xFloat * frequency) + offset * 5)
                     path.lineTo(xFloat, startY + yOffset)
                 }
-
+                
                 drawPath(
                     path = path,
                     color = waveColors[i],
@@ -208,7 +208,7 @@ fun WelcomeScreen(
                 )
             }
         }
-
+        
         // Contenido principal desplazable
         LazyColumn(
             state = scrollState,
@@ -242,7 +242,7 @@ fun WelcomeScreen(
                             )
                             .scale(pulseAnimation * 0.9f)
                     )
-
+                    
                     // Título de la app con diseño elegante
                     Card(
                         modifier = Modifier
@@ -289,25 +289,25 @@ fun WelcomeScreen(
                                             elevation = 6.dp,
                                             shape = CircleShape
                                         )
-                                        .clip(CircleShape)
+                            .clip(CircleShape)
                                         .background(Color.White),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.app_icon),
-                                        contentDescription = "App Logo",
-                                        modifier = Modifier
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.app_icon),
+                            contentDescription = "App Logo",
+                            modifier = Modifier
                                             .size(40.dp)
-                                            .clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
 
                                 Spacer(modifier = Modifier.width(16.dp))
 
                                 // Texto más legible con sombra sutil
-                                Text(
-                                    text = "UmeEgunero",
+                    Text(
+                        text = "UmeEgunero",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.primary,
@@ -513,7 +513,7 @@ fun WelcomeScreen(
                     }
                 }
             }
-
+            
             // Botones de soporte y términos
             item {
                 SupportAndTermsButtons(
@@ -522,13 +522,13 @@ fun WelcomeScreen(
                     onNavigateToTerminosCondiciones = onNavigateToTerminosCondiciones
                 )
             }
-
+            
             // Espacio adicional al final para dispositivos más pequeños
             item {
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
-
+        
         // Botones de navegación en la parte superior (fuera del scroll y ajustados para la top bar)
         Row(
             modifier = Modifier
@@ -555,7 +555,7 @@ fun WelcomeScreen(
                     tint = if (ThemeUtils.isLightTheme()) AdminColor else AppColors.PrimaryLight
                 )
             }
-
+            
             // Botón para cerrar la aplicación (derecha)
             FloatingActionButton(
                 onClick = onCloseApp,
@@ -577,15 +577,15 @@ fun WelcomeScreen(
         }
     }
 
-    @Preview(showBackground = true)
-    @Composable
-    fun WelcomeScreenLightPreview() {
-        UmeEguneroTheme(darkTheme = false) {
-            WelcomeScreen(
-                onNavigateToLogin = {},
-                onNavigateToRegister = {},
-                onCloseApp = {},
-                onNavigateToTechnicalSupport = {},
+@Preview(showBackground = true)
+@Composable
+fun WelcomeScreenLightPreview() {
+    UmeEguneroTheme(darkTheme = false) {
+        WelcomeScreen(
+            onNavigateToLogin = {},
+            onNavigateToRegister = {},
+            onCloseApp = {},
+            onNavigateToTechnicalSupport = {},
                 onNavigateToFAQ = {},
                 onNavigateToTerminosCondiciones = {}
             )

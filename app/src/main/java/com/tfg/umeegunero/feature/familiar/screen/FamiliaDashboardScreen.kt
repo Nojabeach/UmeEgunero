@@ -273,7 +273,9 @@ fun FamiliaDashboardScreen(
                             registrosActividad = uiState.registrosActividad,
                             onVerDetalles = { registroId ->
                                 // Navegar a la pantalla de detalle del registro
-                                navController.navigate(AppScreens.DummyGestionUsuarios.route)
+                                navController.navigate(
+                                    "detalle_registro/$registroId"
+                                )
                             }
                         )
                     }
@@ -849,4 +851,5 @@ fun FamiliaDashboardScreenDarkPreview() {
             navController = rememberNavController()
         )
     }
-} 
+}
+

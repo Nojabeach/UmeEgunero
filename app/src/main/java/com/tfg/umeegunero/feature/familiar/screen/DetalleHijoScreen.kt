@@ -72,6 +72,10 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import com.tfg.umeegunero.util.formatDate
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 // Clases de datos para el preview
 data class AlumnoDetalleModel(
@@ -94,9 +98,22 @@ data class ProfesorSimple(
     val asignaturas: List<String>
 )
 
+/**
+ * Pantalla de detalle extendido de un hijo para familiares
+ *
+ * Muestra información ampliada del alumno seleccionado.
+ *
+ * @param navController Controlador de navegación para volver atrás
+ * @param alumnoId ID del alumno a mostrar
+ *
+ * @author Equipo UmeEgunero
+ * @version 4.0
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleHijoScreen(
+    navController: NavController,
+    alumnoId: String,
     viewModel: DetalleHijoViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToChat: (String, String?) -> Unit = { _, _ -> },
@@ -569,12 +586,13 @@ private fun calcularEdad(fechaNacimiento: String?): Int {
     }
 }
 
+/**
+ * Vista previa de la pantalla de detalle de hijo para familiares
+ */
 @Preview(showBackground = true)
 @Composable
 fun DetalleHijoScreenPreview() {
-    UmeEguneroTheme {
-        DetalleHijoScreenPreviewContent()
-    }
+    DetalleHijoScreenPreviewContent()
 }
 
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -588,9 +606,6 @@ fun DetalleHijoScreenDarkPreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleHijoScreenPreviewContent() {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scrollState = rememberScrollState()
-
     // Mock de datos para el preview
     val alumnoMock = AlumnoDetalleModel(
         dni = "12345678X",
@@ -616,16 +631,11 @@ fun DetalleHijoScreenPreviewContent() {
         alergias = listOf("Nueces", "Pescado"),
         observaciones = "Es un niño muy activo y participativo en clase"
     )
-
+    // UI simplificada para preview visual
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "${alumnoMock.nombre} ${alumnoMock.apellidos}",
-                        color = Color.White
-                    )
-                },
+                title = { Text(text = "${alumnoMock.nombre} ${alumnoMock.apellidos}", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { }) {
                         Icon(
@@ -641,15 +651,13 @@ fun DetalleHijoScreenPreviewContent() {
                     navigationIconContentColor = Color.White
                 )
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
-                .verticalScroll(scrollState)
         ) {
             // Información básica
             Card(
@@ -680,9 +688,7 @@ fun DetalleHijoScreenPreviewContent() {
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
-
                     // Nombre y apellidos
                     Text(
                         text = "${alumnoMock.nombre} ${alumnoMock.apellidos}",
@@ -691,9 +697,7 @@ fun DetalleHijoScreenPreviewContent() {
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
-
                     Spacer(modifier = Modifier.height(4.dp))
-
                     // DNI
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -705,17 +709,14 @@ fun DetalleHijoScreenPreviewContent() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
                     Spacer(modifier = Modifier.height(4.dp))
-
                     // Edad y fecha de nacimiento
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ) {
                         val fechaNacimientoStr = alumnoMock.fechaNacimiento.takeIf { it.isNotEmpty() } ?: "01/01/2010"
-                        val edad = calcularEdad(alumnoMock.fechaNacimiento)
-
+                        val edad = 4 // Mock fijo para preview
                         Text(
                             text = "$edad años · Nacimiento: $fechaNacimientoStr",
                             style = MaterialTheme.typography.bodyMedium,
@@ -723,201 +724,6 @@ fun DetalleHijoScreenPreviewContent() {
                         )
                     }
                 }
-            }
-
-            // Información del centro
-            ElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Información académica",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Centro educativo
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.School,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Column {
-                            Text(
-                                text = alumnoMock.centroNombre ?: "Centro no asignado",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            
-                            Text(
-                                text = "Clase: ${alumnoMock.clase ?: "No asignada"}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Profesores
-                    Text(
-                        text = "Profesores",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    alumnoMock.profesores?.forEach { profesor ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(20.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Column {
-                                Text(
-                                    text = profesor.nombre,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                
-                                Text(
-                                    text = profesor.asignaturas?.joinToString(", ") ?: "",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            // Botón para chatear
-                            IconButton(
-                                onClick = { }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Message,
-                                    contentDescription = "Chatear",
-                                    tint = FamiliarColor
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Información adicional
-            ElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Información adicional",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Dirección
-                    if (alumnoMock.direccion != null) {
-                        Text(
-                            text = "Dirección: ${alumnoMock.direccion}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    // Alergias
-                    Column {
-                        Text(
-                            text = "Alergias e intolerancias:",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        alumnoMock.alergias.forEach { alergia ->
-                            Text(
-                                text = "• $alergia",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
-                    // Observaciones
-                    if (alumnoMock.observaciones.isNotBlank()) {
-                        Text(
-                            text = "Observaciones:",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = alumnoMock.observaciones,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-
-            // Botón para ver registros
-            Button(
-                onClick = { },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = "Ver registros",
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Ver Registros Diarios",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                )
             }
         }
     }

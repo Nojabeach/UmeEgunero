@@ -20,9 +20,19 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.rememberNavController
 
 /**
  * Pantalla de detalle de un alumno para profesores
+ *
+ * Muestra toda la información relevante del alumno seleccionado.
+ *
+ * @param navController Controlador de navegación para volver atrás
+ * @param alumnoId ID del alumno a mostrar
+ *
+ * @author Equipo UmeEgunero
+ * @version 4.0
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +84,19 @@ fun DetalleAlumnoProfesorScreen(
             }
         }
     }
+}
+
+/**
+ * Vista previa de la pantalla de detalle de alumno para profesores
+ */
+@Preview(showBackground = true)
+@Composable
+fun DetalleAlumnoProfesorScreenPreview() {
+    // Ejemplo de uso para visualizar en el editor
+    DetalleAlumnoProfesorScreen(
+        navController = rememberNavController(),
+        alumnoId = "12345678A"
+    )
 }
 
 @Composable

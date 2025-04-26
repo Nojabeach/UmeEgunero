@@ -139,6 +139,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.tfg.umeegunero.ui.theme.ProfesorColor
+import androidx.compose.material.icons.filled.DirectionsRun
 
 /**
  * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
@@ -305,8 +306,8 @@ fun ProfesorDashboardContent(
                     icon = Icons.Default.Description,
                     color = Color(0xFF4CAF50),
                     onClick = {
-                        // Navegar a la pantalla dummy de comunicados
-                        navController.navigate(AppScreens.DummyGestionCursos.route)
+                        // Navegar a la pantalla de comunicados (admin o común)
+                        navController.navigate(AppScreens.ComunicadosCirculares.route)
                     }
                 )
             }
@@ -318,8 +319,7 @@ fun ProfesorDashboardContent(
                     icon = Icons.Default.Warning,
                     color = Color(0xFFFF9800),
                     onClick = {
-                        // Navegar a la pantalla dummy de incidencias
-                        navController.navigate(AppScreens.DummyGestionClases.route)
+                        // TODO: Implementar navegación a pantalla de incidencias cuando esté disponible
                     }
                 )
             }
@@ -368,6 +368,19 @@ fun ProfesorDashboardContent(
                     color = Color(0xFFE91E63),
                     onClick = {
                         navController.navigate(AppScreens.RegistroActividad.route)
+                    }
+                )
+            }
+            
+            // Actividades Preescolares
+            item {
+                DashboardMenuItem(
+                    title = "Actividades Preescolares",
+                    icon = Icons.Default.DirectionsRun,
+                    color = Color(0xFF009688),
+                    onClick = {
+                        // Navegar a la pantalla de actividades preescolares
+                        navController.navigate("actividades_preescolar_profesor/{profesorId}/{profesorNombre}")
                     }
                 )
             }

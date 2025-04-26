@@ -35,7 +35,20 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.rememberNavController
 
+/**
+ * Pantalla para la entrega de tareas por parte del familiar
+ *
+ * Permite al familiar subir la entrega de una tarea para su hijo.
+ *
+ * @param navController Controlador de navegación para volver atrás
+ * @param tareaId ID de la tarea a entregar
+ *
+ * @author Equipo UmeEgunero
+ * @version 4.0
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EntregaTareaScreen(
@@ -400,4 +413,17 @@ fun EntregaTareaScreen(
 data class ArchivoAdjunto(
     val uri: String,
     val nombre: String
-) 
+)
+
+/**
+ * Vista previa de la pantalla de entrega de tarea para familiares
+ */
+@Preview(showBackground = true)
+@Composable
+fun EntregaTareaScreenPreview() {
+    EntregaTareaScreen(
+        navController = rememberNavController(),
+        tareaId = "tarea123",
+        alumnoId = "alumno123"
+    )
+} 

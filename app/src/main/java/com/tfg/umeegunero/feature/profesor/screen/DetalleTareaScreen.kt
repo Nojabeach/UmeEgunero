@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tfg.umeegunero.data.model.EstadoTarea
@@ -32,9 +33,18 @@ import com.tfg.umeegunero.ui.theme.ProfesorColor
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.tooling.preview.Preview
 
 /**
- * Pantalla de detalle de tarea para profesores
+ * Pantalla de detalle de una tarea para profesores
+ *
+ * Muestra toda la información relevante de la tarea seleccionada.
+ *
+ * @param navController Controlador de navegación para volver atrás
+ * @param tareaId ID de la tarea a mostrar
+ *
+ * @author Equipo UmeEgunero
+ * @version 4.0
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -585,5 +595,17 @@ fun DialogoCalificacion(
                 Text("Cancelar")
             }
         }
+    )
+}
+
+/**
+ * Vista previa de la pantalla de detalle de tarea para profesores
+ */
+@Preview(showBackground = true)
+@Composable
+fun DetalleTareaScreenPreview() {
+    DetalleTareaScreen(
+        navController = rememberNavController(),
+        tareaId = "tarea123"
     )
 } 

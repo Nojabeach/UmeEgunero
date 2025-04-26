@@ -715,6 +715,14 @@ fun Navigation(
             )
         }
 
+        // Pantalla de gestión de cursos
+        composable(route = AppScreens.GestionCursos.route) {
+            com.tfg.umeegunero.feature.common.academico.screen.GestionCursosScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
         // Pantalla para añadir una clase
         composable(
             route = AppScreens.AddClase.route,
