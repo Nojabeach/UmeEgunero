@@ -166,83 +166,15 @@ fun AdminDashboardScreen(
                     
                     // Sección de accesos rápidos
                     SectionHeader(
-                        title = "Accesos Rápidos",
+                        title = "Gestión Académica",
                         icon = Icons.Default.Dashboard
                     )
                     
                     QuickActionsGrid(
                         onGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
-                        onAddCentro = { navController.navigate(AppScreens.AddCentro.route) },
-                        onGestionCursos = { navController.navigate(AppScreens.GestionCursos.route) },
-                        onGestionClases = { },
                         onGestionUsuarios = { navController.navigate(AppScreens.GestionUsuarios.route) },
-                        onAddUsuario = { navController.navigate(AppScreens.AddUser.createRoute(true)) }
-                    )
-                    
-                    // Sección de vinculaciones
-                    SectionHeader(
-                        title = "Vinculaciones",
-                        icon = Icons.Default.Link
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CategoryCard(
-                            title = "Profesores - Clases",
-                            description = "Asignar profesores a clases",
-                            icon = Icons.Default.School,
-                            color = Color(0xFF009688),
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate(AppScreens.VincularProfesorClase.route) }
-                        )
-                        
-                        CategoryCard(
-                            title = "Familiares - Alumnos",
-                            description = "Vincular familiares con alumnos",
-                            icon = Icons.Default.ChildCare,
-                            color = Color(0xFF2196F3),
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate(AppScreens.VincularAlumnoFamiliar.route) }
-                        )
-                    }
-                    
-                    // Sección de análisis y reportes
-                    SectionHeader(
-                        title = "Análisis y Reportes",
-                        icon = Icons.Default.Assessment
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CategoryCard(
-                            title = "Estadísticas",
-                            description = "Datos generales del sistema",
-                            icon = Icons.Default.PieChart,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate(AppScreens.Estadisticas.route) }
-                        )
-                        
-                        CategoryCard(
-                            title = "Uso del Sistema",
-                            description = "Métricas de uso y actividad",
-                            icon = Icons.Default.Timeline,
-                            color = Color(0xFFE65100),
-                            modifier = Modifier.weight(1f),
-                            onClick = { navController.navigate(AppScreens.ReporteUso.route) }
-                        )
-                    }
-                    
-                    CategoryCard(
-                        title = "Seguridad",
-                        description = "Configuración de accesos y permisos",
-                        icon = Icons.Default.Security,
-                        color = Color(0xFF7B1FA2),
-                        onClick = { navController.navigate(AppScreens.Seguridad.route) }
+                        onGestionReportes = { navController.navigate(AppScreens.ReporteUso.route) },
+                        onConfiguracion = { navController.navigate(AppScreens.Seguridad.route) }
                     )
                     
                     // Sección de comunicación
@@ -293,14 +225,12 @@ fun AdminDashboardScreen(
 @Composable
 fun QuickActionsGrid(
     onGestionCentros: () -> Unit,
-    onAddCentro: () -> Unit,
-    onGestionCursos: () -> Unit,
-    onGestionClases: () -> Unit,
     onGestionUsuarios: () -> Unit,
-    onAddUsuario: () -> Unit
+    onGestionReportes: () -> Unit,
+    onConfiguracion: () -> Unit
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         userScrollEnabled = false,
@@ -316,30 +246,6 @@ fun QuickActionsGrid(
         
         item {
             ActionButton(
-                icon = Icons.Default.AddBusiness,
-                text = "Añadir Centro",
-                onClick = onAddCentro
-            )
-        }
-        
-        item {
-            ActionButton(
-                icon = Icons.Default.School,
-                text = "Cursos",
-                onClick = onGestionCursos
-            )
-        }
-        
-        item {
-            ActionButton(
-                icon = Icons.Default.Groups,
-                text = "Clases",
-                onClick = onGestionClases
-            )
-        }
-        
-        item {
-            ActionButton(
                 icon = Icons.Default.People,
                 text = "Usuarios",
                 onClick = onGestionUsuarios
@@ -348,9 +254,17 @@ fun QuickActionsGrid(
         
         item {
             ActionButton(
-                icon = Icons.Default.PersonAdd,
-                text = "Añadir Usuario",
-                onClick = onAddUsuario
+                icon = Icons.Default.PieChart,
+                text = "Reportes",
+                onClick = onGestionReportes
+            )
+        }
+        
+        item {
+            ActionButton(
+                icon = Icons.Default.Security,
+                text = "Configuración",
+                onClick = onConfiguracion
             )
         }
     }

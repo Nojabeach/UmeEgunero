@@ -665,7 +665,13 @@ fun Navigation(
                 selectorCentroBloqueado = selectorCentroBloqueado,
                 selectorCursoBloqueado = selectorCursoBloqueado,
                 perfilUsuario = perfilUsuario,
-                onNavigate = { destino -> navController.navigate(destino) }
+                onNavigate = { destino ->
+                    if (destino == "back") {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(destino)
+                    }
+                }
             )
         }
 
