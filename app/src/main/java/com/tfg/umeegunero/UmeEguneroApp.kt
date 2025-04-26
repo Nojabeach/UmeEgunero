@@ -18,6 +18,7 @@ import com.tfg.umeegunero.data.worker.EventoWorker
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
 import com.tfg.umeegunero.notification.AppNotificationManager
 import com.tfg.umeegunero.util.SyncManager
+import com.tfg.umeegunero.util.DebugUtils
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -40,6 +41,9 @@ class UmeEguneroApp : Application(), Configuration.Provider {
     
     @Inject
     lateinit var syncManager: SyncManager
+    
+    @Inject
+    lateinit var debugUtils: DebugUtils
     
     override fun getWorkManagerConfiguration(): Configuration {
         return Configuration.Builder()
@@ -70,6 +74,11 @@ class UmeEguneroApp : Application(), Configuration.Provider {
         
         // Iniciar el servicio de sincronización
         syncManager.iniciarServicioSincronizacion()
+        
+        // Crear admin de debug automáticamente si no existe (solo en debug)
+        if (BuildConfig.DEBUG) {
+            debugUtils.ensureDebugAdminApp()
+        }
     }
     
     override fun onTerminate() {

@@ -316,13 +316,6 @@ fun Navigation(
             )
         }
         
-        // Pantalla de reportes de uso
-        composable(route = AppScreens.ReporteUso.route) {
-            com.tfg.umeegunero.feature.admin.screen.ReporteUsoScreen(
-                navController = navController
-            )
-        }
-        
         // Pantalla de estadísticas
         composable(route = AppScreens.Estadisticas.route) {
             com.tfg.umeegunero.feature.admin.screen.EstadisticasScreen(

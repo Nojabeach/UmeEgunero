@@ -189,4 +189,48 @@ class DebugUtils @Inject constructor(
             Pair(false, "Error durante la purga de centros: ${e.message}")
         }
     }
+
+    /**
+     * Comprueba si existe algún admin_app en Firestore y, si no existe, crea uno con los datos de Maitane.
+     * Solo debe ejecutarse en modo debug.
+     */
+    fun ensureDebugAdminApp() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Buscar si existe algún usuario con perfil ADMIN_APP
+                val adminsResult = usuarioRepository.getAdministradores()
+                val existeAdmin = adminsResult is Result.Success && adminsResult.data.isNotEmpty()
+                if (existeAdmin) {
+                    Timber.d("Ya existe al menos un usuario ADMIN_APP en Firestore")
+                    return@launch
+                }
+                Timber.d("No existe ningún ADMIN_APP, creando usuario de debug...")
+                // Crear perfil de admin
+                val perfil = Perfil(
+                    tipo = TipoUsuario.ADMIN_APP,
+                    verificado = true
+                )
+                // Crear usuario admin
+                val admin = Usuario(
+                    dni = "12345678B",
+                    email = "admin@eguneroko.com",
+                    nombre = "Maitane",
+                    apellidos = "",
+                    telefono = "944831879",
+                    fechaRegistro = com.google.firebase.Timestamp.now(),
+                    perfiles = listOf(perfil),
+                    activo = true
+                )
+                // Guardar en Firestore
+                val saveResult = usuarioRepository.guardarUsuario(admin)
+                if (saveResult is Result.Success) {
+                    Timber.d("Usuario ADMIN_APP de debug creado correctamente en Firestore")
+                } else if (saveResult is Result.Error) {
+                    Timber.e(saveResult.exception, "Error al crear usuario ADMIN_APP de debug")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al crear usuario ADMIN_APP de debug")
+            }
+        }
+    }
 }

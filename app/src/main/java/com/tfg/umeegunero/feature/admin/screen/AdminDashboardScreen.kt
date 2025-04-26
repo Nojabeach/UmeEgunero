@@ -175,8 +175,7 @@ fun AdminDashboardScreen(
                     QuickActionsGrid(
                         onGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
                         onGestionUsuarios = { navController.navigate(AppScreens.GestionUsuarios.route) },
-                        onGestionReportes = { navController.navigate(AppScreens.ReporteUso.route) },
-                        onConfiguracion = { navController.navigate(AppScreens.Seguridad.route) }
+                        onConfiguracion = { navController.navigate(AppScreens.Configuracion.route + "/ADMIN") }
                     )
                     
                     // Sección de comunicación
@@ -228,7 +227,6 @@ fun AdminDashboardScreen(
 fun QuickActionsGrid(
     onGestionCentros: () -> Unit,
     onGestionUsuarios: () -> Unit,
-    onGestionReportes: () -> Unit,
     onConfiguracion: () -> Unit
 ) {
     LazyVerticalGrid(
@@ -236,7 +234,7 @@ fun QuickActionsGrid(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         userScrollEnabled = false,
-        modifier = Modifier.height(240.dp)
+        modifier = Modifier.height(180.dp)
     ) {
         item {
             ActionButton(
@@ -245,7 +243,6 @@ fun QuickActionsGrid(
                 onClick = onGestionCentros
             )
         }
-        
         item {
             ActionButton(
                 icon = Icons.Default.People,
@@ -253,15 +250,6 @@ fun QuickActionsGrid(
                 onClick = onGestionUsuarios
             )
         }
-        
-        item {
-            ActionButton(
-                icon = Icons.Default.PieChart,
-                text = "Reportes",
-                onClick = onGestionReportes
-            )
-        }
-        
         item {
             ActionButton(
                 icon = Icons.Default.Security,

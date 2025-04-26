@@ -141,6 +141,7 @@ import androidx.compose.foundation.verticalScroll
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.ExitToApp
 
 /**
  * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
@@ -195,6 +196,14 @@ fun ProfesorDashboardScreen(
     LaunchedEffect(Unit) {
         showContent = true
     }
+    // Efecto para navegar a la pantalla de bienvenida tras logout
+    LaunchedEffect(uiState.navigateToWelcome) {
+        if (uiState.navigateToWelcome) {
+            navController.navigate(AppScreens.Welcome.route) {
+                popUpTo(AppScreens.ProfesorDashboard.route) { inclusive = true }
+            }
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -218,6 +227,14 @@ fun ProfesorDashboardScreen(
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Configuración",
+                            tint = Color.White
+                        )
+                    }
+                    // Botón de logout
+                    IconButton(onClick = { viewModel.logout() }) {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = "Cerrar sesión",
                             tint = Color.White
                         )
                     }

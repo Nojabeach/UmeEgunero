@@ -174,12 +174,12 @@ open class UsuarioRepository @Inject constructor(
                 firebaseAuth.signOut()
                 return@withContext Result.Error(Exception("Usuario no encontrado en la base de datos"))
             }
-        } catch (e: FirebaseAuthInvalidCredentialsException) {
-            Timber.e(e, "Error de autenticación para email: $email (credenciales inválidas)")
-            return@withContext Result.Error(Exception("Credenciales incorrectas. Por favor verifica tu email y contraseña."))
         } catch (e: FirebaseAuthInvalidUserException) {
-            Timber.e(e, "Error de autenticación para email: $email (usuario inválido)")
-            return@withContext Result.Error(Exception("Usuario no encontrado. Por favor verifica tu email."))
+            Timber.e(e, "Usuario no encontrado para email: $email")
+            return@withContext Result.Error(Exception("Email no encontrado. Por favor verifica tu email."))
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Timber.e(e, "Contraseña incorrecta para email: $email")
+            return@withContext Result.Error(Exception("Contraseña incorrecta. Por favor verifica tu contraseña."))
         } catch (e: FirebaseAuthException) {
             Timber.e(e, "Error de autenticación para email: $email")
             return@withContext Result.Error(Exception("Error de autenticación: ${e.message}"))

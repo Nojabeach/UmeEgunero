@@ -376,13 +376,7 @@ class LoginViewModel @Inject constructor(
                     }
                     is Result.Error -> {
                         Timber.e(result.exception, "Error en el login")
-                        val errorMessage = when {
-                            result.exception?.message?.contains("password") == true -> 
-                                "Contraseña incorrecta. Por favor, verifica tus credenciales."
-                            result.exception?.message?.contains("email") == true -> 
-                                "Email no encontrado. Por favor, verifica tus credenciales."
-                            else -> "Error al iniciar sesión. Por favor, verifica tus credenciales."
-                        }
+                        val errorMessage = result.exception?.message ?: "Error al iniciar sesión. Por favor, verifica tus credenciales."
                         _uiState.update {
                             it.copy(
                                 isLoading = false,

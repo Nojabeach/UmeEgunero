@@ -296,9 +296,6 @@ sealed class AppScreens(val route: String) {
     /** Pantalla de comunicados y circulares */
     object ComunicadosCirculares : AppScreens("comunicaciones/comunicados")
     
-    /** Reporte de uso del sistema */
-    object ReporteUso : AppScreens("reportes/uso")
-    
     /**
      * Sección: Gestión de alumnos y vinculación familiar
      */
