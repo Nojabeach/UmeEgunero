@@ -42,9 +42,9 @@ fun ListaCursosScreen(
     var showAddCursoDialog by remember { mutableStateOf(false) }
     var cursoToEdit by remember { mutableStateOf<Curso?>(null) }
     
-    // Cargar cursos al iniciar
+    // Cargar centros y cursos al iniciar
     LaunchedEffect(Unit) {
-        viewModel.cargarCursos()
+        viewModel.cargarCentrosYSeleccionar()
     }
     
     // Mostrar errores en snackbar
@@ -92,15 +92,45 @@ fun ListaCursosScreen(
             }
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Selector de centro
+            if (uiState.centros.isNotEmpty()) {
+                var expanded by remember { mutableStateOf(false) }
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)) {
+                    OutlinedButton(
+                        onClick = { expanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(uiState.centroSeleccionado?.nombre ?: "Selecciona un centro")
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        uiState.centros.forEach { centro ->
+                            DropdownMenuItem(
+                                text = { Text(centro.nombre) },
+                                onClick = {
+                                    viewModel.seleccionarCentro(centro)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
             // Mostrar indicador de carga
             if (uiState.isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             } else if (uiState.cursos.isEmpty()) {
                 // Mostrar mensaje si no hay cursos
