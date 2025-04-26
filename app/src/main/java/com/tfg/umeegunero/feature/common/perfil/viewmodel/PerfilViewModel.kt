@@ -360,11 +360,13 @@ class PerfilViewModel @Inject constructor(
      */
     fun guardarCambios() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
+            _uiState.update { it.copy(isLoading = true, error = null, success = null) }
             try {
-                // En un entorno real, aquí haríamos la llamada al repositorio
-                // Crear el objeto direccion
+                val usuarioActual = uiState.value.usuario
+                if (usuarioActual == null) {
+                    _uiState.update { it.copy(isLoading = false, error = "No se pudo obtener el usuario actual") }
+                    return@launch
+                }
                 val direccion = Direccion(
                     calle = uiState.value.direccionCalle,
                     numero = uiState.value.direccionNumero,
@@ -375,32 +377,43 @@ class PerfilViewModel @Inject constructor(
                     latitud = uiState.value.latitud,
                     longitud = uiState.value.longitud
                 )
-                
-                // Simular guardado exitoso
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        success = "Cambios guardados correctamente",
-                        
-                        // Actualizar valores originales
-                        nombreOriginal = it.nombre,
-                        apellidosOriginal = it.apellidos,
-                        telefonoOriginal = it.telefono,
-                        direccionCalleOriginal = it.direccionCalle,
-                        direccionNumeroOriginal = it.direccionNumero,
-                        direccionPisoOriginal = it.direccionPiso,
-                        direccionCPOriginal = it.direccionCP,
-                        direccionCiudadOriginal = it.direccionCiudad,
-                        direccionProvinciaOriginal = it.direccionProvincia,
-                        latitudOriginal = it.latitud,
-                        longitudOriginal = it.longitud
-                    ) 
+                val usuarioActualizado = usuarioActual.copy(
+                    nombre = uiState.value.nombre,
+                    apellidos = uiState.value.apellidos,
+                    telefono = uiState.value.telefono,
+                    direccion = direccion
+                )
+                val resultado = usuarioRepository.actualizarUsuario(usuarioActualizado)
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                success = "Cambios guardados correctamente",
+                                usuario = usuarioActualizado,
+                                nombreOriginal = usuarioActualizado.nombre,
+                                apellidosOriginal = usuarioActualizado.apellidos,
+                                telefonoOriginal = usuarioActualizado.telefono ?: "",
+                                direccionCalleOriginal = direccion.calle ?: "",
+                                direccionNumeroOriginal = direccion.numero ?: "",
+                                direccionPisoOriginal = direccion.piso ?: "",
+                                direccionCPOriginal = direccion.codigoPostal ?: "",
+                                direccionCiudadOriginal = direccion.ciudad ?: "",
+                                direccionProvinciaOriginal = direccion.provincia ?: "",
+                                latitudOriginal = direccion.latitud ?: "",
+                                longitudOriginal = direccion.longitud ?: ""
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(isLoading = false, error = resultado.exception?.message ?: "Error al guardar cambios") }
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false, error = "Error desconocido al guardar cambios") }
+                    }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = "Error al guardar cambios: ${e.message}"
-                ) }
+                _uiState.update { it.copy(isLoading = false, error = "Error al guardar cambios: ${e.message}") }
             }
         }
     }

@@ -10,6 +10,7 @@ import com.tfg.umeegunero.feature.auth.screen.CambioContrasenaScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.data.model.TipoUsuario
 import androidx.navigation.NavType
+import com.tfg.umeegunero.feature.admin.screen.GestionUsuariosScreen
 
 @Composable
 fun NavGraph(
@@ -81,11 +82,8 @@ fun NavGraph(
             )
         }
         
-        composable(AppScreens.DummyGestionUsuarios.route) {
-            DummyScreen(
-                title = "Gestión de Usuarios",
-                onNavigateBack = { navController.navigateUp() }
-            )
+        composable(AppScreens.GestionUsuarios.route) {
+            GestionUsuariosScreen(navController = navController)
         }
         
         composable(AppScreens.DummyEstadisticas.route) {

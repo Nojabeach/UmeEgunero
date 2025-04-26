@@ -48,6 +48,8 @@ import java.util.Locale
 import com.tfg.umeegunero.feature.admin.screen.components.SectionHeader
 import com.tfg.umeegunero.feature.admin.screen.components.CategoryCard
 import com.tfg.umeegunero.feature.admin.screen.components.ActionButton
+import com.tfg.umeegunero.ui.theme.AcademicoColorDark
+import com.tfg.umeegunero.data.model.Usuario
 
 /**
  * Dashboard del administrador de la aplicación
@@ -102,7 +104,7 @@ fun AdminDashboardScreen(
                     )
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = AdminColor,
+                    containerColor = AcademicoColorDark,
                     titleContentColor = Color.White,
                     actionIconContentColor = Color.White
                 ),
@@ -142,7 +144,7 @@ fun AdminDashboardScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = AdminColor)
+                CircularProgressIndicator(color = AcademicoColorDark)
             }
         } else {
             AnimatedVisibility(
@@ -162,7 +164,7 @@ fun AdminDashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Tarjeta de bienvenida
-                    WelcomeCard(currentDate = currentDate)
+                    WelcomeCard(currentDate = currentDate, nombreAdmin = uiState.usuario?.nombre)
                     
                     // Sección de accesos rápidos
                     SectionHeader(
@@ -274,11 +276,11 @@ fun QuickActionsGrid(
  * Tarjeta de bienvenida para el dashboard de administración
  */
 @Composable
-fun WelcomeCard(currentDate: String) {
+fun WelcomeCard(currentDate: String, nombreAdmin: String?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = AdminColor.copy(alpha = 0.15f)
+            containerColor = AcademicoColorDark.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -295,7 +297,7 @@ fun WelcomeCard(currentDate: String) {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "Bienvenido/a",
+                    text = "Bienvenido/a, ${nombreAdmin ?: "Administrador/a"}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -320,7 +322,7 @@ fun WelcomeCard(currentDate: String) {
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(AdminColor),
+                    .background(AcademicoColorDark),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -352,7 +354,8 @@ class AdminDashboardViewModel : androidx.lifecycle.ViewModel() {
 data class AdminDashboardUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val showListadoCentros: Boolean = false
+    val showListadoCentros: Boolean = false,
+    val usuario: Usuario? = null
 )
 
 @Preview(showBackground = true)
