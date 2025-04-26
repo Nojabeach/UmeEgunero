@@ -34,7 +34,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -288,7 +287,7 @@ fun DetalleHijoScreen(
                     }
 
                     // Información del centro educativo
-                    ElevatedCard(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
@@ -377,7 +376,7 @@ fun DetalleHijoScreen(
                     }
 
                     // Información médica y alergias
-                    ElevatedCard(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
@@ -436,7 +435,7 @@ fun DetalleHijoScreen(
                     }
 
                     // Información de contacto
-                    ElevatedCard(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),

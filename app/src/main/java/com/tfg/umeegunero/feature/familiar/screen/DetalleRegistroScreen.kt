@@ -284,13 +284,11 @@ fun DetalleRegistroScreen(
 
                     // Sección de alimentación
                     if (registro.comida != null) {
-                        ElevatedCard(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp),
-                            colors = CardDefaults.elevatedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            )
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp)
@@ -394,7 +392,7 @@ fun DetalleRegistroScreen(
 
                     // Sección de Siesta
                     registro.siesta?.let { siesta ->
-                        ElevatedCard(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp),
@@ -491,7 +489,7 @@ fun DetalleRegistroScreen(
                         registro.cacaControl?.tipo != null ||
                         registro.cacaControl?.descripcion != null) {
 
-                        ElevatedCard(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp),
@@ -655,7 +653,7 @@ fun DetalleRegistroScreen(
 
                     // Sección de Observaciones Generales
                     if (registro.observaciones?.isNotBlank() == true) {
-                        ElevatedCard(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp),
@@ -813,7 +811,7 @@ fun DetalleRegistroContent(
 
                 // Sección de alimentación
                 if (comidaData != null) {
-                    ElevatedCard(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
@@ -911,7 +909,7 @@ fun DetalleRegistroContent(
 
                 // Sección de Necesidades Fisiológicas
                 if (cacaControlData != null) {
-                    ElevatedCard(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
@@ -1075,7 +1073,7 @@ fun DetalleRegistroContent(
 
                 // Sección de Observaciones Generales
                 if (observacionesTexto != null && observacionesTexto.isNotBlank()) {
-                    ElevatedCard(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
@@ -1290,7 +1288,7 @@ fun DetalleRegistroScreenPreviewContent() {
             )
             
             // Comida
-            ElevatedCard(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
@@ -1447,7 +1445,7 @@ fun DetalleRegistroScreenPreviewContent() {
             }
             
             // Siesta
-            ElevatedCard(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
@@ -1521,7 +1519,7 @@ fun DetalleRegistroScreenPreviewContent() {
             }
 
             // Actividades
-            ElevatedCard(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
@@ -1605,7 +1603,7 @@ fun DetalleRegistroScreenPreviewContent() {
             }
             
             // Observaciones Generales
-            ElevatedCard(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),

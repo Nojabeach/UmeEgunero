@@ -265,9 +265,9 @@ fun DatosPersonalesStep(
         }
 
         // Tipo de familiar
-        ElevatedCard(
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.elevatedCardColors(
+            colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
             )
         ) {

@@ -297,7 +297,7 @@ fun AdminCentroListItem(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onItemClick),

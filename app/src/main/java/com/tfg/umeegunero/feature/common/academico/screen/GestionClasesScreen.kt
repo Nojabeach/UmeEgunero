@@ -315,7 +315,7 @@ private fun ClaseItem(
     onDeleteClick: () -> Unit,
     onItemClick: () -> Unit
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier
             .fillMaxWidth(),
         onClick = onItemClick,

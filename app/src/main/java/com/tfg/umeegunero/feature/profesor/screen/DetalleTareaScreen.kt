@@ -200,7 +200,7 @@ fun InformacionTareaCard(
     estado: EstadoTarea,
     clase: String
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -324,7 +324,7 @@ fun ProgresoEntregasCard(
 ) {
     val porcentaje = if (totalAlumnos > 0) (alumnosEntregados.toFloat() / totalAlumnos) * 100 else 0f
     
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {

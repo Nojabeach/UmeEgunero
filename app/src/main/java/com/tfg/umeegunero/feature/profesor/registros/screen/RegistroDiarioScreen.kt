@@ -25,8 +25,12 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.ChildCare
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -69,6 +73,8 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.ui.graphics.vector.ImageVector
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,16 +131,10 @@ fun RegistroDiarioScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.guardarRegistro(uiState.registro.profesorId ?: "") },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = "Guardar registro",
-                    tint = Color.White
-                )
-            }
+            GuardarRegistroButton(
+                isLoading = uiState.isLoading,
+                onClick = { viewModel.guardarRegistro(uiState.registro.profesorId ?: "") }
+            )
         }
     ) { paddingValues ->
         Column(
@@ -143,281 +143,228 @@ fun RegistroDiarioScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Fecha y clase
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+            RegistroDiarioHeader(
+                alumnoNombre = alumnoNombre,
+                claseNombre = claseNombre,
+                fecha = uiState.fechaSeleccionada
+            )
+            ElevatedSectionCard(
+                title = "Comidas",
+                icon = Icons.Default.Fastfood
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+                ComidaRow(
+                    titulo = "Primer plato",
+                    estado = uiState.primerPlato,
+                    onEstadoChange = { viewModel.actualizarEstadoComida("primerPlato", it) }
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                ComidaRow(
+                    titulo = "Segundo plato",
+                    estado = uiState.segundoPlato,
+                    onEstadoChange = { viewModel.actualizarEstadoComida("segundoPlato", it) }
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                ComidaRow(
+                    titulo = "Postre",
+                    estado = uiState.postre,
+                    onEstadoChange = { viewModel.actualizarEstadoComida("postre", it) }
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                ComidaRow(
+                    titulo = "Merienda",
+                    estado = uiState.merienda,
+                    onEstadoChange = { viewModel.actualizarEstadoComida("merienda", it) }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = uiState.observacionesComida,
+                    onValueChange = { viewModel.actualizarObservacionesComida(it) },
+                    label = { Text("Observaciones de comida") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+            }
+            ElevatedSectionCard(
+                title = "Siesta",
+                icon = Icons.Default.Alarm
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(uiState.fechaSeleccionada),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Clase: $claseNombre",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "¿Ha dormido siesta?",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    
+                    Switch(
+                        checked = uiState.haSiestaSiNo,
+                        onCheckedChange = { viewModel.toggleSiesta(it) }
                     )
                 }
-            }
-            
-            // Sección de comidas
-            SectionCard(
-                title = "Comidas",
-                content = {
-                    // Primer plato
-                    ComidaRow(
-                        titulo = "Primer plato",
-                        estado = uiState.primerPlato,
-                        onEstadoChange = { viewModel.actualizarEstadoComida("primerPlato", it) }
-                    )
+                
+                if (uiState.haSiestaSiNo) {
+                    Spacer(modifier = Modifier.height(16.dp))
                     
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    // Segundo plato
-                    ComidaRow(
-                        titulo = "Segundo plato",
-                        estado = uiState.segundoPlato,
-                        onEstadoChange = { viewModel.actualizarEstadoComida("segundoPlato", it) }
-                    )
-                    
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    // Postre
-                    ComidaRow(
-                        titulo = "Postre",
-                        estado = uiState.postre,
-                        onEstadoChange = { viewModel.actualizarEstadoComida("postre", it) }
-                    )
-                    
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    
-                    // Merienda
-                    ComidaRow(
-                        titulo = "Merienda",
-                        estado = uiState.merienda,
-                        onEstadoChange = { viewModel.actualizarEstadoComida("merienda", it) }
-                    )
+                    // Aquí iría un selector de tiempo para inicio y fin de siesta
+                    // Por ahora usamos campos de texto
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.horaInicioSiesta,
+                            onValueChange = { viewModel.establecerHoraInicioSiesta(it) },
+                            label = { Text("Hora inicio") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        OutlinedTextField(
+                            value = uiState.horaFinSiesta,
+                            onValueChange = { viewModel.establecerHoraFinSiesta(it) },
+                            label = { Text("Hora fin") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Observaciones de comida
                     OutlinedTextField(
-                        value = uiState.observacionesComida,
-                        onValueChange = { viewModel.actualizarObservacionesComida(it) },
-                        label = { Text("Observaciones de comida") },
+                        value = uiState.observacionesSiesta,
+                        onValueChange = { viewModel.actualizarObservacionesSiesta(it) },
+                        label = { Text("Observaciones de siesta") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2
                     )
                 }
-            )
-            
-            // Sección de siesta
-            SectionCard(
-                title = "Siesta",
-                content = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "¿Ha dormido siesta?",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        
-                        Switch(
-                            checked = uiState.haSiestaSiNo,
-                            onCheckedChange = { viewModel.toggleSiesta(it) }
-                        )
-                    }
-                    
-                    if (uiState.haSiestaSiNo) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Aquí iría un selector de tiempo para inicio y fin de siesta
-                        // Por ahora usamos campos de texto
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            OutlinedTextField(
-                                value = uiState.horaInicioSiesta,
-                                onValueChange = { viewModel.establecerHoraInicioSiesta(it) },
-                                label = { Text("Hora inicio") },
-                                modifier = Modifier.weight(1f)
-                            )
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            OutlinedTextField(
-                                value = uiState.horaFinSiesta,
-                                onValueChange = { viewModel.establecerHoraFinSiesta(it) },
-                                label = { Text("Hora fin") },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        OutlinedTextField(
-                            value = uiState.observacionesSiesta,
-                            onValueChange = { viewModel.actualizarObservacionesSiesta(it) },
-                            label = { Text("Observaciones de siesta") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 2
-                        )
-                    }
-                }
-            )
-            
-            // Sección de deposiciones
-            SectionCard(
+            }
+            ElevatedSectionCard(
                 title = "Deposiciones",
-                content = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "¿Ha hecho caca?",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        
-                        Switch(
-                            checked = uiState.haHechoCaca,
-                            onCheckedChange = { viewModel.toggleCaca(it) }
-                        )
-                    }
+                icon = Icons.Default.Close
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "¿Ha hecho caca?",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                     
-                    if (uiState.haHechoCaca) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Número de veces:",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(
-                                    onClick = { viewModel.decrementarCacas() }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Remove,
-                                        contentDescription = "Decrementar"
-                                    )
-                                }
-                                
-                                Text(
-                                    text = uiState.numeroCacas.toString(),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
-                                )
-                                
-                                IconButton(
-                                    onClick = { viewModel.incrementarCacas() }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Incrementar"
-                                    )
-                                }
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        OutlinedTextField(
-                            value = uiState.observacionesCaca,
-                            onValueChange = { viewModel.actualizarObservacionesCaca(it) },
-                            label = { Text("Observaciones") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 2
-                        )
-                    }
-                }
-            )
-            
-            // Sección de materiales necesarios
-            SectionCard(
-                title = "Material necesario",
-                content = {
-                    Column {
-                        MaterialCheckRow(
-                            titulo = "Necesita pañales",
-                            checked = uiState.necesitaPanales,
-                            onCheckedChange = { viewModel.toggleMaterial("panales", it) }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        MaterialCheckRow(
-                            titulo = "Necesita toallitas",
-                            checked = uiState.necesitaToallitas,
-                            onCheckedChange = { viewModel.toggleMaterial("toallitas", it) }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        MaterialCheckRow(
-                            titulo = "Necesita ropa de cambio",
-                            checked = uiState.necesitaRopaCambio,
-                            onCheckedChange = { viewModel.toggleMaterial("ropa", it) }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        OutlinedTextField(
-                            value = uiState.otroMaterialNecesario,
-                            onValueChange = { viewModel.actualizarOtroMaterial(it) },
-                            label = { Text("Otros materiales necesarios") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 2
-                        )
-                    }
-                }
-            )
-            
-            // Sección de observaciones generales
-            SectionCard(
-                title = "Observaciones generales",
-                content = {
-                    OutlinedTextField(
-                        value = uiState.observacionesGenerales,
-                        onValueChange = { viewModel.actualizarObservacionesGenerales(it) },
-                        label = { Text("Observaciones del día") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 4
+                    Switch(
+                        checked = uiState.haHechoCaca,
+                        onCheckedChange = { viewModel.toggleCaca(it) }
                     )
                 }
-            )
-            
-            // Espacio adicional para que el FAB no tape contenido
+                
+                if (uiState.haHechoCaca) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Número de veces:",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { viewModel.decrementarCacas() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Remove,
+                                    contentDescription = "Decrementar"
+                                )
+                            }
+                            
+                            Text(
+                                text = uiState.numeroCacas.toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                            
+                            IconButton(
+                                onClick = { viewModel.incrementarCacas() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Incrementar"
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = uiState.observacionesCaca,
+                        onValueChange = { viewModel.actualizarObservacionesCaca(it) },
+                        label = { Text("Observaciones") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                    )
+                }
+            }
+            ElevatedSectionCard(
+                title = "Material necesario",
+                icon = Icons.Default.ChildCare
+            ) {
+                MaterialCheckRow(
+                    titulo = "Necesita pañales",
+                    checked = uiState.necesitaPanales,
+                    onCheckedChange = { viewModel.toggleMaterial("panales", it) }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                MaterialCheckRow(
+                    titulo = "Necesita toallitas",
+                    checked = uiState.necesitaToallitas,
+                    onCheckedChange = { viewModel.toggleMaterial("toallitas", it) }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                MaterialCheckRow(
+                    titulo = "Necesita ropa de cambio",
+                    checked = uiState.necesitaRopaCambio,
+                    onCheckedChange = { viewModel.toggleMaterial("ropa", it) }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = uiState.otroMaterialNecesario,
+                    onValueChange = { viewModel.actualizarOtroMaterial(it) },
+                    label = { Text("Otros materiales necesarios") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+            }
+            ElevatedSectionCard(
+                title = "Observaciones generales",
+                icon = Icons.Default.Description
+            ) {
+                OutlinedTextField(
+                    value = uiState.observacionesGenerales,
+                    onValueChange = { viewModel.actualizarObservacionesGenerales(it) },
+                    label = { Text("Observaciones del día") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4
+                )
+            }
             Spacer(modifier = Modifier.height(80.dp))
         }
     }
@@ -532,27 +479,31 @@ fun EstadoComidaButton(
 }
 
 @Composable
-fun SectionCard(
+fun ElevatedSectionCard(
     title: String,
+    icon: ImageVector,
     content: @Composable () -> Unit
 ) {
-    Card(
+    ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)
         ) {
+            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             content()
         }
     }
@@ -665,5 +616,78 @@ fun RegistroDiarioScreenPreview() {
             alumnoNombre = "Juan Pérez",
             claseNombre = "Infantil 3 años A"
         )
+    }
+}
+
+@Composable
+fun RegistroDiarioHeader(
+    alumnoNombre: String,
+    claseNombre: String,
+    fecha: Date
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = alumnoNombre.firstOrNull()?.toString() ?: "",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = alumnoNombre,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Clase: $claseNombre",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fecha),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GuardarRegistroButton(
+    isLoading: Boolean,
+    onClick: () -> Unit
+) {
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.primary
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = Color.White
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Save,
+                contentDescription = "Guardar registro",
+                tint = Color.White
+            )
+        }
     }
 } 

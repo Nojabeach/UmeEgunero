@@ -335,14 +335,14 @@ fun RegistroScreen(
                     }
                     
                     // Formulario elegante con efecto de elevación
-                    ElevatedCard(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                        colors = CardDefaults.elevatedCardColors(
+                        colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
                         ),
-                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -810,7 +810,7 @@ fun PreviewRegistroScreen() {
 
 @Composable
 private fun PasswordRequirementsCard(password: String) {
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -890,7 +890,7 @@ fun PasswordRequirementItem(
 private fun TermsAndConditionsCard(
     onNavigateToTerminosCondiciones: () -> Unit
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
     ) {

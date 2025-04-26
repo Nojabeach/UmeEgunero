@@ -245,9 +245,9 @@ fun TarjetaEvento(
     val hora = evento.fecha.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalTime()
     val horaFormateada = hora.format(DateTimeFormatter.ofPattern("HH:mm"))
     
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(
+        colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {

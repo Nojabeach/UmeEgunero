@@ -805,7 +805,7 @@ fun ProfesorList(
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        ElevatedCard(
+        Card(
             modifier = Modifier.fillMaxSize(),
             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
             colors = CardDefaults.elevatedCardColors(
@@ -889,12 +889,12 @@ fun ProfesorItem(
     isSelected: Boolean,
     onProfesorSelected: (Usuario) -> Unit
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onProfesorSelected(profesor) },
-        colors = CardDefaults.elevatedCardColors(
+        colors = CardDefaults.cardColors(
             containerColor = if (isSelected) 
                 MaterialTheme.colorScheme.primaryContainer 
             else 
