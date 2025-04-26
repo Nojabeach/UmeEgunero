@@ -48,20 +48,20 @@ fun DetalleClaseScreen(
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(uiState.clase?.nombre ?: "Detalle de Clase") },
+            CenterAlignedTopAppBar(
+                title = { Text(uiState.clase?.nombre ?: "Detalle de Clase", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
+                            contentDescription = "Volver",
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AcademicoColor,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
@@ -79,60 +79,61 @@ fun DetalleClaseScreen(
                 )
             } else if (uiState.error != null) {
                 // Mostrar error
-                Column(
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .fillMaxWidth()
+                        .padding(32.dp)
+                        .align(Alignment.Center),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Error,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(64.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "Error al cargar los datos de la clase",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = uiState.error ?: "Error desconocido",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    Button(
-                        onClick = { navController.popBackStack() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text("Volver")
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Error al cargar los datos de la clase",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = uiState.error ?: "Error desconocido",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { navController.popBackStack() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text("Volver")
+                        }
                     }
                 }
             } else {
-                // Mostrar contenido
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     // Información general de la clase
                     item {
                         InfoGeneralCard(uiState)
                     }
-                    
                     // Profesor titular
                     item {
                         uiState.profesorTitular?.let { profesor ->
@@ -144,17 +145,16 @@ fun DetalleClaseScreen(
                             )
                         }
                     }
-                    
                     // Profesores auxiliares
                     if (uiState.profesoresAuxiliares.isNotEmpty()) {
                         item {
                             Text(
                                 text = "Profesores Auxiliares",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
                             )
                         }
-                        
                         items(uiState.profesoresAuxiliares) { profesor ->
                             ProfesorCard(
                                 nombre = "${profesor.nombre} ${profesor.apellidos}",
@@ -164,17 +164,16 @@ fun DetalleClaseScreen(
                             )
                         }
                     }
-                    
                     // Lista de alumnos
                     if (uiState.alumnos.isNotEmpty()) {
                         item {
                             Text(
                                 text = "Alumnos (${uiState.alumnos.size})",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
                             )
                         }
-                        
                         items(uiState.alumnos) { alumno ->
                             AlumnoItem(
                                 nombre = "${alumno.nombre} ${alumno.apellidos}",
@@ -200,9 +199,7 @@ fun DetalleClaseScreen(
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onErrorContainer
                                     )
-                                    
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    
                                     Text(
                                         text = "No hay alumnos asignados a esta clase",
                                         textAlign = TextAlign.Center,
@@ -212,7 +209,6 @@ fun DetalleClaseScreen(
                             }
                         }
                     }
-                    
                     // Espacio adicional al final
                     item {
                         Spacer(modifier = Modifier.height(16.dp))

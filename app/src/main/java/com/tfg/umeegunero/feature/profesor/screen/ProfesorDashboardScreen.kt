@@ -406,7 +406,7 @@ fun ProfesorDashboardContent(
                 color = Color(0xFF00BCD4),
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    navController.navigate(AppScreens.DetalleClase.route)
+                    // Reemplazar o eliminar la navegación a DetalleClase
                 }
             )
             

@@ -167,7 +167,7 @@ fun CentroDashboardScreen(
                         navController.navigate(AppScreens.GestionProfesores.route) 
                     },
                     onNavigateToGestionCursosYClases = { 
-                        navController.navigate("gestion_clases/0?centroId=${uiState.centroId}&selectorCursoBloqueado=false") 
+                        // No se permite navegar a 'gestion_clases'
                     },
                     onNavigateToVinculacionFamiliar = { 
                         navController.navigate(AppScreens.VincularAlumnoFamiliar.route) 
@@ -185,7 +185,7 @@ fun CentroDashboardScreen(
                         navController.navigate(AppScreens.ListaCursos.route)
                     },
                     onNavigateToListaClases = {
-                        navController.navigate("gestion_clases/0?centroId=${uiState.centroId}&selectorCursoBloqueado=false")
+                        // No se permite navegar a 'gestion_clases'
                     },
                     onNavigateToVincularProfesorClase = {
                         navController.navigate(AppScreens.VincularProfesorClase.route)

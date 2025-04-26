@@ -155,40 +155,8 @@ sealed class AppScreens(val route: String) {
     }
     
     /**
-     * Pantalla de gestión de clases para un curso específico
-     * @param cursoId Identificador único del curso
+     * Pantalla de calendario y eventos académicos
      */
-    object GestionClases : AppScreens("gestion_clases/{cursoId}") {
-        fun createRoute(cursoId: String) = "gestion_clases/$cursoId"
-    }
-    
-    /**
-     * Formulario para añadir una clase a un curso
-     * @param cursoId Identificador único del curso
-     * @param centroId Identificador único del centro
-     */
-    object AddClase : AppScreens("add_clase/{cursoId}/{centroId}") {
-        fun createRoute(cursoId: String, centroId: String) = "add_clase/$cursoId/$centroId"
-    }
-    
-    /**
-     * Formulario para editar una clase existente
-     * @param cursoId Identificador único del curso
-     * @param claseId Identificador de la clase a editar
-     */
-    object EditClase : AppScreens("edit_clase/{claseId}") {
-        fun createRoute(claseId: String) = "edit_clase/$claseId"
-    }
-    
-    /**
-     * Detalles de una clase específica
-     * @param claseId Identificador único de la clase
-     */
-    object DetalleClase : AppScreens("detalle_clase/{claseId}") {
-        fun createRoute(claseId: String) = "detalle_clase/$claseId"
-    }
-    
-    /** Pantalla de calendario y eventos académicos */
     object Calendario : AppScreens("calendario")
     
     /**

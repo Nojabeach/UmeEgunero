@@ -5,8 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +21,7 @@ import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.feature.common.academico.viewmodel.GestionClasesViewModel
 import com.tfg.umeegunero.feature.common.academico.viewmodel.AddClaseViewModel
 import com.tfg.umeegunero.ui.components.LoadingIndicator
+import androidx.compose.ui.text.font.FontWeight
 
 /**
  * Pantalla para editar una clase existente
@@ -34,100 +35,42 @@ fun EditClaseScreen(
     navController: NavController,
     viewModel: AddClaseViewModel = hiltViewModel()
 ) {
-    // Reutilizamos la pantalla de añadir clase pero con el viewModel en modo edición
-    AddClaseScreen(
-        navController = navController,
-        viewModel = viewModel
-    )
-}
-
-/**
- * Pantalla para editar o crear una clase
- * @param navController controlador de navegación
- * @param cursoId ID del curso al que pertenece la clase
- * @param claseId ID de la clase a editar. Si es null, se está creando una nueva clase
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditClaseScreen(
-    navController: NavController,
-    cursoId: String,
-    claseId: String? = null,
-    viewModel: GestionClasesViewModel = hiltViewModel()
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    
-    var nombre by remember { mutableStateOf("") }
-    var aula by remember { mutableStateOf("") }
-    var horario by remember { mutableStateOf("") }
-    var profesorTitularId by remember { mutableStateOf("") }
-    var capacidadMaxima by remember { mutableStateOf("25") }
-    
-    val isEditing = claseId != null
-    
-    // Si está editando, cargar los datos de la clase existente
-    LaunchedEffect(claseId) {
-        if (isEditing) {
-            // Aquí podríamos implementar la carga de datos de la clase por ID
-            // Por ahora usamos la primera clase de la lista como ejemplo
-            val claseSeleccionada = uiState.clases.firstOrNull { it.id == claseId }
-            claseSeleccionada?.let {
-                nombre = it.nombre
-                horario = it.horario
-                profesorTitularId = it.profesorTitularId
-                aula = it.aula
-                capacidadMaxima = it.capacidadMaxima.toString()
-            }
+
+    // Efecto para manejar la navegación después de un guardado exitoso
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            navController.popBackStack()
         }
     }
-    
-    // Título de la pantalla según si es creación o edición
-    val titulo = if (isEditing) "Editar Clase" else "Nueva Clase"
-    
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(titulo) },
+            CenterAlignedTopAppBar(
+                title = { Text("Editar Clase", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = MaterialTheme.colorScheme.onPrimary)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
-            // Solo mostrar FAB si nombre no está vacío y no está cargando
-            if (nombre.isNotBlank() && !uiState.isLoading) {
-                FloatingActionButton(
-                    onClick = {
-                        val clase = Clase(
-                            id = claseId ?: "",
-                            cursoId = cursoId,
-                            centroId = "", // Se establecerá en el ViewModel
-                            nombre = nombre,
-                            horario = horario,
-                            profesorTitularId = profesorTitularId,
-                            aula = aula,
-                            capacidadMaxima = capacidadMaxima.toIntOrNull() ?: 25,
-                            activo = true,
-                            profesoresAuxiliaresIds = emptyList(),
-                            alumnosIds = emptyList()
-                        )
-                        viewModel.guardarClase(clase)
-                        navController.popBackStack()
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Save,
-                        contentDescription = "Guardar"
-                    )
-                }
-            }
-        }
+            ExtendedFloatingActionButton(
+                onClick = { viewModel.guardarClase() },
+                icon = { Icon(Icons.Default.Check, contentDescription = "Guardar clase") },
+                text = { Text("Guardar") },
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -136,92 +79,173 @@ fun EditClaseScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .padding(16.dp)
                     .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre de la clase") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    ),
-                    singleLine = true,
-                    isError = nombre.isBlank()
-                )
-                
-                OutlinedTextField(
-                    value = horario,
-                    onValueChange = { horario = it },
-                    label = { Text("Horario") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    )
-                )
-                
-                OutlinedTextField(
-                    value = profesorTitularId,
-                    onValueChange = { profesorTitularId = it },
-                    label = { Text("ID del profesor titular") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    )
-                )
-                
-                OutlinedTextField(
-                    value = aula,
-                    onValueChange = { aula = it },
-                    label = { Text("Aula") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    )
-                )
-                
-                OutlinedTextField(
-                    value = capacidadMaxima,
-                    onValueChange = { capacidadMaxima = it },
-                    label = { Text("Capacidad máxima") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    )
-                )
-            }
-            
-            // Mostrar el indicador de carga si está cargando
-            LoadingIndicator(
-                isLoading = uiState.isLoading,
-                message = "Cargando datos de la clase..."
-            )
-            
-            // Mostrar mensaje de error si hay alguno
-            uiState.error?.let { error ->
                 Card(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(2.dp)
                 ) {
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        // Nombre de la clase
+                        OutlinedTextField(
+                            value = uiState.nombre,
+                            onValueChange = viewModel::updateNombre,
+                            label = { Text("Nombre de la clase") },
+                            placeholder = { Text("Ej: A, B, Mañana, etc.") },
+                            isError = uiState.nombreError != null,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        // Aula
+                        OutlinedTextField(
+                            value = uiState.aula,
+                            onValueChange = viewModel::updateAula,
+                            label = { Text("Aula") },
+                            placeholder = { Text("Ubicación física del aula") },
+                            isError = uiState.aulaError != null,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        // Horario
+                        OutlinedTextField(
+                            value = uiState.horario,
+                            onValueChange = viewModel::updateHorario,
+                            label = { Text("Horario") },
+                            placeholder = { Text("Ej: Lunes a Viernes 9:00-14:00") },
+                            isError = uiState.horarioError != null,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        // Selector de profesor titular (opcional)
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Profesor Titular (Opcional)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Se puede asignar posteriormente",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            if (uiState.isLoadingProfesores) {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            } else if (uiState.profesoresDisponibles.isEmpty()) {
+                                Text(
+                                    text = "No hay profesores disponibles",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                ProfesorDropdown(
+                                    profesores = uiState.profesoresDisponibles,
+                                    selectedProfesorId = uiState.profesorTitularId,
+                                    onProfesorSelected = viewModel::updateProfesorTitular,
+                                    error = uiState.profesorTitularError,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                    text = "El profesor titular puede asignarse posteriormente en la pantalla de vinculación de profesores a clases",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp, end = 8.dp)
+                                )
+                            }
+                        }
+                        // Estado activo
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = uiState.activo,
+                                    onCheckedChange = viewModel::updateActivo
+                                )
+                                Text(
+                                    text = "Clase activa",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                            Text(
+                                text = "Una clase activa está operativa y visible para profesores y el centro educativo. Si se desactiva, la información se conserva pero no estará disponible para asignación de profesores.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 40.dp, top = 4.dp, end = 16.dp)
+                            )
+                        }
+                        // Capacidad máxima con información adicional
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.capacidadMaxima,
+                                onValueChange = { newValue ->
+                                    if ((newValue.isEmpty() || newValue.all { it.isDigit() }) && newValue.length <= 3) {
+                                        viewModel.updateCapacidadMaxima(newValue)
+                                    }
+                                },
+                                label = { Text("Capacidad máxima") },
+                                placeholder = { Text("Ej: 25") },
+                                isError = uiState.capacidadMaximaError != null,
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                supportingText = {
+                                    if (uiState.capacidadMaximaError != null) {
+                                        Text(
+                                            text = when (uiState.capacidadMaximaError) {
+                                                "La capacidad máxima es obligatoria" -> "⚠️ Este campo no puede estar vacío"
+                                                "Introduce un número válido" -> "⚠️ Solo números enteros son permitidos"
+                                                "La capacidad debe ser mayor que 0" -> "⚠️ El valor debe ser al menos 1"
+                                                else -> "⚠️ ${uiState.capacidadMaximaError}"
+                                            },
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "Introduce un número positivo (máximo 999)",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Define el número máximo de alumnos que pueden asignarse a esta clase.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            // Indicador de carga
+            if (uiState.isLoading) {
+                LoadingIndicator(fullScreen = true)
+            }
+            // Mostrar errores generales mediante Snackbar
+            LaunchedEffect(uiState.error) {
+                uiState.error?.let { error ->
+                    snackbarHostState.showSnackbar(message = error)
+                    viewModel.clearError()
                 }
             }
         }

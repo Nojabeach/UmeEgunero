@@ -213,7 +213,7 @@ fun ListaCursosScreen(
                                 viewModel.eliminarCurso(curso.id)
                             },
                             onVerClasesClick = {
-                                navController.navigate(AppScreens.GestionClases.createRoute(curso.id))
+                                navController.navigate("gestor_academico/CLASES?centroId=${curso.centroId}&cursoId=${curso.id}&selectorCentroBloqueado=true&selectorCursoBloqueado=true&perfilUsuario=ADMIN_CENTRO")
                             }
                         )
                     }

@@ -97,4 +97,40 @@ class GestorAcademicoViewModel @Inject constructor(
     fun onCursoMenuExpandedChanged(expanded: Boolean) {
         _uiState.update { it.copy(cursoMenuExpanded = expanded) }
     }
+
+    fun eliminarCurso(cursoId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val result = cursoRepository.deleteCurso(cursoId)
+                if (result is com.tfg.umeegunero.util.Result.Success) {
+                    // Recargar cursos tras eliminar
+                    val centroId = _uiState.value.selectedCentro?.id
+                    if (centroId != null) cargarCursos(centroId)
+                } else if (result is com.tfg.umeegunero.util.Result.Error) {
+                    _uiState.update { it.copy(error = "Error al eliminar curso: ${result.exception?.message}", isLoading = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error inesperado al eliminar curso: ${e.message}", isLoading = false) }
+            }
+        }
+    }
+
+    fun eliminarClase(claseId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val result = claseRepository.eliminarClase(claseId)
+                if (result is com.tfg.umeegunero.util.Result.Success) {
+                    // Recargar clases tras eliminar
+                    val cursoId = _uiState.value.selectedCurso?.id
+                    if (cursoId != null) cargarClases(cursoId)
+                } else if (result is com.tfg.umeegunero.util.Result.Error) {
+                    _uiState.update { it.copy(error = "Error al eliminar clase: ${result.exception?.message}", isLoading = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error inesperado al eliminar clase: ${e.message}", isLoading = false) }
+            }
+        }
+    }
 } 

@@ -174,10 +174,7 @@ fun AdminDashboardScreen(
                         onGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
                         onAddCentro = { navController.navigate(AppScreens.AddCentro.route) },
                         onGestionCursos = { navController.navigate(AppScreens.GestionCursos.route) },
-                        onGestionClases = {
-                            // Navegación a la pantalla de clases con selector editable
-                            navController.navigate("gestion_clases/0?centroId=&selectorCursoBloqueado=false")
-                        },
+                        onGestionClases = { },
                         onGestionUsuarios = { navController.navigate(AppScreens.GestionUsuarios.route) },
                         onAddUsuario = { navController.navigate(AppScreens.AddUser.createRoute(true)) }
                     )

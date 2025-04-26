@@ -155,7 +155,7 @@ fun GestionCursosYClasesScreen(
                             curso = curso,
                             onItemClick = { 
                                 // Navegar a la pantalla de clases del curso
-                                navController.navigate(AppScreens.GestionClases.createRoute(curso.id))
+                                navController.navigate("gestor_academico/CLASES?centroId=${curso.centroId}&cursoId=${curso.id}&selectorCentroBloqueado=true&selectorCursoBloqueado=true&perfilUsuario=ADMIN_CENTRO")
                             },
                             onEditClick = {
                                 cursoSeleccionado = curso

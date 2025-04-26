@@ -50,8 +50,8 @@ fun ListFamiliarScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Gestión de Familiares") },
+            CenterAlignedTopAppBar(
+                title = { Text("Gestión de Familiares", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -61,10 +61,9 @@ fun ListFamiliarScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
@@ -134,7 +133,8 @@ fun ListFamiliarScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(uiState.familiares) { familiar ->
                     FamiliarItem(
@@ -149,8 +149,6 @@ fun ListFamiliarScreen(
                             viewModel.deleteFamiliar(familiar.dni)
                         }
                     )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }

@@ -18,6 +18,7 @@ import com.tfg.umeegunero.ui.components.OutlinedTextFieldWithError
 import com.tfg.umeegunero.ui.components.SnackbarHost
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,42 +48,50 @@ fun EditCursoScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Editar Curso") },
+            CenterAlignedTopAppBar(
+                title = { Text("Editar Curso", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.saveCurso() },
-                        enabled = !uiState.isLoading
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = "Guardar")
-                    }
-                }
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { viewModel.saveCurso() },
+                icon = { Icon(Icons.Default.Save, contentDescription = "Guardar") },
+                text = { Text("Guardar") },
+                containerColor = MaterialTheme.colorScheme.primary
             )
         }
     ) { paddingValues ->
-        UmeEguneroTheme {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                if (uiState.isLoading) {
-                    FormProgressIndicator(
-                        currentStep = 1,
-                        totalSteps = 1,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (uiState.isLoading) {
+                FormProgressIndicator(
+                    currentStep = 1,
+                    totalSteps = 1,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         OutlinedTextFieldWithError(
                             value = uiState.nombre,
@@ -91,7 +100,6 @@ fun EditCursoScreen(
                             errorMessage = uiState.validationErrors["nombre"] ?: "",
                             modifier = Modifier.fillMaxWidth()
                         )
-
                         OutlinedTextFieldWithError(
                             value = uiState.descripcion,
                             onValueChange = { viewModel.updateDescripcion(it) },
@@ -101,7 +109,6 @@ fun EditCursoScreen(
                             maxLines = 3,
                             modifier = Modifier.fillMaxWidth()
                         )
-
                         OutlinedTextFieldWithError(
                             value = uiState.edadMinima.toString(),
                             onValueChange = { viewModel.updateEdadMinima(it.toIntOrNull() ?: 0) },
@@ -110,7 +117,6 @@ fun EditCursoScreen(
                             keyboardType = KeyboardType.Number,
                             modifier = Modifier.fillMaxWidth()
                         )
-
                         OutlinedTextFieldWithError(
                             value = uiState.edadMaxima.toString(),
                             onValueChange = { viewModel.updateEdadMaxima(it.toIntOrNull() ?: 0) },
@@ -119,7 +125,6 @@ fun EditCursoScreen(
                             keyboardType = KeyboardType.Number,
                             modifier = Modifier.fillMaxWidth()
                         )
-
                         OutlinedTextFieldWithError(
                             value = uiState.anioAcademico,
                             onValueChange = { viewModel.updateAnioAcademico(it) },
@@ -127,7 +132,6 @@ fun EditCursoScreen(
                             errorMessage = uiState.validationErrors["anioAcademico"] ?: "",
                             modifier = Modifier.fillMaxWidth()
                         )
-
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically

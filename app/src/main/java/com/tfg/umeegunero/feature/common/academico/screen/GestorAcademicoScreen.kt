@@ -26,6 +26,14 @@ import androidx.compose.runtime.remember
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import com.tfg.umeegunero.ui.theme.AcademicoColor
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Class
 
 enum class ModoVisualizacion { CURSOS, CLASES }
 
@@ -51,6 +59,9 @@ fun GestorAcademicoScreen(
     val error = uiState.error
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var itemToDelete by remember { mutableStateOf<String?>(null) }
+    var deleteType by remember { mutableStateOf("") } // "curso" o "clase"
 
     // Mostrar error en Snackbar
     LaunchedEffect(error) {
@@ -60,6 +71,30 @@ fun GestorAcademicoScreen(
     }
 
     Scaffold(
+        topBar = {
+            if (modo == ModoVisualizacion.CURSOS) {
+                CenterAlignedTopAppBar(
+                    title = { Text("Gestión de Cursos", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = AcademicoColor,
+                        titleContentColor = Color.White
+                    )
+                )
+            } else {
+                CenterAlignedTopAppBar(
+                    title = { Text("Clases de ${selectedCurso?.nombre ?: "Curso"}", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = { onNavigate("back") }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = AcademicoColor,
+                        titleContentColor = Color.White
+                    )
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = {
@@ -139,11 +174,23 @@ fun GestorAcademicoScreen(
                 }
             } else if (modo == ModoVisualizacion.CURSOS && cursos.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No hay cursos para este centro.", style = MaterialTheme.typography.bodyLarge)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(64.dp), tint = AcademicoColor.copy(alpha = 0.5f))
+                        Spacer(Modifier.height(16.dp))
+                        Text("No hay cursos para este centro.", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { onNavigate("back") }) { Text("Volver") }
+                    }
                 }
             } else if (modo == ModoVisualizacion.CLASES && clases.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No hay clases para este curso.", style = MaterialTheme.typography.bodyLarge)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Class, contentDescription = null, modifier = Modifier.size(64.dp), tint = AcademicoColor.copy(alpha = 0.5f))
+                        Spacer(Modifier.height(16.dp))
+                        Text("No hay clases para este curso.", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { onNavigate("back") }) { Text("Volver") }
+                    }
                 }
             } else {
                 AnimatedVisibility(
@@ -158,7 +205,9 @@ fun GestorAcademicoScreen(
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
+                                        .padding(vertical = 6.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    elevation = CardDefaults.cardElevation(4.dp),
                                     onClick = { onNavigate("gestor_academico/CLASES?centroId=${selectedCentro?.id ?: centroId}&cursoId=${curso.id}&selectorCentroBloqueado=$selectorCentroBloqueado&selectorCursoBloqueado=true&perfilUsuario=${perfilUsuario.name}") }
                                 ) {
                                     Row(
@@ -166,7 +215,8 @@ fun GestorAcademicoScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Text(text = curso.nombre, style = MaterialTheme.typography.titleMedium)
+                                            Text(text = curso.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(text = "ID: ${curso.id}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                         IconButton(onClick = { expanded = true }) {
                                             Icon(Icons.Default.MoreVert, contentDescription = "Más opciones")
@@ -179,7 +229,12 @@ fun GestorAcademicoScreen(
                                             )
                                             DropdownMenuItem(
                                                 text = { Text("Eliminar") },
-                                                onClick = { /* viewModel.eliminarCurso(curso.id) */ },
+                                                onClick = {
+                                                    itemToDelete = curso.id
+                                                    deleteType = "curso"
+                                                    showDeleteDialog = true
+                                                    expanded = false
+                                                },
                                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
                                             )
                                         }
@@ -194,7 +249,9 @@ fun GestorAcademicoScreen(
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
+                                        .padding(vertical = 6.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    elevation = CardDefaults.cardElevation(4.dp),
                                     onClick = { /* Acción ver/editar clase */ }
                                 ) {
                                     Row(
@@ -202,7 +259,9 @@ fun GestorAcademicoScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Text(text = clase.nombre, style = MaterialTheme.typography.titleMedium)
+                                            Text(text = clase.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(text = "ID: ${clase.id}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(text = "Aula: ${clase.aula}", style = MaterialTheme.typography.bodySmall)
                                         }
                                         IconButton(onClick = { expanded = true }) {
                                             Icon(Icons.Default.MoreVert, contentDescription = "Más opciones")
@@ -215,7 +274,12 @@ fun GestorAcademicoScreen(
                                             )
                                             DropdownMenuItem(
                                                 text = { Text("Eliminar") },
-                                                onClick = { /* viewModel.eliminarClase(clase.id) */ },
+                                                onClick = {
+                                                    itemToDelete = clase.id
+                                                    deleteType = "clase"
+                                                    showDeleteDialog = true
+                                                    expanded = false
+                                                },
                                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
                                             )
                                         }
@@ -226,6 +290,31 @@ fun GestorAcademicoScreen(
                     }
                 }
             }
+        }
+        // Diálogo de confirmación de eliminación
+        if (showDeleteDialog && itemToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Confirmar eliminación") },
+                text = { Text("¿Estás seguro de que quieres eliminar este ${if (deleteType == "curso") "curso" else "clase"}? Esta acción no se puede deshacer.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (deleteType == "curso") {
+                            viewModel.eliminarCurso(itemToDelete!!)
+                        } else {
+                            viewModel.eliminarClase(itemToDelete!!)
+                        }
+                        showDeleteDialog = false
+                        itemToDelete = null
+                    }) { Text("Eliminar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showDeleteDialog = false
+                        itemToDelete = null
+                    }) { Text("Cancelar") }
+                }
+            )
         }
     }
 } 
