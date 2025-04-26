@@ -42,6 +42,8 @@ import com.tfg.umeegunero.feature.centro.viewmodel.VincularProfesorClaseViewMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla para vincular profesores a clases
@@ -79,7 +81,10 @@ fun VincularProfesorClaseScreen(
                 title = { Text("Vincular Profesores a Clases") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
                     }
                 },
                 actions = {
@@ -993,7 +998,11 @@ fun ClasesList(
                     isAsignada = asignada,
                     onClick = { onClick(clase) }
                 )
-                Divider()
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                )
             }
         }
     }

@@ -164,6 +164,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 // Importar los componentes de otros archivos
 import com.tfg.umeegunero.feature.auth.screen.TipoFamiliarOptions
@@ -283,7 +284,7 @@ fun RegistroScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
@@ -727,7 +728,7 @@ fun RegistroScreen(
                     Text("Nombre: ${uiState.form.nombre}")
                     Text("Apellidos: ${uiState.form.apellidos}")
                     Text("Teléfono: ${uiState.form.telefono}")
-                    Text("Tipo familiar: ${uiState.form.subtipo.name ?: "No seleccionado"}")
+                    Text("Tipo familiar: ${uiState.form.subtipo.name}")
                     Text("Porcentaje completado: ${(porcentajeCompletado * 100).toInt()}%")
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -792,14 +793,14 @@ fun PreviewRegistroScreen() {
                 navigationIcon = {
                     IconButton(onClick = { }) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
                 }
             )
         }
-    ) { paddingValues ->
+    ) { _ ->
         RegistroScreen(
             onNavigateBack = { },
             onRegistroCompletado = { },
@@ -1060,7 +1061,7 @@ private fun generatePasswordSuggestions(): List<String> {
         val number = numbers[index % numbers.size]
         val specialChar = special[index % special.size]
         
-        "${word.capitalize()}${number}${specialChar}"
+        "${word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}${number}${specialChar}"
     }
 }
 
