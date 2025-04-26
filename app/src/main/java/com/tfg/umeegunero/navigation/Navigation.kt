@@ -240,36 +240,6 @@ fun Navigation(
         }
         
         // Pantallas de gestión para el centro educativo
-        composable(route = AppScreens.ListaCursos.route) {
-            com.tfg.umeegunero.feature.centro.screen.ListaCursosScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
-        }
-
-        composable(route = AppScreens.ListaClases.route) {
-            com.tfg.umeegunero.feature.centro.screen.ListaClasesScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
-        }
-
-        /* Pantallas de vinculación - temporalmente deshabilitadas
-        composable(route = AppScreens.ListaProfesoresClases.route) {
-            com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
-        }
-
-        composable(route = AppScreens.ListaAlumnosFamilias.route) {
-            com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
-        }
-        */
-
         composable(route = AppScreens.CrearUsuarioRapido.route) {
             com.tfg.umeegunero.feature.centro.screen.CrearUsuarioRapidoScreen(
                 navController = navController,
@@ -320,23 +290,6 @@ fun Navigation(
                 navController = navController,
                 centroId = centroId,
                 viewModel = hiltViewModel()
-            )
-        }
-        
-        // Pantalla para ver detalles de un centro
-        composable(
-            route = AppScreens.DetalleCentro.route,
-            arguments = listOf(
-                navArgument("centroId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
-            com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen(
-                centroId = centroId,
-                viewModel = hiltViewModel(),
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToEdit = { navController.navigate(AppScreens.EditCentro.createRoute(it)) },
-                onDeleteSuccess = { navController.popBackStack() }
             )
         }
         
@@ -701,24 +654,21 @@ fun Navigation(
 
         // Pantalla de gestión de clases
         composable(
-            route = AppScreens.GestionClases.route,
+            route = "gestion_clases/{cursoId}?centroId={centroId}&selectorCursoBloqueado={selectorCursoBloqueado}",
             arguments = listOf(
-                navArgument("cursoId") { type = NavType.StringType }
+                navArgument("cursoId") { type = NavType.StringType },
+                navArgument("centroId") { type = NavType.StringType; defaultValue = ""; nullable = true },
+                navArgument("selectorCursoBloqueado") { type = NavType.BoolType; defaultValue = false }
             )
         ) { backStackEntry ->
-            val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
-            
+            val cursoId = backStackEntry.arguments?.getString("cursoId")
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            val selectorCursoBloqueado = backStackEntry.arguments?.getBoolean("selectorCursoBloqueado") ?: false
             com.tfg.umeegunero.feature.common.academico.screen.GestionClasesScreen(
                 navController = navController,
+                centroId = centroId,
                 cursoId = cursoId,
-                viewModel = hiltViewModel()
-            )
-        }
-
-        // Pantalla de gestión de cursos
-        composable(route = AppScreens.GestionCursos.route) {
-            com.tfg.umeegunero.feature.common.academico.screen.GestionCursosScreen(
-                navController = navController,
+                selectorCursoBloqueado = selectorCursoBloqueado,
                 viewModel = hiltViewModel()
             )
         }
@@ -752,6 +702,99 @@ fun Navigation(
             com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
+            )
+        }
+
+        // Nueva navegación para gestor académico
+        composable(
+            route = "gestor_academico/{modo}?centroId={centroId}&cursoId={cursoId}&selectorCentroBloqueado={selectorCentroBloqueado}&selectorCursoBloqueado={selectorCursoBloqueado}&perfilUsuario={perfilUsuario}",
+            arguments = listOf(
+                navArgument("modo") { type = NavType.StringType },
+                navArgument("centroId") { type = NavType.StringType; defaultValue = ""; nullable = true },
+                navArgument("cursoId") { type = NavType.StringType; defaultValue = ""; nullable = true },
+                navArgument("selectorCentroBloqueado") { type = NavType.BoolType; defaultValue = false },
+                navArgument("selectorCursoBloqueado") { type = NavType.BoolType; defaultValue = false },
+                navArgument("perfilUsuario") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val modo = backStackEntry.arguments?.getString("modo") ?: "CURSOS"
+            val centroId = backStackEntry.arguments?.getString("centroId")
+            val cursoId = backStackEntry.arguments?.getString("cursoId")
+            val selectorCentroBloqueado = backStackEntry.arguments?.getBoolean("selectorCentroBloqueado") ?: false
+            val selectorCursoBloqueado = backStackEntry.arguments?.getBoolean("selectorCursoBloqueado") ?: false
+            val perfilUsuarioStr = backStackEntry.arguments?.getString("perfilUsuario") ?: "ADMIN_CENTRO"
+            val perfilUsuario = when(perfilUsuarioStr) {
+                "ADMIN_APP" -> com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_APP
+                else -> com.tfg.umeegunero.data.model.TipoUsuario.ADMIN_CENTRO
+            }
+            com.tfg.umeegunero.feature.common.academico.screen.GestorAcademicoScreen(
+                modo = com.tfg.umeegunero.feature.common.academico.screen.ModoVisualizacion.valueOf(modo),
+                centroId = centroId,
+                cursoId = cursoId,
+                selectorCentroBloqueado = selectorCentroBloqueado,
+                selectorCursoBloqueado = selectorCursoBloqueado,
+                perfilUsuario = perfilUsuario,
+                onNavigate = { destino -> navController.navigate(destino) }
+            )
+        }
+
+        // Pantalla para añadir un curso
+        composable(
+            route = "add_curso?centroId={centroId}",
+            arguments = listOf(
+                navArgument("centroId") { type = NavType.StringType; defaultValue = ""; nullable = true }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId")
+            com.tfg.umeegunero.feature.common.academico.screen.HiltAddCursoScreen(
+                centroId = centroId,
+                onNavigateBack = { navController.popBackStack() },
+                onCursoAdded = { navController.popBackStack() },
+                navController = navController
+            )
+        }
+
+        // Pantalla para editar un curso
+        composable(
+            route = "edit_curso/{cursoId}",
+            arguments = listOf(
+                navArgument("cursoId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val cursoId = backStackEntry.arguments?.getString("cursoId") ?: ""
+            com.tfg.umeegunero.feature.common.academico.screen.EditCursoScreen(
+                navController = navController
+                // El ViewModel se encarga de cargar el curso por ID
+            )
+        }
+
+        // Pantalla para añadir una clase
+        composable(
+            route = "add_clase?centroId={centroId}&cursoId={cursoId}",
+            arguments = listOf(
+                navArgument("centroId") { type = NavType.StringType; defaultValue = ""; nullable = true },
+                navArgument("cursoId") { type = NavType.StringType; defaultValue = ""; nullable = true }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId")
+            val cursoId = backStackEntry.arguments?.getString("cursoId")
+            com.tfg.umeegunero.feature.common.academico.screen.AddClaseScreen(
+                navController = navController
+                // El ViewModel puede recibir centroId y cursoId si es necesario
+            )
+        }
+
+        // Pantalla para editar una clase
+        composable(
+            route = "edit_clase/{claseId}",
+            arguments = listOf(
+                navArgument("claseId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
+            com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen(
+                navController = navController
+                // El ViewModel se encarga de cargar la clase por ID
             )
         }
     }

@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.BorderStroke
+import com.tfg.umeegunero.data.model.TipoUsuario
 
 /**
  * Pantalla principal del dashboard para administradores de centro educativo.
@@ -166,7 +167,7 @@ fun CentroDashboardScreen(
                         navController.navigate(AppScreens.GestionProfesores.route) 
                     },
                     onNavigateToGestionCursosYClases = { 
-                        navController.navigate(AppScreens.GestionCursosYClases.route) 
+                        navController.navigate("gestion_clases/0?centroId=${uiState.centroId}&selectorCursoBloqueado=false") 
                     },
                     onNavigateToVinculacionFamiliar = { 
                         navController.navigate(AppScreens.VincularAlumnoFamiliar.route) 
@@ -184,13 +185,17 @@ fun CentroDashboardScreen(
                         navController.navigate(AppScreens.ListaCursos.route)
                     },
                     onNavigateToListaClases = {
-                        navController.navigate(AppScreens.ListaClases.route)
+                        navController.navigate("gestion_clases/0?centroId=${uiState.centroId}&selectorCursoBloqueado=false")
                     },
                     onNavigateToVincularProfesorClase = {
                         navController.navigate(AppScreens.VincularProfesorClase.route)
                     },
                     onNavigateToCrearUsuarioRapido = {
                         navController.navigate(AppScreens.CrearUsuarioRapido.route)
+                    },
+                    onNavigateAccionAcademica = { accion ->
+                        val perfil = if (uiState.currentUser?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } == true) "ADMIN_APP" else "ADMIN_CENTRO"
+                        navController.navigate("gestor_academico/$accion?centroId=${uiState.centroId}&selectorCentroBloqueado=${perfil != "ADMIN_APP"}&perfilUsuario=$perfil")
                     },
                     modifier = Modifier.padding(paddingValues)
                 )
@@ -217,6 +222,7 @@ fun CentroDashboardScreen(
  * @param onNavigateToListaClases Acción para navegar a la lista de clases
  * @param onNavigateToVincularProfesorClase Acción para navegar a vincular profesor a clase
  * @param onNavigateToCrearUsuarioRapido Acción para navegar a crear usuario rápido
+ * @param onNavigateAccionAcademica Acción para navegar a gestión académica
  * @param modifier Modificador para personalizar el aspecto
  */
 @Composable
@@ -236,6 +242,7 @@ fun CentroDashboardContent(
     onNavigateToListaClases: () -> Unit,
     onNavigateToVincularProfesorClase: () -> Unit,
     onNavigateToCrearUsuarioRapido: () -> Unit,
+    onNavigateAccionAcademica: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -274,7 +281,7 @@ fun CentroDashboardContent(
                 title = "Cursos",
                 icon = Icons.Default.MenuBook,
                 color = MaterialTheme.colorScheme.primary,
-                onClick = onNavigateToListaCursos,
+                onClick = { onNavigateAccionAcademica("CURSOS") },
                 modifier = Modifier.weight(1f)
             )
             
@@ -282,7 +289,7 @@ fun CentroDashboardContent(
                 title = "Clases",
                 icon = Icons.Default.Class,
                 color = MaterialTheme.colorScheme.secondary,
-                onClick = onNavigateToListaClases,
+                onClick = { onNavigateAccionAcademica("CLASES") },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -775,7 +782,8 @@ fun CentroDashboardContentPreview() {
                 onNavigateToListaCursos = {},
                 onNavigateToListaClases = {},
                 onNavigateToVincularProfesorClase = {},
-                onNavigateToCrearUsuarioRapido = {}
+                onNavigateToCrearUsuarioRapido = {},
+                onNavigateAccionAcademica = {}
             )
         }
     }

@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.feature.common.academico.viewmodel.GestionClasesViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.components.LoadingIndicator
@@ -47,157 +48,112 @@ import com.tfg.umeegunero.ui.theme.AcademicoColorDark
 @Composable
 fun GestionClasesScreen(
     navController: NavController,
-    cursoId: String,
-    viewModel: GestionClasesViewModel = hiltViewModel()
+    centroId: String = "",
+    cursoId: String? = null,
+    selectorCursoBloqueado: Boolean = false,
+    viewModel: GestionClasesViewModel = hiltViewModel(),
+    onBack: () -> Unit = {},
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Efecto para mostrar Snackbar cuando hay un error
-    LaunchedEffect(uiState.error) {
-        if (uiState.error != null) {
-            snackbarHostState.showSnackbar(
-                message = uiState.error ?: "Error desconocido",
-                duration = SnackbarDuration.Short
-            )
-            viewModel.limpiarError()
-        }
-    }
-    
-    // Efecto para mostrar Snackbar cuando hay éxito
-    LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) {
-            snackbarHostState.showSnackbar(
-                message = uiState.successMessage ?: "Operación completada con éxito",
-                duration = SnackbarDuration.Short
-            )
-            viewModel.limpiarExito()
-        }
-    }
+    val uiState by viewModel.uiState.collectAsState()
+    val cursos = uiState.cursos
+    val selectedCurso = uiState.selectedCurso
+    val clases = uiState.clases
+    val isLoading = uiState.isLoading
+    val isLoadingCursos = uiState.isLoadingCursos
+    val error = uiState.error
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        "Gestión de Clases",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    ) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AcademicoColor,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Cabecera con selector de curso
+        if (isLoadingCursos) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Gestión de Clases",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f)
                 )
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { 
-                    // Navegar a la pantalla de añadir clase
-                    navController.navigate(AppScreens.AddClase.createRoute(cursoId, "0"))
-                },
-                icon = { 
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Añadir clase"
-                    ) 
-                },
-                text = { Text("Añadir Clase") },
-                containerColor = AcademicoColor,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Mostrar el contenido principal
-            if (uiState.clases.isEmpty() && !uiState.isLoading) {
-                // No hay clases que mostrar
-                EmptyClasesMessage(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    cursoId = cursoId
-                )
-            } else {
-                // Mostrar la lista de clases
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    itemsIndexed(uiState.clases) { index, clase ->
-                        val animatedVisibilityState = remember {
-                            MutableTransitionState(false).apply { 
-                                targetState = true 
+                if (cursos.isNotEmpty()) {
+                    if (selectorCursoBloqueado) {
+                        // Selector bloqueado
+                        Text(
+                            text = selectedCurso?.nombre ?: "",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                    } else {
+                        // Selector editable
+                        var expanded by remember { mutableStateOf(false) }
+                        Box {
+                            TextButton(onClick = { expanded = true }) {
+                                Text(selectedCurso?.nombre ?: "Selecciona un curso")
+                            }
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                cursos.forEach { curso ->
+                                    DropdownMenuItem(
+                                        text = { Text(curso.nombre) },
+                                        onClick = {
+                                            viewModel.onCursoSelected(curso)
+                                            expanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
-                        
-                        AnimatedVisibility(
-                            visibleState = animatedVisibilityState,
-                            enter = slideInVertically(
-                                initialOffsetY = { it * (index + 1) / 8 },
-                                animationSpec = tween(durationMillis = 300, delayMillis = index * 50)
-                            ) + fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = index * 50)),
-                            exit = fadeOut()
-                        ) {
-                            ClaseItem(
-                                clase = clase,
-                                onEditClick = {
-                                    // Navegar a la pantalla de editar clase con el ID de la clase
-                                    navController.navigate(AppScreens.EditClase.createRoute(clase.id))
-                                },
-                                onDeleteClick = {
-                                    viewModel.mostrarDialogoEliminar(clase)
-                                },
-                                onItemClick = {
-                                    // Navegar a la pantalla de detalle de la clase
-                                    navController.navigate(AppScreens.DetalleClase.createRoute(clase.id))
-                                }
-                            )
-                        }
-                    }
-                    
-                    // Espacio adicional al final para evitar que el FAB tape el último elemento
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
             }
-            
-            // Mostrar el indicador de carga si está cargando
-            if (uiState.isLoading) {
-                LoadingIndicator(
-                    isLoading = true,
-                    message = "Cargando clases..."
-                )
+        }
+        // Subcabecera con info del curso y profesor
+        if (selectedCurso != null) {
+            val profesorId = clases.firstOrNull()?.profesorTitularId ?: ""
+            val numAlumnos = clases.firstOrNull()?.alumnosIds?.size ?: 0
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(text = "Curso: ${selectedCurso.nombre}", style = MaterialTheme.typography.bodyLarge)
+                if (profesorId.isNotBlank()) {
+                    Text(text = "Profesor ID: $profesorId", style = MaterialTheme.typography.bodyMedium)
+                }
+                Text(text = "Alumnos: $numAlumnos", style = MaterialTheme.typography.bodySmall)
             }
-            
-            // Mostrar diálogo de confirmación de eliminación si está visible
-            if (uiState.isDeleteDialogVisible) {
-                DeleteConfirmationDialog(
-                    clase = uiState.selectedClase!!,
-                    onConfirm = { viewModel.eliminarClase(uiState.selectedClase!!.id) },
-                    onDismiss = { viewModel.ocultarDialogoEliminar() }
-                )
+        }
+        // Listado de clases
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
+        } else if (clases.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No hay clases para este curso")
+            }
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(clases) { clase ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(text = clase.nombre, style = MaterialTheme.typography.titleMedium)
+                            Text(text = "Profesor ID: ${clase.profesorTitularId}", style = MaterialTheme.typography.bodyMedium)
+                            Text(text = "Alumnos: ${clase.alumnosIds.size}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+        // Error
+        if (error != null) {
+            Text(text = error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
         }
     }
 }
@@ -430,42 +386,85 @@ private fun ClaseItem(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun GestionClasesScreenPreview() {
-    val clasesPreview = listOf(
-        Clase(
-            id = "1",
-            nombre = "1ºA",
-            cursoId = "curso1",
-            aula = "Aula 101",
-            profesorTitularId = "profesor1",
-            centroId = "centro1",
-            activo = true,
-            capacidadMaxima = 25,
-            horario = "Mañana",
-            profesoresAuxiliaresIds = emptyList(),
-            alumnosIds = emptyList()
-        ),
-        Clase(
-            id = "2",
-            nombre = "1ºB",
-            cursoId = "curso1",
-            aula = "Aula 102",
-            profesorTitularId = "profesor2",
-            centroId = "centro1",
-            activo = true,
-            capacidadMaxima = 25,
-            horario = "Tarde",
-            profesoresAuxiliaresIds = emptyList(),
-            alumnosIds = emptyList()
-        )
+fun CursoSelector(
+    cursos: List<Curso>,
+    selectedCurso: Curso?,
+    onCursoSelected: (String) -> Unit,
+    enabled: Boolean
+) {
+    var expanded by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = selectedCurso?.nombre ?: "Seleccionar curso",
+        onValueChange = {},
+        readOnly = true,
+        enabled = enabled,
+        label = { Text("Curso") },
+        trailingIcon = {
+            if (enabled) {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
     )
-    
-    MaterialTheme {
-        GestionClasesScreen(
-            navController = rememberNavController(),
-            cursoId = ""
-        )
+    DropdownMenu(
+        expanded = expanded && enabled,
+        onDismissRequest = { expanded = false }
+    ) {
+        cursos.forEach { curso ->
+            DropdownMenuItem(
+                text = { Text(curso.nombre) },
+                onClick = {
+                    onCursoSelected(curso.id)
+                    expanded = false
+                }
+            )
+        }
     }
-} 
+}
+
+// @Preview(showBackground = true)
+// @Composable
+// fun GestionClasesScreenPreview() {
+//     val clasesPreview = listOf(
+//         Clase(
+//             id = "1",
+//             nombre = "1ºA",
+//             cursoId = "curso1",
+//             aula = "Aula 101",
+//             profesorTitularId = "profesor1",
+//             centroId = "centro1",
+//             activo = true,
+//             capacidadMaxima = 25,
+//             horario = "Mañana",
+//             profesoresAuxiliaresIds = emptyList(),
+//             alumnosIds = listOf("al1", "al2")
+//         ),
+//         Clase(
+//             id = "2",
+//             nombre = "1ºB",
+//             cursoId = "curso1",
+//             aula = "Aula 102",
+//             profesorTitularId = "profesor2",
+//             centroId = "centro1",
+//             activo = true,
+//             capacidadMaxima = 25,
+//             horario = "Tarde",
+//             profesoresAuxiliaresIds = emptyList(),
+//             alumnosIds = listOf("al3")
+//         )
+//     )
+//     val cursosPreview = listOf(
+//         Curso(id = "curso1", nombre = "Primero ESO", centroId = "centro1", activo = true),
+//         Curso(id = "curso2", nombre = "Segundo ESO", centroId = "centro1", activo = true)
+//     )
+//     MaterialTheme {
+//         Column {
+//             Text("Preview Gestión de Clases")
+//         }
+//     }
+// } 

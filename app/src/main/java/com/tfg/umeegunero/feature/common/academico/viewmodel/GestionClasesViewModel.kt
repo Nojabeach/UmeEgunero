@@ -4,8 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.Curso
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,12 +24,15 @@ import javax.inject.Inject
  */
 data class GestionClasesUiState(
     val clases: List<Clase> = emptyList(),
+    val cursos: List<Curso> = emptyList(),
+    val selectedCurso: Curso? = null,
     val isLoading: Boolean = false,
+    val isLoadingCursos: Boolean = false,
     val error: String? = null,
     val isDeleteDialogVisible: Boolean = false,
-    val selectedClase: Clase? = null,
     val isSuccess: Boolean = false,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val selectedClase: Clase? = null
 )
 
 /**
@@ -35,23 +42,54 @@ data class GestionClasesUiState(
 @HiltViewModel
 class GestionClasesViewModel @Inject constructor(
     private val claseRepository: ClaseRepository,
+    private val cursoRepository: CursoRepository,
+    private val usuarioRepository: UsuarioRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
-    private val cursoId: String = savedStateHandle.get<String>("cursoId") ?: ""
+    private val centroId: String? = savedStateHandle.get<String>("centroId")
+    private val cursoIdNavegacion: String? = savedStateHandle.get<String>("cursoId")
     
     private val _uiState = MutableStateFlow(GestionClasesUiState())
     val uiState: StateFlow<GestionClasesUiState> = _uiState.asStateFlow()
     
     init {
-        Timber.d("Inicializando GestionClasesViewModel con cursoId: $cursoId")
-        if (cursoId.isNotEmpty()) {
-            cargarClasesPorCurso(cursoId)
-        } else {
-            _uiState.update { 
-                it.copy(error = "ID de curso no válido") 
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingCursos = true) }
+            try {
+                val usuario = usuarioRepository.obtenerUsuarioActual()
+                val isAdminApp = usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: false
+                val centroIdFinal = when {
+                    isAdminApp -> centroId ?: usuario?.perfiles?.firstOrNull()?.centroId
+                    else -> usuario?.perfiles?.firstOrNull()?.centroId
+                }
+                if (centroIdFinal != null) {
+                    val cursos = cursoRepository.obtenerCursosPorCentro(centroIdFinal, true)
+                    val selectedCurso = cursos.find { it.id == cursoIdNavegacion } ?: cursos.firstOrNull()
+                    _uiState.update { prev ->
+                        prev.copy(
+                            cursos = cursos,
+                            selectedCurso = selectedCurso,
+                            isLoadingCursos = false
+                        )
+                    }
+                    selectedCurso?.let { cargarClasesPorCurso(it.id) }
+                } else {
+                    _uiState.update { prev ->
+                        prev.copy(error = "No se pudo determinar el centro para cargar cursos", isLoadingCursos = false)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { prev ->
+                    prev.copy(error = "Error inesperado al cargar cursos: ${e.message}", isLoadingCursos = false)
+                }
             }
         }
+    }
+    
+    fun onCursoSelected(curso: Curso) {
+        _uiState.update { it.copy(selectedCurso = curso) }
+        cargarClasesPorCurso(curso.id)
     }
     
     /**
@@ -59,44 +97,35 @@ class GestionClasesViewModel @Inject constructor(
      */
     fun cargarClasesPorCurso(cursoId: String) {
         viewModelScope.launch {
-            _uiState.update { 
-                it.copy(isLoading = true, error = null) 
-            }
-            
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val result = claseRepository.getClasesByCursoId(cursoId)
-                
                 when (result) {
                     is Result.Success -> {
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
                                 clases = result.data,
                                 isLoading = false
-                            ) 
+                            )
                         }
-                        Timber.d("Clases cargadas desde Firestore: ${result.data.size}")
                     }
                     is Result.Error -> {
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
                                 error = "Error al cargar las clases: ${result.exception?.message}",
                                 isLoading = false
-                            ) 
+                            )
                         }
-                        Timber.e(result.exception, "Error al cargar clases desde Firestore")
                     }
-                    else -> {
-                        // State Loading, ignoramos
-                    }
+                    else -> {}
                 }
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         error = "Error inesperado: ${e.message}",
                         isLoading = false
-                    ) 
+                    )
                 }
-                Timber.e(e, "Error inesperado al cargar clases desde Firestore")
             }
         }
     }
@@ -113,7 +142,7 @@ class GestionClasesViewModel @Inject constructor(
             try {
                 // Asegurarse de que los campos mínimos estén establecidos
                 val claseCompleta = clase.copy(
-                    cursoId = cursoId,
+                    cursoId = cursoIdNavegacion ?: "",
                     centroId = clase.centroId.ifBlank { obtenerCentroIdDelCurso() },
                     activo = true
                 )
@@ -123,7 +152,7 @@ class GestionClasesViewModel @Inject constructor(
                 when (result) {
                     is Result.Success -> {
                         // Actualizar el estado UI después de guardar
-                        cargarClasesPorCurso(cursoId)
+                        cargarClasesPorCurso(cursoIdNavegacion ?: "")
                         _uiState.update { 
                             it.copy(
                                 isSuccess = true,
@@ -179,7 +208,7 @@ class GestionClasesViewModel @Inject constructor(
                 when (result) {
                     is Result.Success -> {
                         // Actualizar el estado UI después de eliminar
-                        cargarClasesPorCurso(cursoId)
+                        cargarClasesPorCurso(cursoIdNavegacion ?: "")
                         _uiState.update { 
                             it.copy(
                                 isSuccess = true,

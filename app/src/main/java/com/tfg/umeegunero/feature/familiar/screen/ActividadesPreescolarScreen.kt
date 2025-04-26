@@ -46,7 +46,7 @@ fun ActividadesPreescolarScreen(
     LaunchedEffect(familiarId) {
         viewModel.inicializar(familiarId)
     }
-
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,14 +67,14 @@ fun ActividadesPreescolarScreen(
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
-            )
+                                )
         },
         // Eliminar FloatingActionButton
         floatingActionButton = { /* No FAB needed for familiar view */ }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
                 .padding(paddingValues)
         ) {
             when {
@@ -82,10 +82,10 @@ fun ActividadesPreescolarScreen(
                     // Indicador de carga
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
                 }
 
                 uiState.error != null -> {
@@ -94,10 +94,10 @@ fun ActividadesPreescolarScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
+            Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.padding(16.dp)
-                        ) {
+            ) {
                             Icon(
                                 imageVector = Icons.Default.Error,
                                 contentDescription = null,
@@ -126,56 +126,56 @@ fun ActividadesPreescolarScreen(
                         // Eliminar ClaseSelector
 
                         // Filtros adaptados para Familiar
-                        FiltersSection(
-                            filtroSeleccionado = uiState.filtroSeleccionado,
-                            categoriaSeleccionada = uiState.categoriaSeleccionada,
-                            onFiltroSelected = { viewModel.aplicarFiltro(it) },
-                            onCategoriaSelected = { viewModel.aplicarFiltroCategoria(it) },
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-
+                FiltersSection(
+                    filtroSeleccionado = uiState.filtroSeleccionado,
+                    categoriaSeleccionada = uiState.categoriaSeleccionada,
+                    onFiltroSelected = { viewModel.aplicarFiltro(it) },
+                    onCategoriaSelected = { viewModel.aplicarFiltroCategoria(it) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                
                         // Lista de actividades
-                        if (uiState.actividadesFiltradas.isEmpty()) {
-                            Box(
-                                modifier = Modifier
+                if (uiState.actividadesFiltradas.isEmpty()) {
+                    Box(
+                        modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier.padding(16.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Info,
-                                        contentDescription = null,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
                                         modifier = Modifier.size(48.dp),
                                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                                    )
+                            )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
+                            Text(
                                         text = "No hay actividades para mostrar",
                                         style = MaterialTheme.typography.bodyLarge,
-                                        textAlign = TextAlign.Center
-                                    )
+                                textAlign = TextAlign.Center
+                            )
                                     // Mensaje adaptado para familiar
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
+                            Text(
                                         text = "Consulta más tarde si hay nuevas actividades.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        } else {
-                            LazyColumn(
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f)
                                     .padding(horizontal = 16.dp)
-                            ) {
-                                items(uiState.actividadesFiltradas) { actividad ->
+                    ) {
+                        items(uiState.actividadesFiltradas) { actividad ->
                                     // Usar ActividadItemFamiliar sin onClick de edición
                                     ActividadItemFamiliar(
                                         actividad = actividad
@@ -212,33 +212,33 @@ fun FiltersSection(
         )
 
         // Chips de filtros por estado (Usando Segmented Buttons como ejemplo anterior)
-        SingleChoiceSegmentedButtonRow(
+    SingleChoiceSegmentedButtonRow(
             modifier = Modifier.fillMaxWidth()
-        ) {
-            FiltroActividad.values().forEach { filtro ->
-                SegmentedButton(
-                    selected = filtro == filtroSeleccionado,
-                    onClick = { onFiltroSelected(filtro) },
-                    shape = SegmentedButtonDefaults.itemShape(
-                        index = filtro.ordinal,
-                        count = FiltroActividad.values().size
-                    )
-                ) {
-                    Text(
-                        when (filtro) {
-                            FiltroActividad.TODAS -> "Todas"
-                            FiltroActividad.PENDIENTES -> "Pendientes"
-                            FiltroActividad.REALIZADAS -> "Realizadas"
-                            FiltroActividad.RECIENTES -> "Recientes"
-                        },
-                        maxLines = 1
-                    )
-                }
+    ) {
+        FiltroActividad.values().forEach { filtro ->
+            SegmentedButton(
+                selected = filtro == filtroSeleccionado,
+                onClick = { onFiltroSelected(filtro) },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = filtro.ordinal,
+                    count = FiltroActividad.values().size
+                )
+            ) {
+                Text(
+                    when (filtro) {
+                        FiltroActividad.TODAS -> "Todas"
+                        FiltroActividad.PENDIENTES -> "Pendientes"
+                        FiltroActividad.REALIZADAS -> "Realizadas"
+                        FiltroActividad.RECIENTES -> "Recientes"
+                    },
+                    maxLines = 1
+                )
+            }
             }
         }
-
+        
         Spacer(modifier = Modifier.height(8.dp))
-
+        
         // Chips de categorías (Usando LazyRow como ejemplo anterior)
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -261,25 +261,25 @@ fun FiltersSection(
                     } else null
                 )
             }
-
+            
             // Chips para cada categoría
             items(CategoriaActividad.values()) { categoria ->
                 // Omitir 'OTRA' si no se desea mostrar
                  if (categoria != CategoriaActividad.OTRA) {
-                    FilterChip(
-                        selected = categoriaSeleccionada == categoria,
-                        onClick = { onCategoriaSelected(categoria) },
+                FilterChip(
+                    selected = categoriaSeleccionada == categoria,
+                    onClick = { onCategoriaSelected(categoria) },
                         label = { Text(categoria.display_name) }, // Usar nombre legible
-                        leadingIcon = if (categoriaSeleccionada == categoria) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
+                    leadingIcon = if (categoriaSeleccionada == categoria) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
                                     modifier = Modifier.size(FilterChipDefaults.IconSize)
-                                )
-                            }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
+                            )
+                        }
+                    } else null,
+                    colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = colorCategoriaActividad(categoria.name).copy(alpha = 0.2f),
                             selectedLabelColor = colorCategoriaActividad(categoria.name)
                         )
@@ -336,9 +336,9 @@ fun ActividadItemFamiliar(
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
-
+            
             Spacer(modifier = Modifier.width(16.dp))
-
+            
             // Contenido de la actividad (sin cambios)
             Column(
                 modifier = Modifier.weight(1f)
@@ -348,7 +348,7 @@ fun ActividadItemFamiliar(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-
+                
                 Text(
                     text = actividad.descripcion,
                     style = MaterialTheme.typography.bodyMedium,
@@ -356,7 +356,7 @@ fun ActividadItemFamiliar(
                     maxLines = 2, // O permitir más líneas si es necesario
                     overflow = TextOverflow.Ellipsis
                 )
-
+                
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -366,7 +366,7 @@ fun ActividadItemFamiliar(
                     SuggestionChip(
                         onClick = {},
                         label = {
-                            Text(
+                    Text(
                                 text = when (actividad.estado) {
                                     EstadoActividad.PENDIENTE -> "Pendiente"
                                     EstadoActividad.REALIZADA -> "Realizada"
@@ -393,14 +393,14 @@ fun ActividadItemFamiliar(
                                 "Fecha inválida"
                             }
                         } ?: "Sin fecha",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } 
+            // Eliminar IconButton de edición
                 }
             }
-            // Eliminar IconButton de edición
-        }
-    }
 }
 
 // Helper para nombre legible de Categoría (podría ir en el modelo o utils)

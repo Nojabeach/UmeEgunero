@@ -66,7 +66,7 @@ fun WelcomeScreen(
     onNavigateToTerminosCondiciones: () -> Unit = {}
 ) {
     val isLight = ThemeUtils.isLightTheme()
-
+    
     // Definición de tonos pastel a partir de los colores principales
     val CentroColorPastel = CentroColor.copy(alpha = 0.25f)
     val ProfesorColorPastel = ProfesorColor.copy(alpha = 0.22f)
@@ -132,7 +132,7 @@ fun WelcomeScreen(
         val primaryLineColor = CentroColor.copy(alpha = 0.25f)
         val secondaryLineColor = AcademicoColor.copy(alpha = 0.18f)
         val tertiaryLineColor = GradientEnd.copy(alpha = 0.15f)
-
+        
         // Colores y valores para las ondas en tonos pastel
         val waveColors = listOf(
             CentroColorPastel,
