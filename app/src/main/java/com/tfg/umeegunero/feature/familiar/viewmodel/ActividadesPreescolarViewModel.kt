@@ -3,6 +3,7 @@ package com.tfg.umeegunero.feature.familiar.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.ActividadPreescolar
 import com.tfg.umeegunero.data.model.CategoriaActividad
 import com.tfg.umeegunero.data.model.EstadoActividad
@@ -100,37 +101,53 @@ class ActividadesPreescolarViewModel @Inject constructor(
      */
     private fun cargarAlumnosDelFamiliar(familiarId: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             try {
-                // Simulación temporal de datos hasta que tengamos el método en el repositorio
-                val alumnosInfo = listOf(
-                    AlumnoPreescolarInfo(
-                        id = "alumno1",
-                        nombre = "Ana",
-                        apellidos = "García",
-                        edad = 3,
-                        aula = "Clase A"
-                    ),
-                    AlumnoPreescolarInfo(
-                        id = "alumno2",
-                        nombre = "Pablo",
-                        apellidos = "Rodríguez",
-                        edad = 2,
-                        aula = "Clase B"
-                    )
-                )
-                
-                _uiState.update { state -> 
-                    state.copy(
-                        alumnos = alumnosInfo,
-                        alumnoSeleccionadoId = if (alumnosInfo.isNotEmpty()) alumnosInfo[0].id else "",
-                        isLoading = false
-                    )
+                val alumnosResult: Result<List<Alumno>> = alumnoRepository.obtenerAlumnosPorFamiliar(familiarId)
+
+                when (alumnosResult) {
+                    is Result.Success<List<Alumno>> -> {
+                        val alumnosData = alumnosResult.data
+                        val alumnosInfo = alumnosData.map { alumno: Alumno ->
+                            AlumnoPreescolarInfo(
+                                id = alumno.id,
+                                nombre = alumno.nombre,
+                                apellidos = alumno.apellidos,
+                                edad = calcularEdad(parseFechaNacimiento(alumno.fechaNacimiento)),
+                                aula = alumno.clase.ifEmpty { "Clase desconocida" }
+                            )
+                        }
+
+                        val alumnoIdSeleccionado = if (alumnosInfo.isNotEmpty()) alumnosInfo[0].id else ""
+
+                        _uiState.update { state ->
+                            state.copy(
+                                alumnos = alumnosInfo,
+                                alumnoSeleccionadoId = alumnoIdSeleccionado,
+                                isLoading = false
+                            )
+                        }
+
+                        if (alumnoIdSeleccionado.isNotEmpty()) {
+                            cargarActividadesDelAlumno(alumnoIdSeleccionado)
+                        } else {
+                            _uiState.update { it.copy(isLoading = false) }
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                error = "Error al cargar niños: ${alumnosResult.exception?.message}",
+                                isLoading = false
+                            )
+                        }
+                        Timber.e(alumnosResult.exception, "Error al cargar niños del familiar $familiarId")
+                    }
+                    is Result.Loading -> {
+                       // Ya estamos manejando isLoading al inicio de la corrutina
+                    }
                 }
-                
-                // Cargar actividades del primer alumno
-                if (alumnosInfo.isNotEmpty()) {
-                    cargarActividadesDelAlumno(alumnosInfo[0].id)
-                }
+
             } catch (e: Exception) {
                 _uiState.update { state ->
                     state.copy(
@@ -138,7 +155,7 @@ class ActividadesPreescolarViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-                Timber.e(e, "Error inesperado al cargar niños")
+                Timber.e(e, "Error inesperado al cargar niños del familiar $familiarId")
             }
         }
     }
@@ -160,6 +177,29 @@ class ActividadesPreescolarViewModel @Inject constructor(
         }
         
         return edad
+    }
+
+    /**
+     * Parsea la fecha de nacimiento de String a Date.
+     * Asume formato YYYY-MM-DD u otros formatos comunes.
+     */
+    private fun parseFechaNacimiento(fechaString: String?): Date? {
+        if (fechaString.isNullOrEmpty()) return null
+        // Intentar con varios formatos comunes
+        val formatos = listOf(
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
+            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()),
+            SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+        )
+        for (formato in formatos) {
+            try {
+                return formato.parse(fechaString)
+            } catch (e: Exception) { 
+                // Ignorar y probar el siguiente formato
+            }
+        }
+        Timber.w("No se pudo parsear la fecha de nacimiento: $fechaString")
+        return null // Devolver null si ningún formato funciona
     }
 
     /**
@@ -331,23 +371,20 @@ class ActividadesPreescolarViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
 
             try {
-                val resultado = actividadRepository.marcarComoRevisada(actividadId, comentario)
-                
-                when (resultado) {
-                    is Result.Success -> {
-                        // Actualizar localmente
-                        val actividadesActualizadas = _uiState.value.actividades.map { actividad -> 
-                            if (actividad.id == actividadId) {
-                                actividad.copy(
-                                    revisadaPorFamiliar = true,
-                                    fechaRevision = Timestamp.now(),
-                                    comentariosFamiliar = comentario
-                                )
-                            } else {
-                                actividad
-                            }
-                        }
-                        
+                val actividadesActualizadas = _uiState.value.actividades.map { actividad ->
+                    if (actividad.id == actividadId) {
+                        actividad.copy(
+                            revisadaPorFamiliar = true,
+                            fechaRevision = Timestamp.now(),
+                            comentariosFamiliar = comentario
+                        )
+                    } else {
+                        actividad
+                    }
+                }
+
+                when (val resultado: Result<Boolean> = actividadRepository.marcarComoRevisada(actividadId, comentario)) {
+                    is Result.Success<Boolean> -> {
                         _uiState.update { state ->
                             state.copy(
                                 actividades = actividadesActualizadas,
@@ -358,16 +395,15 @@ class ActividadesPreescolarViewModel @Inject constructor(
                                 ),
                                 mensaje = "Actividad marcada como revisada",
                                 isLoading = false,
-                                // Actualizar también la actividad seleccionada si es la que se modificó
                                 actividadSeleccionada = if (state.actividadSeleccionada?.id == actividadId) {
                                     actividadesActualizadas.find { it.id == actividadId }
                                 } else {
                                     state.actividadSeleccionada
-                                }
+                                },
+                                mostrarDetalleActividad = false
                             )
                         }
                     }
-                    
                     is Result.Error -> {
                         _uiState.update { state ->
                             state.copy(
@@ -377,7 +413,6 @@ class ActividadesPreescolarViewModel @Inject constructor(
                         }
                         Timber.e(resultado.exception, "Error al marcar actividad como revisada")
                     }
-                    
                     is Result.Loading -> {
                         // Estado de carga ya actualizado
                     }

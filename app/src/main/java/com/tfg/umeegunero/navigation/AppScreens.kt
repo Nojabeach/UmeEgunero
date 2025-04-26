@@ -44,6 +44,9 @@ sealed class AppScreens(val route: String) {
     
     /** Pantalla de preguntas frecuentes */
     object FAQ : AppScreens("faq")
+    
+    /** Pantalla de términos y condiciones */
+    object TerminosCondiciones : AppScreens("terminos_condiciones")
 
     /**
      * Sección: Pantallas principales (dashboards)

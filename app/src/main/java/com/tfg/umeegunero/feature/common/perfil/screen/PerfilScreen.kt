@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -48,11 +47,13 @@ import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.feature.common.perfil.viewmodel.PerfilViewModel
 import com.tfg.umeegunero.feature.common.perfil.viewmodel.PerfilUiState
 import com.tfg.umeegunero.ui.theme.*
+import com.tfg.umeegunero.util.getUserColor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import com.google.firebase.Timestamp
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * Pantalla que muestra el perfil del usuario con diseño moderno Material 3
@@ -84,19 +85,10 @@ fun PerfilScreen(
     // Variable para controlar animaciones
     var showContent by remember { mutableStateOf(false) }
     
-    // Obtener color del tipo de usuario
-    val userColor by remember(uiState.usuario) {
+    // Obtener color específico del tipo de usuario unificado
+    val userColor = remember(uiState.usuario) {
         val tipoUsuario = uiState.usuario?.perfiles?.firstOrNull()?.tipo
-        mutableStateOf(
-            when (tipoUsuario) {
-                TipoUsuario.ADMIN_APP -> AdminColor
-                TipoUsuario.ADMIN_CENTRO -> CentroColor
-                TipoUsuario.PROFESOR -> ProfesorColor
-                TipoUsuario.FAMILIAR -> FamiliarColor
-                TipoUsuario.ALUMNO -> AlumnoColor
-                else -> Primary
-            }
-        )
+        getUserColor(tipoUsuario)
     }
     
     // Lanzar efectos
@@ -154,7 +146,8 @@ fun PerfilScreen(
                         IconButton(onClick = { editMode = true }) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = "Editar perfil"
+                                contentDescription = "Editar perfil",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     } else {
@@ -701,6 +694,7 @@ private fun PerfilHeaderCard(
                             TipoUsuario.PROFESOR -> Icons.Default.School
                             TipoUsuario.FAMILIAR -> Icons.Default.People
                             TipoUsuario.ALUMNO -> Icons.Default.Face
+                            TipoUsuario.DESCONOCIDO -> Icons.Default.Person
                             else -> Icons.Default.Person
                         },
                         contentDescription = null,
@@ -1110,7 +1104,10 @@ private fun AccesoCard(
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
-                Text("Cambiar contraseña")
+                Text(
+                    text = "Cambiar contraseña",
+                    color = Color.White
+                )
             }
             
             ElevatedButton(
@@ -1134,7 +1131,10 @@ private fun AccesoCard(
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
-                Text("Cerrar sesión")
+                Text(
+                    text = "Cerrar sesión",
+                    color = Color.White
+                )
             }
         }
     }

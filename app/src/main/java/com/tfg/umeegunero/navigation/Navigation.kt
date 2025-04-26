@@ -27,6 +27,7 @@ import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.Detal
 import com.tfg.umeegunero.feature.common.comunicacion.screen.BandejaEntradaScreen
 import com.tfg.umeegunero.feature.common.comunicacion.screen.ComponerMensajeScreen
 import com.tfg.umeegunero.feature.familiar.screen.ComunicadosFamiliaScreen
+import com.tfg.umeegunero.feature.common.legal.screen.TerminosCondicionesScreen
 import java.time.LocalDate
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -116,6 +117,9 @@ fun Navigation(
                 },
                 onNavigateToFAQ = {
                     navController.navigate(AppScreens.FAQ.route)
+                },
+                onNavigateToTerminosCondiciones = {
+                    navController.navigate(AppScreens.TerminosCondiciones.route)
                 }
             )
         }
@@ -124,7 +128,8 @@ fun Navigation(
         composable(route = AppScreens.Registro.route) {
             RegistroScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onRegistroCompletado = { navController.navigate(AppScreens.Login.createRoute("FAMILIAR")) }
+                onRegistroCompletado = { navController.navigate(AppScreens.Login.createRoute("FAMILIAR")) },
+                onNavigateToTerminosCondiciones = { navController.navigate(AppScreens.TerminosCondiciones.route) }
             )
         }
         
@@ -138,6 +143,13 @@ fun Navigation(
         // Pantalla de FAQ
         composable(route = AppScreens.FAQ.route) {
             FAQScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de términos y condiciones
+        composable(route = AppScreens.TerminosCondiciones.route) {
+            TerminosCondicionesScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -593,13 +605,6 @@ fun Navigation(
             )
         }
 
-        // Pantalla de gestión de usuarios
-        composable(route = AppScreens.GestionUsuarios.route) {
-            com.tfg.umeegunero.feature.admin.screen.GestionUsuariosScreen(
-                navController = navController
-            )
-        }
-        
         // Pantallas de listado por tipo de usuario
         composable(route = AppScreens.AdminList.route) {
             com.tfg.umeegunero.feature.common.users.screen.ListAdministradoresScreen(

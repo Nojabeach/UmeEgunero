@@ -85,10 +85,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
-import com.tfg.umeegunero.ui.theme.AdminColor
-import com.tfg.umeegunero.ui.theme.CentroColor
-import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import com.tfg.umeegunero.util.getUserColor
 import kotlinx.coroutines.launch
 
 /**
@@ -142,15 +140,8 @@ fun LoginScreen(
         label = "Card Elevation Animation"
     )
 
-    // Color según tipo de usuario
-    val userTypeColor = when (userType) {
-        TipoUsuario.ADMIN_APP -> AdminColor
-        TipoUsuario.ADMIN_CENTRO -> CentroColor
-        TipoUsuario.PROFESOR -> ProfesorColor
-        TipoUsuario.FAMILIAR -> Color(0xFF00C853) // Verde intenso para familiares (mismo valor que FamiliaColor)
-        TipoUsuario.ALUMNO -> Color(0xFFFF9800) // Naranja para alumnos
-        TipoUsuario.DESCONOCIDO -> Color.Gray
-    }
+    // Color según tipo de usuario unificado
+    val userTypeColor = getUserColor(userType)
 
     // Título según tipo de usuario
     val userTypeTitle = when (userType) {

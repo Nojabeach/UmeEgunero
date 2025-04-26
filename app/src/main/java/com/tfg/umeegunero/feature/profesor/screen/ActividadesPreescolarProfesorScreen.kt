@@ -362,7 +362,7 @@ fun FiltrosActividades(
                     onClick = { onCategoriaSeleccionada(categoria) },
                     label = { Text(categoria.name.lowercase().replaceFirstChar { it.uppercase() }) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = colorCategoriaActividad(categoria).copy(alpha = 0.8f),
+                        selectedContainerColor = colorCategoriaActividad(categoria.name).copy(alpha = 0.8f),
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
@@ -398,7 +398,7 @@ fun ActividadItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(colorCategoriaActividad(actividad.categoria))
+                    .background(colorCategoriaActividad(actividad.categoria.name))
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {

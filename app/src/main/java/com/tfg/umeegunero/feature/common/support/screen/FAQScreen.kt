@@ -320,14 +320,6 @@ fun FAQItem(faq: FAQItem) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
-                // Enlace para más información (opcional)
-                TextButton(
-                    onClick = { },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Más información")
-                }
             }
         }
     }
@@ -346,10 +338,6 @@ private fun getCategorias(): List<FAQCategory> {
                 FAQItem(
                     "¿Qué hago si olvido mi contraseña?",
                     "En la pantalla de inicio de sesión, haz clic en '¿Olvidaste tu contraseña?' y sigue las instrucciones para restablecerla a través de tu correo electrónico."
-                ),
-                FAQItem(
-                    "¿Cómo activo la autenticación biométrica?",
-                    "Ve a Configuración > Seguridad y activa la opción de autenticación biométrica. Asegúrate de tener configurada la huella dactilar en tu dispositivo."
                 ),
                 FAQItem(
                     "¿Cómo puedo cambiar mi correo electrónico?",
@@ -424,28 +412,6 @@ private fun getCategorias(): List<FAQCategory> {
                 FAQItem(
                     "¿Dónde puedo ver tutoriales sobre el uso de la aplicación?",
                     "En la sección de ayuda encontrarás tutoriales en video y guías paso a paso sobre todas las funcionalidades de la aplicación."
-                )
-            )
-        ),
-        FAQCategory(
-            title = "Facturación y Pagos",
-            icon = Icons.Default.Payment,
-            items = listOf(
-                FAQItem(
-                    "¿Cómo puedo pagar las cuotas escolares?",
-                    "En la sección 'Pagos' podrás ver las facturas pendientes y realizar pagos a través de los métodos configurados (tarjeta, domiciliación bancaria, etc.)."
-                ),
-                FAQItem(
-                    "¿Recibo factura por los pagos?",
-                    "Sí, todas las facturas se generan automáticamente y puedes encontrarlas en la sección 'Pagos > Historial'. También se envían a tu correo electrónico."
-                ),
-                FAQItem(
-                    "¿Cómo añado un nuevo método de pago?",
-                    "Ve a 'Pagos > Métodos de pago > Añadir nuevo' y sigue los pasos para registrar una nueva tarjeta o cuenta bancaria. Todos los datos se procesan de forma segura."
-                ),
-                FAQItem(
-                    "¿Hay descuentos para hermanos?",
-                    "Sí, las políticas de descuentos para hermanos se aplican automáticamente según la configuración del centro educativo. Puedes consultar los detalles en la sección de pagos."
                 )
             )
         )

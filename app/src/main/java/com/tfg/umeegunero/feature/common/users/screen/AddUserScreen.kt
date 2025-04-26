@@ -97,12 +97,8 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserUiState
 import com.tfg.umeegunero.ui.components.FormProgressIndicator
-import com.tfg.umeegunero.ui.theme.AdminColor
-import com.tfg.umeegunero.ui.theme.AlumnoColor
-import com.tfg.umeegunero.ui.theme.CentroColor
-import com.tfg.umeegunero.ui.theme.FamiliarColor
-import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import com.tfg.umeegunero.util.getUserColor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -362,15 +358,8 @@ fun AddUserScreen(
         else -> "Usuario"
     }
 
-    // Color basado en el tipo de usuario
-    val tipoColor = when (uiState.tipoUsuario) {
-        TipoUsuario.ADMIN_APP -> AdminColor
-        TipoUsuario.ADMIN_CENTRO -> CentroColor
-        TipoUsuario.PROFESOR -> ProfesorColor
-        TipoUsuario.FAMILIAR -> FamiliarColor
-        TipoUsuario.ALUMNO -> AlumnoColor
-        else -> MaterialTheme.colorScheme.primary
-    }
+    // Color unificado según tipo de usuario
+    val userColor = getUserColor(uiState.tipoUsuario)
 
     // Manejo de mensajes de éxito y error
     LaunchedEffect(uiState.success) {
@@ -423,7 +412,7 @@ fun AddUserScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = tipoColor,
+                    containerColor = userColor,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
@@ -454,7 +443,7 @@ fun AddUserScreen(
                 FormProgressIndicator(
                     currentStep = (porcentajeCompletado * 10).toInt() + 1,
                     totalSteps = 10,
-                    progressColor = tipoColor,
+                    progressColor = userColor,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
@@ -940,7 +929,7 @@ fun AddUserScreen(
                     enabled = uiState.isFormValid && !uiState.isLoading,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = tipoColor,
+                        containerColor = userColor,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -982,7 +971,7 @@ fun AddUserScreen(
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = tipoColor)
+                    CircularProgressIndicator(color = userColor)
                 }
             }
         }

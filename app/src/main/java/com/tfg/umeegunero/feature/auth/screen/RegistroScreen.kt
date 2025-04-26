@@ -212,7 +212,8 @@ fun String.calcularPorcentajeCompletado(): Float {
 fun RegistroScreen(
     viewModel: RegistroViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onRegistroCompletado: () -> Unit
+    onRegistroCompletado: () -> Unit,
+    onNavigateToTerminosCondiciones: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -623,7 +624,9 @@ fun RegistroScreen(
                     }
                     
                     // Términos y condiciones
-                    TermsAndConditionsCard()
+                    TermsAndConditionsCard(
+                        onNavigateToTerminosCondiciones = onNavigateToTerminosCondiciones
+                    )
                     
                     // Botón de registro
                     Button(
@@ -797,125 +800,11 @@ fun PreviewRegistroScreen() {
             )
         }
     ) { paddingValues ->
-        // Preview con LazyColumn
-        LazyColumn(
-            modifier = Modifier
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.School,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = "Bienvenido a UmeEgunero",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Text(
-                        text = "Regístrate para acceder a la información de tus hijos",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            
-            // Campos de ejemplo
-            item {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = "Información Personal",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        
-                        OutlinedTextField(
-                            value = "",
-                            onValueChange = { },
-                            label = { Text("Email") },
-                            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        
-                        OutlinedTextField(
-                            value = "",
-                            onValueChange = { },
-                            label = { Text("DNI") },
-                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                }
-            }
-            
-            // Ejemplo de relación familiar
-            item {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Relación con el alumno",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            RelacionFamiliarOptionCard(
-                                selected = true,
-                                onClick = { },
-                                title = "Padre"
-                            )
-                            
-                            RelacionFamiliarOptionCard(
-                                selected = false,
-                                onClick = { },
-                                title = "Madre"
-                            )
-                            
-                            RelacionFamiliarOptionCard(
-                                selected = false,
-                                onClick = { },
-                                title = "Tutor"
-                            )
-                            
-                            RelacionFamiliarOptionCard(
-                                selected = false,
-                                onClick = { },
-                                title = "Otro"
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        RegistroScreen(
+            onNavigateBack = { },
+            onRegistroCompletado = { },
+            onNavigateToTerminosCondiciones = { }
+        )
     }
 }
 
@@ -998,7 +887,9 @@ fun PasswordRequirementItem(
 }
 
 @Composable
-private fun TermsAndConditionsCard() {
+private fun TermsAndConditionsCard(
+    onNavigateToTerminosCondiciones: () -> Unit
+) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
@@ -1022,7 +913,7 @@ private fun TermsAndConditionsCard() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = { /* Abrir términos completos */ }) {
+                TextButton(onClick = onNavigateToTerminosCondiciones) {
                     Text("Ver términos completos")
                 }
             }
