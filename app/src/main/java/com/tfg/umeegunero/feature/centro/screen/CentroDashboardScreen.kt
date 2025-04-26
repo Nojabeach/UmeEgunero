@@ -285,14 +285,6 @@ fun CentroDashboardContent(
                 onClick = onNavigateToListaClases,
                 modifier = Modifier.weight(1f)
             )
-            
-            DashboardActionCard(
-                title = "Centro",
-                icon = Icons.Default.School,
-                color = MaterialTheme.colorScheme.tertiary,
-                onClick = onNavigateToGestionCursosYClases,
-                modifier = Modifier.weight(1f)
-            )
         }
         
         // Título para sección de gestión de personal

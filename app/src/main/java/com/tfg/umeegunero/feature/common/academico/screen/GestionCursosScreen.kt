@@ -50,7 +50,7 @@ fun GestionCursosScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gestión de Cursos") },
+                title = { Text("Gestión de Cursos y Clases") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -87,20 +87,66 @@ fun GestionCursosScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            // Selector de centro siempre visible
+            // Selector de centro
             Text(
-                text = "Selecciona un centro",
+                text = "Centro educativo",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
-            ExposedDropdownMenuBox(
-                expanded = expandedCentroMenu,
-                onExpandedChange = { expandedCentroMenu = !expandedCentroMenu }
-            ) {
+            if (uiState.isAdminApp) {
+                ExposedDropdownMenuBox(
+                    expanded = expandedCentroMenu,
+                    onExpandedChange = { expandedCentroMenu = !expandedCentroMenu }
+                ) {
+                    OutlinedTextField(
+                        value = uiState.centroSeleccionado?.nombre ?: "Seleccionar centro",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Centro Educativo") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Business,
+                                contentDescription = null,
+                                tint = AcademicoColor
+                            )
+                        },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCentroMenu)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = AcademicoColor,
+                            unfocusedBorderColor = AcademicoColor.copy(alpha = 0.5f)
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedCentroMenu,
+                        onDismissRequest = { expandedCentroMenu = false }
+                    ) {
+                        uiState.centros.forEach { centro ->
+                            DropdownMenuItem(
+                                text = { Text(centro.nombre) },
+                                onClick = { 
+                                    viewModel.seleccionarCentro(centro.id)
+                                    expandedCentroMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Business,
+                                        contentDescription = null,
+                                        tint = if (centro.activo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            } else {
                 OutlinedTextField(
-                    value = uiState.centroSeleccionado?.nombre ?: "Seleccionar centro",
+                    value = uiState.centroSeleccionado?.nombre ?: "",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Centro Educativo") },
@@ -111,63 +157,13 @@ fun GestionCursosScreen(
                             tint = AcademicoColor
                         )
                     },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCentroMenu)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
                         focusedBorderColor = AcademicoColor,
                         unfocusedBorderColor = AcademicoColor.copy(alpha = 0.5f)
                     )
                 )
-
-                ExposedDropdownMenu(
-                    expanded = expandedCentroMenu,
-                    onDismissRequest = { expandedCentroMenu = false }
-                ) {
-                    uiState.centros.forEach { centro ->
-                        DropdownMenuItem(
-                            text = { 
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = centro.nombre,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    if (!centro.activo) {
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.errorContainer,
-                                            shape = MaterialTheme.shapes.small
-                                        ) {
-                                            Text(
-                                                text = "Inactivo",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            onClick = { 
-                                viewModel.seleccionarCentro(centro.id)
-                                expandedCentroMenu = false
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Business,
-                                    contentDescription = null,
-                                    tint = if (centro.activo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                                )
-                            }
-                        )
-                    }
-                }
             }
-
             if (uiState.centros.isEmpty()) {
                 Text(
                     text = "No hay centros disponibles",
@@ -176,7 +172,6 @@ fun GestionCursosScreen(
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-
             Spacer(modifier = Modifier.height(24.dp))
 
             // Contenido principal
