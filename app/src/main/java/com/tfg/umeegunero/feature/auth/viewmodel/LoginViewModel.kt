@@ -187,6 +187,15 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
+     * Obtiene el estado actual de la preferencia de recordar usuario
+     * 
+     * @return true si el usuario ha marcado la opción de recordar credenciales, false en caso contrario
+     */
+    fun getRememberUserPreference(): Boolean {
+        return sharedPreferences.getBoolean(PREF_REMEMBER_USER, false)
+    }
+
+    /**
      * Actualiza la preferencia de recordar usuario
      */
     fun updateRememberUser(remember: Boolean) {

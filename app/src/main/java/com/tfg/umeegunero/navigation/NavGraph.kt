@@ -10,7 +10,8 @@ import com.tfg.umeegunero.feature.auth.screen.CambioContrasenaScreen
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.data.model.TipoUsuario
 import androidx.navigation.NavType
-import com.tfg.umeegunero.feature.admin.screen.GestionUsuariosScreen
+import com.tfg.umeegunero.feature.common.users.screen.GestionUsuariosScreen
+import com.tfg.umeegunero.feature.common.perfil.screen.EditProfileScreen
 
 @Composable
 fun NavGraph(
@@ -82,8 +83,40 @@ fun NavGraph(
             )
         }
         
-        composable(AppScreens.GestionUsuarios.route) {
-            GestionUsuariosScreen(navController = navController)
+        // Pantalla de gestión de usuarios
+        composable(
+            route = AppScreens.GestionUsuarios.route,
+            arguments = listOf(
+                navArgument("isAdminApp") { type = NavType.BoolType }
+            )
+        ) { backStackEntry ->
+            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
+            GestionUsuariosScreen(
+                isAdminApp = isAdminApp,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToUserList = { route ->
+                    navController.navigate(route) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToAddUser = { isAdmin ->
+                    navController.navigate(AppScreens.AddUser.createRoute(isAdmin)) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToProfile = {
+                    navController.navigate(AppScreens.EditProfile.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        
+        // Pantalla de edición de perfil
+        composable(route = AppScreens.EditProfile.route) {
+            EditProfileScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
         
         composable(AppScreens.DummyEstadisticas.route) {

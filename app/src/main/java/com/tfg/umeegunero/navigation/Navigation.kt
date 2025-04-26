@@ -37,6 +37,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserUiState
+import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
+import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
+import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
+import com.tfg.umeegunero.feature.common.users.screen.GestionUsuariosScreen
+import com.tfg.umeegunero.feature.common.perfil.screen.EditProfileScreen
 
 /**
  * Navegación principal de la aplicación
@@ -223,9 +228,42 @@ fun Navigation(
 
         // Pantalla de administración
         composable(route = AppScreens.AdminDashboard.route) {
+            val viewModel: AdminDashboardViewModel = hiltViewModel()
             AdminDashboardScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
+                viewModel = viewModel,
+                onNavigateToGestionUsuarios = { navController.navigate(AppScreens.GestionUsuarios.route) },
+                onNavigateToGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
+                onNavigateToEstadisticas = { navController.navigate(AppScreens.Estadisticas.route) },
+                onNavigateToSeguridad = { navController.navigate(AppScreens.Seguridad.route) },
+                onNavigateToTema = { 
+                    navController.navigate(AppScreens.Config.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToEmailConfig = { navController.navigate(AppScreens.EmailConfig.route) },
+                onNavigateToNotificaciones = { navController.navigate(AppScreens.Notificaciones.route) },
+                onNavigateToComunicados = { navController.navigate(AppScreens.ComunicadosCirculares.route) },
+                onNavigateToBandejaEntrada = { navController.navigate(AppScreens.BandejaEntrada.route) },
+                onNavigateToComponerMensaje = { navController.navigate(AppScreens.ComponerMensaje.route) },
+                onNavigateToSoporteTecnico = { navController.navigate(AppScreens.SoporteTecnico.route) },
+                onNavigateToFAQ = { navController.navigate(AppScreens.FAQ.route) },
+                onNavigateToTerminos = { navController.navigate(AppScreens.TerminosCondiciones.route) },
+                onNavigateToLogout = {
+                    // Cerrar sesión y navegar a la pantalla de login
+                    viewModel.logout()
+                    navController.navigate(AppScreens.Login.createRoute("ADMIN")) {
+                        popUpTo(AppScreens.AdminDashboard.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Pantalla de configuración
+        composable(route = AppScreens.Config.route) {
+            ConfiguracionScreen(
+                perfil = PerfilConfiguracion.ADMIN,
+                onNavigateBack = { navController.popBackStack() },
+                onMenuClick = { /* Implementar si es necesario */ }
             )
         }
 
@@ -490,26 +528,32 @@ fun Navigation(
             )
         }
         
-        // Pantalla para añadir usuarios
+        // Pantalla de gestión de usuarios
         composable(
-            route = AppScreens.AddUser.route,
+            route = AppScreens.GestionUsuarios.route,
             arguments = listOf(
-                navArgument("isAdminApp") { type = NavType.BoolType },
-                navArgument("tipo") { 
-                    type = NavType.StringType 
-                    nullable = true
-                    defaultValue = null
-                }
+                navArgument("isAdminApp") { type = NavType.BoolType }
             )
         ) { backStackEntry ->
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
-            val tipoUsuario = backStackEntry.arguments?.getString("tipo")
-            
-            com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
-                navController = navController,
-                viewModel = hiltViewModel(),
+            GestionUsuariosScreen(
                 isAdminApp = isAdminApp,
-                tipoPreseleccionado = tipoUsuario
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToUserList = { route ->
+                    navController.navigate(route) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToAddUser = { isAdmin ->
+                    navController.navigate(AppScreens.AddUser.createRoute(isAdmin)) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToProfile = {
+                    navController.navigate(AppScreens.EditProfile.route) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 
@@ -725,6 +769,13 @@ fun Navigation(
             com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen(
                 navController = navController
                 // El ViewModel se encarga de cargar la clase por ID
+            )
+        }
+
+        // Pantalla de edición de perfil
+        composable(route = AppScreens.EditProfile.route) {
+            EditProfileScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

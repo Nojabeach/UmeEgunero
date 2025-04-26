@@ -17,6 +17,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -178,9 +179,58 @@ fun ConfiguracionScreen(
             )
             
             // Selector de tema
-            TemaActual(
-                temaSeleccionado = uiState.temaSeleccionado
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Tema de la aplicación",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Column {
+                        RadioButton(
+                            selected = uiState.temaSeleccionado == TemaPref.SYSTEM,
+                            onClick = { viewModel.setTema(TemaPref.SYSTEM) },
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        Text(
+                            text = "Usar tema del sistema",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        
+                        RadioButton(
+                            selected = uiState.temaSeleccionado == TemaPref.LIGHT,
+                            onClick = { viewModel.setTema(TemaPref.LIGHT) },
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        Text(
+                            text = "Tema claro",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        
+                        RadioButton(
+                            selected = uiState.temaSeleccionado == TemaPref.DARK,
+                            onClick = { viewModel.setTema(TemaPref.DARK) },
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        Text(
+                            text = "Tema oscuro",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 

@@ -156,6 +156,8 @@ fun LoginScreen(
     // Verificar si hay credenciales guardadas
     LaunchedEffect(Unit) {
         viewModel.checkSavedCredentials()
+        // Actualizar el estado del checkbox según las preferencias guardadas
+        rememberUser = viewModel.getRememberUserPreference()
         // Animación de entrada para el contenido
         showContent = true
     }

@@ -9,15 +9,15 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material3.*
@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,6 +52,11 @@ import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCard
 import com.tfg.umeegunero.feature.admin.screen.components.BotonAccion
 import com.tfg.umeegunero.ui.theme.AcademicoColorDark
 import com.tfg.umeegunero.data.model.Usuario
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
+import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 
 /**
  * Dashboard del administrador de la aplicación
@@ -58,8 +65,21 @@ import com.tfg.umeegunero.data.model.Usuario
  * general de la aplicación, incluyendo gestión de centros, reportes, configuración
  * del sistema y comunicaciones.
  *
- * @param navController Controlador de navegación para gestionar la navegación entre pantallas
  * @param viewModel ViewModel que contiene la lógica de negocio del dashboard de administración
+ * @param onNavigateToGestionUsuarios Callback para navegar a la gestión de usuarios
+ * @param onNavigateToGestionCentros Callback para navegar a la gestión de centros
+ * @param onNavigateToEstadisticas Callback para navegar a estadísticas
+ * @param onNavigateToSeguridad Callback para navegar a seguridad
+ * @param onNavigateToTema Callback para navegar a configuración de tema
+ * @param onNavigateToEmailConfig Callback para navegar a configuración de email
+ * @param onNavigateToNotificaciones Callback para navegar a notificaciones
+ * @param onNavigateToComunicados Callback para navegar a comunicados
+ * @param onNavigateToBandejaEntrada Callback para navegar a bandeja de entrada
+ * @param onNavigateToComponerMensaje Callback para navegar a componer mensaje
+ * @param onNavigateToSoporteTecnico Callback para navegar a soporte técnico
+ * @param onNavigateToFAQ Callback para navegar a FAQ
+ * @param onNavigateToTerminos Callback para navegar a términos y condiciones
+ * @param onNavigateToLogout Callback para cerrar sesión
  * 
  * @author Maitane (Estudiante 2º DAM)
  * @version 3.0
@@ -67,284 +87,481 @@ import com.tfg.umeegunero.data.model.Usuario
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
-    navController: NavController,
-    viewModel: AdminDashboardViewModel = hiltViewModel()
+    viewModel: AdminDashboardViewModel = hiltViewModel(),
+    onNavigateToGestionUsuarios: () -> Unit,
+    onNavigateToGestionCentros: () -> Unit,
+    onNavigateToEstadisticas: () -> Unit,
+    onNavigateToSeguridad: () -> Unit,
+    onNavigateToTema: () -> Unit,
+    onNavigateToEmailConfig: () -> Unit,
+    onNavigateToNotificaciones: () -> Unit,
+    onNavigateToComunicados: () -> Unit,
+    onNavigateToBandejaEntrada: () -> Unit,
+    onNavigateToComponerMensaje: () -> Unit,
+    onNavigateToSoporteTecnico: () -> Unit,
+    onNavigateToFAQ: () -> Unit,
+    onNavigateToTerminos: () -> Unit,
+    onNavigateToLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    
-    // Variables para control de animaciones
-    var showContent by remember { mutableStateOf(false) }
-    val currentDate = remember { 
-        LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", Locale("es", "ES")))
-    }
-    
-    // Efecto para mostrar contenido con animación
-    LaunchedEffect(Unit) {
-        showContent = true
-    }
-    
-    // Efecto para manejar navegación
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            scope.launch {
-                snackbarHostState.showSnackbar(message = it)
+    val haptic = LocalHapticFeedback.current
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
+    var showEmailConfigDialog by remember { mutableStateOf(false) }
+    var showNotificacionesDialog by remember { mutableStateOf(false) }
+    var showComunicadosDialog by remember { mutableStateOf(false) }
+    var showBandejaEntradaDialog by remember { mutableStateOf(false) }
+    var showComponerMensajeDialog by remember { mutableStateOf(false) }
+    var showSoporteTecnicoDialog by remember { mutableStateOf(false) }
+    var showFAQDialog by remember { mutableStateOf(false) }
+    var showTerminosDialog by remember { mutableStateOf(false) }
+
+    // Diálogos
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Cerrar sesión") },
+            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        onNavigateToLogout()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("No")
+                }
             }
-        }
+        )
+    }
+
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Cambiar tema") },
+            text = { Text("¿Quieres cambiar el tema de la aplicación?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showThemeDialog = false
+                        onNavigateToTema()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showEmailConfigDialog) {
+        AlertDialog(
+            onDismissRequest = { showEmailConfigDialog = false },
+            title = { Text("Configurar email") },
+            text = { Text("¿Quieres configurar el email de soporte?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showEmailConfigDialog = false
+                        onNavigateToEmailConfig()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEmailConfigDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showNotificacionesDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotificacionesDialog = false },
+            title = { Text("Notificaciones") },
+            text = { Text("¿Quieres gestionar las notificaciones?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showNotificacionesDialog = false
+                        onNavigateToNotificaciones()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotificacionesDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showComunicadosDialog) {
+        AlertDialog(
+            onDismissRequest = { showComunicadosDialog = false },
+            title = { Text("Comunicados") },
+            text = { Text("¿Quieres ver los comunicados?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showComunicadosDialog = false
+                        onNavigateToComunicados()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showComunicadosDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showBandejaEntradaDialog) {
+        AlertDialog(
+            onDismissRequest = { showBandejaEntradaDialog = false },
+            title = { Text("Bandeja de entrada") },
+            text = { Text("¿Quieres ver tu bandeja de entrada?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBandejaEntradaDialog = false
+                        onNavigateToBandejaEntrada()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBandejaEntradaDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showComponerMensajeDialog) {
+        AlertDialog(
+            onDismissRequest = { showComponerMensajeDialog = false },
+            title = { Text("Nuevo mensaje") },
+            text = { Text("¿Quieres componer un nuevo mensaje?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showComponerMensajeDialog = false
+                        onNavigateToComponerMensaje()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showComponerMensajeDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showSoporteTecnicoDialog) {
+        AlertDialog(
+            onDismissRequest = { showSoporteTecnicoDialog = false },
+            title = { Text("Soporte técnico") },
+            text = { Text("¿Quieres acceder al soporte técnico?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSoporteTecnicoDialog = false
+                        onNavigateToSoporteTecnico()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSoporteTecnicoDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showFAQDialog) {
+        AlertDialog(
+            onDismissRequest = { showFAQDialog = false },
+            title = { Text("Preguntas frecuentes") },
+            text = { Text("¿Quieres ver las preguntas frecuentes?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showFAQDialog = false
+                        onNavigateToFAQ()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFAQDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    if (showTerminosDialog) {
+        AlertDialog(
+            onDismissRequest = { showTerminosDialog = false },
+            title = { Text("Términos y condiciones") },
+            text = { Text("¿Quieres ver los términos y condiciones?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showTerminosDialog = false
+                        onNavigateToTerminos()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTerminosDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
     }
     
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Panel de Administración",
-                        fontWeight = FontWeight.Bold
-                    )
+            TopAppBar(
+                title = { Text("Panel de administración") },
+                actions = {
+                    IconButton(onClick = { /* Navegar a perfil */ }) {
+                        Icon(Icons.Default.Person, contentDescription = "Editar perfil")
+                    }
+                    IconButton(onClick = { showLogoutDialog = true }) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Cerrar sesión")
+                    }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = AcademicoColorDark,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = AdminColor,
                     titleContentColor = Color.White,
                     actionIconContentColor = Color.White
-                ),
-                actions = {
-                    // Configuración
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.Perfil.route)
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Configuración"
-                        )
-                    }
-                    
-                    // Cerrar sesión
-                    IconButton(onClick = { 
-                        viewModel.logout()
-                        navController.navigate(AppScreens.Welcome.route) {
-                            popUpTo(AppScreens.AdminDashboard.route) { inclusive = true }
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Cerrar sesión"
-                        )
-                    }
-                }
+                )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = AdminColor.copy(alpha = 0.1f)
     ) { paddingValues ->
-        if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = AcademicoColorDark)
-            }
+                .padding(paddingValues)
+        ) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
         } else {
-            AnimatedVisibility(
-                visible = showContent,
-                enter = fadeIn() + slideInVertically(
-                    initialOffsetY = { it / 2 },
-                    animationSpec = spring(stiffness = Spring.StiffnessLow)
-                ),
-                exit = fadeOut()
-            ) {
-                Column(
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(12.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Tarjeta de bienvenida
-                    WelcomeCardV2(currentDate = currentDate, nombreAdmin = uiState.usuario?.nombre)
-
-                    // --- GESTIÓN ACADÉMICA ---
-                    SectionHeader(title = "Gestión Académica", icon = Icons.Default.Dashboard)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Centros",
-                            descripcion = "Gestión de centros educativos",
-                            icono = Icons.Default.Business,
-                            color = AdminColor,
-                            onClick = { navController.navigate(AppScreens.GestionCentros.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Usuarios",
-                            descripcion = "Gestión de usuarios",
-                            icono = Icons.Default.People,
-                            color = AdminColor,
-                            onClick = { navController.navigate(AppScreens.GestionUsuarios.route) }
-                        )
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Cursos",
-                            descripcion = "Listado y gestión de cursos",
-                            icono = Icons.Default.MenuBook,
-                            color = Color(0xFF8E24AA),
-                            onClick = { navController.navigate(AppScreens.Cursos.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Clases",
-                            descripcion = "Listado y gestión de clases",
-                            icono = Icons.Default.School,
-                            color = Color(0xFF3949AB),
-                            onClick = { navController.navigate(AppScreens.Clases.route) }
-                        )
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Profesores",
-                            descripcion = "Listado de profesores",
-                            icono = Icons.Default.School,
-                            color = Color(0xFF039BE5),
-                            onClick = { navController.navigate(AppScreens.ProfesorList.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Alumnos",
-                            descripcion = "Listado de alumnos",
-                            icono = Icons.Default.ChildCare,
-                            color = Color(0xFF43A047),
-                            onClick = { navController.navigate(AppScreens.AlumnoList.route) }
-                        )
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Familiares",
-                            descripcion = "Listado de familiares",
-                            icono = Icons.Default.FamilyRestroom,
-                            color = Color(0xFFFB8C00),
-                            onClick = { navController.navigate(AppScreens.FamiliarList.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Administradores",
-                            descripcion = "Administradores de la app",
-                            icono = Icons.Default.AdminPanelSettings,
-                            color = Color(0xFF6D4C41),
-                            onClick = { navController.navigate(AppScreens.AdminList.route) }
-                        )
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Admins de centro",
-                            descripcion = "Administradores de centro",
-                            icono = Icons.Default.AccountBalance,
-                            color = Color(0xFF00897B),
-                            onClick = { navController.navigate(AppScreens.AdminCentroList.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Estadísticas",
-                            descripcion = "Análisis y datos",
-                            icono = Icons.Default.BarChart,
-                            color = Color(0xFF1976D2),
-                            onClick = { navController.navigate(AppScreens.Estadisticas.route) }
+                    item {
+                        WelcomeCardV2(
+                            nombre = uiState.currentUser?.nombre,
+                            fecha = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
                         )
                     }
 
-                    // --- CONFIGURACIÓN ---
-                    SectionHeader(title = "Configuración", icon = Icons.Default.Settings)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Seguridad",
-                            descripcion = "Políticas y ajustes de seguridad",
-                            icono = Icons.Default.Security,
-                            color = Color(0xFF1976D2),
-                            onClick = { navController.navigate(AppScreens.Seguridad.route) }
+                    // Sección: Gestión Académica
+                    item {
+                        Text(
+                            text = "Gestión Académica",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        CategoriaCard(
-                            titulo = "Tema",
-                            descripcion = "Oscuro / Claro",
-                            icono = Icons.Default.Brightness6,
-                            color = Color(0xFF388E3C),
-                            onClick = { navController.navigate(AppScreens.Configuracion.route) }
-                        )
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Correo electrónico",
-                            descripcion = "Configurar email de soporte",
-                            icono = Icons.Default.Email,
-                            color = Color(0xFF00796B),
-                            onClick = { navController.navigate(AppScreens.EmailConfig.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Notificaciones",
-                            descripcion = "Configuración de alertas",
-                            icono = Icons.Default.Notifications,
-                            color = Color(0xFFD32F2F),
-                            onClick = { navController.navigate(AppScreens.Notificaciones.route) }
-                        )
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Perfil",
-                            descripcion = "Mi perfil de usuario",
-                            icono = Icons.Default.Person,
-                            color = Color(0xFF5E35B1),
-                            onClick = { navController.navigate(AppScreens.Perfil.route) }
-                        )
-                        Spacer(modifier = Modifier.width(160.dp))
                     }
 
-                    // --- COMUNICACIÓN Y SOPORTE ---
-                    SectionHeader(title = "Comunicación y Soporte", icon = Icons.Default.SupportAgent)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Comunicados",
-                            descripcion = "Gestión de anuncios y mensajes",
-                            icono = Icons.Default.Campaign,
-                            color = Color(0xFF1565C0),
-                            onClick = { navController.navigate(AppScreens.ComunicadosCirculares.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Bandeja de entrada",
-                            descripcion = "Mensajes recibidos",
-                            icono = Icons.Default.Inbox,
-                            color = Color(0xFF00838F),
-                            onClick = { navController.navigate(AppScreens.BandejaEntrada.route) }
+                    // Primera fila: Centros y Usuarios
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "Centros",
+                                icono = Icons.Default.School,
+                                descripcion = "Gestionar centros educativos",
+                                color = MaterialTheme.colorScheme.primary,
+                                onClick = onNavigateToGestionCentros,
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Usuarios",
+                                icono = Icons.Default.People,
+                                descripcion = "Gestionar todos los perfiles de usuario",
+                                color = MaterialTheme.colorScheme.primary,
+                                onClick = onNavigateToGestionUsuarios,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // Segunda fila: Estadísticas
+                    item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                            CategoriaCard(
+                                titulo = "Estadísticas",
+                                icono = Icons.Default.BarChart,
+                                descripcion = "Ver estadísticas generales",
+                                color = MaterialTheme.colorScheme.primary,
+                                onClick = onNavigateToEstadisticas,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    // Sección: Configuración
+                    item {
+                        Text(
+                            text = "Configuración",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 16.dp)
                         )
                     }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "Nuevo mensaje",
-                            descripcion = "Redactar mensaje",
-                            icono = Icons.Default.Edit,
-                            color = Color(0xFF43A047),
-                            onClick = { navController.navigate(AppScreens.ComponerMensaje.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Soporte técnico",
-                            descripcion = "Ayuda y contacto",
-                            icono = Icons.Default.SupportAgent,
-                            color = Color(0xFF6D4C41),
-                            onClick = { navController.navigate(AppScreens.SoporteTecnico.route) }
+
+                    // Primera fila: Seguridad y Tema
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "Seguridad",
+                                icono = Icons.Default.Security,
+                                descripcion = "Configurar aspectos de seguridad",
+                                color = MaterialTheme.colorScheme.primary,
+                                onClick = onNavigateToSeguridad,
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Tema",
+                                icono = Icons.Default.Palette,
+                                descripcion = "Cambiar tema de la aplicación",
+                                color = AdminColor,
+                                onClick = { showThemeDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // Segunda fila: Email y Notificaciones
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "Email",
+                                icono = Icons.Default.Email,
+                                descripcion = "Configurar email de soporte",
+                                color = MaterialTheme.colorScheme.primary,
+                                onClick = { showEmailConfigDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Notificaciones",
+                                icono = Icons.Default.Notifications,
+                                descripcion = "Gestionar notificaciones",
+                                color = MaterialTheme.colorScheme.primary,
+                                onClick = { showNotificacionesDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // Sección: Comunicación y Soporte
+                    item {
+                        Text(
+                            text = "Comunicación y Soporte",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 16.dp)
                         )
                     }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        CategoriaCard(
-                            titulo = "FAQ",
-                            descripcion = "Preguntas frecuentes",
-                            icono = Icons.Default.Help,
-                            color = Color(0xFF1976D2),
-                            onClick = { navController.navigate(AppScreens.FAQ.route) }
-                        )
-                        CategoriaCard(
-                            titulo = "Términos",
-                            descripcion = "Términos y condiciones",
-                            icono = Icons.Default.Description,
-                            color = Color(0xFF757575),
-                            onClick = { navController.navigate(AppScreens.TerminosCondiciones.route) }
-                        )
+
+                    // Primera fila: Comunicados y Soporte técnico
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "Comunicados",
+                                icono = Icons.Default.Campaign,
+                                descripcion = "Ver y gestionar comunicados",
+                                color = AdminColor,
+                                onClick = { showComunicadosDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Soporte técnico",
+                                icono = Icons.Default.Help,
+                                descripcion = "Acceder al soporte técnico",
+                                color = AdminColor,
+                                onClick = { showSoporteTecnicoDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Segunda fila: FAQ y Términos
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "FAQ",
+                                icono = Icons.Default.QuestionAnswer,
+                                descripcion = "Ver preguntas frecuentes",
+                                color = AdminColor,
+                                onClick = { showFAQDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Términos",
+                                icono = Icons.Default.Description,
+                                descripcion = "Ver términos y condiciones",
+                                color = AdminColor,
+                                onClick = { showTerminosDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -364,18 +581,18 @@ fun GridAccionesRapidas(
         BotonAccion(
             icono = Icons.Default.Business,
             texto = "Centros",
-            onClick = onGestionCentros
-        )
+                onClick = onGestionCentros
+            )
         BotonAccion(
             icono = Icons.Default.People,
             texto = "Usuarios",
-            onClick = onGestionUsuarios
-        )
+                onClick = onGestionUsuarios
+            )
         BotonAccion(
             icono = Icons.Default.Security,
             texto = "Configuración",
-            onClick = onConfiguracion
-        )
+                onClick = onConfiguracion
+            )
     }
 }
 
@@ -383,14 +600,14 @@ fun GridAccionesRapidas(
  * Tarjeta de bienvenida mejorada para el dashboard de administración
  */
 @Composable
-fun WelcomeCardV2(currentDate: String, nombreAdmin: String?) {
+private fun WelcomeCardV2(
+    nombre: String?,
+    fecha: String,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = AcademicoColorDark.copy(alpha = 0.15f)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -402,28 +619,28 @@ fun WelcomeCardV2(currentDate: String, nombreAdmin: String?) {
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if (!nombreAdmin.isNullOrBlank()) {
-                    Text(
-                        text = "Bienvenido/a, $nombreAdmin",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                if (!nombre.isNullOrBlank()) {
+                Text(
+                        text = "Bienvenido/a, $nombre",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                     Text(
                         text = "Panel de administración",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    Text(
+                Text(
                         text = "Panel de administración",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 }
                 Text(
-                    text = currentDate,
+                    text = fecha,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -465,7 +682,7 @@ data class AdminDashboardUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val showListadoCentros: Boolean = false,
-    val usuario: Usuario? = null
+    val currentUser: Usuario? = null
 )
 
 /**
@@ -475,6 +692,21 @@ data class AdminDashboardUiState(
 @Composable
 fun VistaPreviaDashboardAdmin() {
     UmeEguneroTheme {
-        AdminDashboardScreen(navController = rememberNavController())
+        AdminDashboardScreen(
+            onNavigateToGestionUsuarios = {},
+            onNavigateToGestionCentros = {},
+            onNavigateToEstadisticas = {},
+            onNavigateToSeguridad = {},
+            onNavigateToTema = {},
+            onNavigateToEmailConfig = {},
+            onNavigateToNotificaciones = {},
+            onNavigateToComunicados = {},
+            onNavigateToBandejaEntrada = {},
+            onNavigateToComponerMensaje = {},
+            onNavigateToSoporteTecnico = {},
+            onNavigateToFAQ = {},
+            onNavigateToTerminos = {},
+            onNavigateToLogout = {}
+        )
     }
 }

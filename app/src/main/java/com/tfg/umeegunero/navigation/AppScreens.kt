@@ -542,7 +542,9 @@ sealed class AppScreens(val route: String) {
     object EmailConfigSoporte : AppScreens("email_config_soporte")
     
     /** Pantalla de gestión de usuarios */
-    object GestionUsuarios : AppScreens("gestion_usuarios")
+    object GestionUsuarios : AppScreens("gestion_usuarios/{isAdminApp}") {
+        fun createRoute(isAdminApp: Boolean) = "gestion_usuarios/$isAdminApp"
+    }
 
     // Pantallas dummy para funcionalidades en desarrollo
     object DummyGestionCursos : AppScreens("dummy_gestion_cursos")
@@ -558,4 +560,7 @@ sealed class AppScreens(val route: String) {
     object DetalleCurso : AppScreens("detalle_curso/{cursoId}") {
         fun createRoute(cursoId: String) = "detalle_curso/$cursoId"
     }
+
+    /** Pantalla de edición del perfil de usuario */
+    object EditProfile : AppScreens("edit_profile")
 } 
