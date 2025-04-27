@@ -237,7 +237,7 @@ fun Navigation(
             AdminDashboardScreen(
                 viewModel = viewModel,
                 onNavigateToGestionUsuarios = { 
-                    navController.navigate(AppScreens.GestionUsuarios.createRoute(true)) {
+                    navController.navigate(AppScreens.GestionUsuarios.route) {
                         launchSingleTop = true
                     }
                 },
@@ -311,13 +311,10 @@ fun Navigation(
                 }
             )
         ) { backStackEntry ->
-            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
             val tipoUsuario = backStackEntry.arguments?.getString("tipo")
-            
             com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
                 navController = navController,
                 viewModel = hiltViewModel(),
-                isAdminApp = isAdminApp,
                 tipoPreseleccionado = tipoUsuario
             )
         }
@@ -545,22 +542,17 @@ fun Navigation(
         // Pantalla de gestión de usuarios
         composable(
             route = AppScreens.GestionUsuarios.route,
-            arguments = listOf(
-                navArgument("isAdminApp") { type = NavType.BoolType }
-            )
-        ) { backStackEntry ->
-            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
+        ) {
             GestionUsuariosScreen(
                 navController = navController,
-                isAdminApp = isAdminApp,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToUserList = { route ->
                     navController.navigate(route) {
                         launchSingleTop = true
                     }
                 },
-                onNavigateToAddUser = { isAdmin ->
-                    navController.navigate(AppScreens.AddUser.createRoute(isAdmin)) {
+                onNavigateToAddUser = {
+                    navController.navigate(AppScreens.AddUser.route) {
                         launchSingleTop = true
                     }
                 },

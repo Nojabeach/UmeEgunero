@@ -85,23 +85,18 @@ fun NavGraph(
         
         // Pantalla de gestión de usuarios
         composable(
-            route = AppScreens.GestionUsuarios.route,
-            arguments = listOf(
-                navArgument("isAdminApp") { type = NavType.BoolType }
-            )
-        ) { backStackEntry ->
-            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
+            route = AppScreens.GestionUsuarios.route
+        ) {
             GestionUsuariosScreen(
                 navController = navController,
-                isAdminApp = isAdminApp,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToUserList = { route ->
                     navController.navigate(route) {
                         launchSingleTop = true
                     }
                 },
-                onNavigateToAddUser = { isAdmin ->
-                    navController.navigate(AppScreens.AddUser.createRoute(isAdmin)) {
+                onNavigateToAddUser = {
+                    navController.navigate(AppScreens.AddUser.route) {
                         launchSingleTop = true
                     }
                 },

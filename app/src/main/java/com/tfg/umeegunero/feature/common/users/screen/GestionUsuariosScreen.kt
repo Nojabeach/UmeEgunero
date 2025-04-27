@@ -29,7 +29,6 @@ import androidx.navigation.NavController
  * 
  * @param viewModel ViewModel que gestiona la lógica de negocio
  * @param navController NavController para la navegación
- * @param isAdminApp Indica si el usuario es administrador de la aplicación
  * @param onNavigateBack Callback para navegar hacia atrás
  * @param onNavigateToUserList Callback para navegar a la lista de usuarios de un tipo específico
  * @param onNavigateToAddUser Callback para navegar a la pantalla de añadir usuario
@@ -40,7 +39,6 @@ import androidx.navigation.NavController
 fun GestionUsuariosScreen(
     viewModel: GestionUsuariosViewModel = hiltViewModel(),
     navController: NavController,
-    isAdminApp: Boolean = true,
     onNavigateBack: () -> Unit = {},
     onNavigateToUserList: (String) -> Unit = {},
     onNavigateToAddUser: (Boolean) -> Unit = {},
@@ -48,6 +46,9 @@ fun GestionUsuariosScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentUser by viewModel.usuarioActual.collectAsState()
+
+    // Calcular si el usuario es ADMIN_APP
+    val isAdminApp = currentUser?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } == true
 
     val handleNavigateToUserList: (String) -> Unit = { route ->
         navController.navigate(route)
@@ -126,8 +127,7 @@ fun GestionUsuariosScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        
-                        // Solo mostrar Administradores si es admin_app
+                        // Mostrar categorías según el rol
                         if (isAdminApp) {
                             UserCategoryCard(
                                 title = "Administradores",
@@ -135,39 +135,35 @@ fun GestionUsuariosScreen(
                                 icon = Icons.Default.AdminPanelSettings,
                                 onClick = { handleNavigateToUserList(AppScreens.AdminList.route) }
                             )
+                            UserCategoryCard(
+                                title = "Administradores de Centro",
+                                subtitle = "Gestión de administradores de centros educativos",
+                                icon = Icons.Default.Business,
+                                onClick = { handleNavigateToUserList(AppScreens.AdminCentroList.route) }
+                            )
+                        } else {
+                            // Profesores
+                            UserCategoryCard(
+                                title = "Profesores",
+                                subtitle = "Gestión de profesores",
+                                icon = Icons.Default.School,
+                                onClick = { handleNavigateToUserList(AppScreens.ProfesorList.route) }
+                            )
+                            // Alumnos
+                            UserCategoryCard(
+                                title = "Alumnos",
+                                subtitle = "Gestión de alumnos",
+                                icon = Icons.Default.Person,
+                                onClick = { handleNavigateToUserList(AppScreens.AlumnoList.route) }
+                            )
+                            // Familiares
+                            UserCategoryCard(
+                                title = "Familiares",
+                                subtitle = "Gestión de familiares",
+                                icon = Icons.Default.People,
+                                onClick = { handleNavigateToUserList(AppScreens.FamiliarList.route) }
+                            )
                         }
-                        
-                        // Administradores de Centro
-                        UserCategoryCard(
-                            title = "Administradores de Centro",
-                            subtitle = "Gestión de administradores de centros educativos",
-                            icon = Icons.Default.Business,
-                            onClick = { handleNavigateToUserList(AppScreens.AdminCentroList.route) }
-                        )
-                        
-                        // Profesores
-                        UserCategoryCard(
-                            title = "Profesores",
-                            subtitle = "Gestión de profesores",
-                            icon = Icons.Default.School,
-                            onClick = { handleNavigateToUserList(AppScreens.ProfesorList.route) }
-                        )
-                        
-                        // Alumnos
-                        UserCategoryCard(
-                            title = "Alumnos",
-                            subtitle = "Gestión de alumnos",
-                            icon = Icons.Default.Person,
-                            onClick = { handleNavigateToUserList(AppScreens.AlumnoList.route) }
-                        )
-                        
-                        // Familiares
-                        UserCategoryCard(
-                            title = "Familiares",
-                            subtitle = "Gestión de familiares",
-                            icon = Icons.Default.People,
-                            onClick = { handleNavigateToUserList(AppScreens.FamiliarList.route) }
-                        )
                     }
                 }
             }

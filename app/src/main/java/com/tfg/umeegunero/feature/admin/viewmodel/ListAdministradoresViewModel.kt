@@ -6,6 +6,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,12 +20,14 @@ data class ListAdministradoresUiState(
     val error: String? = null,
     val administradores: List<Usuario> = emptyList(),
     val filteredAdministradores: List<Usuario> = emptyList(),
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val currentUser: Usuario? = null
 )
 
 @HiltViewModel
 class ListAdministradoresViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ListAdministradoresUiState())
@@ -32,6 +35,7 @@ class ListAdministradoresViewModel @Inject constructor(
 
     init {
         loadAdministradores()
+        loadCurrentUser()
     }
 
     fun loadAdministradores() {
@@ -84,6 +88,15 @@ class ListAdministradoresViewModel @Inject constructor(
                     searchQuery = query,
                     filteredAdministradores = filteredList
                 )
+            }
+        }
+    }
+
+    fun loadCurrentUser() {
+        viewModelScope.launch {
+            val usuario = authRepository.getCurrentUser()
+            if (usuario != null) {
+                _uiState.update { it.copy(currentUser = usuario) }
             }
         }
     }

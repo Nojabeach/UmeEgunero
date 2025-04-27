@@ -75,13 +75,13 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
         setContent {
-            UmeEguneroTheme {
+            val isDarkTheme = rememberDarkThemeState(preferenciasRepository)
+            UmeEguneroTheme(darkTheme = isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    val isDarkTheme = rememberDarkThemeState(preferenciasRepository)
                     
                     // Estado para controlar la visualización del splash
                     var showSplash by remember { mutableStateOf(true) }

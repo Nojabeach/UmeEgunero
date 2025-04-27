@@ -32,6 +32,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun SectionHeader(
@@ -78,7 +79,9 @@ fun CategoriaCard(
     icono: ImageVector,
     color: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    iconTint: Color? = null,
+    border: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -109,7 +112,8 @@ fun CategoriaCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(elevation)
+        elevation = CardDefaults.cardElevation(elevation),
+        border = if (border) BorderStroke(1.dp, color.copy(alpha = 0.35f)) else null
     ) {
         Column(
             modifier = Modifier
@@ -128,7 +132,7 @@ fun CategoriaCard(
                 Icon(
                     imageVector = icono,
                     contentDescription = titulo,
-                    tint = color,
+                    tint = iconTint ?: color,
                     modifier = Modifier.size(22.dp)
                 )
             }

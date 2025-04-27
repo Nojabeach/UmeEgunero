@@ -40,6 +40,7 @@ import com.tfg.umeegunero.components.UserCard
 import com.tfg.umeegunero.feature.admin.viewmodel.ListAdministradoresViewModel
 import com.tfg.umeegunero.ui.theme.AdminColor
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Button
 
 @Composable
 fun HiltListAdministradoresScreen(
@@ -60,6 +61,9 @@ fun ListAdministradoresScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Determinar si el usuario puede crear administradores
+    val puedeCrearAdmin = uiState.currentUser?.perfiles?.any { it.tipo.name == "ADMIN_APP" } == true
 
     // Mostrar mensaje de error si existe
     LaunchedEffect(uiState.error) {
@@ -95,6 +99,18 @@ fun ListAdministradoresScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            // Botón para crear administrador (solo ADMIN_APP)
+            if (puedeCrearAdmin) {
+                Button(
+                    onClick = { /* TODO: Navegar a pantalla de creación de administrador */ },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Text("Crear administrador")
+                }
+            }
+
             // Buscador
             OutlinedTextField(
                 value = uiState.searchQuery,
