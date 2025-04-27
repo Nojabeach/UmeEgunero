@@ -43,6 +43,7 @@ import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModel
 import com.tfg.umeegunero.feature.common.config.viewmodel.ConfiguracionViewModelBase
 import com.tfg.umeegunero.feature.common.config.viewmodel.IPreferenciasRepository
 import com.tfg.umeegunero.feature.common.config.viewmodel.TestConfiguracionViewModel
+import com.tfg.umeegunero.ui.theme.AdminColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -122,6 +123,12 @@ fun ConfiguracionScreen(
                 "• Configuración de privacidad"
     }
 
+    // Configurar el color según el perfil
+    val topBarColor = when (perfil) {
+        PerfilConfiguracion.ADMIN -> AdminColor
+        else -> MaterialTheme.colorScheme.primary
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -145,7 +152,7 @@ fun ConfiguracionScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    containerColor = topBarColor,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
@@ -199,35 +206,50 @@ fun ConfiguracionScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Column {
-                        RadioButton(
-                            selected = uiState.temaSeleccionado == TemaPref.SYSTEM,
-                            onClick = { viewModel.setTema(TemaPref.SYSTEM) },
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        Text(
-                            text = "Usar tema del sistema",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            RadioButton(
+                                selected = uiState.temaSeleccionado == TemaPref.SYSTEM,
+                                onClick = { viewModel.setTema(TemaPref.SYSTEM) }
+                            )
+                            Text(
+                                text = "Usar tema del sistema",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
                         
-                        RadioButton(
-                            selected = uiState.temaSeleccionado == TemaPref.LIGHT,
-                            onClick = { viewModel.setTema(TemaPref.LIGHT) },
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        Text(
-                            text = "Tema claro",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            RadioButton(
+                                selected = uiState.temaSeleccionado == TemaPref.LIGHT,
+                                onClick = { viewModel.setTema(TemaPref.LIGHT) }
+                            )
+                            Text(
+                                text = "Tema claro",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
                         
-                        RadioButton(
-                            selected = uiState.temaSeleccionado == TemaPref.DARK,
-                            onClick = { viewModel.setTema(TemaPref.DARK) },
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        Text(
-                            text = "Tema oscuro",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            RadioButton(
+                                selected = uiState.temaSeleccionado == TemaPref.DARK,
+                                onClick = { viewModel.setTema(TemaPref.DARK) }
+                            )
+                            Text(
+                                text = "Tema oscuro",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
                     }
                 }
             }

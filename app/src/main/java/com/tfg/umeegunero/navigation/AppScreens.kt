@@ -185,7 +185,7 @@ sealed class AppScreens(val route: String) {
     /** Pantalla de configuración de la aplicación */
     object Config : AppScreens("config")
     
-    /** Pantalla de perfil del usuario actual */
+    /** Pantalla de perfil del usuario */
     object Perfil : AppScreens("perfil")
     
     /** 

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,6 +58,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
+import com.tfg.umeegunero.feature.admin.screen.components.DashboardItem
 
 /**
  * Dashboard del administrador de la aplicación
@@ -80,6 +82,7 @@ import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
  * @param onNavigateToFAQ Callback para navegar a FAQ
  * @param onNavigateToTerminos Callback para navegar a términos y condiciones
  * @param onNavigateToLogout Callback para cerrar sesión
+ * @param onNavigateToProfile Callback para navegar a perfil
  * 
  * @author Maitane (Estudiante 2º DAM)
  * @version 3.0
@@ -88,7 +91,7 @@ import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 @Composable
 fun AdminDashboardScreen(
     viewModel: AdminDashboardViewModel = hiltViewModel(),
-    onNavigateToGestionUsuarios: () -> Unit,
+    onNavigateToGestionUsuarios: () -> Unit = {},
     onNavigateToGestionCentros: () -> Unit,
     onNavigateToEstadisticas: () -> Unit,
     onNavigateToSeguridad: () -> Unit,
@@ -101,7 +104,8 @@ fun AdminDashboardScreen(
     onNavigateToSoporteTecnico: () -> Unit,
     onNavigateToFAQ: () -> Unit,
     onNavigateToTerminos: () -> Unit,
-    onNavigateToLogout: () -> Unit
+    onNavigateToLogout: () -> Unit,
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val haptic = LocalHapticFeedback.current
@@ -350,9 +354,15 @@ fun AdminDashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Panel de administración") },
+                title = { 
+                    Text(
+                        "Panel de administración",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    ) 
+                },
                 actions = {
-                    IconButton(onClick = { /* Navegar a perfil */ }) {
+                    IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Default.Person, contentDescription = "Editar perfil")
                     }
                     IconButton(onClick = { showLogoutDialog = true }) {
@@ -366,7 +376,7 @@ fun AdminDashboardScreen(
                 )
             )
         },
-        containerColor = AdminColor.copy(alpha = 0.1f)
+        containerColor = AdminColor.copy(alpha = 0.05f)
     ) { paddingValues ->
             Box(
                 modifier = Modifier
@@ -409,17 +419,17 @@ fun AdminDashboardScreen(
                         ) {
                             CategoriaCard(
                                 titulo = "Centros",
-                                icono = Icons.Default.School,
+                                icono = Icons.Default.Business,
                                 descripcion = "Gestionar centros educativos",
-                                color = MaterialTheme.colorScheme.primary,
+                                color = AdminColor,
                                 onClick = onNavigateToGestionCentros,
                                 modifier = Modifier.weight(1f)
                             )
                             CategoriaCard(
                                 titulo = "Usuarios",
                                 icono = Icons.Default.People,
-                                descripcion = "Gestionar todos los perfiles de usuario",
-                                color = MaterialTheme.colorScheme.primary,
+                                descripcion = "Gestión de usuarios del sistema",
+                                color = AdminColor,
                                 onClick = onNavigateToGestionUsuarios,
                                 modifier = Modifier.weight(1f)
                             )
@@ -428,19 +438,14 @@ fun AdminDashboardScreen(
 
                     // Segunda fila: Estadísticas
                     item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                            CategoriaCard(
-                                titulo = "Estadísticas",
-                                icono = Icons.Default.BarChart,
-                                descripcion = "Ver estadísticas generales",
-                                color = MaterialTheme.colorScheme.primary,
-                                onClick = onNavigateToEstadisticas,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                        CategoriaCard(
+                            titulo = "Estadísticas",
+                            icono = Icons.Default.BarChart,
+                            descripcion = "Ver estadísticas generales",
+                            color = AdminColor,
+                            onClick = onNavigateToEstadisticas,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     // Sección: Configuración
@@ -448,7 +453,7 @@ fun AdminDashboardScreen(
                         Text(
                             text = "Configuración",
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = AdminColor,
                             modifier = Modifier.padding(top = 16.dp)
                         )
                     }
@@ -463,7 +468,7 @@ fun AdminDashboardScreen(
                                 titulo = "Seguridad",
                                 icono = Icons.Default.Security,
                                 descripcion = "Configurar aspectos de seguridad",
-                                color = MaterialTheme.colorScheme.primary,
+                                color = AdminColor,
                                 onClick = onNavigateToSeguridad,
                                 modifier = Modifier.weight(1f)
                             )
@@ -488,7 +493,7 @@ fun AdminDashboardScreen(
                                 titulo = "Email",
                                 icono = Icons.Default.Email,
                                 descripcion = "Configurar email de soporte",
-                                color = MaterialTheme.colorScheme.primary,
+                                color = AdminColor,
                                 onClick = { showEmailConfigDialog = true },
                                 modifier = Modifier.weight(1f)
                             )
@@ -496,7 +501,7 @@ fun AdminDashboardScreen(
                                 titulo = "Notificaciones",
                                 icono = Icons.Default.Notifications,
                                 descripcion = "Gestionar notificaciones",
-                                color = MaterialTheme.colorScheme.primary,
+                                color = AdminColor,
                                 onClick = { showNotificacionesDialog = true },
                                 modifier = Modifier.weight(1f)
                             )
@@ -508,7 +513,7 @@ fun AdminDashboardScreen(
                         Text(
                             text = "Comunicación y Soporte",
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = AdminColor,
                             modifier = Modifier.padding(top = 16.dp)
                         )
                     }
@@ -529,7 +534,7 @@ fun AdminDashboardScreen(
                             )
                             CategoriaCard(
                                 titulo = "Soporte técnico",
-                                icono = Icons.Default.Help,
+                                icono = Icons.AutoMirrored.Filled.Help,
                                 descripcion = "Acceder al soporte técnico",
                                 color = AdminColor,
                                 onClick = { showSoporteTecnicoDialog = true },
@@ -607,7 +612,11 @@ private fun WelcomeCardV2(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = AdminColor.copy(alpha = 0.15f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -620,28 +629,29 @@ private fun WelcomeCardV2(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (!nombre.isNullOrBlank()) {
-                Text(
-                        text = "Bienvenido/a, $nombre",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
                     Text(
-                        text = "Panel de administración",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "¡Bienvenido/a, $nombre!",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminColor
+                    )
+                    Text(
+                        text = "Panel de administración general",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminColor
                     )
                 } else {
-                Text(
-                        text = "Panel de administración",
+                    Text(
+                        text = "Panel de administración general",
                         style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                        fontWeight = FontWeight.Bold,
+                        color = AdminColor
+                    )
                 }
                 Text(
                     text = fecha,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -649,7 +659,7 @@ private fun WelcomeCardV2(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(AcademicoColorDark),
+                    .background(AdminColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

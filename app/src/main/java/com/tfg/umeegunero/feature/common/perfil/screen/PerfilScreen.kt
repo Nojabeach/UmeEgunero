@@ -71,8 +71,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
+    viewModel: PerfilViewModel = hiltViewModel(),
     navController: NavController,
-    viewModel: PerfilViewModel = hiltViewModel()
+    onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()

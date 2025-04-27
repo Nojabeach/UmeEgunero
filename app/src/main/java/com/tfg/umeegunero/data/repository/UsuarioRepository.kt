@@ -1785,4 +1785,17 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene todos los usuarios activos
+     */
+    suspend fun obtenerTodosLosUsuarios(): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            val query = usuariosCollection.whereEqualTo("activo", true).get().await()
+            val usuarios = query.documents.mapNotNull { it.toObject(Usuario::class.java) }
+            return@withContext Result.Success(usuarios)
+        } catch (e: Exception) {
+            return@withContext Result.Error(e)
+        }
+    }
 }

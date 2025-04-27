@@ -92,6 +92,7 @@ fun NavGraph(
         ) { backStackEntry ->
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
             GestionUsuariosScreen(
+                navController = navController,
                 isAdminApp = isAdminApp,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToUserList = { route ->
@@ -115,6 +116,7 @@ fun NavGraph(
         // Pantalla de edición de perfil
         composable(route = AppScreens.EditProfile.route) {
             EditProfileScreen(
+                navController = navController,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

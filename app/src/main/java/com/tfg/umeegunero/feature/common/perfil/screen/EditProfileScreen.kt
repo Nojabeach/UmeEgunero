@@ -11,22 +11,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.feature.common.perfil.viewmodel.EditProfileViewModel
+import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     viewModel: EditProfileViewModel = hiltViewModel(),
+    navController: NavController,
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val usuario by viewModel.usuario.collectAsState()
+
+    val handleNavigateBack: () -> Unit = {
+        navController.popBackStack()
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Editar Perfil") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = handleNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -81,7 +87,7 @@ fun EditProfileScreen(
             Button(
                 onClick = {
                     viewModel.guardarCambios()
-                    onNavigateBack()
+                    handleNavigateBack()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {

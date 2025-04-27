@@ -21,12 +21,14 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.feature.common.users.viewmodel.GestionUsuariosViewModel
 import com.tfg.umeegunero.feature.common.users.viewmodel.GestionUsuariosUiState
+import androidx.navigation.NavController
 
 /**
  * Pantalla central para la gestión de usuarios del sistema
  * Permite acceder a las diferentes categorías de usuarios según el perfil del administrador
  * 
  * @param viewModel ViewModel que gestiona la lógica de negocio
+ * @param navController NavController para la navegación
  * @param isAdminApp Indica si el usuario es administrador de la aplicación
  * @param onNavigateBack Callback para navegar hacia atrás
  * @param onNavigateToUserList Callback para navegar a la lista de usuarios de un tipo específico
@@ -37,6 +39,7 @@ import com.tfg.umeegunero.feature.common.users.viewmodel.GestionUsuariosUiState
 @Composable
 fun GestionUsuariosScreen(
     viewModel: GestionUsuariosViewModel = hiltViewModel(),
+    navController: NavController,
     isAdminApp: Boolean = true,
     onNavigateBack: () -> Unit = {},
     onNavigateToUserList: (String) -> Unit = {},
@@ -44,7 +47,11 @@ fun GestionUsuariosScreen(
     onNavigateToProfile: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val usuarioActual by viewModel.usuarioActual.collectAsState()
+    val currentUser by viewModel.usuarioActual.collectAsState()
+
+    val handleNavigateToUserList: (String) -> Unit = { route ->
+        navController.navigate(route)
+    }
 
     Scaffold(
         topBar = {
@@ -126,7 +133,7 @@ fun GestionUsuariosScreen(
                                 title = "Administradores",
                                 subtitle = "Gestión de administradores del sistema",
                                 icon = Icons.Default.AdminPanelSettings,
-                                onClick = { onNavigateToUserList(AppScreens.AdminList.route) }
+                                onClick = { handleNavigateToUserList(AppScreens.AdminList.route) }
                             )
                         }
                         
@@ -135,7 +142,7 @@ fun GestionUsuariosScreen(
                             title = "Administradores de Centro",
                             subtitle = "Gestión de administradores de centros educativos",
                             icon = Icons.Default.Business,
-                            onClick = { onNavigateToUserList(AppScreens.AdminCentroList.route) }
+                            onClick = { handleNavigateToUserList(AppScreens.AdminCentroList.route) }
                         )
                         
                         // Profesores
@@ -143,7 +150,7 @@ fun GestionUsuariosScreen(
                             title = "Profesores",
                             subtitle = "Gestión de profesores",
                             icon = Icons.Default.School,
-                            onClick = { onNavigateToUserList(AppScreens.ProfesorList.route) }
+                            onClick = { handleNavigateToUserList(AppScreens.ProfesorList.route) }
                         )
                         
                         // Alumnos
@@ -151,7 +158,7 @@ fun GestionUsuariosScreen(
                             title = "Alumnos",
                             subtitle = "Gestión de alumnos",
                             icon = Icons.Default.Person,
-                            onClick = { onNavigateToUserList(AppScreens.AlumnoList.route) }
+                            onClick = { handleNavigateToUserList(AppScreens.AlumnoList.route) }
                         )
                         
                         // Familiares
@@ -159,7 +166,7 @@ fun GestionUsuariosScreen(
                             title = "Familiares",
                             subtitle = "Gestión de familiares",
                             icon = Icons.Default.People,
-                            onClick = { onNavigateToUserList(AppScreens.FamiliarList.route) }
+                            onClick = { handleNavigateToUserList(AppScreens.FamiliarList.route) }
                         )
                     }
                 }

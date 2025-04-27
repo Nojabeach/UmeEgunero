@@ -42,6 +42,7 @@ import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 import com.tfg.umeegunero.feature.common.users.screen.GestionUsuariosScreen
 import com.tfg.umeegunero.feature.common.perfil.screen.EditProfileScreen
+import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
 
 /**
  * Navegación principal de la aplicación
@@ -179,7 +180,11 @@ fun Navigation(
             LoginScreen(
                 userType = userType,
                 viewModel = hiltViewModel(),
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { 
+                    navController.navigate(AppScreens.Welcome.route) {
+                        popUpTo(AppScreens.Login.route) { inclusive = true }
+                    }
+                },
                 onLoginSuccess = { _ ->
                     val route = when(userType) {
                         TipoUsuario.ADMIN_APP -> AppScreens.AdminDashboard.route
@@ -231,7 +236,11 @@ fun Navigation(
             val viewModel: AdminDashboardViewModel = hiltViewModel()
             AdminDashboardScreen(
                 viewModel = viewModel,
-                onNavigateToGestionUsuarios = { navController.navigate(AppScreens.GestionUsuarios.route) },
+                onNavigateToGestionUsuarios = { 
+                    navController.navigate(AppScreens.GestionUsuarios.createRoute(true)) {
+                        launchSingleTop = true
+                    }
+                },
                 onNavigateToGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
                 onNavigateToEstadisticas = { navController.navigate(AppScreens.Estadisticas.route) },
                 onNavigateToSeguridad = { navController.navigate(AppScreens.Seguridad.route) },
@@ -253,6 +262,11 @@ fun Navigation(
                     viewModel.logout()
                     navController.navigate(AppScreens.Login.createRoute("ADMIN")) {
                         popUpTo(AppScreens.AdminDashboard.route) { inclusive = true }
+                    }
+                },
+                onNavigateToProfile = {
+                    navController.navigate(AppScreens.Perfil.route) {
+                        launchSingleTop = true
                     }
                 }
             )
@@ -346,11 +360,11 @@ fun Navigation(
             )
         }
         
-        // Pantalla de perfil de usuario
+        // Pantalla de perfil
         composable(route = AppScreens.Perfil.route) {
-            com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen(
+            PerfilScreen(
                 navController = navController,
-                viewModel = hiltViewModel()
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -537,6 +551,7 @@ fun Navigation(
         ) { backStackEntry ->
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
             GestionUsuariosScreen(
+                navController = navController,
                 isAdminApp = isAdminApp,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToUserList = { route ->
@@ -550,7 +565,7 @@ fun Navigation(
                     }
                 },
                 onNavigateToProfile = {
-                    navController.navigate(AppScreens.EditProfile.route) {
+                    navController.navigate(AppScreens.Perfil.route) {
                         launchSingleTop = true
                     }
                 }
@@ -775,6 +790,7 @@ fun Navigation(
         // Pantalla de edición de perfil
         composable(route = AppScreens.EditProfile.route) {
             EditProfileScreen(
+                navController = navController,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

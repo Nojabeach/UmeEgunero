@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Definición de colores base (ejemplo, ajustar según diseño original si se conoce)
+// Definición de colores base para el tema de la aplicación
 private val PurplePrimary = Color(0xFF6750A4)
 private val PurpleSecondary = Color(0xFF625B71)
 private val PurpleTertiary = Color(0xFF7D5260)
@@ -35,8 +35,7 @@ private val DarkGrey = Color(0xFF1C1B1F)
 private val NearBlack = Color(0xFF202124) // Un gris muy oscuro para fondos oscuros
 
 // Usaremos los colores definidos en AppColors y CustomColors donde sea apropiado
-// import com.tfg.umeegunero.ui.theme.AppColors // Importar si es necesario
-// import com.tfg.umeegunero.ui.theme.CustomColors // Importar si es necesario
+
 
 private val LightColorScheme = lightColorScheme(
     primary = PurplePrimary, // Ejemplo: Usar el púrpura definido
