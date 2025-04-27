@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -17,18 +16,25 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Class
+import androidx.compose.material.icons.filled.SupervisorAccount
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,15 +42,18 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCard
+import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCardBienvenida
 import com.tfg.umeegunero.feature.centro.viewmodel.CentroDashboardViewModel
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.ui.components.CategoriaCardData
+import com.tfg.umeegunero.ui.theme.AppColors
 import com.tfg.umeegunero.ui.theme.CentroColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.BorderStroke
-import com.tfg.umeegunero.data.model.TipoUsuario
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 
 /**
  * Pantalla principal del dashboard para administradores de centro educativo.
@@ -69,19 +78,13 @@ fun CentroDashboardScreen(
     val nombreCentro by viewModel.nombreCentro.collectAsState(initial = "Centro Educativo")
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    
-    // Variables para control de animaciones
-    var showContent by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     val currentDate = remember { 
-        LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")).replaceFirstChar { it.uppercase() } 
+        LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).replaceFirstChar { it.uppercase() } 
     }
-    
-    // Efecto para mostrar contenido con animación
-    LaunchedEffect(Unit) {
-        showContent = true
-    }
-    
-    // Efecto para manejar errores
+    // Animación de entrada
+    var showContent by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { showContent = true }
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
             scope.launch {
@@ -90,8 +93,6 @@ fun CentroDashboardScreen(
             }
         }
     }
-    
-    // Efecto para manejar navegación
     LaunchedEffect(uiState.navigateToWelcome) {
         if (uiState.navigateToWelcome) {
             navController.navigate(AppScreens.Welcome.route) {
@@ -99,106 +100,342 @@ fun CentroDashboardScreen(
             }
         }
     }
-    
+    // --- FUNCIONES DE NAVEGACIÓN LOCALES ---
+    fun onNavigateToListaCursos() = navController.navigate(AppScreens.ListaCursos.route)
+    fun onNavigateToListaClases() = navController.navigate(AppScreens.ListaClases.route)
+    fun onNavigateToGestionProfesores() = navController.navigate(AppScreens.GestionProfesores.route)
+    fun onNavigateToAddAlumno() = navController.navigate(AppScreens.AlumnoList.route)
+    fun onNavigateToVincularProfesorClase() = navController.navigate(AppScreens.VincularProfesorClase.route)
+    fun onNavigateToVinculacionFamiliar() = navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
+    fun onNavigateToCrearUsuarioRapido() = navController.navigate(AppScreens.CrearUsuarioRapido.route)
+    fun onNavigateToCalendario() = navController.navigate(AppScreens.Calendario.route)
+    fun onNavigateToNotificaciones() = navController.navigate(AppScreens.Notificaciones.route)
+
+    // Definir la lista de tarjetas para el grid
+    val cards = listOf(
+        CategoriaCardData(
+            titulo = "Cursos",
+            descripcion = "Visualiza, crea y edita los cursos del centro",
+            icono = Icons.AutoMirrored.Filled.MenuBook,
+            color = CentroColor,
+            iconTint = AppColors.PurplePrimary,
+            border = true,
+            onClick = { onNavigateToListaCursos() }
+        ),
+        CategoriaCardData(
+            titulo = "Clases",
+            descripcion = "Gestiona los grupos y asigna alumnos a clases",
+            icono = Icons.Default.Class,
+            color = CentroColor,
+            iconTint = AppColors.PurpleSecondary,
+            border = true,
+            onClick = { onNavigateToListaClases() }
+        ),
+        CategoriaCardData(
+            titulo = "Profesores",
+            descripcion = "Consulta, añade y administra el personal docente",
+            icono = Icons.Default.SupervisorAccount,
+            color = CentroColor,
+            iconTint = AppColors.Green500,
+            border = true,
+            onClick = { onNavigateToGestionProfesores() }
+        ),
+        CategoriaCardData(
+            titulo = "Alumnos",
+            descripcion = "Gestiona el listado y los datos de los estudiantes",
+            icono = Icons.Default.Face,
+            color = CentroColor,
+            iconTint = AppColors.Pink80,
+            border = true,
+            onClick = { onNavigateToAddAlumno() }
+        ),
+        CategoriaCardData(
+            titulo = "Asignación",
+            descripcion = "Asigna profesores a clases de forma sencilla",
+            icono = Icons.AutoMirrored.Filled.Assignment,
+            color = CentroColor,
+            iconTint = AppColors.PurpleTertiary,
+            border = true,
+            onClick = { onNavigateToVincularProfesorClase() }
+        ),
+        CategoriaCardData(
+            titulo = "Vinculación Familiar",
+            descripcion = "Gestiona la relación entre alumnos y familiares",
+            icono = Icons.Default.People,
+            color = CentroColor,
+            iconTint = AppColors.Red500,
+            border = true,
+            onClick = { onNavigateToVinculacionFamiliar() }
+        ),
+        CategoriaCardData(
+            titulo = "Crear Usuario",
+            descripcion = "Registra nuevos usuarios en el sistema",
+            icono = Icons.Default.PersonAdd,
+            color = CentroColor,
+            iconTint = AppColors.PurplePrimary,
+            border = true,
+            onClick = { onNavigateToCrearUsuarioRapido() }
+        ),
+        CategoriaCardData(
+            titulo = "Calendario",
+            descripcion = "Consulta eventos y fechas importantes del centro",
+            icono = Icons.Default.DateRange,
+            color = CentroColor,
+            iconTint = AppColors.PurpleTertiary,
+            border = true,
+            onClick = { onNavigateToCalendario() }
+        ),
+        CategoriaCardData(
+            titulo = "Notificaciones",
+            descripcion = "Revisa avisos y comunicaciones recientes",
+            icono = Icons.Default.Notifications,
+            color = CentroColor,
+            iconTint = AppColors.GradientEnd,
+            border = true,
+            onClick = { onNavigateToNotificaciones() }
+        )
+    )
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Cerrar sesión") },
+            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    viewModel.logout()
+                }) { Text("Sí") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) { Text("No") }
+            }
+        )
+    }
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
-                        text = "Panel de Centro",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        "Panel de Centro",
+                        color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = CentroColor,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                ),
                 actions = {
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.Configuracion.route)
-                    }) {
+                    IconButton(onClick = { navController.navigate(AppScreens.Perfil.route) }) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Configuración",
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Perfil",
                             tint = Color.White
                         )
                     }
-                    IconButton(onClick = { viewModel.logout() }) {
+                    IconButton(onClick = { showLogoutDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Cerrar sesión",
                             tint = Color.White
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = CentroColor,
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                )
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = CentroColor.copy(alpha = 0.05f)
     ) { paddingValues ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = CentroColor)
-            }
-        } else {
-            AnimatedVisibility(
-                visible = showContent,
-                enter = fadeIn() + slideInVertically(
-                    initialOffsetY = { it / 2 },
-                    animationSpec = spring(stiffness = Spring.StiffnessLow)
-                ),
-                exit = fadeOut()
-            ) {
-                CentroDashboardContent(
-                    nombreCentro = nombreCentro,
-                    centroId = uiState.centroId,
-                    cursos = uiState.cursos,
-                    currentDate = currentDate,
-                    currentUser = uiState.currentUser,
-                    onNavigateToGestionProfesores = { 
-                        navController.navigate(AppScreens.GestionProfesores.route) 
-                    },
-                    onNavigateToGestionCursosYClases = { 
-                        // No se permite navegar a 'gestion_clases'
-                    },
-                    onNavigateToVinculacionFamiliar = { 
-                        navController.navigate(AppScreens.VincularAlumnoFamiliar.route) 
-                    },
-                    onNavigateToCalendario = { 
-                        navController.navigate(AppScreens.Calendario.route) 
-                    },
-                    onNavigateToNotificaciones = { 
-                        navController.navigate(AppScreens.GestionNotificacionesCentro.route) 
-                    },
-                    onNavigateToAddAlumno = { 
-                        navController.navigate(AppScreens.AddAlumno.route) 
-                    },
-                    onNavigateToListaCursos = {
-                        navController.navigate(AppScreens.ListaCursos.route)
-                    },
-                    onNavigateToListaClases = {
-                        // No se permite navegar a 'gestion_clases'
-                    },
-                    onNavigateToVincularProfesorClase = {
-                        navController.navigate(AppScreens.VincularProfesorClase.route)
-                    },
-                    onNavigateToCrearUsuarioRapido = {
-                        navController.navigate(AppScreens.CrearUsuarioRapido.route)
-                    },
-                    onNavigateAccionAcademica = { accion ->
-                        val perfil = if (uiState.currentUser?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } == true) "ADMIN_APP" else "ADMIN_CENTRO"
-                        navController.navigate("gestor_academico/$accion?centroId=${uiState.centroId}&selectorCentroBloqueado=${perfil != "ADMIN_APP"}&perfilUsuario=$perfil")
-                    },
-                    modifier = Modifier.padding(paddingValues)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = CentroColor
                 )
+            } else {
+                AnimatedVisibility(
+                    visible = showContent,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }, animationSpec = spring(stiffness = Spring.StiffnessLow)),
+                    exit = fadeOut()
+                ) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Header de bienvenida
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            CategoriaCardBienvenida(
+                                data = CategoriaCardData(
+                                    titulo = "¡Bienvenido/a, ${uiState.currentUser?.nombre ?: ""}!",
+                                    descripcion = nombreCentro + "\n" + currentDate,
+                                    icono = Icons.Filled.School,
+                                    color = CentroColor,
+                                    onClick = {},
+                                    iconTint = Color.White,
+                                    border = true
+                                ),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp, max = 100.dp)
+                            )
+                        }
+                        // Separador visual
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        }
+                        // Sección: Gestión Académica
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                text = "Gestión Académica",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = CentroColor
+                            )
+                        }
+                        item {
+                            CategoriaCard(
+                                titulo = "Cursos",
+                                descripcion = "Visualiza, crea y edita los cursos del centro",
+                                icono = Icons.AutoMirrored.Filled.MenuBook,
+                                color = CentroColor,
+                                iconTint = AppColors.PurplePrimary,
+                                border = true,
+                                onClick = { onNavigateToListaCursos() },
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        item {
+                            CategoriaCard(
+                                titulo = "Clases",
+                                descripcion = "Gestiona los grupos y asigna alumnos a clases",
+                                icono = Icons.Default.Class,
+                                color = CentroColor,
+                                iconTint = AppColors.PurpleSecondary,
+                                border = true,
+                                onClick = { onNavigateToListaClases() },
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        // Separador visual
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        }
+                        // Sección: Gestión de Personal
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                text = "Gestión de Personal",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = CentroColor
+                            )
+                        }
+                        item {
+                            CategoriaCard(
+                                titulo = "Profesores",
+                                descripcion = "Consulta, añade y administra el personal docente",
+                                icono = Icons.Default.SupervisorAccount,
+                                color = CentroColor,
+                                iconTint = AppColors.Green500,
+                                border = true,
+                                onClick = { onNavigateToGestionProfesores() },
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        item {
+                            CategoriaCard(
+                                titulo = "Alumnos",
+                                descripcion = "Gestiona el listado y los datos de los estudiantes",
+                                icono = Icons.Default.Face,
+                                color = CentroColor,
+                                iconTint = AppColors.Pink80,
+                                border = true,
+                                onClick = { onNavigateToAddAlumno() },
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            CategoriaCard(
+                                titulo = "Asignación",
+                                descripcion = "Asigna profesores a clases de forma sencilla",
+                                icono = Icons.AutoMirrored.Filled.Assignment,
+                                color = CentroColor,
+                                iconTint = AppColors.PurpleTertiary,
+                                border = true,
+                                onClick = { onNavigateToVincularProfesorClase() },
+                                modifier = Modifier.padding(4.dp).fillMaxWidth()
+                            )
+                        }
+                        // Separador visual
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        }
+                        // Sección: Usuarios y Comunicaciones
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                text = "Usuarios y Comunicaciones",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = CentroColor
+                            )
+                        }
+                        item {
+                            CategoriaCard(
+                                titulo = "Vinculación Familiar",
+                                descripcion = "Gestiona la relación entre alumnos y familiares",
+                                icono = Icons.Default.People,
+                                color = CentroColor,
+                                iconTint = AppColors.Red500,
+                                border = true,
+                                onClick = { onNavigateToVinculacionFamiliar() },
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        item {
+                            CategoriaCard(
+                                titulo = "Crear Usuario",
+                                descripcion = "Registra nuevos usuarios en el sistema",
+                                icono = Icons.Default.PersonAdd,
+                                color = CentroColor,
+                                iconTint = AppColors.PurplePrimary,
+                                border = true,
+                                onClick = { onNavigateToCrearUsuarioRapido() },
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        item {
+                            CategoriaCard(
+                                titulo = "Calendario",
+                                descripcion = "Consulta eventos y fechas importantes del centro",
+                                icono = Icons.Default.DateRange,
+                                color = CentroColor,
+                                iconTint = AppColors.PurpleTertiary,
+                                border = true,
+                                onClick = { onNavigateToCalendario() },
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        item {
+                            CategoriaCard(
+                                titulo = "Notificaciones",
+                                descripcion = "Revisa avisos y comunicaciones recientes",
+                                icono = Icons.Default.Notifications,
+                                color = CentroColor,
+                                iconTint = AppColors.GradientEnd,
+                                border = true,
+                                onClick = { onNavigateToNotificaciones() },
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        // Espaciador final para scroll
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Spacer(modifier = Modifier.height(32.dp))
+                        }
+                    }
+                }
             }
         }
     }
@@ -250,501 +487,197 @@ fun CentroDashboardContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Tarjeta de bienvenida
-        WelcomeCard(
-            nombreCentro = nombreCentro,
-            currentDate = currentDate,
-            userName = currentUser?.nombre ?: ""
-        )
-        
-        // Estadísticas rápidas
-        EstadisticasRapidasCard(
-            numCursos = cursos.size,
-            numAlumnos = cursos.sumOf { it.numAlumnos },
-            numProfesores = cursos.sumOf { it.numProfesores }
-        )
-        
-        // Título para sección de gestión académica
-        SectionHeader(
-            title = "Gestión Académica",
-            icon = Icons.Default.School
-        )
-        
-        // Accesos rápidos para gestión académica
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Card(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp, max = 100.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = CentroColor.copy(alpha = 0.15f)
+            ),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
-            DashboardActionCard(
-                title = "Cursos",
-                icon = Icons.Default.MenuBook,
-                color = MaterialTheme.colorScheme.primary,
-                onClick = { onNavigateAccionAcademica("CURSOS") },
-                modifier = Modifier.weight(1f)
-            )
-            
-            DashboardActionCard(
-                title = "Clases",
-                icon = Icons.Default.Class,
-                color = MaterialTheme.colorScheme.secondary,
-                onClick = { onNavigateAccionAcademica("CLASES") },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        
-        // Título para sección de gestión de personal
-        SectionHeader(
-            title = "Gestión de Personal",
-            icon = Icons.Default.SupervisorAccount
-        )
-        
-        // Accesos rápidos para gestión de personal
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            DashboardActionCard(
-                title = "Profesores",
-                icon = Icons.Default.SupervisorAccount,
-                color = MaterialTheme.colorScheme.primary,
-                onClick = onNavigateToGestionProfesores,
-                modifier = Modifier.weight(1f)
-            )
-            
-            DashboardActionCard(
-                title = "Alumnos",
-                icon = Icons.Default.Face,
-                color = MaterialTheme.colorScheme.secondary,
-                onClick = onNavigateToAddAlumno,
-                modifier = Modifier.weight(1f)
-            )
-            
-            DashboardActionCard(
-                title = "Asignación",
-                icon = Icons.Default.Assignment,
-                color = MaterialTheme.colorScheme.tertiary,
-                onClick = onNavigateToVincularProfesorClase,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        
-        // Título para sección de gestión de usuarios
-        SectionHeader(
-            title = "Usuarios y Comunicaciones",
-            icon = Icons.Default.Group
-        )
-        
-        // Rejilla de opciones principales
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            userScrollEnabled = false,
-            modifier = Modifier.height(240.dp) // Altura fija para acomodar 2 filas
-        ) {
-            // Vinculación Familiar
-            item {
-                OpcionDashboardItem(
-                    opcion = OpcionDashboard(
-                        id = "familias",
-                        titulo = "Vinculación Familiar",
-                        descripcion = "Relacionar alumnos con familiares",
-                        icono = Icons.Default.People,
-                        color = MaterialTheme.colorScheme.error,
-                        onClick = onNavigateToVinculacionFamiliar
-                    )
-                )
-            }
-            
-            // Crear Usuario Rápido
-            item {
-                OpcionDashboardItem(
-                    opcion = OpcionDashboard(
-                        id = "crear_usuario",
-                        titulo = "Crear Usuario",
-                        descripcion = "Registro rápido de usuarios",
-                        icono = Icons.Default.PersonAdd,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        onClick = onNavigateToCrearUsuarioRapido
-                    )
-                )
-            }
-            
-            // Calendario
-            item {
-                OpcionDashboardItem(
-                    opcion = OpcionDashboard(
-                        id = "calendario",
-                        titulo = "Calendario",
-                        descripcion = "Eventos y plazos",
-                        icono = Icons.Default.DateRange,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        onClick = onNavigateToCalendario
-                    )
-                )
-            }
-            
-            // Notificaciones
-            item {
-                OpcionDashboardItem(
-                    opcion = OpcionDashboard(
-                        id = "notificaciones",
-                        titulo = "Notificaciones",
-                        descripcion = "Comunicaciones masivas",
-                        icono = Icons.Default.Notifications,
-                        color = MaterialTheme.colorScheme.secondary,
-                        onClick = onNavigateToNotificaciones
-                    )
-                )
-            }
-        }
-        
-        // Espaciador final para scroll
-        Spacer(modifier = Modifier.height(80.dp))
-    }
-}
-
-/**
- * Tarjeta de bienvenida con el nombre del centro y fecha actual.
- * 
- * @param nombreCentro Nombre del centro educativo
- * @param currentDate Fecha actual formateada
- * @param userName Nombre del usuario administrador
- */
-@Composable
-fun WelcomeCard(
-    nombreCentro: String,
-    currentDate: String,
-    userName: String
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = CentroColor.copy(alpha = 0.15f)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Información de bienvenida
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "¡Bienvenido/a, $userName!",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                
-                Text(
-                    text = nombreCentro,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                
-                Text(
-                    text = currentDate,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            // Icono decorativo
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(CentroColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.School,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-    }
-}
-
-/**
- * Encabezado de sección con icono y título
- */
-@Composable
-fun SectionHeader(
-    title: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = CentroColor,
-            modifier = Modifier.size(28.dp)
-        )
-        
-        Spacer(modifier = Modifier.width(8.dp))
-        
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-/**
- * Tarjeta de acción para el dashboard
- */
-@Composable
-fun DashboardActionCard(
-    title: String,
-    icon: ImageVector,
-    color: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .height(80.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = color,
-                modifier = Modifier.size(24.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-/**
- * Tarjeta con estadísticas rápidas del centro educativo.
- * 
- * @param numCursos Número de cursos del centro
- * @param numAlumnos Número total de alumnos
- * @param numProfesores Número total de profesores
- */
-@Composable
-fun EstadisticasRapidasCard(
-    numCursos: Int,
-    numAlumnos: Int,
-    numProfesores: Int
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Resumen del Centro",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                EstadisticaItem(
-                    valor = numCursos.toString(),
-                    etiqueta = "Cursos",
-                    icono = Icons.Default.School,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Divider(
-                    modifier = Modifier
-                        .height(40.dp)
-                        .width(1.dp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                )
-                
-                EstadisticaItem(
-                    valor = numAlumnos.toString(),
-                    etiqueta = "Alumnos",
-                    icono = Icons.Default.Face,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                
-                Divider(
-                    modifier = Modifier
-                        .height(40.dp)
-                        .width(1.dp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                )
-                
-                EstadisticaItem(
-                    valor = numProfesores.toString(),
-                    etiqueta = "Profesores",
-                    icono = Icons.Default.Person,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-            }
-        }
-    }
-}
-
-/**
- * Elemento individual de estadística con ícono, valor y etiqueta.
- * 
- * @param valor Valor numérico a mostrar
- * @param etiqueta Etiqueta descriptiva
- * @param icono Icono representativo
- * @param color Color de acento
- */
-@Composable
-fun EstadisticaItem(
-    valor: String,
-    etiqueta: String,
-    icono: ImageVector,
-    color: Color
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = icono,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(24.dp)
-        )
-        
-        Text(
-            text = valor,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        
-        Text(
-            text = etiqueta,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        )
-    }
-}
-
-/**
- * Modelo de datos para cada opción del dashboard.
- */
-data class OpcionDashboard(
-    val id: String,
-    val titulo: String,
-    val descripcion: String,
-    val icono: ImageVector,
-    val color: Color,
-    val onClick: () -> Unit
-)
-
-/**
- * Elemento individual para cada opción del dashboard.
- * 
- * @param opcion Datos de la opción a mostrar
- */
-@Composable
-fun OpcionDashboardItem(opcion: OpcionDashboard) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)
-            .clickable(onClick = opcion.onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(4.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Icono con fondo circular
-            Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(opcion.color),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = opcion.icono,
-                    contentDescription = opcion.titulo,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            // Textos
-            Column {
-                Text(
-                    text = opcion.titulo,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                Text(
-                    text = opcion.descripcion,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "¡Bienvenido/a, ${currentUser?.nombre ?: ""}!",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = CentroColor
+                    )
+                    Text(
+                        text = nombreCentro,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = CentroColor
+                    )
+                    Text(
+                        text = currentDate,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(CentroColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.School,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
+        // Separador visual
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        // Sección: Gestión Académica
+        Text(
+            text = "Gestión Académica",
+            style = MaterialTheme.typography.titleLarge,
+            color = CentroColor
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CategoriaCard(
+                titulo = "Cursos",
+                descripcion = "Visualiza, crea y edita los cursos del centro",
+                icono = Icons.AutoMirrored.Filled.MenuBook,
+                color = CentroColor,
+                iconTint = AppColors.PurplePrimary,
+                border = false,
+                onClick = { onNavigateToListaCursos() },
+                modifier = Modifier.weight(1f)
+            )
+            CategoriaCard(
+                titulo = "Clases",
+                descripcion = "Gestiona los grupos y asigna alumnos a clases",
+                icono = Icons.Default.Class,
+                color = CentroColor,
+                iconTint = AppColors.PurpleSecondary,
+                border = false,
+                onClick = { onNavigateToListaClases() },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        // Separador visual
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        // Sección: Gestión de Personal
+        Text(
+            text = "Gestión de Personal",
+            style = MaterialTheme.typography.titleLarge,
+            color = CentroColor
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CategoriaCard(
+                titulo = "Profesores",
+                descripcion = "Consulta, añade y administra el personal docente",
+                icono = Icons.Default.SupervisorAccount,
+                color = CentroColor,
+                iconTint = AppColors.Green500,
+                border = false,
+                onClick = { onNavigateToGestionProfesores() },
+                modifier = Modifier.weight(1f)
+            )
+            CategoriaCard(
+                titulo = "Alumnos",
+                descripcion = "Gestiona el listado y los datos de los estudiantes",
+                icono = Icons.Default.Face,
+                color = CentroColor,
+                iconTint = AppColors.Pink80,
+                border = false,
+                onClick = { onNavigateToAddAlumno() },
+                modifier = Modifier.weight(1f)
+            )
+            CategoriaCard(
+                titulo = "Asignación",
+                descripcion = "Asigna profesores a clases de forma sencilla",
+                icono = Icons.AutoMirrored.Filled.Assignment,
+                color = CentroColor,
+                iconTint = AppColors.PurpleTertiary,
+                border = false,
+                onClick = { onNavigateToVincularProfesorClase() },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        // Separador visual
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        // Sección: Usuarios y Comunicaciones
+        Text(
+            text = "Usuarios y Comunicaciones",
+            style = MaterialTheme.typography.titleLarge,
+            color = CentroColor
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CategoriaCard(
+                titulo = "Vinculación Familiar",
+                descripcion = "Gestiona la relación entre alumnos y familiares",
+                icono = Icons.Default.People,
+                color = CentroColor,
+                iconTint = AppColors.Red500,
+                border = false,
+                onClick = { onNavigateToVinculacionFamiliar() },
+                modifier = Modifier.weight(1f)
+            )
+            CategoriaCard(
+                titulo = "Crear Usuario",
+                descripcion = "Registra nuevos usuarios en el sistema",
+                icono = Icons.Default.PersonAdd,
+                color = CentroColor,
+                iconTint = AppColors.PurplePrimary,
+                border = false,
+                onClick = { onNavigateToCrearUsuarioRapido() },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CategoriaCard(
+                titulo = "Calendario",
+                descripcion = "Consulta eventos y fechas importantes del centro",
+                icono = Icons.Default.DateRange,
+                color = CentroColor,
+                iconTint = AppColors.PurpleTertiary,
+                border = false,
+                onClick = { onNavigateToCalendario() },
+                modifier = Modifier.weight(1f)
+            )
+            CategoriaCard(
+                titulo = "Notificaciones",
+                descripcion = "Revisa avisos y comunicaciones recientes",
+                icono = Icons.Default.Notifications,
+                color = CentroColor,
+                iconTint = AppColors.GradientEnd,
+                border = false,
+                onClick = { onNavigateToNotificaciones() },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        // Espaciador final para scroll
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

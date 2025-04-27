@@ -199,9 +199,13 @@ fun ListAlumnosScreen(
             // Diálogo de filtros
             if (showFilterDialog) {
                 FilterDialog(
+                    cursos = uiState.cursosDisponibles,
+                    clases = uiState.clasesDisponibles,
+                    cursoSeleccionado = uiState.cursoSeleccionado,
+                    claseSeleccionada = uiState.claseSeleccionada,
                     onDismiss = { showFilterDialog = false },
-                    onApplyFilters = { activos ->
-                        viewModel.aplicarFiltros(activos)
+                    onApplyFilters = { activos, curso, clase ->
+                        viewModel.aplicarFiltros(activos, curso, clase)
                         showFilterDialog = false
                     },
                     mostrarSoloActivos = uiState.soloActivos
@@ -358,12 +362,18 @@ private fun EmptyAlumnosList(onAddClicked: () -> Unit) {
 
 @Composable
 private fun FilterDialog(
+    cursos: List<String>,
+    clases: List<String>,
+    cursoSeleccionado: String?,
+    claseSeleccionada: String?,
     onDismiss: () -> Unit,
-    onApplyFilters: (Boolean) -> Unit,
+    onApplyFilters: (Boolean, String?, String?) -> Unit,
     mostrarSoloActivos: Boolean
 ) {
     var soloActivos by remember { mutableStateOf(mostrarSoloActivos) }
-    
+    var curso by remember { mutableStateOf(cursoSeleccionado ?: "") }
+    var clase by remember { mutableStateOf(claseSeleccionada ?: "") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Filtrar alumnos") },
@@ -378,15 +388,32 @@ private fun FilterDialog(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
                     )
-                    
                     Switch(
                         checked = soloActivos,
                         onCheckedChange = { soloActivos = it }
                     )
                 }
-                
                 Spacer(modifier = Modifier.height(8.dp))
-                
+                // Filtro por curso
+                if (cursos.isNotEmpty()) {
+                    Text("Curso", style = MaterialTheme.typography.bodySmall)
+                    DropdownMenuFiltro(
+                        opciones = listOf("") + cursos,
+                        seleccion = curso,
+                        onSeleccion = { curso = it }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                // Filtro por clase
+                if (clases.isNotEmpty()) {
+                    Text("Clase", style = MaterialTheme.typography.bodySmall)
+                    DropdownMenuFiltro(
+                        opciones = listOf("") + clases,
+                        seleccion = clase,
+                        onSeleccion = { clase = it }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Aplica filtros para encontrar alumnos específicos",
                     style = MaterialTheme.typography.bodySmall,
@@ -395,7 +422,7 @@ private fun FilterDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onApplyFilters(soloActivos) }) {
+            TextButton(onClick = { onApplyFilters(soloActivos, if (curso.isBlank()) null else curso, if (clase.isBlank()) null else clase) }) {
                 Text("Aplicar")
             }
         },
@@ -405,6 +432,31 @@ private fun FilterDialog(
             }
         }
     )
+}
+
+@Composable
+private fun DropdownMenuFiltro(
+    opciones: List<String>,
+    seleccion: String,
+    onSeleccion: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }) {
+            Text(if (seleccion.isBlank()) "Todos" else seleccion)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            opciones.forEach { opcion ->
+                DropdownMenuItem(
+                    text = { Text(if (opcion.isBlank()) "Todos" else opcion) },
+                    onClick = {
+                        onSeleccion(opcion)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true)

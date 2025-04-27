@@ -33,6 +33,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.unit.Dp
+import com.tfg.umeegunero.ui.components.CategoriaCardData
 
 @Composable
 fun SectionHeader(
@@ -329,4 +331,89 @@ fun DashboardItem(
             }
         }
     }
+}
+
+@Composable
+fun CategoriaCardBienvenida(
+    titulo: String,
+    descripcion: String,
+    icono: ImageVector,
+    color: Color,
+    iconTint: Color,
+    modifier: Modifier = Modifier,
+    borderColor: Color = color,
+    borderWidth: Dp = 1.dp, // Más estrecho que CategoriaCard
+    content: @Composable (() -> Unit)? = null
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(borderWidth, borderColor),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.10f)),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                Text(
+                    text = descripcion,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                content?.invoke()
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(color),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icono,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Permite crear una CategoriaCardBienvenida directamente desde un objeto CategoriaCardData.
+ * Así se facilita la integración y la reutilización en los dashboards.
+ */
+@Composable
+fun CategoriaCardBienvenida(
+    data: CategoriaCardData,
+    modifier: Modifier = Modifier,
+    borderColor: Color = data.borderColor ?: data.color,
+    borderWidth: Dp = if (data.borderWidth != Dp.Unspecified) data.borderWidth else 1.dp,
+    content: @Composable (() -> Unit)? = data.extraContent
+) {
+    CategoriaCardBienvenida(
+        titulo = data.titulo,
+        descripcion = data.descripcion,
+        icono = data.icono,
+        color = data.color,
+        iconTint = data.iconTint ?: Color.White,
+        modifier = modifier.then(data.modifier),
+        borderColor = borderColor,
+        borderWidth = borderWidth,
+        content = content
+    )
 } 

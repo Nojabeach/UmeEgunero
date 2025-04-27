@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +24,11 @@ data class ListAlumnosUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val soloActivos: Boolean = true,
-    val alumnosCompletos: List<Usuario> = emptyList() // Lista completa sin filtros
+    val alumnosCompletos: List<Usuario> = emptyList(), // Lista completa sin filtros
+    val cursosDisponibles: List<String> = emptyList(),
+    val clasesDisponibles: List<String> = emptyList(),
+    val cursoSeleccionado: String? = null,
+    val claseSeleccionada: String? = null
 )
 
 /**
@@ -50,11 +55,15 @@ class ListAlumnosViewModel @Inject constructor(
                 when (result) {
                     is Result.Success<List<Usuario>> -> {
                         val alumnos = result.data
+                        val cursos = alumnos.mapNotNull { (it as? Alumno)?.curso }.distinct().filter { it.isNotBlank() }
+                        val clases = alumnos.mapNotNull { (it as? Alumno)?.clase }.distinct().filter { it.isNotBlank() }
                         _uiState.update { 
                             it.copy(
                                 alumnosCompletos = alumnos,
                                 alumnos = if (it.soloActivos) alumnos.filter { alumno -> alumno.activo } else alumnos,
-                                isLoading = false
+                                isLoading = false,
+                                cursosDisponibles = cursos,
+                                clasesDisponibles = clases
                             ) 
                         }
                         Timber.d("Alumnos cargados: ${alumnos.size}")
@@ -87,18 +96,26 @@ class ListAlumnosViewModel @Inject constructor(
     /**
      * Aplica filtros a la lista de alumnos
      * @param soloActivos Si es true, muestra solo alumnos activos
+     * @param curso Si no es null, filtra por curso
+     * @param clase Si no es null, filtra por clase
      */
-    fun aplicarFiltros(soloActivos: Boolean) {
+    fun aplicarFiltros(soloActivos: Boolean, curso: String? = null, clase: String? = null) {
         _uiState.update { currentState ->
-            val alumnosToShow = if (soloActivos) {
-                currentState.alumnosCompletos.filter { it.activo }
-            } else {
-                currentState.alumnosCompletos
+            var alumnosToShow = currentState.alumnosCompletos
+            if (soloActivos) {
+                alumnosToShow = alumnosToShow.filter { it.activo }
             }
-            
+            if (!curso.isNullOrBlank()) {
+                alumnosToShow = alumnosToShow.filter { (it as? Alumno)?.curso == curso }
+            }
+            if (!clase.isNullOrBlank()) {
+                alumnosToShow = alumnosToShow.filter { (it as? Alumno)?.clase == clase }
+            }
             currentState.copy(
                 alumnos = alumnosToShow,
-                soloActivos = soloActivos
+                soloActivos = soloActivos,
+                cursoSeleccionado = curso,
+                claseSeleccionada = clase
             )
         }
     }

@@ -62,6 +62,13 @@ import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.BorderStroke
 import android.content.res.Configuration
+import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCard
+import com.tfg.umeegunero.ui.components.CategoriaCardData
+import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCardBienvenida
+import androidx.compose.material.icons.automirrored.filled.Announcement
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
 
 /**
  * Clase que representa una estadística para mostrar en el dashboard
@@ -96,7 +103,6 @@ fun FamiliaDashboardScreen(
     
     // Si ocurrió un error, mostramos un Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     
     // Variables para control de animaciones
     var showContent by remember { mutableStateOf(false) }
@@ -145,7 +151,11 @@ fun FamiliaDashboardScreen(
                         }
                     ) {
                         IconButton(onClick = {
-                            navController.navigate(AppScreens.ConversacionesFamilia.route)
+                            try {
+                                navController.navigate(AppScreens.ConversacionesFamilia.route)
+                            } catch (e: Exception) {
+                                // Nunca cerrar la app, solo mostrar error si ocurre
+                            }
                         }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Chat,
@@ -153,21 +163,17 @@ fun FamiliaDashboardScreen(
                             )
                         }
                     }
-                    
-                    // Configuración
-                    IconButton(onClick = { 
-                        navController.navigate(AppScreens.Configuracion.route)
-                    }) {
+                    // Icono de perfil
+                    IconButton(onClick = { navController.navigate(AppScreens.Perfil.route) }) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Configuración"
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Perfil"
                         )
                     }
-                    
                     // Cerrar sesión
                     IconButton(onClick = { viewModel.logout() }) {
                         Icon(
-                            imageVector = Icons.Default.ExitToApp,
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Cerrar sesión"
                         )
                     }
@@ -202,94 +208,173 @@ fun FamiliaDashboardScreen(
                 ),
                 exit = fadeOut()
             ) {
-                Column(
+                val cards = listOf(
+                    CategoriaCardData("Mensajes", "Consulta y responde mensajes de la escuela", Icons.AutoMirrored.Filled.Chat, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ConversacionesFamilia.route) }),
+                    CategoriaCardData("Calendario", "Revisa eventos y fechas importantes", Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.CalendarioFamilia.route) }),
+                    CategoriaCardData("Historial", "Consulta el registro diario de tu hijo/a", Icons.AutoMirrored.Filled.Assignment, MaterialTheme.colorScheme.secondary, onClick = {
+                        if (uiState.hijoSeleccionado != null) {
+                            val alumnoId = uiState.hijoSeleccionado!!.dni
+                            val alumnoNombre = uiState.hijoSeleccionado!!.nombre
+                            navController.navigate(
+                                AppScreens.ConsultaRegistroDiario.createRoute(
+                                    alumnoId = alumnoId,
+                                    alumnoNombre = alumnoNombre
+                                )
+                            )
+                        }
+                    }),
+                    CategoriaCardData("Comunicados", "Lee los comunicados del centro", Icons.AutoMirrored.Filled.Announcement, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ComunicadosFamilia.route) }),
+                    CategoriaCardData("Tareas", "Revisa y entrega tareas de tu hijo/a", Icons.AutoMirrored.Filled.Assignment, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.TareasFamilia.route) }),
+                    CategoriaCardData("Actividades", "Consulta y participa en actividades escolares", Icons.Default.PlayCircle, MaterialTheme.colorScheme.secondary, onClick = { navController.navigate(AppScreens.ActividadesPreescolar.route) })
+                )
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Tarjeta de bienvenida
-                    WelcomeCard(
-                        nombreFamiliar = uiState.familiar?.nombre ?: "Familiar",
-                        nombreHijo = uiState.hijoSeleccionado?.nombre ?: "Alumno",
-                        onConfigClick = { navController.navigate(AppScreens.Configuracion.route) }
-                    )
-                    
-                    // Selector de hijos (si hay más de uno)
-                    if (uiState.hijos.size > 1) {
-                        HijosSelector(
-                            hijos = uiState.hijos,
-                            hijoSeleccionado = uiState.hijoSeleccionado,
-                            onHijoSelected = { viewModel.seleccionarHijo(it) }
-                        )
-                    }
-                    
-                    // Sección de acciones rápidas
-                    SectionHeader(
-                        title = "Accesos Rápidos",
-                        icon = Icons.Default.Dashboard
-                    )
-                    
-                    QuickActionsGrid(
-                        onVerMensajes = { navController.navigate(AppScreens.ConversacionesFamilia.route) },
-                        onVerCalendario = { navController.navigate(AppScreens.CalendarioFamilia.route) },
-                        onVerHistorial = { 
-                            if (uiState.hijoSeleccionado != null) {
-                                val alumnoId = uiState.hijoSeleccionado!!.dni
-                                val alumnoNombre = uiState.hijoSeleccionado!!.nombre
-                                navController.navigate(
-                                    AppScreens.ConsultaRegistroDiario.createRoute(
-                                        alumnoId = alumnoId,
-                                        alumnoNombre = alumnoNombre
+                    // Header de bienvenida
+                    item(span = { GridItemSpan(2) }) {
+                        CategoriaCardBienvenida(
+                            data = CategoriaCardData(
+                                titulo = "¡Hola, ${uiState.familiar?.nombre ?: "Familiar"}!",
+                                descripcion = "Familia de ${uiState.hijoSeleccionado?.nombre ?: "Alumno"}\nCentro Infantil UmeEgunero\nÚltima actualización: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}",
+                                icono = Icons.Default.ChildCare,
+                                color = FamiliarColor,
+                                onClick = {},
+                                iconTint = Color.White,
+                                border = true
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 64.dp, max = 100.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Información de bienvenida
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "¡Hola, ${uiState.familiar?.nombre ?: "Familiar"}}!",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
-                                )
-                            }
-                        },
-                        onVerComunicados = { navController.navigate(AppScreens.ComunicadosFamilia.route) },
-                        onVerTareas = { navController.navigate(AppScreens.TareasFamilia.route) },
-                        onVerActividades = { navController.navigate(AppScreens.ActividadesPreescolar.route) },
-                        onVerDetalleHijo = {
-                            if (uiState.hijoSeleccionado != null) {
-                                navController.navigate(
-                                    AppScreens.DetalleAlumnoFamilia.createRoute(
-                                        uiState.hijoSeleccionado!!.dni
+                                    Text(
+                                        text = "Familia de ${uiState.hijoSeleccionado?.nombre ?: "Alumno"}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
-                                )
+                                    Text(
+                                        text = "Centro Infantil UmeEgunero",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "Última actualización: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .background(FamiliarColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ChildCare,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
                             }
                         }
-                    )
-                    
-                    // Tarjeta de resumen de actividad diaria
-                    if (uiState.hijoSeleccionado != null) {
-                        SectionHeader(
-                            title = "Resumen de Actividad",
-                            icon = Icons.Default.ChildCare
-                        )
-                        
-                        ResumenActividadCard(
-                            alumno = uiState.hijoSeleccionado!!,
-                            registrosActividad = uiState.registrosActividad,
-                            onVerDetalles = { registroId ->
-                                // Navegar a la pantalla de detalle del registro
-                                navController.navigate(
-                                    "detalle_registro/$registroId"
-                                )
-                            }
+                    }
+                    // Separador visual
+                    item(span = { GridItemSpan(2) }) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    // Título de sección
+                    item(span = { GridItemSpan(2) }) {
+                        Text(
+                            text = "Accesos Rápidos",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = FamiliarColor
                         )
                     }
-                    
+                    // Cards de accesos rápidos
+                    items(cards.size) { index ->
+                        val card = cards[index]
+                        CategoriaCard(
+                            titulo = card.titulo,
+                            descripcion = card.descripcion,
+                            icono = card.icono,
+                            color = FamiliarColor,
+                            iconTint = card.iconTint,
+                            border = true,
+                            onClick = card.onClick,
+                            modifier = Modifier.padding(4.dp)
+                        )
+                    }
+                    // Separador visual
+                    item(span = { GridItemSpan(2) }) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    // Tarjeta de resumen de actividad diaria
+                    if (uiState.hijoSeleccionado != null) {
+                        item(span = { GridItemSpan(2) }) {
+                            Text(
+                                text = "Resumen de Actividad",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = FamiliarColor
+                            )
+                        }
+                        item(span = { GridItemSpan(2) }) {
+                            ResumenActividadCard(
+                                alumno = uiState.hijoSeleccionado!!,
+                                registrosActividad = uiState.registrosActividad,
+                                onVerDetalles = { registroId ->
+                                    navController.navigate(
+                                        "detalle_registro/$registroId"
+                                    )
+                                }
+                            )
+                        }
+                    }
+                    // Separador visual
+                    item(span = { GridItemSpan(2) }) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
                     // Notificaciones y comunicados recientes
-                    SectionHeader(
-                        title = "Notificaciones",
-                        icon = Icons.Default.Notifications
-                    )
-                    
-                    NotificacionesCard(
-                        totalNoLeidas = uiState.registrosSinLeer,
-                        onVerTodas = { navController.navigate(AppScreens.NotificacionesFamilia.route) }
-                    )
+                    item(span = { GridItemSpan(2) }) {
+                        Text(
+                            text = "Notificaciones",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = FamiliarColor
+                        )
+                    }
+                    item(span = { GridItemSpan(2) }) {
+                        NotificacionesCard(
+                            totalNoLeidas = uiState.registrosSinLeer,
+                            onVerTodas = { navController.navigate(AppScreens.NotificacionesFamilia.route) }
+                        )
+                    }
+                    // Espaciador final para scroll
+                    item(span = { GridItemSpan(2) }) {
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
                 }
             }
         }
@@ -436,10 +521,6 @@ fun HijosSelector(
                             else 
                                 MaterialTheme.colorScheme.surfaceVariant
                         ),
-                        border = if (isSelected) 
-                            BorderStroke(2.dp, FamiliarColor) 
-                        else 
-                            null,
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(
@@ -488,8 +569,7 @@ fun QuickActionsGrid(
     onVerHistorial: () -> Unit,
     onVerComunicados: () -> Unit,
     onVerTareas: () -> Unit,
-    onVerActividades: () -> Unit,
-    onVerDetalleHijo: () -> Unit
+    onVerActividades: () -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -524,7 +604,7 @@ fun QuickActionsGrid(
         
         item {
             ActionButton(
-                icon = Icons.Default.Announcement,
+                icon = Icons.AutoMirrored.Filled.Announcement,
                 text = "Comunicados",
                 onClick = onVerComunicados
             )
@@ -532,7 +612,7 @@ fun QuickActionsGrid(
         
         item {
             ActionButton(
-                icon = Icons.Default.Assignment,
+                icon = Icons.AutoMirrored.Filled.Assignment,
                 text = "Tareas",
                 onClick = onVerTareas
             )
