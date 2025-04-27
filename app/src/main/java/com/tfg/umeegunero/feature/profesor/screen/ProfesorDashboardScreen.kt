@@ -268,19 +268,17 @@ fun ProfesorDashboardContent(
                 }
             }
         }
-        // Separador visual
+        // Divider y sección de accesos rápidos
         item(span = { GridItemSpan(2) }) {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        }
-        // Título de sección
-        item(span = { GridItemSpan(2) }) {
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = "Accesos Rápidos",
-                style = MaterialTheme.typography.titleLarge,
-                color = ProfesorColor
+                text = "Accesos rápidos",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = ProfesorColor,
+                modifier = Modifier.padding(bottom = 4.dp)
             )
+            HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
         }
-        // Cards de accesos rápidos
         items(cards.size) { index ->
             val card = cards[index]
             CategoriaCard(
@@ -294,22 +292,21 @@ fun ProfesorDashboardContent(
                 modifier = Modifier.padding(4.dp)
             )
         }
-        // Separador visual
+        // Divider y sección de alumnos pendientes
         item(span = { GridItemSpan(2) }) {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        }
-        // Alumnos que requieren atención
-        item(span = { GridItemSpan(2) }) {
+            Spacer(Modifier.height(16.dp))
             Text(
                 text = "Alumnos Pendientes",
-                style = MaterialTheme.typography.titleLarge,
-                color = ProfesorColor
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = ProfesorColor,
+                modifier = Modifier.padding(bottom = 4.dp)
             )
+            HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
         }
         item(span = { GridItemSpan(2) }) {
             AlumnosPendientesResumen(alumnosPendientes)
         }
-        // Espaciado adicional al final
+        // Espaciador final
         item(span = { GridItemSpan(2) }) {
             Spacer(modifier = Modifier.height(32.dp))
         }

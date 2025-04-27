@@ -302,19 +302,17 @@ fun FamiliaDashboardScreen(
                             }
                         }
                     }
-                    // Separador visual
+                    // Divider y sección de accesos rápidos
                     item(span = { GridItemSpan(2) }) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    }
-                    // Título de sección
-                    item(span = { GridItemSpan(2) }) {
+                        Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Accesos Rápidos",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = FamiliarColor
+                            text = "Accesos rápidos",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = FamiliarColor,
+                            modifier = Modifier.padding(bottom = 4.dp)
                         )
+                        HorizontalDivider(thickness = 2.dp, color = FamiliarColor.copy(alpha = 0.2f))
                     }
-                    // Cards de accesos rápidos
                     items(cards.size) { index ->
                         val card = cards[index]
                         CategoriaCard(
@@ -328,18 +326,17 @@ fun FamiliaDashboardScreen(
                             modifier = Modifier.padding(4.dp)
                         )
                     }
-                    // Separador visual
-                    item(span = { GridItemSpan(2) }) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    }
-                    // Tarjeta de resumen de actividad diaria
+                    // Divider y sección de resumen de actividad
                     if (uiState.hijoSeleccionado != null) {
                         item(span = { GridItemSpan(2) }) {
+                            Spacer(Modifier.height(16.dp))
                             Text(
                                 text = "Resumen de Actividad",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = FamiliarColor
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                color = FamiliarColor,
+                                modifier = Modifier.padding(bottom = 4.dp)
                             )
+                            HorizontalDivider(thickness = 2.dp, color = FamiliarColor.copy(alpha = 0.2f))
                         }
                         item(span = { GridItemSpan(2) }) {
                             ResumenActividadCard(
@@ -353,17 +350,16 @@ fun FamiliaDashboardScreen(
                             )
                         }
                     }
-                    // Separador visual
+                    // Divider y sección de notificaciones
                     item(span = { GridItemSpan(2) }) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    }
-                    // Notificaciones y comunicados recientes
-                    item(span = { GridItemSpan(2) }) {
+                        Spacer(Modifier.height(16.dp))
                         Text(
                             text = "Notificaciones",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = FamiliarColor
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = FamiliarColor,
+                            modifier = Modifier.padding(bottom = 4.dp)
                         )
+                        HorizontalDivider(thickness = 2.dp, color = FamiliarColor.copy(alpha = 0.2f))
                     }
                     item(span = { GridItemSpan(2) }) {
                         NotificacionesCard(
@@ -371,7 +367,7 @@ fun FamiliaDashboardScreen(
                             onVerTodas = { navController.navigate(AppScreens.NotificacionesFamilia.route) }
                         )
                     }
-                    // Espaciador final para scroll
+                    // Espaciador final
                     item(span = { GridItemSpan(2) }) {
                         Spacer(modifier = Modifier.height(32.dp))
                     }
