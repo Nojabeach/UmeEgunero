@@ -15,64 +15,47 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-
-// Definición de colores base para el tema de la aplicación
-private val PurplePrimary = Color(0xFF6750A4)
-private val PurpleSecondary = Color(0xFF625B71)
-private val PurpleTertiary = Color(0xFF7D5260)
-private val PurpleError = Color(0xFFB3261E)
-
-private val PurpleGrey80 = Color(0xFFCCC2DC)
-private val Pink80 = Color(0xFFEFB8C8)
-
-private val PurpleGrey40 = Color(0xFF625b71)
-private val Pink40 = Color(0xFF7D5260)
-
-private val White = Color.White
-private val Black = Color.Black
-private val LightGrey = Color(0xFFF5F5F5)
-private val DarkGrey = Color(0xFF1C1B1F)
-private val NearBlack = Color(0xFF202124) // Un gris muy oscuro para fondos oscuros
+import com.tfg.umeegunero.ui.theme.AppColors
 
 // Usaremos los colores definidos en AppColors y CustomColors donde sea apropiado
 
 
 private val LightColorScheme = lightColorScheme(
-    primary = PurplePrimary, // Ejemplo: Usar el púrpura definido
-    onPrimary = White,       // Texto blanco sobre primario
-    primaryContainer = PurpleGrey80, // Un contenedor claro relacionado con el primario
-    onPrimaryContainer = PurplePrimary, // Texto primario sobre el contenedor
-    secondary = PurpleSecondary, // Ejemplo: usar secundario definido
-    onSecondary = White,         // Texto blanco sobre secundario
-    secondaryContainer = Pink80, // Contenedor claro relacionado con secundario/terciario
-    onSecondaryContainer = PurpleSecondary,
-    tertiary = PurpleTertiary, // Ejemplo: usar terciario definido
-    onTertiary = White,        // Texto blanco sobre terciario
-    background = LightGrey,    // Fondo claro
-    onBackground = Black,      // Texto negro sobre fondo claro
-    surface = White,           // Superficie blanca
-    onSurface = Black,         // Texto negro sobre superficie
-    error = AppColors.Error, // Usar Error de AppColors
-    onError = White          // Texto blanco sobre error
+    primary = AppColors.PurplePrimary,
+    onPrimary = AppColors.White,
+    primaryContainer = AppColors.PurpleGrey80,
+    onPrimaryContainer = AppColors.PurplePrimary,
+    secondary = AppColors.PurpleSecondary,
+    onSecondary = AppColors.White,
+    secondaryContainer = AppColors.Pink80,
+    onSecondaryContainer = AppColors.PurpleSecondary,
+    tertiary = AppColors.PurpleTertiary,
+    onTertiary = AppColors.White,
+    background = AppColors.LightGrey,
+    onBackground = AppColors.Black,
+    surface = AppColors.White,
+    onSurface = AppColors.Black,
+    error = AppColors.Error,
+    onError = AppColors.White
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PurpleGrey80,   // Color primario más claro para tema oscuro
-    onPrimary = PurplePrimary,  // Texto oscuro sobre primario claro
-    primaryContainer = PurplePrimary, // Contenedor oscuro relacionado
-    onPrimaryContainer = White,         // Texto claro sobre contenedor oscuro
-    secondary = Pink80,         // Secundario más claro
-    onSecondary = PurpleSecondary,// Texto oscuro sobre secundario claro
-    secondaryContainer = PurpleSecondary, // Contenedor oscuro
-    onSecondaryContainer = White,
-    tertiary = Pink40,          // Terciario más oscuro
-    onTertiary = White,
-    background = DarkGrey,      // Fondo oscuro
-    onBackground = White,        // Texto claro sobre fondo oscuro
-    surface = NearBlack,       // Superficie muy oscura
-    onSurface = White,           // Texto claro sobre superficie
-    error = AppColors.Error, // Usar Error de AppColors
-    onError = White            // Texto claro sobre error
+    primary = AppColors.PurpleGrey80,
+    onPrimary = AppColors.PurplePrimary,
+    primaryContainer = AppColors.PurplePrimary,
+    onPrimaryContainer = AppColors.White,
+    secondary = AppColors.Pink80,
+    onSecondary = AppColors.PurpleSecondary,
+    secondaryContainer = AppColors.PurpleSecondary,
+    onSecondaryContainer = AppColors.White,
+    tertiary = AppColors.Pink40,
+    onTertiary = AppColors.White,
+    background = AppColors.DarkGrey,
+    onBackground = AppColors.White,
+    surface = AppColors.NearBlack,
+    onSurface = AppColors.White,
+    error = AppColors.Error,
+    onError = AppColors.White
 )
 
 @Composable
