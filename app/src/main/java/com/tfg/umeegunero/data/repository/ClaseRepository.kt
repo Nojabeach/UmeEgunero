@@ -1,10 +1,15 @@
 package com.tfg.umeegunero.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.toObject
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -34,6 +39,11 @@ interface ClaseRepository {
      * Obtiene todas las clases asociadas a un curso
      */
     suspend fun getClasesByCursoId(cursoId: String): Result<List<Clase>>
+
+    /**
+     * Obtiene un Flow de todas las clases asociadas a un curso, actualizándose en tiempo real.
+     */
+    fun obtenerClasesPorCursoFlow(cursoId: String): Flow<Result<List<Clase>>>
     
     /**
      * Guarda una clase en Firestore
@@ -88,6 +98,45 @@ class ClaseRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener clases para el curso $cursoId")
             Result.Error(e)
+        }
+    }
+    
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun obtenerClasesPorCursoFlow(cursoId: String): Flow<Result<List<Clase>>> = callbackFlow {
+        Timber.d("Creando Flow para clases del curso ID: $cursoId")
+
+        val query: Query = clasesCollection.whereEqualTo("cursoId", cursoId)
+
+        val listenerRegistration = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Timber.e(error, "Error al escuchar cambios en clases del curso $cursoId")
+                trySend(Result.Error(error)).isSuccess
+                return@addSnapshotListener
+            }
+            
+            if (snapshot == null) {
+                Timber.w("Snapshot nulo para clases del curso $cursoId")
+                trySend(Result.Success(emptyList())).isSuccess
+                return@addSnapshotListener
+            }
+
+            val clases = snapshot.documents.mapNotNull { document ->
+                try {
+                    val clase = document.toObject<Clase>()
+                    clase?.copy(id = document.id)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al mapear documento de clase: ${document.id}, data: ${document.data}")
+                    null
+                }
+            }
+            
+            Timber.d("Snapshot recibido: ${clases.size} clases para el curso $cursoId")
+            trySend(Result.Success(clases)).isSuccess
+        }
+
+        awaitClose {
+            Timber.d("Cancelando listener para clases del curso $cursoId")
+            listenerRegistration.remove()
         }
     }
     

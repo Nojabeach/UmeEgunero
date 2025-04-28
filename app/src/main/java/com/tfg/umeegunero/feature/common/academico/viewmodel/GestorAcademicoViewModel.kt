@@ -109,27 +109,33 @@ class GestorAcademicoViewModel @Inject constructor(
 
     fun onCursoSelected(curso: Curso) {
         _uiState.update { it.copy(selectedCurso = curso, clases = emptyList()) }
-        cargarClases(curso.id)
+        observarClases(curso.id)
     }
 
-    fun cargarClases(cursoId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingClases = true) }
-            try {
-                when (val clasesResult = claseRepository.getClasesByCursoId(cursoId)) {
+    private fun observarClases(cursoId: String) {
+        _uiState.update { it.copy(isLoadingClases = true, error = null) }
+        
+        claseRepository.obtenerClasesPorCursoFlow(cursoId)
+            .onEach { result ->
+                when (result) {
                     is Result.Success -> {
-                        _uiState.update { it.copy(clases = clasesResult.data, isLoadingClases = false) }
+                        Timber.d("Clases actualizadas para curso $cursoId: ${result.data.size}")
+                        _uiState.update { it.copy(clases = result.data, isLoadingClases = false) }
                     }
                     is Result.Error -> {
-                         _uiState.update { it.copy(error = "Error al cargar clases: ${clasesResult.exception?.message}", isLoadingClases = false) }
+                        Timber.e(result.exception, "Error al observar clases del curso $cursoId")
+                        _uiState.update { it.copy(error = result.exception?.message ?: "Error al cargar clases", isLoadingClases = false) }
                     }
-                     else -> { /* Loading state is handled */ }
+                    is Result.Loading -> {
+                         _uiState.update { it.copy(isLoadingClases = true) }
+                    }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Excepción al cargar clases")
-                _uiState.update { it.copy(error = "Error inesperado al cargar clases: ${e.message}", isLoadingClases = false) }
             }
-        }
+            .catch { e -> 
+                Timber.e(e, "Excepción en el Flow de clases del curso $cursoId")
+                _uiState.update { it.copy(error = e.message ?: "Error inesperado", isLoadingClases = false) }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun onCentroMenuExpandedChanged(expanded: Boolean) {
@@ -165,9 +171,9 @@ class GestorAcademicoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingClases = true) }
             try {
                 when (val result = claseRepository.eliminarClase(claseId)) {
-                    is Result.Success -> {
-                        val cursoId = _uiState.value.selectedCurso?.id
-                        if (cursoId != null) cargarClases(cursoId) else _uiState.update { it.copy(isLoadingClases = false) }
+                    is Result.Success<*> -> {
+                         _uiState.update { it.copy(isLoadingClases = false) }
+                         Timber.d("Clase $claseId eliminada correctamente.")
                     }
                     is Result.Error -> {
                         _uiState.update { it.copy(error = "Error al eliminar clase: ${result.exception?.message}", isLoadingClases = false) }
