@@ -269,35 +269,23 @@ class VincularProfesorClaseViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Cargar cursos sin filtrar por activos
-                when (val cursoResult = cursoRepository.obtenerCursosPorCentroResult(centroId, soloActivos = false)) {
-                    is Result.Success -> {
-                        val cursos = cursoResult.data
-                        Timber.d("Cursos cargados para centro $centroId: ${cursos.size}")
+                // Cargar cursos sin filtrar por activos usando la función suspendida
+                val cursosList = cursoRepository.obtenerCursosPorCentro(centroId, soloActivos = false)
+                Timber.d("Cursos cargados para centro $centroId: ${cursosList.size}")
                         
-                        cursos.forEach { curso ->
-                            Timber.d("Curso: ${curso.nombre} (ID: ${curso.id}, activo: ${curso.activo})")
-                        }
+                cursosList.forEach { curso -> // No se necesita especificar el tipo aquí
+                    Timber.d("Curso: ${curso.nombre} (ID: ${curso.id}, activo: ${curso.activo})")
+                }
                         
-                        _uiState.update { it.copy(cursos = cursos) }
+                _uiState.update { it.copy(cursos = cursosList) }
                         
-                        if (cursos.isNotEmpty()) {
-                            // Si hay cursos, seleccionamos el primero y cargamos sus clases
-                            val primerCurso = cursos.first()
-                            Timber.d("Seleccionando primer curso: ${primerCurso.nombre}")
-                            
-                            _uiState.update { it.copy(cursoSeleccionado = primerCurso) }
-                            
-                            // Cargar clases del primer curso seleccionado
-                            cargarClasesPorCurso(primerCurso.id)
-                        } else {
-                            Timber.w("No se encontraron cursos para el centro $centroId")
-                        }
-                    }
-                    is Result.Error -> {
-                        Timber.e(cursoResult.exception, "Error al cargar cursos: ${cursoResult.exception?.message}")
-                    }
-                    is Result.Loading -> { /* No hacer nada */ }
+                if (cursosList.isNotEmpty()) {
+                    val primerCurso = cursosList.first()
+                    Timber.d("Seleccionando primer curso: ${primerCurso.nombre}")
+                    _uiState.update { it.copy(cursoSeleccionado = primerCurso) }
+                    cargarClasesPorCurso(primerCurso.id)
+                } else {
+                    Timber.w("No se encontraron cursos para el centro $centroId")
                 }
                 
                 // Cargar profesores incluyendo inactivos
@@ -305,6 +293,7 @@ class VincularProfesorClaseViewModel @Inject constructor(
                 
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar datos del centro: ${e.message}")
+                _uiState.update { it.copy(error = e.message ?: "Error inesperado al cargar datos del centro") }
             } finally {
                 _uiState.update { it.copy(isLoading = false) }
             }
@@ -330,174 +319,34 @@ class VincularProfesorClaseViewModel @Inject constructor(
             Timber.d("=== DIAGNÓSTICO DE CARGA DE CURSOS ===")
             Timber.d("Iniciando carga de cursos para el centro: $centroId")
             
-            // Primer intento: obtener directamente todos los cursos sin filtrar por activo
             try {
+                // Usar siempre el método directo (suspend fun)
                 val todosLosCursos = cursoRepository.obtenerCursosPorCentro(centroId, soloActivos = false)
                 Timber.d("MÉTODO DIRECTO: Encontrados ${todosLosCursos.size} cursos para centro $centroId")
                 
-                // Log detallado para cada curso encontrado
                 todosLosCursos.forEach { curso ->
                     Timber.d("Curso: ID=${curso.id}, Nombre=${curso.nombre}, CentroID=${curso.centroId}, Activo=${curso.activo}")
                 }
                 
-                if (todosLosCursos.isNotEmpty()) {
-                    _uiState.update { 
-                        it.copy(
-                            cursos = todosLosCursos,
-                            isLoading = false
-                        )
-                    }
-                    
-                    // Cargar profesores si hay cursos
-                    cargarProfesores(centroId)
-                    return@launch
-                } else {
-                    Timber.d("MÉTODO DIRECTO: No se encontraron cursos para este centro ($centroId)")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "MÉTODO DIRECTO: Error al cargar cursos: ${e.message}")
-            }
-            
-            // Segundo intento: usar el método con Result
-            when (val result = cursoRepository.obtenerCursosPorCentroResult(centroId, soloActivos = false)) {
-                is Result.Success -> {
-                    val cursos = result.data
-                    Timber.d("MÉTODO RESULT: Cursos cargados: ${cursos.size}")
-                    
-                    // Log detallado para cada curso encontrado
-                    cursos.forEach { curso ->
-                        Timber.d("Curso: ID=${curso.id}, Nombre=${curso.nombre}, CentroID=${curso.centroId}, Activo=${curso.activo}")
-                    }
-                    
-                    // Actualizar UI con los cursos obtenidos
-                    _uiState.update { 
-                        it.copy(
-                            cursos = cursos,
-                            isLoading = false
-                        )
-                    }
-                    
-                    // Si hay cursos, cargar profesores
-                    if (cursos.isNotEmpty()) {
-                        cargarProfesores(centroId)
-                    } else {
-                        Timber.d("MÉTODO RESULT: No se encontraron cursos para este centro ($centroId)")
-                        // Intentar usar un método alternativo si no hay cursos
-                        intentarCargarCursosAlternativo(centroId)
-                    }
-                }
-                is Result.Error -> {
-                    Timber.e(result.exception, "MÉTODO RESULT: Error al cargar cursos: ${result.exception?.message}")
-                    // Intentar método alternativo en caso de error
-                    intentarCargarCursosAlternativo(centroId)
-                }
-                is Result.Loading -> {
-                    // Manejar estado de carga si es necesario
-                }
-            }
-        }
-    }
-    
-    /**
-     * Intenta cargar cursos utilizando un método alternativo (getAllCursos + filtrado manual)
-     */
-    private suspend fun intentarCargarCursosAlternativo(centroId: String) {
-        Timber.d("Intentando cargar cursos con método alternativo")
-        
-        try {
-            // Intento 1: Verificar directamente en Firestore
-            val cursosSnapshot = FirebaseFirestore.getInstance().collection("cursos")
-                .whereEqualTo("centroId", centroId)
-                .get()
-                .await()
-                
-            val cursosDiretos = cursosSnapshot.documents.mapNotNull { doc ->
-                val id = doc.id
-                val nombre = doc.getString("nombre") ?: ""
-                val centroIdDoc = doc.getString("centroId") ?: ""
-                val activo = doc.getBoolean("activo") ?: true
-                
-                Timber.d("FIRESTORE DIRECTO: Curso encontrado - ID=$id, Nombre=$nombre, CentroID=$centroIdDoc, Activo=$activo")
-                
-                if (id.isNotEmpty() && nombre.isNotEmpty()) {
-                    Curso(
-                        id = id,
-                        nombre = nombre,
-                        centroId = centroIdDoc,
-                        activo = activo,
-                        descripcion = doc.getString("descripcion") ?: "",
-                        edadMinima = doc.getLong("edadMinima")?.toInt() ?: 0,
-                        edadMaxima = doc.getLong("edadMaxima")?.toInt() ?: 0,
-                        anioAcademico = doc.getString("anioAcademico") ?: ""
-                    )
-                } else null
-            }
-            
-            if (cursosDiretos.isNotEmpty()) {
-                Timber.d("FIRESTORE DIRECTO: Recuperados ${cursosDiretos.size} cursos")
                 _uiState.update { 
                     it.copy(
-                        cursos = cursosDiretos,
-                        isLoading = false,
-                        error = null
-                    )
-                }
-                
-                // Cargar profesores
-                cargarProfesores(centroId)
-                return
-            } else {
-                Timber.d("FIRESTORE DIRECTO: No se encontraron cursos para el centro")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "FIRESTORE DIRECTO: Error al consultar Firestore: ${e.message}")
-        }
-        
-        // Intento 2: Usar getAllCursos y filtrar manualmente
-        when (val result = cursoRepository.getAllCursos()) {
-            is Result.Success -> {
-                val todosCursos = result.data
-                Timber.d("MÉTODO ALTERNATIVO: Total de cursos en la base de datos: ${todosCursos.size}")
-                
-                val cursosDeCentro = todosCursos.filter { it.centroId == centroId }
-                Timber.d("MÉTODO ALTERNATIVO: Cursos filtrados para centroId=$centroId: ${cursosDeCentro.size}")
-                
-                cursosDeCentro.forEach { curso ->
-                    Timber.d("MÉTODO ALTERNATIVO: Curso - ID=${curso.id}, Nombre=${curso.nombre}, CentroID=${curso.centroId}, Activo=${curso.activo}")
-                }
-                
-                if (cursosDeCentro.isNotEmpty()) {
-                    Timber.d("MÉTODO ALTERNATIVO: Recuperación exitosa")
-                    _uiState.update { 
-                        it.copy(
-                            cursos = cursosDeCentro,
-                            isLoading = false,
-                            error = null
-                        )
-                    }
-                    
-                    // Cargar profesores
-                    cargarProfesores(centroId)
-                } else {
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            error = "No se encontraron cursos para este centro"
-                        )
-                    }
-                }
-            }
-            is Result.Error -> {
-                Timber.e(result.exception, "MÉTODO ALTERNATIVO: Error en método alternativo: ${result.exception?.message}")
-                _uiState.update { 
-                    it.copy(
-                        error = "Error al cargar cursos: ${result.exception?.message}",
+                        cursos = todosLosCursos,
                         isLoading = false
                     )
                 }
-            }
-            is Result.Loading -> {
-                // Manejar estado de carga si es necesario
+                
+                if (todosLosCursos.isNotEmpty()) {
+                    cargarProfesores(centroId) // Cargar profesores si hay cursos
+                } else {
+                    Timber.d("No se encontraron cursos para este centro ($centroId)")
+                    // No es necesario llamar al método alternativo aquí ya que obtenerCursosPorCentro es fiable
+                }
+
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar cursos: ${e.message}")
+                 _uiState.update { it.copy(error = e.message ?: "Error inesperado al cargar cursos", isLoading = false) }
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -667,38 +516,6 @@ class VincularProfesorClaseViewModel @Inject constructor(
     }
     
     /**
-     * Método alternativo para cargar clases usando obtenerClasesPorCurso
-     */
-    private fun cargarClasesAlternativo(cursoId: String) {
-        viewModelScope.launch {
-            Timber.d("Intentando cargar clases con método alternativo")
-            
-            try {
-                when (val result = cursoRepository.obtenerClasesPorCurso(cursoId)) {
-                    is Result.Success<*> -> {
-                        val clases = result.data as List<Clase>
-                        Timber.d("Clases cargadas con método alternativo: ${clases.size}")
-                        
-                        _uiState.update { 
-                            it.copy(
-                                clases = clases,
-                                isLoading = false,
-                                error = null
-                            )
-                        }
-                    }
-                    is Result.Error -> {
-                        Timber.e(result.exception, "Error en método alternativo: ${result.exception?.message}")
-                    }
-                    else -> { /* No hacer nada */ }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error en carga alternativa de clases: ${e.message}")
-            }
-        }
-    }
-    
-    /**
      * Selecciona un profesor y carga sus clases asignadas
      */
     fun seleccionarProfesor(profesor: Usuario) {
@@ -722,8 +539,8 @@ class VincularProfesorClaseViewModel @Inject constructor(
             
             // Obtener las clases asignadas al profesor
             when (val result = claseRepository.getClasesByProfesor(profesor.documentId)) {
-                is Result.Success -> {
-                    val clasesAsignadasAlProfesor = result.data
+                is Result.Success<*> -> {
+                    val clasesAsignadasAlProfesor = result.data as List<Clase> // Cast seguro
                     
                     // Crear un mapa donde cada clase del curso tiene un valor booleano
                     // que indica si está asignada al profesor o no

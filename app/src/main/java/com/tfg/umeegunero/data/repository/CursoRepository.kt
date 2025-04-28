@@ -13,15 +13,26 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import com.google.firebase.firestore.ktx.toObject
+import com.tfg.umeegunero.data.model.Usuario
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 
 /**
  * Repositorio para la gestión de cursos académicos
  */
 @Singleton
-class CursoRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
-) {
+class CursoRepository @Inject constructor() {
+    private val firestore = Firebase.firestore
     private val cursosCollection = firestore.collection("cursos")
+    private val clasesCollection = firestore.collection("clases")
+    private val usuariosCollection = firestore.collection("usuarios")
 
     /**
      * Obtiene todos los cursos
@@ -227,7 +238,60 @@ class CursoRepository @Inject constructor(
     }
     
     /**
-     * Obtiene los cursos asociados a un centro
+     * Obtiene un flujo de los cursos asociados a un centro, actualizándose en tiempo real.
+     * @param centroId ID del centro
+     * @param soloActivos si true, solo devuelve cursos activos, si false, devuelve todos
+     * @return Flow que emite Result con la lista de cursos del centro cada vez que cambian
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun obtenerCursosPorCentroFlow(centroId: String, soloActivos: Boolean = true): Flow<Result<List<Curso>>> = callbackFlow {
+        Timber.d("Creando Flow para cursos del centro ID: $centroId (soloActivos=$soloActivos)")
+        
+        // Crear query base filtrando por centroId
+        var query: Query = cursosCollection.whereEqualTo("centroId", centroId)
+        
+        // Aplicar filtro de activo solo si se solicita
+        if (soloActivos) {
+            query = query.whereEqualTo("activo", true)
+        }
+        
+        val listenerRegistration = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Timber.e(error, "Error al escuchar cambios en cursos del centro $centroId")
+                trySend(Result.Error(error)).isSuccess // Try to send error
+                return@addSnapshotListener
+            }
+            
+            if (snapshot == null) {
+                Timber.w("Snapshot nulo para cursos del centro $centroId")
+                trySend(Result.Success(emptyList())).isSuccess // Send empty list if snapshot is null
+                return@addSnapshotListener
+            }
+
+            val cursos = snapshot.documents.mapNotNull { document ->
+                try {
+                    val curso = document.toObject<Curso>()
+                    // Asegurar que el ID del documento se asigna al objeto
+                    curso?.copy(id = document.id) 
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al mapear documento de curso: ${document.id}, data: ${document.data}")
+                    null
+                }
+            }
+            
+            Timber.d("Snapshot recibido: ${cursos.size} cursos para el centro $centroId (soloActivos=$soloActivos)")
+            trySend(Result.Success(cursos)).isSuccess // Send the latest list
+        }
+
+        // Cancelar el listener cuando el Flow se cancele
+        awaitClose {
+            Timber.d("Cancelando listener para cursos del centro $centroId")
+            listenerRegistration.remove()
+        }
+    }
+
+    /**
+     * Obtiene los cursos asociados a un centro (versión suspendida, no reactiva)
      * @param centroId ID del centro
      * @param soloActivos si true, solo devuelve cursos activos, si false, devuelve todos
      * @return lista de cursos del centro
@@ -235,10 +299,9 @@ class CursoRepository @Inject constructor(
     suspend fun obtenerCursosPorCentro(centroId: String, soloActivos: Boolean = true): List<Curso> = withContext(Dispatchers.IO) {
         try {
             Timber.d("Consultando cursos para el centro ID: $centroId (soloActivos=$soloActivos)")
-            val cursosCollection = FirebaseFirestore.getInstance().collection("cursos")
             
             // Crear query base filtrando por centroId
-            var query = cursosCollection.whereEqualTo("centroId", centroId)
+            var query: Query = cursosCollection.whereEqualTo("centroId", centroId)
             
             // Aplicar filtro de activo solo si se solicita
             if (soloActivos) {
@@ -249,58 +312,23 @@ class CursoRepository @Inject constructor(
             
             val cursos = snapshot.documents.mapNotNull { document ->
                 try {
-                    val id = document.id
-                    val nombre = document.getString("nombre") ?: ""
-                    val activo = document.getBoolean("activo") ?: true
-                    
-                    if (id.isNotEmpty() && nombre.isNotEmpty()) {
-                        Curso(
-                            id = id,
-                            nombre = nombre,
-                            descripcion = document.getString("descripcion") ?: "",
-                            edadMinima = document.getLong("edadMinima")?.toInt() ?: 0,
-                            edadMaxima = document.getLong("edadMaxima")?.toInt() ?: 0,
-                            anioAcademico = document.getString("anioAcademico") ?: "",
-                            centroId = document.getString("centroId") ?: "",
-                            activo = activo
-                        )
-                    } else null
+                    val curso = document.toObject<Curso>()
+                    // Asegurar que el ID del documento se asigna al objeto
+                    curso?.copy(id = document.id)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al mapear documento de curso: ${e.message}")
+                    Timber.e(e, "Error al mapear documento de curso: ${document.id}, data: ${document.data}")
                     null
                 }
             }
             
             Timber.d("Encontrados ${cursos.size} cursos para el centro $centroId (soloActivos=$soloActivos)")
-            cursos.forEach { curso ->
-                Timber.d("Curso recuperado: ID=${curso.id}, Nombre=${curso.nombre}, Activo=${curso.activo}")
-            }
-            
             cursos
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener cursos por centro: ${e.message}")
             emptyList()
         }
     }
-    
-    /**
-     * Obtiene todos los cursos de un centro educativo con Result
-     * @param centroId ID del centro educativo
-     * @param soloActivos Si true, solo devuelve cursos activos
-     * @return Result con la lista de cursos del centro
-     */
-    suspend fun obtenerCursosPorCentroResult(centroId: String, soloActivos: Boolean = false): Result<List<Curso>> = withContext(Dispatchers.IO) {
-        try {
-            Timber.d("Consultando cursos para centro: $centroId (soloActivos: $soloActivos)")
-            
-            val cursos = obtenerCursosPorCentro(centroId, soloActivos)
-            return@withContext Result.Success(cursos)
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener cursos por centro: ${e.message}")
-            return@withContext Result.Error(e)
-        }
-    }
-    
+
     /**
      * Actualiza un curso existente
      * @param curso El curso con los datos actualizados

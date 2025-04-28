@@ -119,13 +119,17 @@ class AddAlumnoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Obtener cursos
                 val centroId = _uiState.value.centroId
                 
                 if (!centroId.isNullOrEmpty()) {
+                    // Usar la función suspendida que devuelve directamente la lista
+                    val cursosList = cursoRepository.obtenerCursosPorCentro(centroId)
+                    _uiState.update { it.copy(cursos = cursosList, isLoading = false) } // Actualizar UI directamente
+
+                    /* // Código antiguo que usaba Result
                     when (val cursoResult = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
-                        is Result.Success -> {
-                            _uiState.update { it.copy(cursos = cursoResult.data) }
+                        is Result.Success<*> -> { // Usar <*> para tipo genérico
+                            _uiState.update { it.copy(cursos = cursoResult.data as List<Curso>) }
                         }
                         is Result.Error -> {
                             _uiState.update { 
@@ -140,6 +144,9 @@ class AddAlumnoViewModel @Inject constructor(
                             // No hacer nada para el estado Loading
                         }
                     }
+                    */
+                } else {
+                     _uiState.update { it.copy(error = "No se pudo determinar el centroId", isLoading = false) }
                 }
             } catch (e: Exception) {
                 _uiState.update { 
@@ -149,6 +156,8 @@ class AddAlumnoViewModel @Inject constructor(
                     ) 
                 }
                 Timber.e(e, "Error inesperado al cargar cursos")
+            } finally {
+                 _uiState.update { it.copy(isLoading = false) } // Asegurar que isLoading se ponga a false
             }
         }
     }

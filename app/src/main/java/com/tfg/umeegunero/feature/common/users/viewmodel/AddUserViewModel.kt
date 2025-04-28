@@ -162,32 +162,58 @@ class AddUserViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             Timber.d("⏳ Iniciando carga de cursos para centroId: $centroId")
             
-            when (val result = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
-                is Result.Success -> {
-                    val cursos = result.data
-                    cursos.forEach { curso -> 
-                        Timber.d("Curso: ${curso.nombre}, id: ${curso.id}")
-                    }
-                    _uiState.update { it.copy(cursosDisponibles = cursos) }
+            try {
+                 // Usar la función suspendida que devuelve directamente la lista
+                 val cursosList = cursoRepository.obtenerCursosPorCentro(centroId)
+                 Timber.d("Cursos cargados: ${cursosList.size}")
+                 cursosList.forEach { curso -> 
+                     Timber.d("Curso: ${curso.nombre}, id: ${curso.id}")
+                 }
+                 _uiState.update { it.copy(cursosDisponibles = cursosList, isLoading = false) }
                     
-                    if (cursos.isNotEmpty()) {
-                        // Si hay cursos, seleccionamos automáticamente el primero
-                        updateCursoSeleccionado(cursos.first().id)
-                        Timber.d("🔄 Seleccionado automáticamente el primer curso: ${cursos.first().nombre}")
+                 if (cursosList.isNotEmpty()) {
+                     updateCursoSeleccionado(cursosList.first().id)
+                     Timber.d("🔄 Seleccionado automáticamente el primer curso: ${cursosList.first().nombre}")
+                 }
+
+                /* // Código antiguo con Result
+                when (val result = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
+                    is Result.Success<*> -> { // Usar <*> para tipo genérico
+                        val cursos = result.data as List<Curso> // Cast necesario
+                        cursos.forEach { curso: Curso -> // Especificar tipo en forEach
+                            Timber.d("Curso: ${curso.nombre}, id: ${curso.id}")
+                        }
+                        _uiState.update { it.copy(cursosDisponibles = cursos) }
+                        
+                        if (cursos.isNotEmpty()) {
+                            updateCursoSeleccionado(cursos.first().id)
+                            Timber.d("🔄 Seleccionado automáticamente el primer curso: ${cursos.first().nombre}")
+                        }
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "❌ Error al cargar cursos: ${result.exception?.message}")
+                        _uiState.update { 
+                            it.copy(
+                                error = "Error al cargar los cursos: ${result.exception?.message}",
+                                isLoading = false
+                            )
+                        }
+                    }
+                    is Result.Loading<*> -> { // Usar <*> para tipo genérico
+                        // Ya estamos mostrando el estado de carga
                     }
                 }
-                is Result.Error -> {
-                    Timber.e(result.exception, "❌ Error al cargar cursos: ${result.exception?.message}")
-                    _uiState.update { 
-                        it.copy(
-                            error = "Error al cargar los cursos: ${result.exception?.message}",
-                            isLoading = false
-                        )
-                    }
-                }
-                is Result.Loading -> {
-                    // Ya estamos mostrando el estado de carga
-                }
+                */
+            } catch (e: Exception) {
+                 Timber.e(e, "❌ Error inesperado al cargar cursos: ${e.message}")
+                 _uiState.update { 
+                     it.copy(
+                         error = "Error inesperado al cargar los cursos: ${e.message}",
+                         isLoading = false
+                     )
+                 }
+            } finally {
+                _uiState.update { it.copy(isLoading = false) } // Asegurar que isLoading se ponga a false
             }
         }
     }
@@ -198,14 +224,15 @@ class AddUserViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             when (val result = cursoRepository.obtenerClasesPorCurso(cursoId)) {
-                is Result.Success -> {
+                is Result.Success<*> -> {
+                    val clasesList = result.data as List<Clase> // Guardar la lista en una variable
                     _uiState.update { 
                         it.copy(
-                            clasesDisponibles = result.data,
+                            clasesDisponibles = clasesList, // Usar la variable
                             isLoading = false
                         )
                     }
-                    Timber.d("Clases cargadas: ${result.data.size}")
+                    Timber.d("Clases cargadas: ${clasesList.size}") // Usar la variable aquí
                 }
                 is Result.Error -> {
                     _uiState.update { 

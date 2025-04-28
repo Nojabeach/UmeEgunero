@@ -42,6 +42,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCard
 import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCardBienvenida
 import com.tfg.umeegunero.feature.centro.viewmodel.CentroDashboardViewModel
@@ -100,9 +101,28 @@ fun CentroDashboardScreen(
             }
         }
     }
-    // --- FUNCIONES DE NAVEGACIÓN LOCALES ---
-    fun onNavigateToListaCursos() = navController.navigate(AppScreens.ListaCursos.route)
-    fun onNavigateToListaClases() = navController.navigate(AppScreens.ListaClases.route)
+    // Obtener el ID del centro del usuario actual
+    val centroId = uiState.currentUser?.perfiles?.firstOrNull { perfil -> 
+        perfil.tipo == TipoUsuario.ADMIN_CENTRO 
+    }?.centroId ?: ""
+
+    // Funciones de navegación locales actualizadas
+    fun onNavigateToListaCursos() = try {
+        navController.navigate("gestor_academico/CURSOS?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+    } catch (e: Exception) {
+        scope.launch {
+            snackbarHostState.showSnackbar("Error al navegar a cursos: ${e.message}")
+        }
+    }
+
+    fun onNavigateToListaClases() = try {
+        navController.navigate("gestor_academico/CLASES?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+    } catch (e: Exception) {
+        scope.launch {
+            snackbarHostState.showSnackbar("Error al navegar a clases: ${e.message}")
+        }
+    }
+
     fun onNavigateToGestionProfesores() = navController.navigate(AppScreens.GestionProfesores.route)
     fun onNavigateToAddAlumno() = navController.navigate(AppScreens.AlumnoList.route)
     fun onNavigateToVincularProfesorClase() = navController.navigate(AppScreens.VincularProfesorClase.route)
@@ -111,7 +131,7 @@ fun CentroDashboardScreen(
     fun onNavigateToCalendario() = navController.navigate(AppScreens.Calendario.route)
     fun onNavigateToNotificaciones() = navController.navigate(AppScreens.Notificaciones.route)
 
-    // Definir la lista de tarjetas para el grid
+    // Actualizar las tarjetas con el nuevo centroId
     val cards = listOf(
         CategoriaCardData(
             titulo = "Cursos",
@@ -120,7 +140,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.PurplePrimary,
             border = true,
-            onClick = { onNavigateToListaCursos() }
+            onClick = { 
+                try {
+                    navController.navigate("gestor_academico/CURSOS?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar a cursos: ${e.message}")
+                    }
+                }
+            }
         ),
         CategoriaCardData(
             titulo = "Clases",
@@ -129,7 +157,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.PurpleSecondary,
             border = true,
-            onClick = { onNavigateToListaClases() }
+            onClick = { 
+                try {
+                    navController.navigate("gestor_academico/CLASES?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar a clases: ${e.message}")
+                    }
+                }
+            }
         ),
         CategoriaCardData(
             titulo = "Profesores",
@@ -138,7 +174,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.Green500,
             border = true,
-            onClick = { onNavigateToGestionProfesores() }
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.GestionProfesores.route)
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar a gestión de profesores: ${e.message}")
+                    }
+                }
+            }
         ),
         CategoriaCardData(
             titulo = "Alumnos",
@@ -147,7 +191,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.Pink80,
             border = true,
-            onClick = { onNavigateToAddAlumno() }
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.AlumnoList.route)
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar a lista de alumnos: ${e.message}")
+                    }
+                }
+            }
         ),
         CategoriaCardData(
             titulo = "Asignación",
@@ -156,7 +208,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.PurpleTertiary,
             border = true,
-            onClick = { onNavigateToVincularProfesorClase() }
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.VincularProfesorClase.route)
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar a vinculación de profesores: ${e.message}")
+                    }
+                }
+            }
         ),
         CategoriaCardData(
             titulo = "Vinculación Familiar",
@@ -165,7 +225,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.Red500,
             border = true,
-            onClick = { onNavigateToVinculacionFamiliar() }
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar a vinculación familiar: ${e.message}")
+                    }
+                }
+            }
         ),
         CategoriaCardData(
             titulo = "Crear Usuario",
@@ -174,7 +242,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.PurplePrimary,
             border = true,
-            onClick = { onNavigateToCrearUsuarioRapido() }
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.CrearUsuarioRapido.route)
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar a creación de usuario: ${e.message}")
+                    }
+                }
+            }
         ),
         CategoriaCardData(
             titulo = "Calendario",
@@ -183,7 +259,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.PurpleTertiary,
             border = true,
-            onClick = { onNavigateToCalendario() }
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.Calendario.route)
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar al calendario: ${e.message}")
+                    }
+                }
+            }
         ),
         CategoriaCardData(
             titulo = "Notificaciones",
@@ -192,7 +276,15 @@ fun CentroDashboardScreen(
             color = CentroColor,
             iconTint = AppColors.GradientEnd,
             border = true,
-            onClick = { onNavigateToNotificaciones() }
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.Notificaciones.route)
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al navegar a notificaciones: ${e.message}")
+                    }
+                }
+            }
         )
     )
     if (showLogoutDialog) {

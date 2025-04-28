@@ -217,22 +217,10 @@ class CentroDashboardViewModel @Inject constructor(
             
             try {
                 if (centroId.isNotEmpty()) {
-                    when (val cursosResult = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
-                        is Result.Success -> {
-                            Timber.d("Cursos cargados: ${cursosResult.data.size}")
-                            _uiState.update { it.copy(cursos = cursosResult.data, isLoading = false) }
-                        }
-                        is Result.Error -> {
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    error = cursosResult.exception?.message ?: "Error al cargar los cursos"
-                                )
-                            }
-                            Timber.e(cursosResult.exception, "Error al cargar los cursos")
-                        }
-                        else -> { /* Ignorar estado loading */ }
-                    }
+                    // Usar la función suspendida que devuelve directamente la lista
+                    val cursosList = cursoRepository.obtenerCursosPorCentro(centroId)
+                    Timber.d("Cursos cargados: ${cursosList.size}")
+                    _uiState.update { it.copy(cursos = cursosList, isLoading = false) }
                 } else {
                     _uiState.update { it.copy(
                         isLoading = false,
@@ -247,6 +235,8 @@ class CentroDashboardViewModel @Inject constructor(
                     )
                 }
                 Timber.e(e, "Error inesperado al cargar los cursos")
+            } finally {
+                 _uiState.update { it.copy(isLoading = false) } // Asegurar que isLoading se ponga a false
             }
         }
     }

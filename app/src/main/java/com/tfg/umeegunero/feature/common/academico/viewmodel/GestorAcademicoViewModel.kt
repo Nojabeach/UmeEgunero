@@ -9,12 +9,17 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 // Estado de la UI para el gestor académico
@@ -24,7 +29,9 @@ import javax.inject.Inject
     val clases: List<Clase> = emptyList(),
     val selectedCentro: Centro? = null,
     val selectedCurso: Curso? = null,
-    val isLoading: Boolean = false,
+    val isLoadingCentros: Boolean = false,
+    val isLoadingCursos: Boolean = false,
+    val isLoadingClases: Boolean = false,
     val error: String? = null,
     val centroMenuExpanded: Boolean = false,
     val cursoMenuExpanded: Boolean = false
@@ -45,48 +52,82 @@ class GestorAcademicoViewModel @Inject constructor(
 
     fun cargarCentros() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoadingCentros = true) }
             try {
-                val centrosResult = centroRepository.getAllCentros()
-                val centros = if (centrosResult is com.tfg.umeegunero.util.Result.Success) centrosResult.data else emptyList()
-                _uiState.update { it.copy(centros = centros, isLoading = false) }
+                when (val centrosResult = centroRepository.getAllCentros()) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(centros = centrosResult.data, isLoadingCentros = false) }
+                        centrosResult.data.firstOrNull()?.let { primerCentro ->
+                            onCentroSelected(primerCentro) 
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(error = "Error al cargar centros: ${centrosResult.exception?.message}", isLoadingCentros = false) }
+                    }
+                    else -> { /* Loading state is handled */ }
+                }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error al cargar centros: ${e.message}", isLoading = false) }
+                Timber.e(e, "Excepción al cargar centros")
+                _uiState.update { it.copy(error = "Error inesperado al cargar centros: ${e.message}", isLoadingCentros = false) }
             }
         }
     }
 
     fun onCentroSelected(centro: Centro) {
-        _uiState.update { it.copy(selectedCentro = centro, selectedCurso = null) }
-        cargarCursos(centro.id)
+        _uiState.update { it.copy(selectedCentro = centro, selectedCurso = null, cursos = emptyList(), clases = emptyList()) }
+        observarCursos(centro.id)
     }
 
-    fun cargarCursos(centroId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                val cursos = cursoRepository.obtenerCursosPorCentro(centroId)
-                _uiState.update { it.copy(cursos = cursos, isLoading = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error al cargar cursos: ${e.message}", isLoading = false) }
+    private fun observarCursos(centroId: String) {
+        _uiState.update { it.copy(isLoadingCursos = true, error = null) }
+        
+        cursoRepository.obtenerCursosPorCentroFlow(centroId)
+            .onEach { result ->
+                when (result) {
+                    is Result.Success -> {
+                        Timber.d("Cursos actualizados para centro $centroId: ${result.data.size}")
+                        _uiState.update { it.copy(cursos = result.data, isLoadingCursos = false) }
+                        if (_uiState.value.selectedCurso == null && result.data.isNotEmpty()) {
+                            onCursoSelected(result.data.first())
+                        }
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "Error al observar cursos del centro $centroId")
+                        _uiState.update { it.copy(error = result.exception?.message ?: "Error al cargar cursos", isLoadingCursos = false) }
+                    }
+                    is Result.Loading -> {
+                         _uiState.update { it.copy(isLoadingCursos = true) }
+                    }
+                }
             }
-        }
+            .catch { e -> 
+                Timber.e(e, "Excepción en el Flow de cursos del centro $centroId")
+                _uiState.update { it.copy(error = e.message ?: "Error inesperado", isLoadingCursos = false) }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun onCursoSelected(curso: Curso) {
-        _uiState.update { it.copy(selectedCurso = curso) }
+        _uiState.update { it.copy(selectedCurso = curso, clases = emptyList()) }
         cargarClases(curso.id)
     }
 
     fun cargarClases(cursoId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoadingClases = true) }
             try {
-                val clasesResult = claseRepository.getClasesByCursoId(cursoId)
-                val clases = if (clasesResult is com.tfg.umeegunero.util.Result.Success) clasesResult.data else emptyList()
-                _uiState.update { it.copy(clases = clases, isLoading = false) }
+                when (val clasesResult = claseRepository.getClasesByCursoId(cursoId)) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(clases = clasesResult.data, isLoadingClases = false) }
+                    }
+                    is Result.Error -> {
+                         _uiState.update { it.copy(error = "Error al cargar clases: ${clasesResult.exception?.message}", isLoadingClases = false) }
+                    }
+                     else -> { /* Loading state is handled */ }
+                }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error al cargar clases: ${e.message}", isLoading = false) }
+                Timber.e(e, "Excepción al cargar clases")
+                _uiState.update { it.copy(error = "Error inesperado al cargar clases: ${e.message}", isLoadingClases = false) }
             }
         }
     }
@@ -100,36 +141,42 @@ class GestorAcademicoViewModel @Inject constructor(
 
     fun eliminarCurso(cursoId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoadingCursos = true) }
             try {
-                val result = cursoRepository.deleteCurso(cursoId)
-                if (result is com.tfg.umeegunero.util.Result.Success) {
-                    // Recargar cursos tras eliminar
-                    val centroId = _uiState.value.selectedCentro?.id
-                    if (centroId != null) cargarCursos(centroId)
-                } else if (result is com.tfg.umeegunero.util.Result.Error) {
-                    _uiState.update { it.copy(error = "Error al eliminar curso: ${result.exception?.message}", isLoading = false) }
+                when (val result = cursoRepository.deleteCurso(cursoId)) {
+                    is Result.Success -> {
+                         _uiState.update { it.copy(isLoadingCursos = false) }
+                        Timber.d("Curso $cursoId eliminado correctamente.")
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(error = "Error al eliminar curso: ${result.exception?.message}", isLoadingCursos = false) }
+                    }
+                    else -> { _uiState.update { it.copy(isLoadingCursos = false) } }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error inesperado al eliminar curso: ${e.message}", isLoading = false) }
+                Timber.e(e, "Excepción al eliminar curso")
+                _uiState.update { it.copy(error = "Error inesperado al eliminar curso: ${e.message}", isLoadingCursos = false) }
             }
         }
     }
 
     fun eliminarClase(claseId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoadingClases = true) }
             try {
-                val result = claseRepository.eliminarClase(claseId)
-                if (result is com.tfg.umeegunero.util.Result.Success) {
-                    // Recargar clases tras eliminar
-                    val cursoId = _uiState.value.selectedCurso?.id
-                    if (cursoId != null) cargarClases(cursoId)
-                } else if (result is com.tfg.umeegunero.util.Result.Error) {
-                    _uiState.update { it.copy(error = "Error al eliminar clase: ${result.exception?.message}", isLoading = false) }
+                when (val result = claseRepository.eliminarClase(claseId)) {
+                    is Result.Success -> {
+                        val cursoId = _uiState.value.selectedCurso?.id
+                        if (cursoId != null) cargarClases(cursoId) else _uiState.update { it.copy(isLoadingClases = false) }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(error = "Error al eliminar clase: ${result.exception?.message}", isLoadingClases = false) }
+                    }
+                    else -> { _uiState.update { it.copy(isLoadingClases = false) } }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error inesperado al eliminar clase: ${e.message}", isLoading = false) }
+                Timber.e(e, "Excepción al eliminar clase")
+                _uiState.update { it.copy(error = "Error inesperado al eliminar clase: ${e.message}", isLoadingClases = false) }
             }
         }
     }

@@ -27,6 +27,7 @@ import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.feature.centro.viewmodel.ListaCursosViewModel
 import com.tfg.umeegunero.navigation.AppScreens
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla para gestionar los cursos del centro educativo
@@ -41,10 +42,15 @@ fun ListaCursosScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddCursoDialog by remember { mutableStateOf(false) }
     var cursoToEdit by remember { mutableStateOf<Curso?>(null) }
+    val scope = rememberCoroutineScope()
     
     // Cargar centros y cursos al iniciar
     LaunchedEffect(Unit) {
-        viewModel.cargarCentrosYSeleccionar()
+        try {
+            viewModel.cargarCentrosYSeleccionar()
+        } catch (e: Exception) {
+            snackbarHostState.showSnackbar("Error al cargar los datos: ${e.message}")
+        }
     }
     
     // Mostrar errores en snackbar
@@ -60,7 +66,16 @@ fun ListaCursosScreen(
             TopAppBar(
                 title = { Text("Gestión de Cursos") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        try {
+                            navController.popBackStack()
+                        } catch (e: Exception) {
+                            // Si falla el popBackStack, intentamos navegar al dashboard
+                            navController.navigate(AppScreens.CentroDashboard.route) {
+                                popUpTo(AppScreens.CentroDashboard.route) { inclusive = true }
+                            }
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
@@ -119,19 +134,29 @@ fun ListaCursosScreen(
                             DropdownMenuItem(
                                 text = { Text(centro.nombre) },
                                 onClick = {
-                                    viewModel.seleccionarCentro(centro)
-                                    expanded = false
+                                    try {
+                                        viewModel.seleccionarCentro(centro)
+                                        expanded = false
+                                    } catch (e: Exception) {
+                                        expanded = false
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Error al seleccionar el centro: ${e.message}")
+                                        }
+                                    }
                                 }
                             )
                         }
                     }
                 }
             }
-            // Mostrar indicador de carga
+
             if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
             } else if (uiState.cursos.isEmpty()) {
                 // Mostrar mensaje si no hay cursos
                 Column(
@@ -213,7 +238,13 @@ fun ListaCursosScreen(
                                 viewModel.eliminarCurso(curso.id)
                             },
                             onVerClasesClick = {
-                                navController.navigate("gestor_academico/CLASES?centroId=${curso.centroId}&cursoId=${curso.id}&selectorCentroBloqueado=true&selectorCursoBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+                                try {
+                                    navController.navigate("gestor_academico/CLASES?centroId=${curso.centroId}&cursoId=${curso.id}&selectorCentroBloqueado=true&selectorCursoBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+                                } catch (e: Exception) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Error al navegar a las clases: ${e.message}")
+                                    }
+                                }
                             }
                         )
                     }
@@ -233,19 +264,25 @@ fun ListaCursosScreen(
             curso = cursoToEdit,
             onDismiss = { showAddCursoDialog = false },
             onSave = { nombre, anioAcademico, descripcion, edadMinima, edadMaxima ->
-                if (cursoToEdit == null) {
-                    viewModel.crearCurso(nombre, anioAcademico, descripcion, edadMinima, edadMaxima)
-                } else {
-                    viewModel.actualizarCurso(
-                        cursoToEdit!!.id,
-                        nombre,
-                        anioAcademico,
-                        descripcion,
-                        edadMinima,
-                        edadMaxima
-                    )
+                try {
+                    if (cursoToEdit == null) {
+                        viewModel.crearCurso(nombre, anioAcademico, descripcion, edadMinima, edadMaxima)
+                    } else {
+                        viewModel.actualizarCurso(
+                            cursoToEdit!!.id,
+                            nombre,
+                            anioAcademico,
+                            descripcion,
+                            edadMinima,
+                            edadMaxima
+                        )
+                    }
+                    showAddCursoDialog = false
+                } catch (e: Exception) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Error al guardar el curso: ${e.message}")
+                    }
                 }
-                showAddCursoDialog = false
             }
         )
     }

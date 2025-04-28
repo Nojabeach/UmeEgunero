@@ -55,7 +55,9 @@ fun GestorAcademicoScreen(
     val clases = uiState.clases
     val selectedCentro = uiState.selectedCentro
     val selectedCurso = uiState.selectedCurso
-    val isLoading = uiState.isLoading
+    val isLoadingCentros = uiState.isLoadingCentros
+    val isLoadingCursos = uiState.isLoadingCursos
+    val isLoadingClases = uiState.isLoadingClases
     val error = uiState.error
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -168,7 +170,7 @@ fun GestorAcademicoScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
             // Lista de cursos o clases con animación y menú contextual
-            if (isLoading) {
+            if (isLoadingCursos && modo == ModoVisualizacion.CURSOS || isLoadingClases && modo == ModoVisualizacion.CLASES) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
