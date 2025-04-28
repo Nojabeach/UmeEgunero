@@ -224,16 +224,26 @@ fun ProfesorDashboardContent(
     navController: NavController,
     modifier: Modifier = Modifier
 ) {
-    val cards = listOf(
-        CategoriaCardData("Comunicados", "Consulta y publica comunicados para tus clases", Icons.Default.Description, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ComunicadosCirculares.route) }),
-        CategoriaCardData("Incidencias", "Reporta y gestiona incidencias del aula", Icons.Default.Warning, MaterialTheme.colorScheme.error, onClick = { /* TODO: Incidencias */ }),
+    // Sección: Gestión Académica
+    val gestionAcademicaCards = listOf(
         CategoriaCardData("Asistencia", "Registra y revisa la asistencia de tus alumnos", Icons.Default.CheckCircle, MaterialTheme.colorScheme.secondary, onClick = { navController.navigate(AppScreens.AsistenciaProfesor.route) }),
-        CategoriaCardData("Chat", "Comunícate con familias y otros docentes", Icons.AutoMirrored.Filled.Chat, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ConversacionesProfesor.route) }),
-        CategoriaCardData("Calendario", "Consulta eventos y fechas importantes", Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.CalendarioProfesor.route) }),
-        CategoriaCardData("Actividades", "Crea y gestiona actividades para tus clases", Icons.Default.PlayCircle, MaterialTheme.colorScheme.secondary, onClick = { navController.navigate(AppScreens.RegistroActividad.route) }),
         CategoriaCardData("Mis Clases", "Accede a la gestión de tus clases asignadas", Icons.Default.School, MaterialTheme.colorScheme.primary, onClick = { /* TODO: Mis Clases */ }),
         CategoriaCardData("Evaluación", "Evalúa el progreso académico de tus alumnos", Icons.Default.PieChart, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.Evaluacion.route) })
     )
+
+    // Sección: Comunicación
+    val comunicacionCards = listOf(
+        CategoriaCardData("Comunicados", "Consulta y publica comunicados para tus clases", Icons.Default.Description, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ComunicadosCirculares.route) }),
+        CategoriaCardData("Chat", "Comunícate con familias y otros docentes", Icons.AutoMirrored.Filled.Chat, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ConversacionesProfesor.route) }),
+        CategoriaCardData("Incidencias", "Reporta y gestiona incidencias del aula", Icons.Default.Warning, MaterialTheme.colorScheme.error, onClick = { /* TODO: Incidencias */ })
+    )
+
+    // Sección: Actividades
+    val actividadesCards = listOf(
+        CategoriaCardData("Actividades", "Crea y gestiona actividades para tus clases", Icons.Default.PlayCircle, MaterialTheme.colorScheme.secondary, onClick = { navController.navigate(AppScreens.RegistroActividad.route) }),
+        CategoriaCardData("Calendario", "Consulta eventos y fechas importantes", Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.CalendarioProfesor.route) })
+    )
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier
@@ -268,19 +278,20 @@ fun ProfesorDashboardContent(
                 }
             }
         }
-        // Divider y sección de accesos rápidos
+
+        // Sección: Gestión Académica
         item(span = { GridItemSpan(2) }) {
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Accesos rápidos",
+                text = "Gestión Académica",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = ProfesorColor,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
         }
-        items(cards.size) { index ->
-            val card = cards[index]
+        items(gestionAcademicaCards.size) { index ->
+            val card = gestionAcademicaCards[index]
             CategoriaCard(
                 titulo = card.titulo,
                 descripcion = card.descripcion,
@@ -292,6 +303,57 @@ fun ProfesorDashboardContent(
                 modifier = Modifier.padding(4.dp)
             )
         }
+
+        // Sección: Comunicación
+        item(span = { GridItemSpan(2) }) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Comunicación",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = ProfesorColor,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
+        }
+        items(comunicacionCards.size) { index ->
+            val card = comunicacionCards[index]
+            CategoriaCard(
+                titulo = card.titulo,
+                descripcion = card.descripcion,
+                icono = card.icono,
+                color = ProfesorColor,
+                iconTint = card.iconTint,
+                border = true,
+                onClick = card.onClick,
+                modifier = Modifier.padding(4.dp)
+            )
+        }
+
+        // Sección: Actividades
+        item(span = { GridItemSpan(2) }) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Actividades",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = ProfesorColor,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
+        }
+        items(actividadesCards.size) { index ->
+            val card = actividadesCards[index]
+            CategoriaCard(
+                titulo = card.titulo,
+                descripcion = card.descripcion,
+                icono = card.icono,
+                color = ProfesorColor,
+                iconTint = card.iconTint,
+                border = true,
+                onClick = card.onClick,
+                modifier = Modifier.padding(4.dp)
+            )
+        }
+
         // Divider y sección de alumnos pendientes
         item(span = { GridItemSpan(2) }) {
             Spacer(Modifier.height(16.dp))
@@ -306,6 +368,7 @@ fun ProfesorDashboardContent(
         item(span = { GridItemSpan(2) }) {
             AlumnosPendientesResumen(alumnosPendientes)
         }
+
         // Espaciador final
         item(span = { GridItemSpan(2) }) {
             Spacer(modifier = Modifier.height(32.dp))

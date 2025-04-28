@@ -247,9 +247,9 @@ fun CentroDashboardScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = CentroColor.copy(alpha = 0.05f)
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
                 .padding(paddingValues)
         ) {
             if (uiState.isLoading) {
@@ -257,12 +257,12 @@ fun CentroDashboardScreen(
                     modifier = Modifier.align(Alignment.Center),
                     color = CentroColor
                 )
-            } else {
-                AnimatedVisibility(
-                    visible = showContent,
+        } else {
+            AnimatedVisibility(
+                visible = showContent,
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }, animationSpec = spring(stiffness = Spring.StiffnessLow)),
-                    exit = fadeOut()
-                ) {
+                exit = fadeOut()
+            ) {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         modifier = Modifier
@@ -490,53 +490,53 @@ fun CentroDashboardContent(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Tarjeta de bienvenida
-        Card(
+    Card(
             modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp, max = 100.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = CentroColor.copy(alpha = 0.15f)
-            ),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
+        colors = CardDefaults.cardColors(
+            containerColor = CentroColor.copy(alpha = 0.15f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
+            ) {
+                Text(
                         text = "¡Bienvenido/a, ${currentUser?.nombre ?: ""}!",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                         color = CentroColor
-                    )
-                    Text(
-                        text = nombreCentro,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = nombreCentro,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
                         color = CentroColor
-                    )
-                    Text(
-                        text = currentDate,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Box(
-                    modifier = Modifier
+                )
+                Text(
+                    text = currentDate,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Box(
+                modifier = Modifier
                         .size(44.dp)
-                        .clip(CircleShape)
-                        .background(CentroColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.School,
-                        contentDescription = null,
-                        tint = Color.White,
+                    .clip(CircleShape)
+                    .background(CentroColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.School,
+                    contentDescription = null,
+                    tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -584,7 +584,7 @@ fun CentroDashboardContent(
             color = CentroColor
         )
         Row(
-            modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             CategoriaCard(
@@ -600,7 +600,7 @@ fun CentroDashboardContent(
             CategoriaCard(
                 titulo = "Alumnos",
                 descripcion = "Gestiona el listado y los datos de los estudiantes",
-                icono = Icons.Default.Face,
+                    icono = Icons.Default.Face,
                 color = CentroColor,
                 iconTint = AppColors.Pink80,
                 border = false,
