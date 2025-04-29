@@ -586,9 +586,9 @@ class AddUserViewModel @Inject constructor(
                         fechaNacimiento = currentState.fechaNacimiento, // Asegurar formato correcto si es necesario
                         telefono = currentState.telefono, // Opcional para Alumno?
                         centroId = centroId,
-                        curso = currentState.cursoSeleccionado?.nombre ?: "", // Guardar nombre del curso
-                        clase = currentState.claseSeleccionada?.nombre ?: "", // Guardar nombre de la clase
-                        aulaId = currentState.claseSeleccionada?.id ?: "", // Usar claseId como aulaId? Revisa tu modelo Alumno
+                        curso = currentState.cursoSeleccionado.nombre, // cursoSeleccionado no es nulo aquí
+                        clase = currentState.claseSeleccionada.nombre, // claseSeleccionada no es nulo aquí
+                        aulaId = currentState.claseSeleccionada.id, // claseSeleccionada e id no son nulos aquí
                         activo = true
                         // otros campos relevantes inicializados a vacío o por defecto
                     )
@@ -645,16 +645,26 @@ class AddUserViewModel @Inject constructor(
                 when (authResult) {
                     is Result.Success -> {
                          // Asumimos que authResult.data es de tipo AuthResult o compatible
-                         // Acceder directamente a .user y luego a .uid
-                         val firebaseUser = (authResult.data as? com.google.firebase.auth.AuthResult)?.user
- 
-                         // Ahora, obtener el UID del FirebaseUser
-                         val uid = firebaseUser?.uid ?: run {
-                             Timber.e("Error: UID nulo después de crear usuario en Auth.")
+                         val uid: String? // Declarar uid como nullable
+                         
+                         // Determinar el UID basado en qué repositorio se llamó
+                         if (currentState.tipoUsuario == TipoUsuario.ADMIN_CENTRO || currentState.tipoUsuario == TipoUsuario.PROFESOR) {
+                             // centroRepository devuelve Result<AuthResult>
+                             val firebaseUser = (authResult.data as? com.google.firebase.auth.AuthResult)?.user // Cast puede fallar si tipo es incorrecto
+                              uid = firebaseUser?.uid
+                              Timber.d("Usuario Auth (Centro/Prof) creado con UID: $uid")
+                          } else {
+                              // usuarioRepository devuelve Result<String>
+                              uid = authResult.data as String // Cast directo, ya que esperamos String
+                              Timber.d("Usuario Auth (AdminApp/Familiar) creado con UID: $uid")
+                          }
+                         
+                         // Validar que se obtuvo un UID
+                         if (uid == null) {
+                             Timber.e("Error: UID nulo después de crear usuario en Auth para tipo ${currentState.tipoUsuario}.")
                              _uiState.update { it.copy(isLoading = false, error = "Error interno al obtener ID de usuario.") }
                              return@launch
                          }
-                         Timber.d("Usuario creado en Auth con UID: $uid")
 
                         // 2. Crear objeto Usuario
                         val perfiles = createPerfiles() // Crear perfiles ANTES de crear el objeto Usuario
@@ -667,16 +677,17 @@ class AddUserViewModel @Inject constructor(
                               return@launch
                          }
 
-                         val usuario = Usuario(
-                             dni = currentState.dni,
-                             email = currentState.email,
-                             nombre = currentState.nombre,
-                             apellidos = currentState.apellidos,
-                             telefono = currentState.telefono,
-                             fechaRegistro = com.google.firebase.Timestamp.now(),
-                             perfiles = perfiles,
-                             activo = true // Por defecto activo al crear
-                         )
+                         // Crear usuario SIN la variable 'usuario' no usada
+                         Usuario(
+                              dni = currentState.dni,
+                              email = currentState.email,
+                              nombre = currentState.nombre,
+                              apellidos = currentState.apellidos,
+                              telefono = currentState.telefono,
+                              fechaRegistro = com.google.firebase.Timestamp.now(),
+                              perfiles = perfiles,
+                              activo = true // Por defecto activo al crear
+                          )
                          
                          // 3. Guardar usuario en Firestore usando el UID como ID del documento
                          Timber.d("Guardando usuario en Firestore con ID (Auth UID): $uid")

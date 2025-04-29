@@ -96,7 +96,8 @@ open class UsuarioRepository @Inject constructor(
 
             // 2. Crear usuario en Firebase Auth
             val authResult = firebaseAuth.createUserWithEmailAndPassword(form.email, form.password).await()
-            val uid = authResult.user?.uid ?: throw Exception("Error al crear usuario en Firebase Auth")
+            // Verificar que el usuario se creó, aunque no usemos el uid aquí directamente
+            authResult.user?.uid ?: throw Exception("Error al crear usuario en Firebase Auth")
 
             // 3. Crear perfil de familia
             val perfil = Perfil(
@@ -1495,12 +1496,12 @@ open class UsuarioRepository @Inject constructor(
             val usuario = usuarioDoc.toObject(Usuario::class.java)
                 ?: return@withContext Result.Error(Exception("Error al convertir documento a usuario"))
 
-            // 2. Verificar si es administrador
+            // 2. Verificar si es administrador para la lógica de SMTP
             val esAdmin = usuario.perfiles.any { it.tipo == TipoUsuario.ADMIN_APP }
-            Timber.d("Usuario con DNI $dni ${if (esAdmin) "es" else "no es"} administrador")
 
             // 3. Actualizar contraseña en Firebase Auth
             try {
+                @Suppress("DEPRECATION") // Suprimir warning de deprecación temporalmente
                 val userRecord = firebaseAuth.fetchSignInMethodsForEmail(usuario.email).await()
                 if (userRecord.signInMethods?.isNotEmpty() == true) {
                     firebaseAuth.sendPasswordResetEmail(usuario.email).await()
@@ -1681,7 +1682,7 @@ open class UsuarioRepository @Inject constructor(
      * @return "profesor", "alumno" o null si no está autenticado
      */
     suspend fun getRolUsuarioActual(): String? {
-        val usuario = getUsuarioActual() ?: return null
+        getUsuarioActual() // Llamar para asegurar la lógica interna si la hubiera, pero ignorar el resultado
         
         return if (esProfesor()) "profesor" else "alumno"
     }
