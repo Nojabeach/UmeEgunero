@@ -467,6 +467,21 @@ private fun FilterDialog(
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Mostrar solo alumnos activos",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = uiState.soloActivos,
+                        onCheckedChange = onSoloActivosChange
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Los filtros se aplican automáticamente al escribir.",
                     style = MaterialTheme.typography.bodySmall,
@@ -480,7 +495,7 @@ private fun FilterDialog(
             }
         },
         dismissButton = {
-            null
+            {}
         }
     )
 }

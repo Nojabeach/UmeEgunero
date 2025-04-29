@@ -983,7 +983,7 @@ open class UsuarioRepository @Inject constructor(
             // Primero buscamos el usuario en Firestore para verificar que existe
             val usuarioResult = getUsuarioByEmail(email)
             
-            if (usuarioResult is Result.Success && usuarioResult.data != null) {
+            if (usuarioResult is Result.Success) {
                 // El usuario existe en Firestore, ahora intentamos eliminar su cuenta de Auth
                 
                 // Esto requeriría una función en el servidor con Firebase Admin SDK
