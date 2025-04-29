@@ -8,6 +8,7 @@ import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.Perfil
+import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
@@ -577,8 +578,7 @@ class AddUserViewModel @Inject constructor(
                     }
 
                     // Crear objeto Alumno (asumiendo que existe una clase Alumno)
-                    // TODO: Asegúrate de tener una data class Alumno
-                    /* 
+                    // Mapear los IDs y nombres de curso/clase desde los objetos seleccionados
                     val alumno = Alumno(
                         dni = currentState.dni,
                         nombre = currentState.nombre,
@@ -586,23 +586,15 @@ class AddUserViewModel @Inject constructor(
                         fechaNacimiento = currentState.fechaNacimiento, // Asegurar formato correcto si es necesario
                         telefono = currentState.telefono, // Opcional para Alumno?
                         centroId = centroId,
-                        cursoId = cursoId,
-                        claseId = claseId,
-                        fechaRegistro = com.google.firebase.Timestamp.now(),
+                        curso = currentState.cursoSeleccionado?.nombre ?: "", // Guardar nombre del curso
+                        clase = currentState.claseSeleccionada?.nombre ?: "", // Guardar nombre de la clase
+                        aulaId = currentState.claseSeleccionada?.id ?: "", // Usar claseId como aulaId? Revisa tu modelo Alumno
                         activo = true
-                        // otros campos relevantes
+                        // otros campos relevantes inicializados a vacío o por defecto
                     )
-                    */
                     
                     // Llamar a un método específico en el repositorio para guardar alumnos
-                    // TODO: Necesitarás añadir `guardarAlumno` a UsuarioRepository
-                    // val saveResult = usuarioRepository.guardarAlumno(alumno)
-                    
-                    // --- SIMULACIÓN HASTA TENER EL REPO --- 
-                    Timber.d("Simulando guardado de alumno con DNI: ${currentState.dni}, Centro: $centroId, Curso: $cursoId, Clase: $claseId")
-                    kotlinx.coroutines.delay(1000) // Simular llamada de red
-                    val saveResult: Result<Unit> = Result.Success(Unit) // Simular éxito
-                    // --- FIN SIMULACIÓN --- 
+                    val saveResult = usuarioRepository.guardarAlumno(alumno)
 
                     when (saveResult) {
                         is Result.Success -> {

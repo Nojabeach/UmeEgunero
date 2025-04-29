@@ -1798,4 +1798,26 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    // --- NUEVA FUNCIÓN PARA GUARDAR ALUMNOS --- 
+    /**
+     * Guarda los datos de un nuevo alumno en Firestore.
+     * Utiliza el DNI del alumno como ID del documento.
+     *
+     * @param alumno Objeto Alumno con los datos a guardar.
+     * @return Result<Unit> indicando éxito o error.
+     */
+    suspend fun guardarAlumno(alumno: Alumno): Result<Unit>
+    = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Guardando alumno con DNI ${alumno.dni} en Firestore...")
+            // Usar el DNI del alumno como ID del documento en la colección 'alumnos'
+            alumnosCollection.document(alumno.dni).set(alumno).await()
+            Timber.d("Alumno con DNI ${alumno.dni} guardado exitosamente.")
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al guardar alumno con DNI ${alumno.dni}")
+            return@withContext Result.Error(e)
+        }
+    }
 }
