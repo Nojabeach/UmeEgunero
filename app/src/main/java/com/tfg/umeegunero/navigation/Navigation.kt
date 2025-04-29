@@ -651,12 +651,16 @@ fun Navigation(
                 onUpdateTelefono = viewModel::updateTelefono,
                 onUpdateTipoUsuario = viewModel::updateTipoUsuario,
                 onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
-                onUpdateCursoSeleccionado = viewModel::updateCursoSeleccionado,
+                onCursoSelectedAlumno = viewModel::onCursoSelected,
                 onUpdateClaseSeleccionada = viewModel::updateClaseSeleccionada,
                 onUpdateFechaNacimiento = viewModel::updateFechaNacimiento,
                 onSaveUser = viewModel::saveUser,
                 onClearError = viewModel::clearError,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onAttemptSaveAndFocusError = viewModel::attemptSaveAndFocusError,
+                onClearValidationAttemptTrigger = viewModel::clearValidationAttemptTrigger,
+                onDismissSuccessDialog = viewModel::dismissSuccessDialog,
+                viewModelRef = viewModel
             )
             
             // Cargar los datos del usuario para edición

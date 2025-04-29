@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Group
@@ -38,6 +39,17 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.Class
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -48,6 +60,8 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -55,6 +69,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -70,17 +85,24 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,6 +117,7 @@ import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserFormField
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserUiState
 import com.tfg.umeegunero.ui.components.FormProgressIndicator
@@ -104,6 +127,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import timber.log.Timber
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 /**
  * ViewModel de muestra para el preview
@@ -215,6 +242,18 @@ class PreviewAddUserViewModel : ViewModel() {
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
+
+    fun attemptSaveAndFocusError() {
+        // Implementation needed
+    }
+
+    fun clearValidationAttemptTrigger() {
+        // Implementation needed
+    }
+
+    fun dismissSuccessDialog() {
+        // Implementation needed
+    }
 }
 
 /**
@@ -249,7 +288,7 @@ fun AddUserScreen(
         )
     }
 
-    // UI completa de la pantalla
+    // Pasar la función onCursoSelected del viewModel directamente
     AddUserScreen(
         uiState = uiState,
         onUpdateDni = viewModel::updateDni,
@@ -261,12 +300,16 @@ fun AddUserScreen(
         onUpdateTelefono = viewModel::updateTelefono,
         onUpdateTipoUsuario = viewModel::updateTipoUsuario,
         onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
-        onUpdateCursoSeleccionado = viewModel::updateCursoSeleccionado,
+        onCursoSelectedAlumno = viewModel::onCursoSelected,
         onUpdateClaseSeleccionada = viewModel::updateClaseSeleccionada,
         onUpdateFechaNacimiento = viewModel::updateFechaNacimiento,
         onSaveUser = viewModel::saveUser,
         onClearError = viewModel::clearError,
-        onNavigateBack = { navController.popBackStack() }
+        onNavigateBack = { navController.popBackStack() },
+        onAttemptSaveAndFocusError = viewModel::attemptSaveAndFocusError,
+        onClearValidationAttemptTrigger = viewModel::clearValidationAttemptTrigger,
+        onDismissSuccessDialog = viewModel::dismissSuccessDialog,
+        viewModelRef = viewModel
     )
 }
 
@@ -296,12 +339,16 @@ fun AddUserScreen(
  * @param onUpdateTelefono Callback para actualizar el teléfono
  * @param onUpdateTipoUsuario Callback para cambiar el tipo de usuario
  * @param onUpdateCentroSeleccionado Callback para seleccionar un centro
- * @param onUpdateCursoSeleccionado Callback para seleccionar un curso (para alumnos)
+ * @param onCursoSelectedAlumno Callback para seleccionar un curso (para alumnos)
  * @param onUpdateClaseSeleccionada Callback para seleccionar una clase (para alumnos)
  * @param onUpdateFechaNacimiento Callback para actualizar fecha de nacimiento (para alumnos)
  * @param onSaveUser Callback para guardar el usuario
  * @param onClearError Callback para limpiar errores
  * @param onNavigateBack Callback para volver atrás
+ * @param onAttemptSaveAndFocusError Callback para intentar guardar y enfocar el primer error
+ * @param onClearValidationAttemptTrigger Callback para limpiar el indicador de intento de validación
+ * @param onDismissSuccessDialog Callback para cerrar el diálogo de éxito
+ * @param viewModelRef Referencia al ViewModel para llamadas internas
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -316,17 +363,35 @@ fun AddUserScreen(
     onUpdateTelefono: (String) -> Unit,
     onUpdateTipoUsuario: (TipoUsuario) -> Unit,
     onUpdateCentroSeleccionado: (String) -> Unit,
-    onUpdateCursoSeleccionado: (String) -> Unit,
+    onCursoSelectedAlumno: (String) -> Unit,
     onUpdateClaseSeleccionada: (String) -> Unit,
     onUpdateFechaNacimiento: (String) -> Unit,
     onSaveUser: () -> Unit,
     onClearError: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onAttemptSaveAndFocusError: () -> Unit,
+    onClearValidationAttemptTrigger: () -> Unit,
+    onDismissSuccessDialog: () -> Unit,
+    viewModelRef: ViewModel
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+
+    // Focus Requesters para cada campo
+    val dniFocusRequester = remember { FocusRequester() }
+    val nombreFocusRequester = remember { FocusRequester() }
+    val apellidosFocusRequester = remember { FocusRequester() }
+    val telefonoFocusRequester = remember { FocusRequester() }
+    val emailFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val confirmPasswordFocusRequester = remember { FocusRequester() }
+    val centroFocusRequester = remember { FocusRequester() } // Para el TextField del dropdown
+    val fechaNacimientoFocusRequester = remember { FocusRequester() } // Para el TextField
+    val cursoFocusRequester = remember { FocusRequester() } // Para el TextField del dropdown
+    val claseFocusRequester = remember { FocusRequester() } // Para el TextField del dropdown
 
     // Variables para UI de campos
     var showPassword by remember { mutableStateOf(false) }
@@ -363,6 +428,61 @@ fun AddUserScreen(
         }
     }
 
+    LaunchedEffect(uiState.validationAttemptFailed) {
+        if (uiState.validationAttemptFailed) {
+            val fieldToFocus = uiState.firstInvalidField
+            Timber.d("Intento de validación fallido, primer campo inválido: $fieldToFocus")
+            val focusRequester = when (fieldToFocus) {
+                AddUserFormField.DNI -> dniFocusRequester
+                AddUserFormField.NOMBRE -> nombreFocusRequester
+                AddUserFormField.APELLIDOS -> apellidosFocusRequester
+                AddUserFormField.TELEFONO -> telefonoFocusRequester
+                AddUserFormField.EMAIL -> emailFocusRequester
+                AddUserFormField.PASSWORD -> passwordFocusRequester
+                AddUserFormField.CONFIRM_PASSWORD -> confirmPasswordFocusRequester
+                AddUserFormField.CENTRO -> centroFocusRequester
+                AddUserFormField.FECHA_NACIMIENTO -> fechaNacimientoFocusRequester
+                AddUserFormField.CURSO -> cursoFocusRequester
+                AddUserFormField.CLASE -> claseFocusRequester
+                null -> null
+            }
+
+            if (focusRequester != null) {
+                 scope.launch {
+                    delay(100) // Pequeño delay
+                    try {
+                        focusRequester.requestFocus()
+                        Timber.d("Foco solicitado para: $fieldToFocus")
+                        // Intentar mostrar teclado puede ser inconsistente
+                        // keyboardController?.show()
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al intentar enfocar campo: $fieldToFocus")
+                    }
+                 }
+            }
+            // Limpiar el trigger después de intentar enfocar
+             onClearValidationAttemptTrigger()
+        }
+    }
+
+    // Diálogo de éxito
+    if (uiState.showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { /* No permitir cerrar tocando fuera */ },
+            title = { Text("Éxito") },
+            text = { Text("Usuario guardado correctamente.") },
+            icon = { Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDismissSuccessDialog()
+                    onNavigateBack()
+                }) {
+                    Text("Aceptar")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -381,29 +501,10 @@ fun AddUserScreen(
                         )
                     }
                 },
-                actions = {
-                    // Botón de guardar
-                    IconButton(
-                        onClick = {
-                            keyboardController?.hide()
-                            onSaveUser()
-                        },
-                        enabled = uiState.isFormValid && !uiState.isLoading
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = "Guardar",
-                            tint = MaterialTheme.colorScheme.onPrimary.copy(
-                                alpha = if (uiState.isFormValid && !uiState.isLoading) 1f else 0.5f
-                            )
-                        )
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = userColor,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
@@ -452,11 +553,19 @@ fun AddUserScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = "Tipo de Usuario",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ManageAccounts,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp).padding(end = 8.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Tipo de Usuario",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
                         // Mostrar opciones según el tipo de administrador
                         val usuariosDisponibles = if (uiState.isAdminApp) {
@@ -524,46 +633,19 @@ fun AddUserScreen(
                                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                                 )
 
-                                OutlinedTextField(
-                                    value = uiState.centroSeleccionado?.nombre ?: "",
-                                    onValueChange = { },
-                                    label = { Text(if(uiState.isCentroBloqueado) "Centro asignado" else "Seleccionar centro") },
-                                    readOnly = true,
-                                    enabled = !uiState.isCentroBloqueado,
-                                    trailingIcon = {
-                                        if (!uiState.isCentroBloqueado) {
-                                            IconButton(onClick = { showCentrosDropdown = true }) {
-                                                Icon(
-                                                    imageVector = Icons.Default.School,
-                                                    contentDescription = "Seleccionar"
-                                                )
-                                            }
-                                        }
+                                CentroDropdown(
+                                    centroSeleccionado = uiState.centroSeleccionado?.nombre ?: "",
+                                    onCentroSelected = { centroId ->
+                                        onUpdateCentroSeleccionado(centroId)
                                     },
+                                    centros = uiState.centrosDisponibles.map { 
+                                        it.nombre to it.id 
+                                    },
+                                    error = null,
+                                    isLoading = uiState.isLoading,
+                                    focusRequester = centroFocusRequester,
                                     modifier = Modifier.fillMaxWidth()
                                 )
-
-                                DropdownMenu(
-                                    expanded = showCentrosDropdown && !uiState.isCentroBloqueado,
-                                    onDismissRequest = { showCentrosDropdown = false },
-                                    modifier = Modifier.fillMaxWidth(0.9f)
-                                ) {
-                                    uiState.centrosDisponibles.forEach { centro ->
-                                        DropdownMenuItem(
-                                            text = { Text(centro.nombre) },
-                                            onClick = {
-                                                onUpdateCentroSeleccionado(centro.id)
-                                                showCentrosDropdown = false
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    imageVector = Icons.Default.School,
-                                                    contentDescription = null
-                                                )
-                                            }
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
@@ -584,11 +666,19 @@ fun AddUserScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = "Información Personal",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp).padding(end = 8.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Información Personal",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
                         // DNI
                         OutlinedTextField(
@@ -597,7 +687,7 @@ fun AddUserScreen(
                             label = { Text("DNI") },
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Default.Person,
+                                    imageVector = Icons.Default.Badge,
                                     contentDescription = null,
                                     tint = if (uiState.dniError != null)
                                         MaterialTheme.colorScheme.error
@@ -606,6 +696,7 @@ fun AddUserScreen(
                                 )
                             },
                             keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Ascii,
                                 imeAction = ImeAction.Next
                             ),
                             keyboardActions = KeyboardActions(
@@ -617,7 +708,7 @@ fun AddUserScreen(
                                     Text(text = uiState.dniError)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().focusRequester(dniFocusRequester),
                             shape = RoundedCornerShape(8.dp),
                             singleLine = true
                         )
@@ -638,6 +729,7 @@ fun AddUserScreen(
                                 )
                             },
                             keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
                                 imeAction = ImeAction.Next
                             ),
                             keyboardActions = KeyboardActions(
@@ -649,7 +741,7 @@ fun AddUserScreen(
                                     Text(text = uiState.nombreError)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().focusRequester(nombreFocusRequester),
                             shape = RoundedCornerShape(8.dp),
                             singleLine = true
                         )
@@ -670,6 +762,7 @@ fun AddUserScreen(
                                 )
                             },
                             keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
                                 imeAction = ImeAction.Next
                             ),
                             keyboardActions = KeyboardActions(
@@ -681,7 +774,7 @@ fun AddUserScreen(
                                     Text(text = uiState.apellidosError)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().focusRequester(apellidosFocusRequester),
                             shape = RoundedCornerShape(8.dp),
                             singleLine = true
                         )
@@ -714,7 +807,8 @@ fun AddUserScreen(
                                     Text(text = uiState.telefonoError)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().focusRequester(telefonoFocusRequester),
+                            visualTransformation = PhoneNumberVisualTransformation(),
                             shape = RoundedCornerShape(8.dp),
                             singleLine = true
                         )
@@ -734,8 +828,11 @@ fun AddUserScreen(
                         clasesDisponibles = uiState.clasesDisponibles,
                         isLoading = uiState.isLoading,
                         onUpdateFechaNacimiento = onUpdateFechaNacimiento,
-                        onUpdateCursoSeleccionado = onUpdateCursoSeleccionado,
+                        onCursoSelected = onCursoSelectedAlumno,
                         onUpdateClaseSeleccionada = onUpdateClaseSeleccionada,
+                        fechaNacimientoFocusRequester = fechaNacimientoFocusRequester,
+                        cursoFocusRequester = cursoFocusRequester,
+                        claseFocusRequester = claseFocusRequester,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -758,11 +855,19 @@ fun AddUserScreen(
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Text(
-                                text = "Credenciales de Acceso",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.LockOpen,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp).padding(end = 8.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Credenciales de Acceso",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
 
                             // Email
                             OutlinedTextField(
@@ -792,7 +897,7 @@ fun AddUserScreen(
                                         Text(text = uiState.emailError)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().focusRequester(emailFocusRequester),
                                 shape = RoundedCornerShape(8.dp),
                                 singleLine = true
                             )
@@ -843,7 +948,7 @@ fun AddUserScreen(
                                         Text(text = uiState.passwordError)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
                                 shape = RoundedCornerShape(8.dp),
                                 singleLine = true
                             )
@@ -890,6 +995,14 @@ fun AddUserScreen(
                                         keyboardController?.hide()
                                         if (uiState.isFormValid) {
                                             onSaveUser()
+                                        } else {
+                                            // Mostrar Snackbar si el formulario no es válido
+                                            scope.launch { // Necesita un CoroutineScope
+                                                snackbarHostState.showSnackbar(
+                                                    message = "Por favor, complete todos los campos requeridos correctamente.",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
                                         }
                                     }
                                 ),
@@ -899,7 +1012,7 @@ fun AddUserScreen(
                                         Text(text = uiState.confirmPasswordError)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().focusRequester(confirmPasswordFocusRequester),
                                 shape = RoundedCornerShape(8.dp),
                                 singleLine = true
                             )
@@ -911,7 +1024,19 @@ fun AddUserScreen(
                 Button(
                     onClick = { 
                         keyboardController?.hide()
-                        onSaveUser() 
+                        // Añadir comprobación de validez y feedback
+                        if (uiState.isFormValid) {
+                            onSaveUser() 
+                        } else {
+                            // Lanzar trigger para focus y mostrar snackbar genérico
+                            onAttemptSaveAndFocusError()
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Por favor, complete todos los campos requeridos correctamente.",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -974,30 +1099,17 @@ fun AddUserScreen(
 fun AddUserScreenPreview() {
     val factory = remember { PreviewAddUserViewModelFactory() }
     val viewModel: PreviewAddUserViewModel = viewModel(factory = factory)
-
-    // Simular parámetros para el preview
-    @Suppress("UNUSED_PARAMETER") // Suprimir warning
-    val isAdminApp = true 
-    @Suppress("UNUSED_PARAMETER") // Suprimir warning
-    val tipoPreseleccionado = "alumno"
-    val centroIdInicial = "1" // ID de "Colegio San José" en el preview VM
-    val centroBloqueadoInicial = true
-
-    // Llamar a initialize en el preview VM si existe una función similar o configurar estado manualmente
-    // viewModel.initialize(...) // Necesitaría adaptar el Preview VM
+    val uiState = viewModel.uiState.copy(
+        isCentroBloqueado = true,
+        initialCentroId = "1",
+        tipoUsuario = TipoUsuario.ALUMNO,
+        centroSeleccionado = viewModel.uiState.centrosDisponibles.find { it.id == "1" }
+    )
 
     UmeEguneroTheme {
         Surface {
             AddUserScreen(
-                uiState = viewModel.uiState.copy(
-                    // Aplicar bloqueo y centro inicial manualmente para el preview si initialize no existe
-                    isCentroBloqueado = centroBloqueadoInicial,
-                    initialCentroId = centroIdInicial,
-                    // Preseleccionar tipo manualmente
-                    tipoUsuario = TipoUsuario.ALUMNO,
-                    // Preseleccionar centro manualmente
-                    centroSeleccionado = viewModel.uiState.centrosDisponibles.find { it.id == centroIdInicial }
-                ),
+                uiState = uiState,
                 onUpdateDni = viewModel::updateDni,
                 onUpdateEmail = viewModel::updateEmail,
                 onUpdatePassword = viewModel::updatePassword,
@@ -1007,12 +1119,16 @@ fun AddUserScreenPreview() {
                 onUpdateTelefono = viewModel::updateTelefono,
                 onUpdateTipoUsuario = viewModel::updateTipoUsuario,
                 onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
-                onUpdateCursoSeleccionado = viewModel::updateCursoSeleccionado,
+                onCursoSelectedAlumno = viewModel::updateCursoSeleccionado,
                 onUpdateClaseSeleccionada = viewModel::updateClaseSeleccionada,
                 onUpdateFechaNacimiento = viewModel::updateFechaNacimiento,
                 onSaveUser = viewModel::saveUser,
                 onClearError = viewModel::clearError,
-                onNavigateBack = { }
+                onNavigateBack = { },
+                onAttemptSaveAndFocusError = { Timber.d("Preview: Attempt Save (no-op)") },
+                onClearValidationAttemptTrigger = { Timber.d("Preview: Clear Trigger (no-op)") },
+                onDismissSuccessDialog = { Timber.d("Preview: Dismiss Success (no-op)") },
+                viewModelRef = viewModel
             )
         }
     }
@@ -1022,11 +1138,12 @@ fun AddUserScreenPreview() {
 @Composable
 fun AddUserScreenDarkPreview() {
     val viewModel: PreviewAddUserViewModel = viewModel(factory = PreviewAddUserViewModelFactory())
+    val uiState = viewModel.uiState
 
     UmeEguneroTheme(darkTheme = true) {
         Surface {
             AddUserScreen(
-                uiState = viewModel.uiState,
+                uiState = uiState,
                 onUpdateDni = viewModel::updateDni,
                 onUpdateEmail = viewModel::updateEmail,
                 onUpdatePassword = viewModel::updatePassword,
@@ -1036,12 +1153,16 @@ fun AddUserScreenDarkPreview() {
                 onUpdateTelefono = viewModel::updateTelefono,
                 onUpdateTipoUsuario = viewModel::updateTipoUsuario,
                 onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
-                onUpdateCursoSeleccionado = viewModel::updateCursoSeleccionado,
+                onCursoSelectedAlumno = viewModel::updateCursoSeleccionado,
                 onUpdateClaseSeleccionada = viewModel::updateClaseSeleccionada,
                 onUpdateFechaNacimiento = viewModel::updateFechaNacimiento,
                 onSaveUser = viewModel::saveUser,
                 onClearError = viewModel::clearError,
-                onNavigateBack = { }
+                onNavigateBack = { },
+                onAttemptSaveAndFocusError = { Timber.d("Preview: Attempt Save (no-op)") },
+                onClearValidationAttemptTrigger = { Timber.d("Preview: Clear Trigger (no-op)") },
+                onDismissSuccessDialog = { Timber.d("Preview: Dismiss Success (no-op)") },
+                viewModelRef = viewModel
             )
         }
     }
@@ -1100,39 +1221,37 @@ private fun calcularPorcentajeCompletado(uiState: AddUserUiState): Float {
 }
 
 /**
- * Componente para la fecha de nacimiento (solo para alumnos)
+ * Campo para la fecha de nacimiento
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FechaNacimientoField(
     value: String,
     onValueChange: (String) -> Unit,
     error: String?,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
-    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-    
-    // Configuración del selector de fecha
+
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
-        val confirmEnabled = remember {
-            derivedStateOf { datePickerState.selectedDateMillis != null }
-        }
-        
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                Button(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val date = Date(millis)
-                            onValueChange(dateFormatter.format(date))
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val calendar = Calendar.getInstance().apply {
+                            timeInMillis = millis
                         }
-                        showDatePicker = false
-                    },
-                    enabled = confirmEnabled.value
-                ) {
+                        val day = calendar.get(Calendar.DAY_OF_MONTH)
+                        val month = calendar.get(Calendar.MONTH) + 1
+                        val year = calendar.get(Calendar.YEAR)
+                        val formattedDate = "$day/$month/$year"
+                        onValueChange(formattedDate)
+                    }
+                    showDatePicker = false
+                }) {
                     Text("Aceptar")
                 }
             },
@@ -1145,95 +1264,105 @@ fun FechaNacimientoField(
             DatePicker(state = datePickerState)
         }
     }
-    
-    Column(modifier = modifier) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text("Fecha de nacimiento") },
-            isError = error != null,
-            readOnly = true,
-            trailingIcon = {
-                IconButton(onClick = { showDatePicker = true }) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarToday,
-                        contentDescription = "Seleccionar fecha"
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        if (error != null) {
-            Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(text = "Fecha de Nacimiento") },
+        placeholder = { Text(text = "dd/mm/aaaa") },
+        leadingIcon = { 
+            Icon(
+                imageVector = Icons.Default.Cake,
+                contentDescription = null
             )
-        }
-    }
+        },
+        trailingIcon = {
+            IconButton(onClick = { showDatePicker = true }) {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = "Seleccionar Fecha"
+                )
+            }
+        },
+        isError = error != null,
+        supportingText = error?.let { { Text(text = it) } },
+        readOnly = true,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(onNext = { focusRequester.requestFocus() }),
+        modifier = modifier.focusRequester(focusRequester)
+    )
 }
 
 /**
- * Componente para seleccionar curso (para alumnos)
+ * Dropdown para seleccionar un centro
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CursoDropdown(
-    cursos: List<Curso>,
-    selectedCurso: Curso?,
-    onCursoSelected: (String) -> Unit,
+fun CentroDropdown(
+    centroSeleccionado: String,
+    onCentroSelected: (String) -> Unit,
+    centros: List<Pair<String, String>>, // Pair de (nombre, id)
+    error: String?,
     isLoading: Boolean,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    
-    // Registrar para depuración
-    LaunchedEffect(cursos) {
-        Timber.d("CursoDropdown: ${cursos.size} cursos disponibles")
-        cursos.forEach { curso ->
-            Timber.d("   - Curso: ${curso.nombre} (ID: ${curso.id}, CentroID: ${curso.centroId})")
-        }
-    }
-    
-    Column(modifier = modifier) {
-        Text(
-            text = "Curso",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = 8.dp)
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (!isLoading) expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = centroSeleccionado,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Centro") },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Business,
+                    contentDescription = null
+                )
+            },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            enabled = !isLoading,
+            isError = error != null,
+            supportingText = error?.let { { Text(text = it) } },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
         )
-        
-        if (isLoading) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        } else {
-            OutlinedTextField(
-                value = selectedCurso?.nombre ?: "",
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("Selecciona un curso") },
-                trailingIcon = {
-                    IconButton(onClick = { expanded = true }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown, 
-                            contentDescription = "Seleccionar curso"
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.fillMaxWidth(0.9f)
-            ) {
-                cursos.forEach { curso ->
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                }
+            } else if (centros.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text("No hay centros disponibles") },
+                    onClick = { expanded = false }
+                )
+            } else {
+                centros.forEach { (nombre, id) ->
                     DropdownMenuItem(
-                        text = { Text(curso.nombre) },
+                        text = { Text(nombre) },
                         onClick = {
-                            onCursoSelected(curso.id)
+                            onCentroSelected(id)
                             expanded = false
                         },
                         leadingIcon = {
@@ -1250,15 +1379,93 @@ fun CursoDropdown(
 }
 
 /**
- * Componente para seleccionar clase (para alumnos)
+ * Dropdown para seleccionar un curso
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CursoDropdown(
+    cursoSeleccionado: String,
+    onCursoSelected: (String) -> Unit,
+    cursos: List<String>,
+    error: String?,
+    isLoading: Boolean,
+    focusRequester: FocusRequester,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (!isLoading) expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = cursoSeleccionado,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Curso") },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.School,
+                    contentDescription = null
+                )
+            },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            enabled = !isLoading,
+            isError = error != null,
+            supportingText = error?.let { { Text(text = it) } },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                }
+            } else if (cursos.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text("No hay cursos disponibles") },
+                    onClick = { expanded = false }
+                )
+            } else {
+                cursos.forEach { curso ->
+                    DropdownMenuItem(
+                        text = { Text(curso) },
+                        onClick = {
+                            onCursoSelected(curso)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Componente para seleccionar clase (para alumnos)
+ */
 @Composable
 fun ClaseDropdown(
     clases: List<Clase>,
     selectedClase: Clase?,
     onClaseSelected: (String) -> Unit,
     isLoading: Boolean,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -1285,16 +1492,13 @@ fun ClaseDropdown(
                 value = selectedClase?.nombre ?: "",
                 onValueChange = { },
                 readOnly = true,
-                label = { Text("Selecciona una clase") },
+                label = { Text("Clase") },
+                modifier = Modifier.fillMaxWidth(),
                 trailingIcon = {
                     IconButton(onClick = { expanded = true }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown, 
-                            contentDescription = "Seleccionar clase"
-                        )
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Seleccionar clase")
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
+                }
             )
             
             DropdownMenu(
@@ -1308,12 +1512,6 @@ fun ClaseDropdown(
                         onClick = {
                             onClaseSelected(clase.id)
                             expanded = false
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Group,
-                                contentDescription = null
-                            )
                         }
                     )
                 }
@@ -1335,8 +1533,11 @@ fun AlumnoFields(
     clasesDisponibles: List<Clase>,
     isLoading: Boolean,
     onUpdateFechaNacimiento: (String) -> Unit,
-    onUpdateCursoSeleccionado: (String) -> Unit,
+    onCursoSelected: (String) -> Unit,
     onUpdateClaseSeleccionada: (String) -> Unit,
+    fechaNacimientoFocusRequester: FocusRequester,
+    cursoFocusRequester: FocusRequester,
+    claseFocusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1353,24 +1554,37 @@ fun AlumnoFields(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Información Académica",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.School,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .padding(end = 8.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Información Académica",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
             FechaNacimientoField(
                 value = fechaNacimiento,
                 onValueChange = onUpdateFechaNacimiento,
                 error = fechaNacimientoError,
+                focusRequester = fechaNacimientoFocusRequester,
                 modifier = Modifier.fillMaxWidth()
             )
             
             CursoDropdown(
-                cursos = cursosDisponibles,
-                selectedCurso = cursoSeleccionado,
-                onCursoSelected = onUpdateCursoSeleccionado,
+                cursoSeleccionado = cursoSeleccionado?.id ?: "",
+                onCursoSelected = onCursoSelected,
+                cursos = cursosDisponibles.map { it.id },
+                error = null,
                 isLoading = isLoading,
+                focusRequester = cursoFocusRequester,
                 modifier = Modifier.fillMaxWidth()
             )
             
@@ -1379,8 +1593,50 @@ fun AlumnoFields(
                 selectedClase = claseSeleccionada,
                 onClaseSelected = onUpdateClaseSeleccionada,
                 isLoading = isLoading,
+                focusRequester = claseFocusRequester,
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+}
+
+class PhoneNumberVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        // Limpiar no dígitos para lógica interna
+        val digitsOnly = text.text.filter { it.isDigit() }
+        val formattedNumber = buildString {
+            for (i in digitsOnly.indices) {
+                append(digitsOnly[i])
+                // Añadir espacio después del 3er y 6º dígito
+                if (i == 2 || i == 5) {
+                    if (i != digitsOnly.lastIndex) { // No añadir espacio al final
+                        append(' ')
+                    }
+                }
+            }
+        }.take(11) // Limitar a 9 dígitos + 2 espacios = 11 caracteres
+
+        // Mapeo de offsets para que el cursor se mueva correctamente
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                val spacesBefore = when {
+                    offset <= 3 -> 0
+                    offset <= 6 -> 1
+                    else -> 2
+                }
+                return (offset + spacesBefore).coerceAtMost(formattedNumber.length)
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                val spacesBefore = when {
+                    offset <= 3 -> 0
+                    offset <= 7 -> 1 // 3 dig + 1 espacio
+                    else -> 2 // 6 dig + 2 espacios
+                }
+                return (offset - spacesBefore).coerceAtLeast(0)
+            }
+        }
+
+        return TransformedText(AnnotatedString(formattedNumber), offsetMapping)
     }
 }

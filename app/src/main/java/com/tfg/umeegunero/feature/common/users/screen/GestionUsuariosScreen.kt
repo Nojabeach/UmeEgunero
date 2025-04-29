@@ -135,34 +135,34 @@ fun GestionUsuariosScreen(
                                 icon = Icons.Default.AdminPanelSettings,
                                 onClick = { handleNavigateToUserList(AppScreens.AdminList.route) }
                             )
-                            UserCategoryCard(
-                                title = "Administradores de Centro",
-                                subtitle = "Gestión de administradores de centros educativos",
-                                icon = Icons.Default.Business,
-                                onClick = { handleNavigateToUserList(AppScreens.AdminCentroList.route) }
-                            )
+                        UserCategoryCard(
+                            title = "Administradores de Centro",
+                            subtitle = "Gestión de administradores de centros educativos",
+                            icon = Icons.Default.Business,
+                            onClick = { handleNavigateToUserList(AppScreens.AdminCentroList.route) }
+                        )
                         } else {
-                            // Profesores
-                            UserCategoryCard(
-                                title = "Profesores",
-                                subtitle = "Gestión de profesores",
-                                icon = Icons.Default.School,
-                                onClick = { handleNavigateToUserList(AppScreens.ProfesorList.route) }
-                            )
-                            // Alumnos
-                            UserCategoryCard(
-                                title = "Alumnos",
-                                subtitle = "Gestión de alumnos",
-                                icon = Icons.Default.Person,
-                                onClick = { handleNavigateToUserList(AppScreens.AlumnoList.route) }
-                            )
-                            // Familiares
-                            UserCategoryCard(
-                                title = "Familiares",
-                                subtitle = "Gestión de familiares",
-                                icon = Icons.Default.People,
-                                onClick = { handleNavigateToUserList(AppScreens.FamiliarList.route) }
-                            )
+                        // Profesores
+                        UserCategoryCard(
+                            title = "Profesores",
+                            subtitle = "Gestión de profesores",
+                            icon = Icons.Default.School,
+                            onClick = { handleNavigateToUserList(AppScreens.ProfesorList.route) }
+                        )
+                        // Alumnos
+                        UserCategoryCard(
+                            title = "Alumnos",
+                            subtitle = "Gestión de alumnos",
+                            icon = Icons.Default.Person,
+                            onClick = { handleNavigateToUserList(AppScreens.AlumnoList.route) }
+                        )
+                        // Familiares
+                        UserCategoryCard(
+                            title = "Familiares",
+                            subtitle = "Gestión de familiares",
+                            icon = Icons.Default.People,
+                            onClick = { handleNavigateToUserList(AppScreens.FamiliarList.route) }
+                        )
                         }
                     }
                 }

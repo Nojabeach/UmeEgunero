@@ -274,18 +274,18 @@ class VincularProfesorClaseViewModel @Inject constructor(
                 Timber.d("Cursos cargados para centro $centroId: ${cursosList.size}")
                         
                 cursosList.forEach { curso -> // No se necesita especificar el tipo aquí
-                    Timber.d("Curso: ${curso.nombre} (ID: ${curso.id}, activo: ${curso.activo})")
-                }
+                            Timber.d("Curso: ${curso.nombre} (ID: ${curso.id}, activo: ${curso.activo})")
+                        }
                         
                 _uiState.update { it.copy(cursos = cursosList) }
                         
                 if (cursosList.isNotEmpty()) {
                     val primerCurso = cursosList.first()
-                    Timber.d("Seleccionando primer curso: ${primerCurso.nombre}")
-                    _uiState.update { it.copy(cursoSeleccionado = primerCurso) }
-                    cargarClasesPorCurso(primerCurso.id)
-                } else {
-                    Timber.w("No se encontraron cursos para el centro $centroId")
+                            Timber.d("Seleccionando primer curso: ${primerCurso.nombre}")
+                            _uiState.update { it.copy(cursoSeleccionado = primerCurso) }
+                            cargarClasesPorCurso(primerCurso.id)
+                        } else {
+                            Timber.w("No se encontraron cursos para el centro $centroId")
                 }
                 
                 // Cargar profesores incluyendo inactivos
@@ -328,13 +328,13 @@ class VincularProfesorClaseViewModel @Inject constructor(
                     Timber.d("Curso: ID=${curso.id}, Nombre=${curso.nombre}, CentroID=${curso.centroId}, Activo=${curso.activo}")
                 }
                 
-                _uiState.update { 
-                    it.copy(
-                        cursos = todosLosCursos,
-                        isLoading = false
-                    )
-                }
-                
+                    _uiState.update { 
+                        it.copy(
+                            cursos = todosLosCursos,
+                            isLoading = false
+                        )
+                    }
+                    
                 if (todosLosCursos.isNotEmpty()) {
                     cargarProfesores(centroId) // Cargar profesores si hay cursos
                 } else {

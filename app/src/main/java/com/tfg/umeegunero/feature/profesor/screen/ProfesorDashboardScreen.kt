@@ -277,17 +277,17 @@ fun ProfesorDashboardContent(
                     // ... contenido ...
                 }
             }
-        }
-
+            }
+            
         // Sección: Gestión Académica
         item(span = { GridItemSpan(2) }) {
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Gestión Académica",
+        Text(
+            text = "Gestión Académica",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = ProfesorColor,
                 modifier = Modifier.padding(bottom = 4.dp)
-            )
+        )
             HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
         }
         items(gestionAcademicaCards.size) { index ->
@@ -332,7 +332,7 @@ fun ProfesorDashboardContent(
         // Sección: Actividades
         item(span = { GridItemSpan(2) }) {
             Spacer(Modifier.height(16.dp))
-            Text(
+        Text(
                 text = "Actividades",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = ProfesorColor,
@@ -351,9 +351,9 @@ fun ProfesorDashboardContent(
                 border = true,
                 onClick = card.onClick,
                 modifier = Modifier.padding(4.dp)
-            )
-        }
-
+                )
+            }
+            
         // Divider y sección de alumnos pendientes
         item(span = { GridItemSpan(2) }) {
             Spacer(Modifier.height(16.dp))

@@ -383,16 +383,16 @@ fun AdminDashboardScreen(
         },
         containerColor = AdminColor.copy(alpha = 0.05f)
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
                 .padding(paddingValues)
         ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
-            } else {
+        } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -406,11 +406,11 @@ fun AdminDashboardScreen(
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
-                            WelcomeCardV2(
-                                nombre = uiState.currentUser?.nombre,
-                                fecha = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
-                            )
-                        }
+                        WelcomeCardV2(
+                            nombre = uiState.currentUser?.nombre,
+                            fecha = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
+                        )
+                    }
                     }
                     // Separador visual
                     item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
@@ -425,31 +425,31 @@ fun AdminDashboardScreen(
                     // Primera fila: Centros y Usuarios (con animación y borde)
                     item {
                         AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                CategoriaCard(
-                                    titulo = "Centros",
-                                    icono = Icons.Default.Business,
-                                    descripcion = "Gestionar centros educativos",
-                                    color = AdminColor,
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "Centros",
+                                icono = Icons.Default.Business,
+                                descripcion = "Gestionar centros educativos",
+                                color = AdminColor,
                                     iconTint = AppColors.PurplePrimary,
                                     border = true,
-                                    onClick = onNavigateToGestionCentros,
-                                    modifier = Modifier.weight(1f)
-                                )
+                                onClick = onNavigateToGestionCentros,
+                                modifier = Modifier.weight(1f)
+                            )
                                 if (puedeGestionarUsuarios) {
-                                    CategoriaCard(
-                                        titulo = "Usuarios",
-                                        icono = Icons.Default.People,
+                            CategoriaCard(
+                                titulo = "Usuarios",
+                                icono = Icons.Default.People,
                                         descripcion = "Gestión de administradores de aplicación y centro",
-                                        color = AdminColor,
+                                color = AdminColor,
                                         iconTint = AppColors.PurpleTertiary,
                                         border = true,
-                                        onClick = onNavigateToGestionUsuarios,
-                                        modifier = Modifier.weight(1f)
-                                    )
+                                onClick = onNavigateToGestionUsuarios,
+                                modifier = Modifier.weight(1f)
+                            )
                                 }
                             }
                         }
@@ -457,16 +457,16 @@ fun AdminDashboardScreen(
                     // Segunda fila: Estadísticas (con animación y borde)
                     item {
                         AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                            CategoriaCard(
-                                titulo = "Estadísticas",
-                                icono = Icons.Default.BarChart,
-                                descripcion = "Ver estadísticas generales",
-                                color = AdminColor,
+                        CategoriaCard(
+                            titulo = "Estadísticas",
+                            icono = Icons.Default.BarChart,
+                            descripcion = "Ver estadísticas generales",
+                            color = AdminColor,
                                 iconTint = AppColors.Pink80,
                                 border = true,
-                                onClick = onNavigateToEstadisticas,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            onClick = onNavigateToEstadisticas,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         }
                     }
                     // Separador visual
@@ -483,60 +483,60 @@ fun AdminDashboardScreen(
                     // Primera fila: Seguridad y Tema (con animación y borde)
                     item {
                         AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                CategoriaCard(
-                                    titulo = "Seguridad",
-                                    icono = Icons.Default.Security,
-                                    descripcion = "Configurar aspectos de seguridad",
-                                    color = AdminColor,
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "Seguridad",
+                                icono = Icons.Default.Security,
+                                descripcion = "Configurar aspectos de seguridad",
+                                color = AdminColor,
                                     iconTint = AppColors.Green500,
                                     border = true,
-                                    onClick = onNavigateToSeguridad,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                CategoriaCard(
-                                    titulo = "Tema",
-                                    icono = Icons.Default.Palette,
-                                    descripcion = "Cambiar tema de la aplicación",
-                                    color = AdminColor,
+                                onClick = onNavigateToSeguridad,
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Tema",
+                                icono = Icons.Default.Palette,
+                                descripcion = "Cambiar tema de la aplicación",
+                                color = AdminColor,
                                     iconTint = AppColors.PurpleSecondary,
                                     border = true,
-                                    onClick = { showThemeDialog = true },
-                                    modifier = Modifier.weight(1f)
-                                )
+                                onClick = { showThemeDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
                             }
                         }
                     }
                     // Segunda fila: Email y Notificaciones (con animación y borde)
                     item {
                         AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                CategoriaCard(
-                                    titulo = "Email",
-                                    icono = Icons.Default.Email,
-                                    descripcion = "Configurar email de soporte",
-                                    color = AdminColor,
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "Email",
+                                icono = Icons.Default.Email,
+                                descripcion = "Configurar email de soporte",
+                                color = AdminColor,
                                     iconTint = AppColors.Red500,
                                     border = true,
-                                    onClick = { showEmailConfigDialog = true },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                CategoriaCard(
-                                    titulo = "Notificaciones",
-                                    icono = Icons.Default.Notifications,
-                                    descripcion = "Gestionar notificaciones",
-                                    color = AdminColor,
+                                onClick = { showEmailConfigDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Notificaciones",
+                                icono = Icons.Default.Notifications,
+                                descripcion = "Gestionar notificaciones",
+                                color = AdminColor,
                                     iconTint = AppColors.GradientEnd,
                                     border = true,
-                                    onClick = { showNotificacionesDialog = true },
-                                    modifier = Modifier.weight(1f)
-                                )
+                                onClick = { showNotificacionesDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
                             }
                         }
                     }
@@ -554,61 +554,61 @@ fun AdminDashboardScreen(
                     // Primera fila: Comunicados y Soporte técnico (con animación y borde)
                     item {
                         AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                CategoriaCard(
-                                    titulo = "Comunicados",
-                                    icono = Icons.Default.Campaign,
-                                    descripcion = "Ver y gestionar comunicados",
-                                    color = AdminColor,
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "Comunicados",
+                                icono = Icons.Default.Campaign,
+                                descripcion = "Ver y gestionar comunicados",
+                                color = AdminColor,
                                     iconTint = AppColors.GradientStart,
                                     border = true,
-                                    onClick = { showComunicadosDialog = true },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                CategoriaCard(
-                                    titulo = "Soporte técnico",
-                                    icono = Icons.AutoMirrored.Filled.Help,
-                                    descripcion = "Acceder al soporte técnico",
-                                    color = AdminColor,
+                                onClick = { showComunicadosDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Soporte técnico",
+                                icono = Icons.AutoMirrored.Filled.Help,
+                                descripcion = "Acceder al soporte técnico",
+                                color = AdminColor,
                                     iconTint = AppColors.FamiliarColor,
                                     border = true,
-                                    onClick = { showSoporteTecnicoDialog = true },
-                                    modifier = Modifier.weight(1f)
-                                )
+                                onClick = { showSoporteTecnicoDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
                             }
                         }
                     }
                     // Segunda fila: FAQ y Términos (con animación y borde)
                     item {
                         AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                CategoriaCard(
-                                    titulo = "FAQ",
-                                    icono = Icons.Default.QuestionAnswer,
-                                    descripcion = "Ver preguntas frecuentes",
-                                    color = AdminColor,
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CategoriaCard(
+                                titulo = "FAQ",
+                                icono = Icons.Default.QuestionAnswer,
+                                descripcion = "Ver preguntas frecuentes",
+                                color = AdminColor,
                                     iconTint = AppColors.Alumno,
                                     border = true,
-                                    onClick = { showFAQDialog = true },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                CategoriaCard(
-                                    titulo = "Términos",
-                                    icono = Icons.Default.Description,
-                                    descripcion = "Ver términos y condiciones",
-                                    color = AdminColor,
+                                onClick = { showFAQDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategoriaCard(
+                                titulo = "Términos",
+                                icono = Icons.Default.Description,
+                                descripcion = "Ver términos y condiciones",
+                                color = AdminColor,
                                     iconTint = AppColors.AcademicoColorDark,
                                     border = true,
-                                    onClick = { showTerminosDialog = true },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
+                                onClick = { showTerminosDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                         }
                     }
                     item {

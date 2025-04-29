@@ -47,7 +47,7 @@ fun ListaCursosScreen(
     // Cargar centros y cursos al iniciar
     LaunchedEffect(Unit) {
         try {
-            viewModel.cargarCentrosYSeleccionar()
+        viewModel.cargarCentrosYSeleccionar()
         } catch (e: Exception) {
             snackbarHostState.showSnackbar("Error al cargar los datos: ${e.message}")
         }
@@ -135,8 +135,8 @@ fun ListaCursosScreen(
                                 text = { Text(centro.nombre) },
                                 onClick = {
                                     try {
-                                        viewModel.seleccionarCentro(centro)
-                                        expanded = false
+                                    viewModel.seleccionarCentro(centro)
+                                    expanded = false
                                     } catch (e: Exception) {
                                         expanded = false
                                         scope.launch {
@@ -239,7 +239,7 @@ fun ListaCursosScreen(
                             },
                             onVerClasesClick = {
                                 try {
-                                    navController.navigate("gestor_academico/CLASES?centroId=${curso.centroId}&cursoId=${curso.id}&selectorCentroBloqueado=true&selectorCursoBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+                                navController.navigate("gestor_academico/CLASES?centroId=${curso.centroId}&cursoId=${curso.id}&selectorCentroBloqueado=true&selectorCursoBloqueado=true&perfilUsuario=ADMIN_CENTRO")
                                 } catch (e: Exception) {
                                     scope.launch {
                                         snackbarHostState.showSnackbar("Error al navegar a las clases: ${e.message}")
@@ -265,19 +265,19 @@ fun ListaCursosScreen(
             onDismiss = { showAddCursoDialog = false },
             onSave = { nombre, anioAcademico, descripcion, edadMinima, edadMaxima ->
                 try {
-                    if (cursoToEdit == null) {
-                        viewModel.crearCurso(nombre, anioAcademico, descripcion, edadMinima, edadMaxima)
-                    } else {
-                        viewModel.actualizarCurso(
-                            cursoToEdit!!.id,
-                            nombre,
-                            anioAcademico,
-                            descripcion,
-                            edadMinima,
-                            edadMaxima
-                        )
-                    }
-                    showAddCursoDialog = false
+                if (cursoToEdit == null) {
+                    viewModel.crearCurso(nombre, anioAcademico, descripcion, edadMinima, edadMaxima)
+                } else {
+                    viewModel.actualizarCurso(
+                        cursoToEdit!!.id,
+                        nombre,
+                        anioAcademico,
+                        descripcion,
+                        edadMinima,
+                        edadMaxima
+                    )
+                }
+                showAddCursoDialog = false
                 } catch (e: Exception) {
                     scope.launch {
                         snackbarHostState.showSnackbar("Error al guardar el curso: ${e.message}")

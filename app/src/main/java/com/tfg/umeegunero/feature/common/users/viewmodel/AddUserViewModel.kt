@@ -24,6 +24,12 @@ import javax.inject.Inject
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
+// Enum para identificar los campos del formulario
+enum class AddUserFormField {
+    DNI, EMAIL, PASSWORD, CONFIRM_PASSWORD, NOMBRE, APELLIDOS, TELEFONO,
+    CENTRO, FECHA_NACIMIENTO, CURSO, CLASE
+}
+
 /**
  * Estado de UI para la pantalla de creación y edición de usuarios
  */
@@ -39,7 +45,8 @@ data class AddUserUiState(
     val centroId: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val success: Boolean = false,
+    val success: Boolean = false, // Se reemplazará por showSuccessDialog
+    val showSuccessDialog: Boolean = false, // Nuevo para feedback de éxito
     val dniError: String? = null,
     val emailError: String? = null,
     val passwordError: String? = null,
@@ -58,7 +65,9 @@ data class AddUserUiState(
     val fechaNacimientoError: String? = null,
     val isEditMode: Boolean = false,
     val initialCentroId: String? = null,
-    val isCentroBloqueado: Boolean = false
+    val isCentroBloqueado: Boolean = false,
+    val firstInvalidField: AddUserFormField? = null, // Para scroll al error
+    val validationAttemptFailed: Boolean = false // Trigger para scroll al error
 ) {
     // Determina si el formulario es válido según el tipo de usuario
     val isFormValid: Boolean
@@ -86,7 +95,8 @@ data class AddUserUiState(
             
             // Validación específica para profesor o admin de centro
             val centroValidation = if (tipoUsuario == TipoUsuario.PROFESOR || 
-                                         tipoUsuario == TipoUsuario.ADMIN_CENTRO) {
+                                         tipoUsuario == TipoUsuario.ADMIN_CENTRO ||
+                                         tipoUsuario == TipoUsuario.ALUMNO) { // Alumno también necesita centro
                 centroSeleccionado != null
             } else true
             
@@ -94,7 +104,6 @@ data class AddUserUiState(
             val alumnoValidation = if (tipoUsuario == TipoUsuario.ALUMNO) {
                 fechaNacimiento.isNotBlank() && 
                 fechaNacimientoError == null &&
-                centroSeleccionado != null &&
                 cursoSeleccionado != null &&
                 claseSeleccionada != null
             } else true
@@ -248,7 +257,7 @@ class AddUserViewModel @Inject constructor(
     // Carga los cursos del centro seleccionado
     fun loadCursos(centroId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, cursosDisponibles = emptyList(), cursoSeleccionado = null, clasesDisponibles = emptyList(), claseSeleccionada = null) } // Resetear al cargar
             Timber.d("⏳ Iniciando carga de cursos para centroId: $centroId")
             
             try {
@@ -301,8 +310,6 @@ class AddUserViewModel @Inject constructor(
                          isLoading = false
                      )
                  }
-            } finally {
-                _uiState.update { it.copy(isLoading = false) } // Asegurar que isLoading se ponga a false
             }
         }
     }
@@ -311,7 +318,8 @@ class AddUserViewModel @Inject constructor(
     @Suppress("UNCHECKED_CAST")
     fun loadClases(cursoId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, clasesDisponibles = emptyList(), claseSeleccionada = null) } // Resetear
+            Timber.d("⏳ Iniciando carga de clases para cursoId: $cursoId")
             
             when (val result = cursoRepository.obtenerClasesPorCurso(cursoId)) {
                 is Result.Success<*> -> {
@@ -319,7 +327,7 @@ class AddUserViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             clasesDisponibles = clasesList,
-                            isLoading = false
+                            isLoading = false // Termina la carga específica de clases
                         )
                     }
                     Timber.d("Clases cargadas: ${clasesList.size}")
@@ -350,7 +358,9 @@ class AddUserViewModel @Inject constructor(
         
         _uiState.update { it.copy(
             dni = dni,
-            dniError = error
+            dniError = error,
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.DNI) null else it.firstInvalidField,
+            validationAttemptFailed = false
         )}
     }
 
@@ -364,7 +374,9 @@ class AddUserViewModel @Inject constructor(
         
         _uiState.update { it.copy(
             email = email,
-            emailError = error
+            emailError = error,
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.EMAIL) null else it.firstInvalidField,
+            validationAttemptFailed = false
         )}
     }
 
@@ -376,16 +388,17 @@ class AddUserViewModel @Inject constructor(
             else -> null
         }
         
+        val confirmError = if (_uiState.value.confirmPassword.isNotBlank() && password != _uiState.value.confirmPassword) {
+            "Las contraseñas no coinciden"
+        } else _uiState.value.confirmPasswordError // Mantener el error de confirmación si ya existía y era otro
+
         _uiState.update { it.copy(
             password = password,
-            passwordError = error
+            passwordError = error,
+            confirmPasswordError = confirmError, // Actualizar error de confirmación también
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.PASSWORD) null else it.firstInvalidField,
+            validationAttemptFailed = false
         )}
-        
-        // Si ya había una confirmación, verificar que coincide
-        val currentState = _uiState.value
-        if (currentState.confirmPassword.isNotBlank()) {
-            updateConfirmPassword(currentState.confirmPassword)
-        }
     }
 
     // Actualiza la confirmación de contraseña
@@ -398,7 +411,9 @@ class AddUserViewModel @Inject constructor(
         
         _uiState.update { it.copy(
             confirmPassword = confirmPassword,
-            confirmPasswordError = error
+            confirmPasswordError = error,
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.CONFIRM_PASSWORD) null else it.firstInvalidField,
+            validationAttemptFailed = false
         )}
     }
 
@@ -411,7 +426,9 @@ class AddUserViewModel @Inject constructor(
         
         _uiState.update { it.copy(
             nombre = nombre,
-            nombreError = error
+            nombreError = error,
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.NOMBRE) null else it.firstInvalidField,
+            validationAttemptFailed = false
         )}
     }
 
@@ -424,7 +441,9 @@ class AddUserViewModel @Inject constructor(
         
         _uiState.update { it.copy(
             apellidos = apellidos,
-            apellidosError = error
+            apellidosError = error,
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.APELLIDOS) null else it.firstInvalidField,
+            validationAttemptFailed = false
         )}
     }
 
@@ -432,21 +451,50 @@ class AddUserViewModel @Inject constructor(
     fun updateTelefono(telefono: String) {
         val error = when {
             telefono.isBlank() -> "El teléfono es obligatorio"
-            !isTelefonoValid(telefono) -> "Teléfono no válido"
+            !isTelefonoValid(telefono) -> "Teléfono no válido (9 dígitos)"
             else -> null
         }
         
         _uiState.update { it.copy(
             telefono = telefono,
-            telefonoError = error
+            telefonoError = error,
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.TELEFONO) null else it.firstInvalidField,
+            validationAttemptFailed = false
         )}
     }
 
     // Actualiza el tipo de usuario
     fun updateTipoUsuario(tipoUsuario: TipoUsuario) {
-        _uiState.update { it.copy(
-            tipoUsuario = tipoUsuario
-        )}
+        // Al cambiar tipo, resetear campos específicos y validaciones potencialmente irrelevantes
+        _uiState.update {
+            it.copy(
+                tipoUsuario = tipoUsuario,
+                // Resetear campos de alumno si no es alumno
+                fechaNacimiento = if (tipoUsuario != TipoUsuario.ALUMNO) "" else it.fechaNacimiento,
+                fechaNacimientoError = if (tipoUsuario != TipoUsuario.ALUMNO) null else it.fechaNacimientoError,
+                cursoSeleccionado = if (tipoUsuario != TipoUsuario.ALUMNO) null else it.cursoSeleccionado,
+                claseSeleccionada = if (tipoUsuario != TipoUsuario.ALUMNO) null else it.claseSeleccionada,
+                 // Resetear credenciales si es alumno
+                email = if (tipoUsuario == TipoUsuario.ALUMNO) "" else it.email,
+                emailError = if (tipoUsuario == TipoUsuario.ALUMNO) null else it.emailError,
+                password = if (tipoUsuario == TipoUsuario.ALUMNO) "" else it.password,
+                passwordError = if (tipoUsuario == TipoUsuario.ALUMNO) null else it.passwordError,
+                confirmPassword = if (tipoUsuario == TipoUsuario.ALUMNO) "" else it.confirmPassword,
+                confirmPasswordError = if (tipoUsuario == TipoUsuario.ALUMNO) null else it.confirmPasswordError,
+                 // Resetear selección de centro si no es relevante (ej. admin app, familiar)
+                centroSeleccionado = if (tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) null else it.centroSeleccionado,
+                cursosDisponibles = if (tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) emptyList() else it.cursosDisponibles,
+                clasesDisponibles = if (tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) emptyList() else it.clasesDisponibles,
+                firstInvalidField = null, // Limpiar foco de error al cambiar tipo
+                validationAttemptFailed = false
+            )
+        }
+        // Si el nuevo tipo requiere centro y no está bloqueado, cargar centros si no están ya cargados
+        if (!uiState.value.isCentroBloqueado &&
+            (tipoUsuario == TipoUsuario.ADMIN_CENTRO || tipoUsuario == TipoUsuario.PROFESOR || tipoUsuario == TipoUsuario.ALUMNO) &&
+             uiState.value.centrosDisponibles.isEmpty()) {
+            loadCentros()
+        }
     }
 
     // Actualiza el centro seleccionado
@@ -456,12 +504,19 @@ class AddUserViewModel @Inject constructor(
         
         _uiState.update { it.copy(
             centroId = centroId,
-            centroSeleccionado = centro
+            centroSeleccionado = centro,
+            // Resetear curso y clase al cambiar centro
+            cursoSeleccionado = null,
+            cursosDisponibles = emptyList(),
+            claseSeleccionada = null,
+            clasesDisponibles = emptyList(),
+             firstInvalidField = if (it.firstInvalidField == AddUserFormField.CENTRO) null else it.firstInvalidField,
+             validationAttemptFailed = false
         ) }
         
-        // Si es un alumno, cargamos los cursos disponibles para este centro
-        if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
-            loadCursos(centroId)
+        // Cargar cursos si es Alumno, Profesor o AdminCentro (aunque profesor/admin no usan curso/clase aquí, podrían en futuro)
+        if (centro != null && (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO || _uiState.value.tipoUsuario == TipoUsuario.PROFESOR || _uiState.value.tipoUsuario == TipoUsuario.ADMIN_CENTRO) ) {
+            loadCursos(centro.id)
         }
     }
 
@@ -488,7 +543,9 @@ class AddUserViewModel @Inject constructor(
         val clase = _uiState.value.clasesDisponibles.find { it.id == claseId }
         
         _uiState.update { it.copy(
-            claseSeleccionada = clase
+            claseSeleccionada = clase,
+            firstInvalidField = if (it.firstInvalidField == AddUserFormField.CLASE) null else it.firstInvalidField,
+            validationAttemptFailed = false
         ) }
     }
 
@@ -502,16 +559,23 @@ class AddUserViewModel @Inject constructor(
         
         _uiState.update { it.copy(
             fechaNacimiento = fechaNacimiento,
-            fechaNacimientoError = error
+            fechaNacimientoError = error,
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.FECHA_NACIMIENTO) null else it.firstInvalidField,
+            validationAttemptFailed = false
         ) }
     }
     
     // Guarda un usuario en Firebase Authentication y Firestore
     fun saveUser() {
-        if (!_uiState.value.isFormValid) return
+        if (!_uiState.value.isFormValid) {
+             Timber.e("saveUser llamada con formulario inválido!")
+             // Forzar trigger de error por si acaso
+             attemptSaveAndFocusError()
+             return
+        }
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, validationAttemptFailed = false, firstInvalidField = null) }
             
             try {
                 // 1. Crear usuario en Firebase Authentication
@@ -549,7 +613,7 @@ class AddUserViewModel @Inject constructor(
                                 _uiState.update { 
                                     it.copy(
                                         isLoading = false,
-                                        success = true,
+                                        showSuccessDialog = true,
                                         error = null
                                     )
                                 }
@@ -582,10 +646,13 @@ class AddUserViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        error = "Error inesperado: ${e.message}"
+                        error = "Error inesperado: ${e.message}",
+                        showSuccessDialog = false
                     )
                 }
                 Timber.e(e, "Error inesperado al guardar usuario")
+            } finally {
+                _uiState.update { it.copy(validationAttemptFailed = false, firstInvalidField = null) }
             }
         }
     }
@@ -718,4 +785,63 @@ class AddUserViewModel @Inject constructor(
         }
     }
     // --- FIN NUEVA FUNCIÓN ---
+
+    // --- Lógica de Guardado y Foco ---
+    private fun findFirstInvalidField(): AddUserFormField? {
+        val state = _uiState.value
+        // Revisar errores en orden de aparición en la pantalla
+        return when {
+            // Sección Tipo Usuario / Centro
+            (state.tipoUsuario == TipoUsuario.PROFESOR || state.tipoUsuario == TipoUsuario.ADMIN_CENTRO || state.tipoUsuario == TipoUsuario.ALUMNO) && state.centroSeleccionado == null -> AddUserFormField.CENTRO
+
+            // Sección Info Personal
+            state.dniError != null -> AddUserFormField.DNI
+            state.nombreError != null -> AddUserFormField.NOMBRE
+            state.apellidosError != null -> AddUserFormField.APELLIDOS
+            state.telefonoError != null -> AddUserFormField.TELEFONO
+
+             // Sección Alumno
+            state.tipoUsuario == TipoUsuario.ALUMNO && state.fechaNacimientoError != null -> AddUserFormField.FECHA_NACIMIENTO
+            state.tipoUsuario == TipoUsuario.ALUMNO && state.cursoSeleccionado == null -> AddUserFormField.CURSO // Asumiendo que curso es obligatorio si se es alumno
+            state.tipoUsuario == TipoUsuario.ALUMNO && state.claseSeleccionada == null -> AddUserFormField.CLASE // Asumiendo que clase es obligatoria si se es alumno
+
+            // Sección Credenciales
+            state.tipoUsuario != TipoUsuario.ALUMNO && state.emailError != null -> AddUserFormField.EMAIL
+            state.tipoUsuario != TipoUsuario.ALUMNO && state.passwordError != null -> AddUserFormField.PASSWORD
+            state.tipoUsuario != TipoUsuario.ALUMNO && state.confirmPasswordError != null -> AddUserFormField.CONFIRM_PASSWORD
+
+            else -> null // No hay errores O el error no está mapeado aquí
+        }
+    }
+
+    fun attemptSaveAndFocusError() {
+        val firstError = findFirstInvalidField()
+        // Asegurarse de que el formulario realmente NO es válido según la lógica completa
+        if (!_uiState.value.isFormValid) {
+             _uiState.update {
+                it.copy(
+                    // Establecer el primer error encontrado (puede ser null si isFormValid falla por otra razón)
+                    firstInvalidField = firstError,
+                    validationAttemptFailed = true // Activar el trigger
+                )
+            }
+        } else {
+             // Si isFormValid es true pero esta función fue llamada, es un estado inconsistente.
+             // Resetear por si acaso.
+              _uiState.update { it.copy(validationAttemptFailed = false, firstInvalidField = null) }
+              Timber.w("attemptSaveAndFocusError llamada cuando isFormValid es true.")
+        }
+    }
+
+     fun clearValidationAttemptTrigger() {
+        // Llamado desde el LaunchedEffect después de intentar enfocar
+        if (_uiState.value.validationAttemptFailed) {
+             _uiState.update { it.copy(validationAttemptFailed = false) }
+        }
+    }
+
+    // --- Feedback de Éxito ---
+    fun dismissSuccessDialog() {
+        _uiState.update { it.copy(showSuccessDialog = false) }
+    }
 }

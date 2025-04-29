@@ -328,7 +328,7 @@ class CursoRepository @Inject constructor() {
             emptyList()
         }
     }
-
+    
     /**
      * Actualiza un curso existente
      * @param curso El curso con los datos actualizados
