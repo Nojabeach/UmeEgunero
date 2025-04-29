@@ -593,8 +593,9 @@ class AddUserViewModel @Inject constructor(
                         // otros campos relevantes inicializados a vacío o por defecto
                     )
                     
-                    // Llamar a un método específico en el repositorio para guardar alumnos
-                    val saveResult = usuarioRepository.guardarAlumno(alumno)
+                    // Llamar al método que guarda en ambas colecciones: alumnos y usuarios
+                    // val saveResult = usuarioRepository.guardarAlumno(alumno) // Llamada anterior
+                    val saveResult = usuarioRepository.registrarAlumno(alumno)
 
                     when (saveResult) {
                         is Result.Success -> {

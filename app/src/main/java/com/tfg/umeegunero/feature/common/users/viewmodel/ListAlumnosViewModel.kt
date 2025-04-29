@@ -16,19 +16,19 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
-/**
- * Estado de la UI para la pantalla de listado de alumnos
- */
+// Estado de UI actualizado
 data class ListAlumnosUiState(
-    val alumnos: List<Usuario> = emptyList(),
     val isLoading: Boolean = false,
+    val allAlumnos: List<Alumno> = emptyList(), // Lista completa sin filtrar
+    val filteredAlumnos: List<Alumno> = emptyList(), // Lista filtrada a mostrar
     val error: String? = null,
-    val soloActivos: Boolean = true,
-    val alumnosCompletos: List<Usuario> = emptyList(), // Lista completa sin filtros
-    val cursosDisponibles: List<String> = emptyList(),
-    val clasesDisponibles: List<String> = emptyList(),
-    val cursoSeleccionado: String? = null,
-    val claseSeleccionada: String? = null
+    // Estados para los filtros
+    val dniFilter: String = "",
+    val nombreFilter: String = "",
+    val apellidosFilter: String = "",
+    val cursoFilter: String = "",
+    val claseFilter: String = "",
+    val soloActivos: Boolean = true // Mantener filtro de activos si lo tenías
 )
 
 /**
@@ -49,74 +49,76 @@ class ListAlumnosViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
-            try {
-                val result = usuarioRepository.getUsersByType(TipoUsuario.ALUMNO)
-                
-                when (result) {
-                    is Result.Success<List<Usuario>> -> {
-                        val alumnos = result.data
-                        val cursos = alumnos.mapNotNull { (it as? Alumno)?.curso }.distinct().filter { it.isNotBlank() }
-                        val clases = alumnos.mapNotNull { (it as? Alumno)?.clase }.distinct().filter { it.isNotBlank() }
-                        _uiState.update { 
-                            it.copy(
-                                alumnosCompletos = alumnos,
-                                alumnos = if (it.soloActivos) alumnos.filter { alumno -> alumno.activo } else alumnos,
-                                isLoading = false,
-                                cursosDisponibles = cursos,
-                                clasesDisponibles = clases
-                            ) 
-                        }
-                        Timber.d("Alumnos cargados: ${alumnos.size}")
+            when (val result = usuarioRepository.obtenerTodosLosAlumnos()) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            allAlumnos = result.data
+                        )
                     }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al cargar alumnos: ${result.exception?.message}",
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.e(result.exception, "Error al cargar alumnos")
-                    }
-                    is Result.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
+                    // Aplicar filtros iniciales después de cargar
+                    applyFilters()
                 }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error inesperado: ${e.message}",
-                        isLoading = false
-                    ) 
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Error al cargar alumnos: ${result.exception?.message}"
+                        )
+                    }
+                    Timber.e(result.exception, "Error al cargar alumnos")
                 }
-                Timber.e(e, "Error inesperado al cargar alumnos")
+                is Result.Loading -> { /* Ya estamos en isLoading=true */ }
             }
         }
     }
 
-    /**
-     * Aplica filtros a la lista de alumnos
-     * @param soloActivos Si es true, muestra solo alumnos activos
-     * @param curso Si no es null, filtra por curso
-     * @param clase Si no es null, filtra por clase
-     */
-    fun aplicarFiltros(soloActivos: Boolean, curso: String? = null, clase: String? = null) {
-        _uiState.update { currentState ->
-            var alumnosToShow = currentState.alumnosCompletos
-            if (soloActivos) {
-                alumnosToShow = alumnosToShow.filter { it.activo }
+    // --- Funciones para actualizar filtros de texto ---
+    fun updateDniFilter(value: String) {
+        _uiState.update { it.copy(dniFilter = value) }
+        applyFilters()
+    }
+
+    fun updateNombreFilter(value: String) {
+        _uiState.update { it.copy(nombreFilter = value) }
+        applyFilters()
+    }
+
+    fun updateApellidosFilter(value: String) {
+        _uiState.update { it.copy(apellidosFilter = value) }
+        applyFilters()
+    }
+
+    fun updateCursoFilter(value: String) {
+        _uiState.update { it.copy(cursoFilter = value) }
+        applyFilters()
+    }
+
+    fun updateClaseFilter(value: String) {
+        _uiState.update { it.copy(claseFilter = value) }
+        applyFilters()
+    }
+
+    fun updateSoloActivosFilter(value: Boolean) {
+        _uiState.update { it.copy(soloActivos = value) }
+        applyFilters()
+    }
+    // --- Fin funciones de actualización ---
+
+    // Función centralizada para aplicar todos los filtros
+    private fun applyFilters() {
+        viewModelScope.launch { // Lanzar en coroutine por si la lista es muy grande
+            val state = _uiState.value
+            val filtered = state.allAlumnos.filter { alumno ->
+                (state.dniFilter.isBlank() || alumno.dni.contains(state.dniFilter, ignoreCase = true)) &&
+                (state.nombreFilter.isBlank() || alumno.nombre.contains(state.nombreFilter, ignoreCase = true)) &&
+                (state.apellidosFilter.isBlank() || alumno.apellidos.contains(state.apellidosFilter, ignoreCase = true)) &&
+                (state.cursoFilter.isBlank() || alumno.curso.contains(state.cursoFilter, ignoreCase = true)) &&
+                (state.claseFilter.isBlank() || alumno.clase.contains(state.claseFilter, ignoreCase = true)) &&
+                (!state.soloActivos || alumno.activo) // Aplicar filtro activo
             }
-            if (!curso.isNullOrBlank()) {
-                alumnosToShow = alumnosToShow.filter { (it as? Alumno)?.curso == curso }
-            }
-            if (!clase.isNullOrBlank()) {
-                alumnosToShow = alumnosToShow.filter { (it as? Alumno)?.clase == clase }
-            }
-            currentState.copy(
-                alumnos = alumnosToShow,
-                soloActivos = soloActivos,
-                cursoSeleccionado = curso,
-                claseSeleccionada = clase
-            )
+            _uiState.update { it.copy(filteredAlumnos = filtered) }
         }
     }
 
@@ -132,16 +134,16 @@ class ListAlumnosViewModel @Inject constructor(
                 // En un caso real, aquí llamaríamos al repositorio para eliminar
                 // Por ahora, hacemos una eliminación simulada para demostración
                 _uiState.update { currentState ->
-                    val alumnosActualizados = currentState.alumnosCompletos.filter { it.dni != alumnoId }
+                    val alumnosActualizados = currentState.allAlumnos.filter { it.dni != alumnoId }
                     val alumnosFiltrados = if (currentState.soloActivos) {
-                        alumnosActualizados.filter { it.activo }
+                        alumnosActualizados.filter { (it as? Alumno)?.activo ?: true }
                     } else {
                         alumnosActualizados
                     }
                     
                     currentState.copy(
-                        alumnos = alumnosFiltrados,
-                        alumnosCompletos = alumnosActualizados,
+                        allAlumnos = alumnosActualizados,
+                        filteredAlumnos = alumnosFiltrados,
                         isLoading = false
                     )
                 }

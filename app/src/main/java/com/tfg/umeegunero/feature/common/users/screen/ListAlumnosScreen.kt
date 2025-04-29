@@ -33,10 +33,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.feature.common.users.viewmodel.ListAlumnosViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.sp
+import com.tfg.umeegunero.feature.common.users.viewmodel.ListAlumnosUiState
 
 /**
  * Pantalla que muestra el listado de alumnos del sistema
@@ -54,7 +57,7 @@ fun ListAlumnosScreen(
     val scope = rememberCoroutineScope()
     var showFilterDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var selectedAlumno by remember { mutableStateOf<Usuario?>(null) }
+    var selectedAlumno by remember { mutableStateOf<Alumno?>(null) }
     
     LaunchedEffect(Unit) {
         viewModel.cargarAlumnos()
@@ -131,7 +134,9 @@ fun ListAlumnosScreen(
             }
             
             // Mensaje cuando no hay alumnos
-            if (!uiState.isLoading && uiState.alumnos.isEmpty()) {
+            if (!uiState.isLoading && uiState.filteredAlumnos.isEmpty() && uiState.allAlumnos.isNotEmpty()) {
+                NoResultsFound()
+            } else if (!uiState.isLoading && uiState.allAlumnos.isEmpty()) {
                 EmptyAlumnosList(
                     onAddClicked = {
                         navController.navigate(AppScreens.AddUser.createRoute(
@@ -154,7 +159,7 @@ fun ListAlumnosScreen(
                 item { Spacer(modifier = Modifier.height(8.dp)) }
                 
                 items(
-                    items = uiState.alumnos,
+                    items = uiState.filteredAlumnos,
                     key = { it.dni }
                 ) { alumno ->
                     AlumnoListItem(
@@ -163,7 +168,7 @@ fun ListAlumnosScreen(
                             navController.navigate(AppScreens.StudentDetail.createRoute(alumno.dni))
                         },
                         onEditClick = {
-                            navController.navigate(AppScreens.EditUser.createRoute(alumno.dni))
+                            scope.launch { snackbarHostState.showSnackbar("Edición pendiente de implementar") }
                         },
                         onDeleteClick = {
                             selectedAlumno = alumno
@@ -206,16 +211,14 @@ fun ListAlumnosScreen(
             // Diálogo de filtros
             if (showFilterDialog) {
                 FilterDialog(
-                    cursos = uiState.cursosDisponibles,
-                    clases = uiState.clasesDisponibles,
-                    cursoSeleccionado = uiState.cursoSeleccionado,
-                    claseSeleccionada = uiState.claseSeleccionada,
+                    uiState = uiState,
                     onDismiss = { showFilterDialog = false },
-                    onApplyFilters = { activos, curso, clase ->
-                        viewModel.aplicarFiltros(activos, curso, clase)
-                        showFilterDialog = false
-                    },
-                    mostrarSoloActivos = uiState.soloActivos
+                    onDniChange = viewModel::updateDniFilter,
+                    onNombreChange = viewModel::updateNombreFilter,
+                    onApellidosChange = viewModel::updateApellidosFilter,
+                    onCursoChange = viewModel::updateCursoFilter,
+                    onClaseChange = viewModel::updateClaseFilter,
+                    onSoloActivosChange = viewModel::updateSoloActivosFilter
                 )
             }
         }
@@ -224,7 +227,7 @@ fun ListAlumnosScreen(
 
 @Composable
 private fun AlumnoListItem(
-    alumno: Usuario,
+    alumno: Alumno,
     onItemClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -263,30 +266,40 @@ private fun AlumnoListItem(
                     .padding(horizontal = 16.dp)
             ) {
                 Text(
-                    text = "${alumno.nombre} ${alumno.apellidos}",
+                    text = alumno.dni,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 
                 Text(
-                    text = alumno.email,
+                    text = "${alumno.nombre} ${alumno.apellidos}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 
+                if (alumno.curso.isNotBlank() || alumno.clase.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${alumno.curso} - ${alumno.clase}".trim(' ','-'),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                
                 if (!alumno.activo) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    
                     Text(
                         text = "Inactivo",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -368,102 +381,108 @@ private fun EmptyAlumnosList(onAddClicked: () -> Unit) {
 }
 
 @Composable
-private fun FilterDialog(
-    cursos: List<String>,
-    clases: List<String>,
-    cursoSeleccionado: String?,
-    claseSeleccionada: String?,
-    onDismiss: () -> Unit,
-    onApplyFilters: (Boolean, String?, String?) -> Unit,
-    mostrarSoloActivos: Boolean
-) {
-    var soloActivos by remember { mutableStateOf(mostrarSoloActivos) }
-    var curso by remember { mutableStateOf(cursoSeleccionado ?: "") }
-    var clase by remember { mutableStateOf(claseSeleccionada ?: "") }
+private fun NoResultsFound() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.SearchOff,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Sin resultados",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "No se encontraron alumnos que coincidan con los filtros aplicados.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
 
+@Composable
+private fun FilterDialog(
+    uiState: ListAlumnosUiState,
+    onDismiss: () -> Unit,
+    onDniChange: (String) -> Unit,
+    onNombreChange: (String) -> Unit,
+    onApellidosChange: (String) -> Unit,
+    onCursoChange: (String) -> Unit,
+    onClaseChange: (String) -> Unit,
+    onSoloActivosChange: (Boolean) -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Filtrar alumnos") },
         text = {
             Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Mostrar solo alumnos activos",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Switch(
-                        checked = soloActivos,
-                        onCheckedChange = { soloActivos = it }
-                    )
-                }
+                OutlinedTextField(
+                    value = uiState.dniFilter,
+                    onValueChange = onDniChange,
+                    label = { Text("Filtrar por DNI") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                // Filtro por curso
-                if (cursos.isNotEmpty()) {
-                    Text("Curso", style = MaterialTheme.typography.bodySmall)
-                    DropdownMenuFiltro(
-                        opciones = listOf("") + cursos,
-                        seleccion = curso,
-                        onSeleccion = { curso = it }
-                    )
-                }
+                OutlinedTextField(
+                    value = uiState.nombreFilter,
+                    onValueChange = onNombreChange,
+                    label = { Text("Filtrar por Nombre") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                // Filtro por clase
-                if (clases.isNotEmpty()) {
-                    Text("Clase", style = MaterialTheme.typography.bodySmall)
-                    DropdownMenuFiltro(
-                        opciones = listOf("") + clases,
-                        seleccion = clase,
-                        onSeleccion = { clase = it }
-                    )
-                }
+                OutlinedTextField(
+                    value = uiState.apellidosFilter,
+                    onValueChange = onApellidosChange,
+                    label = { Text("Filtrar por Apellidos") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.cursoFilter,
+                    onValueChange = onCursoChange,
+                    label = { Text("Filtrar por Curso") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.claseFilter,
+                    onValueChange = onClaseChange,
+                    label = { Text("Filtrar por Clase") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Aplica filtros para encontrar alumnos específicos",
+                    text = "Los filtros se aplican automáticamente al escribir.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onApplyFilters(soloActivos, if (curso.isBlank()) null else curso, if (clase.isBlank()) null else clase) }) {
-                Text("Aplicar")
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
+            null
         }
     )
-}
-
-@Composable
-private fun DropdownMenuFiltro(
-    opciones: List<String>,
-    seleccion: String,
-    onSeleccion: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { expanded = true }) {
-            Text(if (seleccion.isBlank()) "Todos" else seleccion)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            opciones.forEach { opcion ->
-                DropdownMenuItem(
-                    text = { Text(if (opcion.isBlank()) "Todos" else opcion) },
-                    onClick = {
-                        onSeleccion(opcion)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
 }
 
 @Preview(showBackground = true)

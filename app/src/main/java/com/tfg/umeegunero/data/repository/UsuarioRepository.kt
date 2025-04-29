@@ -1821,4 +1821,22 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene todos los alumnos registrados en la colección 'alumnos'.
+     *
+     * @return Result<List<Alumno>> Lista de todos los alumnos o error.
+     */
+    suspend fun obtenerTodosLosAlumnos(): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Obteniendo todos los alumnos de la colección 'alumnos'...")
+            val querySnapshot = alumnosCollection.get().await()
+            val alumnos = querySnapshot.toObjects(Alumno::class.java)
+            Timber.d("Se encontraron ${alumnos.size} alumnos.")
+            return@withContext Result.Success(alumnos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener todos los alumnos.")
+            return@withContext Result.Error(e)
+        }
+    }
 }
