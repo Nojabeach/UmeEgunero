@@ -56,7 +56,9 @@ data class AddUserUiState(
     val claseSeleccionada: Clase? = null,
     val fechaNacimiento: String = "",
     val fechaNacimientoError: String? = null,
-    val isEditMode: Boolean = false
+    val isEditMode: Boolean = false,
+    val initialCentroId: String? = null,
+    val isCentroBloqueado: Boolean = false
 ) {
     // Determina si el formulario es válido según el tipo de usuario
     val isFormValid: Boolean
@@ -115,9 +117,59 @@ class AddUserViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AddUserUiState())
     val uiState: StateFlow<AddUserUiState> = _uiState.asStateFlow()
 
-    init {
-        // Cargar los centros al inicializar
-        loadCentros()
+    /**
+     * Inicializa el ViewModel con los parámetros recibidos de la navegación.
+     * Esta función debe llamarse una sola vez desde el Composable.
+     */
+    fun initialize(
+        centroId: String?,
+        bloqueado: Boolean,
+        tipoUsuarioStr: String?,
+        isAdminAppFlag: Boolean
+    ) {
+        // Solo inicializar una vez (evitar llamadas múltiples desde LaunchedEffect)
+        if (_uiState.value.initialCentroId == null && centroId != null) {
+            val tipoUsuario = tipoUsuarioStr?.let { tipo ->
+                when (tipo.lowercase()) {
+                    "admin" -> TipoUsuario.ADMIN_APP
+                    "centro" -> TipoUsuario.ADMIN_CENTRO
+                    "profesor" -> TipoUsuario.PROFESOR
+                    "familiar" -> TipoUsuario.FAMILIAR
+                    "alumno" -> TipoUsuario.ALUMNO
+                    else -> TipoUsuario.FAMILIAR // Default o manejar error
+                }
+            } ?: TipoUsuario.FAMILIAR // Default si no viene
+
+            _uiState.update {
+                it.copy(
+                    initialCentroId = centroId,
+                    isCentroBloqueado = bloqueado,
+                    tipoUsuario = tipoUsuario,
+                    isAdminApp = isAdminAppFlag
+                )
+            }
+            // Cargar centros y luego intentar preseleccionar
+            loadCentrosAndSelectInitial()
+        } else if (_uiState.value.initialCentroId == null) {
+             // Si no viene centroId, inicializar igualmente tipo y admin flag
+             val tipoUsuario = tipoUsuarioStr?.let { tipo ->
+                when (tipo.lowercase()) {
+                    "admin" -> TipoUsuario.ADMIN_APP
+                    "centro" -> TipoUsuario.ADMIN_CENTRO
+                    "profesor" -> TipoUsuario.PROFESOR
+                    "familiar" -> TipoUsuario.FAMILIAR
+                    "alumno" -> TipoUsuario.ALUMNO
+                    else -> TipoUsuario.FAMILIAR // Default o manejar error
+                }
+            } ?: TipoUsuario.FAMILIAR // Default si no viene
+             _uiState.update {
+                it.copy(
+                    tipoUsuario = tipoUsuario,
+                    isAdminApp = isAdminAppFlag
+                )
+            }
+             loadCentros() // Cargar centros igualmente
+        }
     }
 
     // Establece si el usuario es admin de la app
@@ -152,6 +204,43 @@ class AddUserViewModel @Inject constructor(
                 is Result.Loading -> {
                     // No hacemos nada, ya estamos mostrando el estado de carga
                 }
+            }
+        }
+    }
+
+    // Nueva función para cargar centros y luego intentar seleccionar el inicial
+    private fun loadCentrosAndSelectInitial() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            when (val result = centroRepository.getActiveCentros()) {
+                is Result.Success -> {
+                    val centros = result.data
+                    val centroInicial = centros.find { it.id == _uiState.value.initialCentroId }
+                    _uiState.update {
+                        it.copy(
+                            centrosDisponibles = centros,
+                            isLoading = false,
+                            centroSeleccionado = centroInicial // Intentar preseleccionar
+                        )
+                    }
+                    Timber.d("Centros cargados: ${centros.size}. Centro inicial encontrado: ${centroInicial != null}")
+                    // Si se seleccionó un centro, cargar sus cursos si es necesario (ej. para Alumno)
+                    centroInicial?.let { centro ->
+                         if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
+                             loadCursos(centro.id)
+                         }
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            error = "Error al cargar los centros: ${result.exception?.message}",
+                            isLoading = false
+                        )
+                    }
+                    Timber.e(result.exception, "Error al cargar centros")
+                }
+                is Result.Loading -> {} // Ya en isLoading = true
             }
         }
     }
@@ -219,20 +308,21 @@ class AddUserViewModel @Inject constructor(
     }
 
     // Carga las clases del curso seleccionado
+    @Suppress("UNCHECKED_CAST")
     fun loadClases(cursoId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
             when (val result = cursoRepository.obtenerClasesPorCurso(cursoId)) {
                 is Result.Success<*> -> {
-                    val clasesList = result.data as List<Clase> // Guardar la lista en una variable
+                    val clasesList = result.data as List<Clase>
                     _uiState.update { 
                         it.copy(
-                            clasesDisponibles = clasesList, // Usar la variable
+                            clasesDisponibles = clasesList,
                             isLoading = false
                         )
                     }
-                    Timber.d("Clases cargadas: ${clasesList.size}") // Usar la variable aquí
+                    Timber.d("Clases cargadas: ${clasesList.size}")
                 }
                 is Result.Error -> {
                     _uiState.update { 

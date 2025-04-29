@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.common.users.viewmodel.ListAlumnosViewModel
@@ -44,6 +46,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ListAlumnosScreen(
     navController: NavController,
+    centroId: String,
     viewModel: ListAlumnosViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -101,7 +104,9 @@ fun ListAlumnosScreen(
                 onClick = { 
                     navController.navigate(AppScreens.AddUser.createRoute(
                         isAdminApp = false, 
-                        tipoUsuario = TipoUsuario.ALUMNO.toString()
+                        tipoUsuario = TipoUsuario.ALUMNO.toString(),
+                        centroId = centroId,
+                        centroBloqueado = true
                     ))
                 },
                 icon = { Icon(Icons.Default.Add, "Añadir") },
@@ -131,7 +136,9 @@ fun ListAlumnosScreen(
                     onAddClicked = {
                         navController.navigate(AppScreens.AddUser.createRoute(
                             isAdminApp = false, 
-                            tipoUsuario = TipoUsuario.ALUMNO.toString()
+                            tipoUsuario = TipoUsuario.ALUMNO.toString(),
+                            centroId = centroId,
+                            centroBloqueado = true
                         ))
                     }
                 )
@@ -463,6 +470,6 @@ private fun DropdownMenuFiltro(
 @Composable
 fun ListAlumnosScreenPreview() {
     UmeEguneroTheme {
-        ListAlumnosScreen(navController = rememberNavController())
+        ListAlumnosScreen(navController = rememberNavController(), centroId = "centro_preview")
     }
 } 

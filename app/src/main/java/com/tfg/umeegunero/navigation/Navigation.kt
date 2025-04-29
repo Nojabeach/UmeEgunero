@@ -43,6 +43,8 @@ import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 import com.tfg.umeegunero.feature.common.users.screen.GestionUsuariosScreen
 import com.tfg.umeegunero.feature.common.perfil.screen.EditProfileScreen
 import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
+import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
+import com.tfg.umeegunero.feature.common.users.screen.ListAlumnosScreen
 
 /**
  * Navegación principal de la aplicación
@@ -302,20 +304,19 @@ fun Navigation(
         // Pantalla para añadir usuario
         composable(
             route = AppScreens.AddUser.route,
-            arguments = listOf(
-                navArgument("isAdminApp") { type = NavType.BoolType },
-                navArgument("tipo") { 
-                    type = NavType.StringType 
-                    nullable = true
-                    defaultValue = null
-                }
-            )
+            arguments = AppScreens.AddUser.arguments
         ) { backStackEntry ->
-            val tipoUsuario = backStackEntry.arguments?.getString("tipo")
-            com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
+            val isAdminApp = backStackEntry.arguments?.getBoolean(AppScreens.AddUser.ARG_IS_ADMIN_APP) ?: false
+            val tipoUsuarioStr = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_TIPO_USUARIO)
+            val centroId = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_CENTRO_ID)
+            val centroBloqueado = backStackEntry.arguments?.getBoolean(AppScreens.AddUser.ARG_CENTRO_BLOQUEADO) ?: false
+            
+            AddUserScreen(
                 navController = navController,
-                viewModel = hiltViewModel(),
-                tipoPreseleccionado = tipoUsuario
+                isAdminApp = isAdminApp,
+                tipoPreseleccionado = tipoUsuarioStr,
+                centroIdInicial = centroId,
+                centroBloqueadoInicial = centroBloqueado
             )
         }
         
@@ -608,10 +609,17 @@ fun Navigation(
             )
         }
         
-        composable(route = AppScreens.AlumnoList.route) {
-            com.tfg.umeegunero.feature.common.users.screen.ListAlumnosScreen(
+        // Lista de alumnos (ahora requiere centroId)
+        composable(
+            route = AppScreens.AlumnoList.route,
+            arguments = AppScreens.AlumnoList.arguments
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString(AppScreens.AlumnoList.ARG_CENTRO_ID)
+            requireNotNull(centroId) { "El ID del centro es obligatorio para esta pantalla." }
+            
+            ListAlumnosScreen(
                 navController = navController,
-                viewModel = hiltViewModel()
+                centroId = centroId
             )
         }
         

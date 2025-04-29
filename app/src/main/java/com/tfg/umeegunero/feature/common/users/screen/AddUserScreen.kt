@@ -90,6 +90,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
@@ -229,38 +230,25 @@ class PreviewAddUserViewModelFactory : ViewModelProvider.Factory {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddUserScreen(
-    navController: NavController,
+    navController: NavHostController,
     viewModel: AddUserViewModel = hiltViewModel(),
-    isAdminApp: Boolean = true,
-    tipoPreseleccionado: String? = null
+    isAdminApp: Boolean,
+    tipoPreseleccionado: String?,
+    centroIdInicial: String?,
+    centroBloqueadoInicial: Boolean
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
-    // Inicializar el tipo de usuario según el parámetro tipoPreseleccionado
-    LaunchedEffect(tipoPreseleccionado) {
-        tipoPreseleccionado?.let { tipo ->
-            val tipoUsuario = when (tipo.lowercase()) {
-                "admin" -> TipoUsuario.ADMIN_APP
-                "centro" -> TipoUsuario.ADMIN_CENTRO
-                "profesor" -> TipoUsuario.PROFESOR
-                "familiar" -> TipoUsuario.FAMILIAR
-                "alumno" -> TipoUsuario.ALUMNO
-                else -> TipoUsuario.FAMILIAR
-            }
-            viewModel.updateTipoUsuario(tipoUsuario)
-        }
-    }
-    
-    // Inicializar flag de admin app
-    LaunchedEffect(isAdminApp) {
-        viewModel.setIsAdminApp(isAdminApp)
-    }
-    
-    // Cargar centros disponibles
+
+    // Inicializar el ViewModel con los parámetros de navegación una sola vez
     LaunchedEffect(Unit) {
-        viewModel.loadCentros()
+        viewModel.initialize(
+            centroId = centroIdInicial,
+            bloqueado = centroBloqueadoInicial,
+            tipoUsuarioStr = tipoPreseleccionado,
+            isAdminAppFlag = isAdminApp
+        )
     }
-    
+
     // UI completa de la pantalla
     AddUserScreen(
         uiState = uiState,
@@ -539,21 +527,24 @@ fun AddUserScreen(
                                 OutlinedTextField(
                                     value = uiState.centroSeleccionado?.nombre ?: "",
                                     onValueChange = { },
-                                    label = { Text("Seleccionar centro") },
+                                    label = { Text(if(uiState.isCentroBloqueado) "Centro asignado" else "Seleccionar centro") },
                                     readOnly = true,
+                                    enabled = !uiState.isCentroBloqueado,
                                     trailingIcon = {
-                                        IconButton(onClick = { showCentrosDropdown = true }) {
-                                            Icon(
-                                                imageVector = Icons.Default.School,
-                                                contentDescription = "Seleccionar"
-                                            )
+                                        if (!uiState.isCentroBloqueado) {
+                                            IconButton(onClick = { showCentrosDropdown = true }) {
+                                                Icon(
+                                                    imageVector = Icons.Default.School,
+                                                    contentDescription = "Seleccionar"
+                                                )
+                                            }
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth()
                                 )
 
                                 DropdownMenu(
-                                    expanded = showCentrosDropdown,
+                                    expanded = showCentrosDropdown && !uiState.isCentroBloqueado,
                                     onDismissRequest = { showCentrosDropdown = false },
                                     modifier = Modifier.fillMaxWidth(0.9f)
                                 ) {
@@ -981,12 +972,32 @@ fun AddUserScreen(
 @Preview(showBackground = true)
 @Composable
 fun AddUserScreenPreview() {
-    val viewModel: PreviewAddUserViewModel = viewModel(factory = PreviewAddUserViewModelFactory())
+    val factory = remember { PreviewAddUserViewModelFactory() }
+    val viewModel: PreviewAddUserViewModel = viewModel(factory = factory)
+
+    // Simular parámetros para el preview
+    @Suppress("UNUSED_PARAMETER") // Suprimir warning
+    val isAdminApp = true 
+    @Suppress("UNUSED_PARAMETER") // Suprimir warning
+    val tipoPreseleccionado = "alumno"
+    val centroIdInicial = "1" // ID de "Colegio San José" en el preview VM
+    val centroBloqueadoInicial = true
+
+    // Llamar a initialize en el preview VM si existe una función similar o configurar estado manualmente
+    // viewModel.initialize(...) // Necesitaría adaptar el Preview VM
 
     UmeEguneroTheme {
         Surface {
             AddUserScreen(
-                uiState = viewModel.uiState,
+                uiState = viewModel.uiState.copy(
+                    // Aplicar bloqueo y centro inicial manualmente para el preview si initialize no existe
+                    isCentroBloqueado = centroBloqueadoInicial,
+                    initialCentroId = centroIdInicial,
+                    // Preseleccionar tipo manualmente
+                    tipoUsuario = TipoUsuario.ALUMNO,
+                    // Preseleccionar centro manualmente
+                    centroSeleccionado = viewModel.uiState.centrosDisponibles.find { it.id == centroIdInicial }
+                ),
                 onUpdateDni = viewModel::updateDni,
                 onUpdateEmail = viewModel::updateEmail,
                 onUpdatePassword = viewModel::updatePassword,
@@ -1099,7 +1110,6 @@ fun FechaNacimientoField(
     error: String?,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
     

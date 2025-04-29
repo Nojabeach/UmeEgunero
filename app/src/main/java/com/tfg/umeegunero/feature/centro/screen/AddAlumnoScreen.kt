@@ -1,31 +1,80 @@
 package com.tfg.umeegunero.feature.centro.screen
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.Accessibility
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Class
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.feature.centro.viewmodel.AddAlumnoViewModel
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import androidx.compose.ui.draw.alpha
 
 /**
- * Pantalla para añadir un nuevo alumno al sistema
- * Permite al administrador de centro registrar alumnos con todos sus datos
+ * Pantalla para añadir un nuevo alumno al sistema.
+ * Permite al administrador de centro registrar alumnos con todos sus datos personales,
+ * académicos y médicos.
+ *
+ * @param navController Controlador de navegación para volver atrás o navegar tras éxito.
+ * @param viewModel ViewModel que gestiona el estado y la lógica de añadir un alumno.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -215,12 +264,18 @@ fun AddAlumnoScreen(
                             expanded = uiState.isCursoDropdownExpanded,
                             onDismissRequest = { viewModel.toggleCursoDropdown() }
                         ) {
+                            if (uiState.cursos.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No hay cursos disponibles", fontStyle = FontStyle.Italic) },
+                                    onClick = { },
+                                    enabled = false
+                                )
+                            }
                             uiState.cursos.forEach { curso ->
                                 DropdownMenuItem(
                                     text = { Text("${curso.nombre} (${curso.anioAcademico})") },
-                                    onClick = {
+                                    onClick = { 
                                         viewModel.selectCurso(curso)
-                                        viewModel.toggleCursoDropdown()
                                     }
                                 )
                             }
@@ -228,37 +283,56 @@ fun AddAlumnoScreen(
                     }
                     
                     // Selector de clase (solo disponible si hay curso seleccionado)
-                    if (uiState.cursoSeleccionado != null) {
-                        ExposedDropdownMenuBox(
-                            expanded = uiState.isClaseDropdownExpanded,
-                            onExpandedChange = { viewModel.toggleClaseDropdown() }
-                        ) {
-                            OutlinedTextField(
-                                value = uiState.claseSeleccionada?.nombre ?: "Seleccione una clase",
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = uiState.isClaseDropdownExpanded)
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(),
-                                label = { Text("Clase") },
-                                leadingIcon = { Icon(Icons.Default.Class, contentDescription = null) }
-                            )
-                            
-                            ExposedDropdownMenu(
+                    AnimatedVisibility(visible = uiState.cursoSeleccionado != null) {
+                        Column {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            ExposedDropdownMenuBox(
                                 expanded = uiState.isClaseDropdownExpanded,
-                                onDismissRequest = { viewModel.toggleClaseDropdown() }
+                                onExpandedChange = { viewModel.toggleClaseDropdown() }
                             ) {
-                                uiState.clases.forEach { clase ->
-                                    DropdownMenuItem(
-                                        text = { Text(clase.nombre) },
-                                        onClick = {
-                                            viewModel.selectClase(clase)
-                                            viewModel.toggleClaseDropdown()
+                                OutlinedTextField(
+                                    value = uiState.claseSeleccionada?.nombre ?: "Seleccione una clase",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    trailingIcon = {
+                                        if (uiState.isLoading && uiState.clases.isEmpty()) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        } else {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = uiState.isClaseDropdownExpanded)
                                         }
-                                    )
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(),
+                                    label = { Text("Clase") },
+                                    leadingIcon = { Icon(Icons.Default.Class, contentDescription = null) }
+                                )
+                                
+                                ExposedDropdownMenu(
+                                    expanded = uiState.isClaseDropdownExpanded,
+                                    onDismissRequest = { viewModel.toggleClaseDropdown() }
+                                ) {
+                                    if (uiState.isLoading) {
+                                        DropdownMenuItem(
+                                            text = { Text("Cargando clases...", fontStyle = FontStyle.Italic) },
+                                            onClick = { },
+                                            enabled = false
+                                        )
+                                    } else if (uiState.clases.isEmpty()) {
+                                        DropdownMenuItem(
+                                            text = { Text("No hay clases para este curso", fontStyle = FontStyle.Italic) },
+                                            onClick = { },
+                                            enabled = false
+                                        )
+                                    }
+                                    uiState.clases.forEach { clase ->
+                                        DropdownMenuItem(
+                                            text = { Text(clase.nombre) },
+                                            onClick = {
+                                                viewModel.selectClase(clase)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -385,4 +459,19 @@ fun AddAlumnoScreen(
             DatePicker(state = datePickerState)
         }
     }
-} 
+}
+
+// --- Preview Añadida --- 
+@Preview(showBackground = true, name = "Añadir Alumno Screen")
+@Composable
+fun AddAlumnoScreenPreview() {
+    UmeEguneroTheme {
+        // Se necesita un NavController de prueba para la preview
+        val navController = rememberNavController() 
+        AddAlumnoScreen(navController = navController)
+        // Nota: En la preview, el viewModel será una instancia básica sin Hilt,
+        // por lo que la carga de cursos/clases no funcionará igual que en ejecución.
+        // Se podrían crear ViewModels de previsualización si se necesita estado complejo.
+    }
+}
+// --- Fin Preview Añadida --- 

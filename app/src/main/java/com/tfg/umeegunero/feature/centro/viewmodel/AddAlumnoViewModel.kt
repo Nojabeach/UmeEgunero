@@ -21,6 +21,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 /**
  * Estado UI para la pantalla de añadir alumno
@@ -75,37 +77,36 @@ data class AddAlumnoUiState(
 class AddAlumnoViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val cursoRepository: CursoRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AddAlumnoUiState())
     val uiState: StateFlow<AddAlumnoUiState> = _uiState.asStateFlow()
+    private val alumnosCollection = firestore.collection("alumnos")
     
     init {
         // Obtener el centro del administrador actual
         getCentroIdFromCurrentUser()
-        // Cargar los cursos disponibles
-        cargarCursos()
+        // No cargamos cursos aquí, esperamos a tener el centroId
     }
     
     /**
-     * Obtiene el ID del centro del usuario administrador actual
+     * Obtiene el ID del centro del usuario administrador actual y carga los cursos
      */
     private fun getCentroIdFromCurrentUser() {
         viewModelScope.launch {
             try {
-                val currentUser = authRepository.getCurrentUser()
-                
-                if (currentUser != null) {
-                    // Utilizar la utilidad centralizada para obtener el centroId
-                    val centroId = UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
-                    
-                    if (!centroId.isNullOrEmpty()) {
-                        _uiState.update { state -> state.copy(centroId = centroId) }
-                    } else {
-                        Timber.e("No se pudo obtener el centroId del usuario actual")
-                    }
+                val centroId = UsuarioUtils.obtenerCentroIdDelUsuarioActual(authRepository, usuarioRepository)
+                if (!centroId.isNullOrEmpty()) {
+                    _uiState.update { state -> state.copy(centroId = centroId) }
+                    // Cargar cursos una vez tenemos el centroId
+                    cargarCursos(centroId)
+                } else {
+                    _uiState.update { it.copy(error = "No se pudo determinar el ID del centro.") }
+                    Timber.e("No se pudo obtener el centroId del usuario actual")
                 }
             } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error al obtener datos iniciales: ${e.message}") }
                 Timber.e(e, "Error al obtener centro del usuario actual")
             }
         }
@@ -114,40 +115,12 @@ class AddAlumnoViewModel @Inject constructor(
     /**
      * Carga los cursos disponibles en el centro
      */
-    private fun cargarCursos() {
+    private fun cargarCursos(centroId: String) { // Ahora recibe centroId
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            
             try {
-                val centroId = _uiState.value.centroId
-                
-                if (!centroId.isNullOrEmpty()) {
-                    // Usar la función suspendida que devuelve directamente la lista
-                    val cursosList = cursoRepository.obtenerCursosPorCentro(centroId)
-                    _uiState.update { it.copy(cursos = cursosList, isLoading = false) } // Actualizar UI directamente
-
-                    /* // Código antiguo que usaba Result
-                    when (val cursoResult = cursoRepository.obtenerCursosPorCentroResult(centroId)) {
-                        is Result.Success<*> -> { // Usar <*> para tipo genérico
-                            _uiState.update { it.copy(cursos = cursoResult.data as List<Curso>) }
-                        }
-                        is Result.Error -> {
-                            _uiState.update { 
-                                it.copy(
-                                    error = "Error al cargar los cursos: ${cursoResult.exception?.message}",
-                                    isLoading = false
-                                ) 
-                            }
-                            Timber.e(cursoResult.exception, "Error al cargar cursos")
-                        }
-                        else -> {
-                            // No hacer nada para el estado Loading
-                        }
-                    }
-                    */
-                } else {
-                     _uiState.update { it.copy(error = "No se pudo determinar el centroId", isLoading = false) }
-                }
+                val cursosList = cursoRepository.obtenerCursosPorCentro(centroId)
+                _uiState.update { it.copy(cursos = cursosList, isLoading = false) }
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
@@ -156,9 +129,8 @@ class AddAlumnoViewModel @Inject constructor(
                     ) 
                 }
                 Timber.e(e, "Error inesperado al cargar cursos")
-            } finally {
-                 _uiState.update { it.copy(isLoading = false) } // Asegurar que isLoading se ponga a false
-            }
+            } 
+            // No ponemos finally isLoading = false aquí porque la carga puede continuar con clases
         }
     }
     
@@ -167,13 +139,12 @@ class AddAlumnoViewModel @Inject constructor(
      */
     private fun cargarClasesPorCurso(cursoId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            
+            // Mantenemos isLoading = true si ya estaba, o lo ponemos si no
+            _uiState.update { it.copy(isLoading = true, clases = emptyList()) } // Limpiar clases anteriores
             try {
                 // Obtener las clases del curso
-                val result = cursoRepository.obtenerClasesPorCurso(cursoId)
-                
-                when (result) {
+                @Suppress("UNCHECKED_CAST") // Mantenemos el suppress si el repo no es seguro
+                when (val result = cursoRepository.obtenerClasesPorCurso(cursoId)) {
                     is Result.Success<*> -> {
                         _uiState.update { 
                             it.copy(
@@ -192,7 +163,7 @@ class AddAlumnoViewModel @Inject constructor(
                         Timber.e(result.exception, "Error al cargar clases")
                     }
                     else -> {
-                        // No hacer nada para el estado Loading
+                       _uiState.update { it.copy(isLoading = false) } // Terminar carga si es Loading
                     }
                 }
             } catch (e: Exception) {
@@ -258,17 +229,22 @@ class AddAlumnoViewModel @Inject constructor(
     fun selectCurso(curso: Curso) {
         _uiState.update { 
             it.copy(
-                cursoSeleccionado = curso,
-                claseSeleccionada = null // Resetear la clase seleccionada al cambiar de curso
+                cursoSeleccionado = curso, 
+                claseSeleccionada = null, // Resetear clase seleccionada
+                isCursoDropdownExpanded = false // Cerrar dropdown curso
             ) 
         }
-        
-        // Cargar las clases del curso seleccionado
+        // Cargar las clases para el curso recién seleccionado
         cargarClasesPorCurso(curso.id)
     }
     
     fun selectClase(clase: Clase) {
-        _uiState.update { it.copy(claseSeleccionada = clase) }
+        _uiState.update { 
+            it.copy(
+                claseSeleccionada = clase,
+                isClaseDropdownExpanded = false // Cerrar dropdown clase
+            )
+        }
     }
     
     // Funciones para actualizar datos médicos
@@ -290,95 +266,50 @@ class AddAlumnoViewModel @Inject constructor(
     }
     
     /**
-     * Guarda el alumno en la base de datos
+     * Guarda el alumno en la base de datos (colección 'alumnos')
      */
     fun guardarAlumno() {
+        if (!_uiState.value.isFormValid) {
+            _uiState.update { it.copy(error = "Por favor, complete todos los campos obligatorios.") }
+            return
+        }
+        
         viewModelScope.launch {
-            val state = _uiState.value
-            
-            // Verificar que el formulario sea válido
-            if (!state.isFormValid) {
-                _uiState.update { it.copy(error = "Por favor, complete todos los campos obligatorios") }
-                return@launch
-            }
-            
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Convertir las cadenas de alergias y medicación a listas
-                val alergiasList = if (state.alergias.isBlank()) {
-                    emptyList()
-                } else {
-                    state.alergias.split(",").map { it.trim() }
-                }
-                
-                val medicacionList = if (state.medicacion.isBlank()) {
-                    emptyList()
-                } else {
-                    state.medicacion.split(",").map { it.trim() }
-                }
-                
-                // Crear el objeto Alumno
-                val alumno = Alumno(
-                    dni = state.dni,
-                    nombre = state.nombre,
-                    apellidos = state.apellidos,
-                    fechaNacimiento = state.fechaNacimiento,
-                    centroId = state.centroId,
-                    aulaId = state.claseSeleccionada?.id ?: "",
-                    curso = state.cursoSeleccionado?.nombre ?: "",
-                    clase = state.claseSeleccionada?.nombre ?: "",
-                    profesorIds = state.claseSeleccionada?.profesorTitularId?.let { listOf(it) } ?: emptyList(),
-                    alergias = alergiasList,
-                    medicacion = medicacionList,
-                    necesidadesEspeciales = state.necesidadesEspeciales,
-                    observaciones = state.observaciones,
-                    activo = true
+                // Crear objeto Alumno con los campos correctos
+                val nuevoAlumno = Alumno(
+                    // id se autogenera o usa dni? Usaremos dni como ID del documento
+                    dni = _uiState.value.dni,
+                    nombre = _uiState.value.nombre,
+                    apellidos = _uiState.value.apellidos,
+                    fechaNacimiento = _uiState.value.fechaNacimiento, // Guardar como String dd/MM/yyyy
+                    centroId = _uiState.value.centroId,
+                    curso = _uiState.value.cursoSeleccionado!!.nombre, // Guardar nombre del curso
+                    clase = _uiState.value.claseSeleccionada!!.nombre,  // Guardar nombre de la clase
+                    aulaId = _uiState.value.claseSeleccionada!!.id, // Usar id de clase como aulaId
+                    alergias = _uiState.value.alergias.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+                    medicacion = _uiState.value.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+                    necesidadesEspeciales = _uiState.value.necesidadesEspeciales,
+                    observaciones = _uiState.value.observaciones,
+                    activo = true // Marcar como activo por defecto
+                    // Otros campos como email, telefono, familiares, profesorIds se gestionarán aparte si es necesario
                 )
                 
-                // Guardar el alumno en la base de datos
-                val result = usuarioRepository.registrarAlumno(alumno)
+                // Guardar directamente en la colección "alumnos" usando DNI como ID
+                alumnosCollection.document(nuevoAlumno.dni).set(nuevoAlumno).await()
                 
-                when (result) {
-                    is Result.Success<*> -> {
-                        // También asignamos el alumno a la clase seleccionada
-                        val asignacionResult = cursoRepository.asignarAlumnoAClase(
-                            alumnoId = alumno.dni,
-                            claseId = state.claseSeleccionada?.id ?: ""
-                        )
-                        
-                        if (asignacionResult is Result.Error) {
-                            Timber.e(asignacionResult.exception, "Error al asignar alumno a clase")
-                            // No bloqueamos el éxito por este error
-                        }
-                        
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                success = true,
-                                error = null
-                            ) 
-                        }
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al guardar el alumno: ${result.exception?.message}",
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.e(result.exception, "Error al guardar alumno")
-                    }
-                    else -> {
-                        // No hacer nada para el estado Loading
-                    }
-                }
+                // Si llegamos aquí, la operación fue exitosa
+                _uiState.update { it.copy(isLoading = false, success = true) }
+                Timber.d("Alumno guardado correctamente con DNI: ${nuevoAlumno.dni}")
+                
             } catch (e: Exception) {
-                _uiState.update { 
+                 _uiState.update { 
                     it.copy(
-                        error = "Error inesperado al guardar el alumno: ${e.message}",
-                        isLoading = false
-                    ) 
+                        isLoading = false, 
+                        error = "Error inesperado al guardar: ${e.message}"
+                    )
                 }
                 Timber.e(e, "Error inesperado al guardar alumno")
             }

@@ -94,10 +94,38 @@ sealed class AppScreens(val route: String) {
      * Formulario para añadir un nuevo usuario al sistema
      * @param isAdminApp Indica si el usuario será administrador de la aplicación
      * @param tipoUsuario Tipo de usuario (opcional): centro, profesor, familiar
+     * @param centroId ID del centro (opcional, para preselección y bloqueo)
+     * @param centroBloqueado Indica si el selector de centro debe estar bloqueado (opcional)
      */
-    object AddUser : AppScreens("add_user/{isAdminApp}") {
-        fun createRoute(isAdminApp: Boolean) = "add_user/$isAdminApp"
-        fun createRoute(isAdminApp: Boolean, tipoUsuario: String) = "add_user/$isAdminApp?tipo=$tipoUsuario"
+    object AddUser : AppScreens("add_user/{isAdminApp}?tipo={tipoUsuario}&centroId={centroId}&centroBloqueado={centroBloqueado}") {
+        const val ARG_IS_ADMIN_APP = "isAdminApp"
+        const val ARG_TIPO_USUARIO = "tipoUsuario"
+        const val ARG_CENTRO_ID = "centroId"
+        const val ARG_CENTRO_BLOQUEADO = "centroBloqueado"
+
+        fun createRoute(
+            isAdminApp: Boolean,
+            tipoUsuario: String? = null,
+            centroId: String? = null,
+            centroBloqueado: Boolean? = null
+        ): String {
+            var route = "add_user/$isAdminApp"
+            val params = mutableListOf<String>()
+            tipoUsuario?.let { params.add("tipo=$it") }
+            centroId?.let { params.add("centroId=$it") }
+            centroBloqueado?.let { params.add("centroBloqueado=$it") }
+            if (params.isNotEmpty()) {
+                route += "?" + params.joinToString("&")
+            }
+            return route
+        }
+
+        val arguments = listOf(
+            navArgument(ARG_IS_ADMIN_APP) { type = NavType.BoolType },
+            navArgument(ARG_TIPO_USUARIO) { type = NavType.StringType; nullable = true },
+            navArgument(ARG_CENTRO_ID) { type = NavType.StringType; nullable = true },
+            navArgument(ARG_CENTRO_BLOQUEADO) { type = NavType.BoolType; defaultValue = false }
+        )
     }
     
     /**
@@ -126,7 +154,14 @@ sealed class AppScreens(val route: String) {
     object ProfesorList : AppScreens("admin_dashboard/profesores")
     
     /** Lista de alumnos dentro del dashboard de administración */
-    object AlumnoList : AppScreens("admin_dashboard/alumnos")
+    object AlumnoList : AppScreens("alumnos/{centroId}") {
+        const val ARG_CENTRO_ID = "centroId"
+        fun createRoute(centroId: String) = "alumnos/$centroId"
+
+        val arguments = listOf(
+            navArgument(ARG_CENTRO_ID) { type = NavType.StringType }
+        )
+    }
     
     /** Lista de familiares dentro del dashboard de administración */
     object FamiliarList : AppScreens("admin_dashboard/familiares")

@@ -34,9 +34,29 @@ import androidx.compose.ui.text.style.TextAlign
 import com.tfg.umeegunero.ui.theme.AcademicoColor
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Class
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.rememberNavController
 
 enum class ModoVisualizacion { CURSOS, CLASES }
 
+/**
+ * Pantalla unificada para la gestión de Cursos y Clases.
+ *
+ * Muestra una lista de cursos o clases pertenecientes a un centro específico,
+ * permitiendo la selección, adición, edición y eliminación de elementos.
+ * El comportamiento y la apariencia se adaptan según el [modo] especificado.
+ *
+ * @param modo Indica si se deben mostrar CURSOS o CLASES.
+ * @param centroId ID del centro cuyos cursos/clases se mostrarán. Requerido si el perfil es ADMIN_CENTRO.
+ * @param cursoId ID del curso cuyas clases se mostrarán (solo aplica si modo es CLASES).
+ * @param selectorCentroBloqueado Si es true, el selector de centro estará deshabilitado (útil si se navega desde un centro específico).
+ * @param selectorCursoBloqueado Si es true, el selector de curso estará deshabilitado (útil si se navega desde un curso específico).
+ * @param perfilUsuario Tipo de perfil del usuario actual (ADMIN_APP, ADMIN_CENTRO) para determinar permisos y visibilidad.
+ * @param viewModel ViewModel que gestiona el estado y la lógica de esta pantalla.
+ * @param onNavigate Lambda para gestionar la navegación a otras pantallas (ej. añadir/editar curso/clase, volver atrás).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GestorAcademicoScreen(
@@ -55,7 +75,6 @@ fun GestorAcademicoScreen(
     val clases = uiState.clases
     val selectedCentro = uiState.selectedCentro
     val selectedCurso = uiState.selectedCurso
-    val isLoadingCentros = uiState.isLoadingCentros
     val isLoadingCursos = uiState.isLoadingCursos
     val isLoadingClases = uiState.isLoadingClases
     val error = uiState.error
@@ -77,6 +96,11 @@ fun GestorAcademicoScreen(
             if (modo == ModoVisualizacion.CURSOS) {
                 CenterAlignedTopAppBar(
                     title = { Text("Gestión de Cursos", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = { onNavigate("back") }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        }
+                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = AcademicoColor,
                         titleContentColor = Color.White
@@ -177,7 +201,7 @@ fun GestorAcademicoScreen(
             } else if (modo == ModoVisualizacion.CURSOS && cursos.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(64.dp), tint = AcademicoColor.copy(alpha = 0.5f))
+                        Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(64.dp), tint = AcademicoColor.copy(alpha = 0.5f))
                         Spacer(Modifier.height(16.dp))
                         Text("No hay cursos para este centro.", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(16.dp))
@@ -319,4 +343,40 @@ fun GestorAcademicoScreen(
             )
         }
     }
-} 
+}
+
+// --- Preview añadida --- 
+@Preview(showBackground = true, name = "Gestor Cursos")
+@Composable
+fun GestorAcademicoScreenCursosPreview() {
+    UmeEguneroTheme {
+        GestorAcademicoScreen(
+            modo = ModoVisualizacion.CURSOS,
+            centroId = "centro_test_id",
+            cursoId = null,
+            selectorCentroBloqueado = false,
+            selectorCursoBloqueado = false,
+            perfilUsuario = TipoUsuario.ADMIN_APP,
+            // viewModel = viewModel() // No usar hiltViewModel en Preview
+            onNavigate = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Gestor Clases")
+@Composable
+fun GestorAcademicoScreenClasesPreview() {
+    UmeEguneroTheme {
+        GestorAcademicoScreen(
+            modo = ModoVisualizacion.CLASES,
+            centroId = "centro_test_id",
+            cursoId = "curso_test_id",
+            selectorCentroBloqueado = true, // Ejemplo: centro bloqueado
+            selectorCursoBloqueado = false,
+            perfilUsuario = TipoUsuario.ADMIN_CENTRO,
+            // viewModel = viewModel() // No usar hiltViewModel en Preview
+            onNavigate = {}
+        )
+    }
+}
+// --- Fin Preview añadida --- 

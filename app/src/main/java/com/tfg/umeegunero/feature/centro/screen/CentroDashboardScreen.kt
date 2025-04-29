@@ -124,185 +124,25 @@ fun CentroDashboardScreen(
     }
 
     fun onNavigateToGestionProfesores() = navController.navigate(AppScreens.GestionProfesores.route)
-    fun onNavigateToAddAlumno() = navController.navigate(AppScreens.AlumnoList.route)
+    fun onNavigateToAddAlumno() = try {
+        if (centroId.isNotBlank()) {
+            navController.navigate(AppScreens.AlumnoList.createRoute(centroId))
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("No se pudo obtener el ID del centro.")
+            }
+        }
+    } catch (e: Exception) {
+        scope.launch {
+            snackbarHostState.showSnackbar("Error al navegar a lista de alumnos: ${e.message}")
+        }
+    }
     fun onNavigateToVincularProfesorClase() = navController.navigate(AppScreens.VincularProfesorClase.route)
     fun onNavigateToVinculacionFamiliar() = navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
     fun onNavigateToCrearUsuarioRapido() = navController.navigate(AppScreens.CrearUsuarioRapido.route)
     fun onNavigateToCalendario() = navController.navigate(AppScreens.Calendario.route)
     fun onNavigateToNotificaciones() = navController.navigate(AppScreens.Notificaciones.route)
 
-    // Actualizar las tarjetas con el nuevo centroId
-    val cards = listOf(
-        CategoriaCardData(
-            titulo = "Cursos",
-            descripcion = "Visualiza, crea y edita los cursos del centro",
-            icono = Icons.AutoMirrored.Filled.MenuBook,
-            color = CentroColor,
-            iconTint = AppColors.PurplePrimary,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate("gestor_academico/CURSOS?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar a cursos: ${e.message}")
-                    }
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Clases",
-            descripcion = "Gestiona los grupos y asigna alumnos a clases",
-            icono = Icons.Default.Class,
-            color = CentroColor,
-            iconTint = AppColors.PurpleSecondary,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate("gestor_academico/CLASES?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar a clases: ${e.message}")
-                    }
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Profesores",
-            descripcion = "Consulta, añade y administra el personal docente",
-            icono = Icons.Default.SupervisorAccount,
-            color = CentroColor,
-            iconTint = AppColors.Green500,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.GestionProfesores.route)
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar a gestión de profesores: ${e.message}")
-                    }
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Alumnos",
-            descripcion = "Gestiona el listado y los datos de los estudiantes",
-            icono = Icons.Default.Face,
-            color = CentroColor,
-            iconTint = AppColors.Pink80,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.AlumnoList.route)
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar a lista de alumnos: ${e.message}")
-                    }
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Asignación",
-            descripcion = "Asigna profesores a clases de forma sencilla",
-            icono = Icons.AutoMirrored.Filled.Assignment,
-            color = CentroColor,
-            iconTint = AppColors.PurpleTertiary,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.VincularProfesorClase.route)
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar a vinculación de profesores: ${e.message}")
-                    }
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Vinculación Familiar",
-            descripcion = "Gestiona la relación entre alumnos y familiares",
-            icono = Icons.Default.People,
-            color = CentroColor,
-            iconTint = AppColors.Red500,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar a vinculación familiar: ${e.message}")
-                    }
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Crear Usuario",
-            descripcion = "Registra nuevos usuarios en el sistema",
-            icono = Icons.Default.PersonAdd,
-            color = CentroColor,
-            iconTint = AppColors.PurplePrimary,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.CrearUsuarioRapido.route)
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar a creación de usuario: ${e.message}")
-                    }
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Calendario",
-            descripcion = "Consulta eventos y fechas importantes del centro",
-            icono = Icons.Default.DateRange,
-            color = CentroColor,
-            iconTint = AppColors.PurpleTertiary,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.Calendario.route)
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar al calendario: ${e.message}")
-                    }
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Notificaciones",
-            descripcion = "Revisa avisos y comunicaciones recientes",
-            icono = Icons.Default.Notifications,
-            color = CentroColor,
-            iconTint = AppColors.GradientEnd,
-            border = true,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.Notificaciones.route)
-                } catch (e: Exception) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error al navegar a notificaciones: ${e.message}")
-                    }
-                }
-            }
-        )
-    )
-    if (showLogoutDialog) {
-        AlertDialog(
-            onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Cerrar sesión") },
-            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showLogoutDialog = false
-                    viewModel.logout()
-                }) { Text("Sí") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) { Text("No") }
-            }
-        )
-    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -342,436 +182,226 @@ fun CentroDashboardScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = CentroColor
-                )
-        } else {
-            AnimatedVisibility(
-                visible = showContent,
-                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }, animationSpec = spring(stiffness = Spring.StiffnessLow)),
-                exit = fadeOut()
+                    .padding(paddingValues)
             ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = CentroColor
+                    )
+                } else {
+                    AnimatedVisibility(
+                        visible = showContent,
+                        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }, animationSpec = spring(stiffness = Spring.StiffnessLow)),
+                        exit = fadeOut()
                     ) {
-                        // Header de bienvenida
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            CategoriaCardBienvenida(
-                                data = CategoriaCardData(
-                                    titulo = "¡Bienvenido/a, ${uiState.currentUser?.nombre ?: ""}!",
-                                    descripcion = nombreCentro + "\n" + currentDate,
-                                    icono = Icons.Filled.School,
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Header de bienvenida
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                CategoriaCardBienvenida(
+                                    data = CategoriaCardData(
+                                        titulo = "¡Bienvenido/a, ${uiState.currentUser?.nombre ?: ""}!",
+                                        descripcion = nombreCentro + "\n" + currentDate,
+                                        icono = Icons.Filled.School,
+                                        color = CentroColor,
+                                        onClick = {},
+                                        iconTint = Color.White,
+                                        border = true
+                                    ),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp, max = 100.dp)
+                                )
+                            }
+                            // Separador visual
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            }
+                            
+                            // --- Inicio Nueva Sección: Estructura Académica ---
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = "Estructura Académica",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = CentroColor
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Cursos",
+                                    descripcion = "Visualiza, crea y edita los cursos del centro",
+                                    icono = Icons.AutoMirrored.Filled.MenuBook,
                                     color = CentroColor,
-                                    onClick = {},
-                                    iconTint = Color.White,
-                                    border = true
-                                ),
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp, max = 100.dp)
-                            )
-                        }
-                        // Separador visual
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        }
-                        // Sección: Gestión Académica
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Text(
-                                text = "Gestión Académica",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = CentroColor
-                            )
-                        }
-                        item {
-                            CategoriaCard(
-                                titulo = "Cursos",
-                                descripcion = "Visualiza, crea y edita los cursos del centro",
-                                icono = Icons.AutoMirrored.Filled.MenuBook,
-                                color = CentroColor,
-                                iconTint = AppColors.PurplePrimary,
-                                border = true,
-                                onClick = { onNavigateToListaCursos() },
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        item {
-                            CategoriaCard(
-                                titulo = "Clases",
-                                descripcion = "Gestiona los grupos y asigna alumnos a clases",
-                                icono = Icons.Default.Class,
-                                color = CentroColor,
-                                iconTint = AppColors.PurpleSecondary,
-                                border = true,
-                                onClick = { onNavigateToListaClases() },
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        // Separador visual
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        }
-                        // Sección: Gestión de Personal
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Text(
-                                text = "Gestión de Personal",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = CentroColor
-                            )
-                        }
-                        item {
-                            CategoriaCard(
-                                titulo = "Profesores",
-                                descripcion = "Consulta, añade y administra el personal docente",
-                                icono = Icons.Default.SupervisorAccount,
-                                color = CentroColor,
-                                iconTint = AppColors.Green500,
-                                border = true,
-                                onClick = { onNavigateToGestionProfesores() },
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        item {
-                            CategoriaCard(
-                                titulo = "Alumnos",
-                                descripcion = "Gestiona el listado y los datos de los estudiantes",
-                                icono = Icons.Default.Face,
-                                color = CentroColor,
-                                iconTint = AppColors.Pink80,
-                                border = true,
-                                onClick = { onNavigateToAddAlumno() },
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            CategoriaCard(
-                                titulo = "Asignación",
-                                descripcion = "Asigna profesores a clases de forma sencilla",
-                                icono = Icons.AutoMirrored.Filled.Assignment,
-                                color = CentroColor,
-                                iconTint = AppColors.PurpleTertiary,
-                                border = true,
-                                onClick = { onNavigateToVincularProfesorClase() },
-                                modifier = Modifier.padding(4.dp).fillMaxWidth()
-                            )
-                        }
-                        // Separador visual
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        }
-                        // Sección: Usuarios y Comunicaciones
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Text(
-                                text = "Usuarios y Comunicaciones",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = CentroColor
-                            )
-                        }
-                        item {
-                            CategoriaCard(
-                                titulo = "Vinculación Familiar",
-                                descripcion = "Gestiona la relación entre alumnos y familiares",
-                                icono = Icons.Default.People,
-                                color = CentroColor,
-                                iconTint = AppColors.Red500,
-                                border = true,
-                                onClick = { onNavigateToVinculacionFamiliar() },
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        item {
-                            CategoriaCard(
-                                titulo = "Crear Usuario",
-                                descripcion = "Registra nuevos usuarios en el sistema",
-                                icono = Icons.Default.PersonAdd,
-                                color = CentroColor,
-                                iconTint = AppColors.PurplePrimary,
-                                border = true,
-                                onClick = { onNavigateToCrearUsuarioRapido() },
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        item {
-                            CategoriaCard(
-                                titulo = "Calendario",
-                                descripcion = "Consulta eventos y fechas importantes del centro",
-                                icono = Icons.Default.DateRange,
-                                color = CentroColor,
-                                iconTint = AppColors.PurpleTertiary,
-                                border = true,
-                                onClick = { onNavigateToCalendario() },
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        item {
-                            CategoriaCard(
-                                titulo = "Notificaciones",
-                                descripcion = "Revisa avisos y comunicaciones recientes",
-                                icono = Icons.Default.Notifications,
-                                color = CentroColor,
-                                iconTint = AppColors.GradientEnd,
-                                border = true,
-                                onClick = { onNavigateToNotificaciones() },
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        // Espaciador final para scroll
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Spacer(modifier = Modifier.height(32.dp))
+                                    iconTint = AppColors.PurplePrimary,
+                                    border = true,
+                                    onClick = { onNavigateToListaCursos() },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Clases",
+                                    descripcion = "Gestiona los grupos y asigna alumnos a clases",
+                                    icono = Icons.Default.Class,
+                                    color = CentroColor,
+                                    iconTint = AppColors.PurpleSecondary,
+                                    border = true,
+                                    onClick = { onNavigateToListaClases() },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                             item {
+                                CategoriaCard(
+                                    titulo = "Calendario",
+                                    descripcion = "Consulta eventos y fechas importantes del centro",
+                                    icono = Icons.Default.DateRange,
+                                    color = CentroColor,
+                                    iconTint = AppColors.PurpleTertiary,
+                                    border = true,
+                                    onClick = { onNavigateToCalendario() },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            // --- Fin Nueva Sección: Estructura Académica ---
+                            
+                            // Separador visual
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            }
+                            
+                            // --- Inicio Nueva Sección: Comunidad Educativa ---
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = "Comunidad Educativa",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = CentroColor
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Alumnos",
+                                    descripcion = "Gestiona el listado y los datos de los estudiantes",
+                                    icono = Icons.Default.Face,
+                                    color = CentroColor,
+                                    iconTint = AppColors.Pink80,
+                                    border = true,
+                                    onClick = { onNavigateToAddAlumno() },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Profesores",
+                                    descripcion = "Consulta, añade y administra el personal docente",
+                                    icono = Icons.Default.SupervisorAccount,
+                                    color = CentroColor,
+                                    iconTint = AppColors.Green500,
+                                    border = true,
+                                    onClick = { onNavigateToGestionProfesores() },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                             item {
+                                CategoriaCard(
+                                    titulo = "Vinculación Familiar",
+                                    descripcion = "Gestiona la relación entre alumnos y familiares",
+                                    icono = Icons.Default.People,
+                                    color = CentroColor,
+                                    iconTint = AppColors.Red500,
+                                    border = true,
+                                    onClick = { onNavigateToVinculacionFamiliar() },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Asignación",
+                                    descripcion = "Asigna profesores a clases de forma sencilla",
+                                    icono = Icons.AutoMirrored.Filled.Assignment,
+                                    color = CentroColor,
+                                    iconTint = AppColors.PurpleTertiary,
+                                    border = true,
+                                    onClick = { onNavigateToVincularProfesorClase() },
+                                    modifier = Modifier.padding(4.dp) // Quitado fillMaxWidth para que quepa en la grid
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Crear Usuario",
+                                    descripcion = "Registra nuevos usuarios en el sistema",
+                                    icono = Icons.Default.PersonAdd,
+                                    color = CentroColor,
+                                    iconTint = AppColors.PurplePrimary,
+                                    border = true,
+                                    onClick = { onNavigateToCrearUsuarioRapido() },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                           
+                            // --- Fin Nueva Sección: Comunidad Educativa ---
+                            
+                            // Separador visual
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            }
+                            
+                            // --- Inicio Nueva Sección: Herramientas Administrativas ---
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = "Herramientas Administrativas",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = CentroColor
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Notificaciones",
+                                    descripcion = "Revisa avisos y comunicaciones recientes",
+                                    icono = Icons.Default.Notifications,
+                                    color = CentroColor,
+                                    iconTint = AppColors.GradientEnd,
+                                    border = true,
+                                    onClick = { onNavigateToNotificaciones() },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            // --- Fin Nueva Sección: Herramientas Administrativas ---
+
+                            // Espaciador final para scroll
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Spacer(modifier = Modifier.height(32.dp))
+                            }
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-/**
- * Contenido principal del Dashboard de Centro con tarjetas informativas y opciones de gestión.
- * 
- * @param nombreCentro Nombre del centro educativo
- * @param centroId Identificador del centro
- * @param cursos Lista de cursos del centro
- * @param currentDate Fecha actual formateada
- * @param currentUser Usuario actual (administrador de centro)
- * @param onNavigateToGestionProfesores Acción para navegar a gestión de profesores
- * @param onNavigateToGestionCursosYClases Acción para navegar a gestión de cursos y clases
- * @param onNavigateToVinculacionFamiliar Acción para navegar a vinculación familiar
- * @param onNavigateToCalendario Acción para navegar al calendario
- * @param onNavigateToNotificaciones Acción para navegar a notificaciones
- * @param onNavigateToAddAlumno Acción para navegar a añadir alumno
- * @param onNavigateToListaCursos Acción para navegar a la lista de cursos
- * @param onNavigateToListaClases Acción para navegar a la lista de clases
- * @param onNavigateToVincularProfesorClase Acción para navegar a vincular profesor a clase
- * @param onNavigateToCrearUsuarioRapido Acción para navegar a crear usuario rápido
- * @param onNavigateAccionAcademica Acción para navegar a gestión académica
- * @param modifier Modificador para personalizar el aspecto
- */
-@Composable
-fun CentroDashboardContent(
-    nombreCentro: String,
-    centroId: String,
-    cursos: List<Curso>,
-    currentDate: String,
-    currentUser: Usuario?,
-    onNavigateToGestionProfesores: () -> Unit,
-    onNavigateToGestionCursosYClases: () -> Unit,
-    onNavigateToVinculacionFamiliar: () -> Unit,
-    onNavigateToCalendario: () -> Unit,
-    onNavigateToNotificaciones: () -> Unit,
-    onNavigateToAddAlumno: () -> Unit,
-    onNavigateToListaCursos: () -> Unit,
-    onNavigateToListaClases: () -> Unit,
-    onNavigateToVincularProfesorClase: () -> Unit,
-    onNavigateToCrearUsuarioRapido: () -> Unit,
-    onNavigateAccionAcademica: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        // Tarjeta de bienvenida
-    Card(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp, max = 100.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = CentroColor.copy(alpha = 0.15f)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                        text = "¡Bienvenido/a, ${currentUser?.nombre ?: ""}!",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                        color = CentroColor
-                )
-                Text(
-                    text = nombreCentro,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                        color = CentroColor
-                )
-                Text(
-                    text = currentDate,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Box(
-                modifier = Modifier
-                        .size(44.dp)
-                    .clip(CircleShape)
-                    .background(CentroColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.School,
-                    contentDescription = null,
-                    tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                
+                // --- Mover AlertDialog aquí dentro del Box --- 
+                if (showLogoutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showLogoutDialog = false },
+                        title = { Text("Cerrar sesión") },
+                        text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showLogoutDialog = false
+                                viewModel.logout()
+                            }) { Text("Sí") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showLogoutDialog = false }) { Text("No") }
+                        }
                     )
                 }
-            }
-        }
-        // Separador visual
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        // Sección: Gestión Académica
-        Text(
-            text = "Gestión Académica",
-            style = MaterialTheme.typography.titleLarge,
-            color = CentroColor
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CategoriaCard(
-                titulo = "Cursos",
-                descripcion = "Visualiza, crea y edita los cursos del centro",
-                icono = Icons.AutoMirrored.Filled.MenuBook,
-                color = CentroColor,
-                iconTint = AppColors.PurplePrimary,
-                border = false,
-                onClick = { onNavigateToListaCursos() },
-                modifier = Modifier.weight(1f)
-            )
-            CategoriaCard(
-                titulo = "Clases",
-                descripcion = "Gestiona los grupos y asigna alumnos a clases",
-                icono = Icons.Default.Class,
-                color = CentroColor,
-                iconTint = AppColors.PurpleSecondary,
-                border = false,
-                onClick = { onNavigateToListaClases() },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        // Separador visual
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        // Sección: Gestión de Personal
-        Text(
-            text = "Gestión de Personal",
-            style = MaterialTheme.typography.titleLarge,
-            color = CentroColor
-        )
-        Row(
-        modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CategoriaCard(
-                titulo = "Profesores",
-                descripcion = "Consulta, añade y administra el personal docente",
-                icono = Icons.Default.SupervisorAccount,
-                color = CentroColor,
-                iconTint = AppColors.Green500,
-                border = false,
-                onClick = { onNavigateToGestionProfesores() },
-                modifier = Modifier.weight(1f)
-            )
-            CategoriaCard(
-                titulo = "Alumnos",
-                descripcion = "Gestiona el listado y los datos de los estudiantes",
-                    icono = Icons.Default.Face,
-                color = CentroColor,
-                iconTint = AppColors.Pink80,
-                border = false,
-                onClick = { onNavigateToAddAlumno() },
-                modifier = Modifier.weight(1f)
-            )
-            CategoriaCard(
-                titulo = "Asignación",
-                descripcion = "Asigna profesores a clases de forma sencilla",
-                icono = Icons.AutoMirrored.Filled.Assignment,
-                color = CentroColor,
-                iconTint = AppColors.PurpleTertiary,
-                border = false,
-                onClick = { onNavigateToVincularProfesorClase() },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        // Separador visual
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        // Sección: Usuarios y Comunicaciones
-        Text(
-            text = "Usuarios y Comunicaciones",
-            style = MaterialTheme.typography.titleLarge,
-            color = CentroColor
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CategoriaCard(
-                titulo = "Vinculación Familiar",
-                descripcion = "Gestiona la relación entre alumnos y familiares",
-                icono = Icons.Default.People,
-                color = CentroColor,
-                iconTint = AppColors.Red500,
-                border = false,
-                onClick = { onNavigateToVinculacionFamiliar() },
-                modifier = Modifier.weight(1f)
-            )
-            CategoriaCard(
-                titulo = "Crear Usuario",
-                descripcion = "Registra nuevos usuarios en el sistema",
-                icono = Icons.Default.PersonAdd,
-                color = CentroColor,
-                iconTint = AppColors.PurplePrimary,
-                border = false,
-                onClick = { onNavigateToCrearUsuarioRapido() },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CategoriaCard(
-                titulo = "Calendario",
-                descripcion = "Consulta eventos y fechas importantes del centro",
-                icono = Icons.Default.DateRange,
-                color = CentroColor,
-                iconTint = AppColors.PurpleTertiary,
-                border = false,
-                onClick = { onNavigateToCalendario() },
-                modifier = Modifier.weight(1f)
-            )
-            CategoriaCard(
-                titulo = "Notificaciones",
-                descripcion = "Revisa avisos y comunicaciones recientes",
-                icono = Icons.Default.Notifications,
-                color = CentroColor,
-                iconTint = AppColors.GradientEnd,
-                border = false,
-                onClick = { onNavigateToNotificaciones() },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        // Espaciador final para scroll
-        Spacer(modifier = Modifier.height(32.dp))
-    }
-}
+                // --- Fin AlertDialog movido ---
+                
+            } // Cierre Box
+        } // Cierre lambda de contenido del Scaffold
+    } // Cierre de la función @Composable CentroDashboardScreen
 
 /**
  * Previsualización del Dashboard de Centro.
@@ -781,35 +411,5 @@ fun CentroDashboardContent(
 fun CentroDashboardScreenPreview() {
     UmeEguneroTheme {
         CentroDashboardScreen(navController = rememberNavController())
-    }
-}
-
-/**
- * Previsualización del contenido del Dashboard de Centro con datos de ejemplo.
- */
-@Preview(showBackground = true)
-@Composable
-fun CentroDashboardContentPreview() {
-    UmeEguneroTheme {
-        Surface {
-            CentroDashboardContent(
-                nombreCentro = "IES Valle del Cidacos",
-                centroId = "centro1",
-                cursos = emptyList(),
-                currentDate = "Lunes, 10 de abril",
-                currentUser = Usuario(nombre = "Carmen"),
-                onNavigateToGestionProfesores = {},
-                onNavigateToGestionCursosYClases = {},
-                onNavigateToVinculacionFamiliar = {},
-                onNavigateToCalendario = {},
-                onNavigateToNotificaciones = {},
-                onNavigateToAddAlumno = {},
-                onNavigateToListaCursos = {},
-                onNavigateToListaClases = {},
-                onNavigateToVincularProfesorClase = {},
-                onNavigateToCrearUsuarioRapido = {},
-                onNavigateAccionAcademica = {}
-            )
-        }
     }
 } 
