@@ -685,4 +685,37 @@ class AddUserViewModel @Inject constructor(
             false
         }
     }
+
+    // --- INICIO NUEVA FUNCIÓN ---
+    /**
+     * Maneja la selección de un curso por parte del usuario.
+     * Actualiza el estado con el curso seleccionado y dispara la carga de las clases
+     * correspondientes a ese curso.
+     */
+    fun onCursoSelected(cursoId: String) {
+        val cursoSeleccionado = _uiState.value.cursosDisponibles.find { it.id == cursoId }
+        if (cursoSeleccionado != null) {
+            _uiState.update {
+                it.copy(
+                    cursoSeleccionado = cursoSeleccionado,
+                    // Limpiar selección y lista de clases anteriores
+                    claseSeleccionada = null,
+                    clasesDisponibles = emptyList() 
+                )
+            }
+            // Cargar las clases para el curso recién seleccionado
+            loadClases(cursoId)
+        } else {
+            Timber.w("Curso seleccionado con ID $cursoId no encontrado en la lista.")
+            _uiState.update { 
+                it.copy(
+                    error = "El curso seleccionado no es válido.",
+                    cursoSeleccionado = null, 
+                    claseSeleccionada = null,
+                    clasesDisponibles = emptyList()
+                ) 
+            }
+        }
+    }
+    // --- FIN NUEVA FUNCIÓN ---
 }
