@@ -131,6 +131,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.border
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.foundation.background
 
 /**
  * ViewModel de muestra para el preview
@@ -515,332 +522,30 @@ fun AddUserScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
         ) {
-            // Contenedor principal con scroll
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-                    .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Indicador de progreso
+            Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) { // Aplicar padding aquí
+                // Indicador de progreso fijo debajo del TopAppBar
                 FormProgressIndicator(
                     currentStep = (porcentajeCompletado * 10).toInt() + 1,
                     totalSteps = 10,
                     progressColor = userColor,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp) // Padding horizontal y vertical
                 )
                 
-                // Tipo de usuario
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    shape = RoundedCornerShape(12.dp)
+                // Contenedor principal con scroll
+                Column(
+                    modifier = Modifier
+                        .weight(1f) // Para que ocupe el espacio restante
+                        .padding(horizontal = 16.dp)
+                        .verticalScroll(scrollState),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.ManageAccounts,
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp).padding(end = 8.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Tipo de Usuario",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        // Mostrar opciones según el tipo de administrador
-                        val usuariosDisponibles = if (uiState.isAdminApp) {
-                            // Admin App puede crear todos los tipos
-                            listOf(
-                                TipoUsuario.ADMIN_APP,
-                                TipoUsuario.ADMIN_CENTRO,
-                                TipoUsuario.PROFESOR,
-                                TipoUsuario.FAMILIAR,
-                                TipoUsuario.ALUMNO
-                            )
-                        } else {
-                            // Admin Centro solo puede crear profesores, familiares y alumnos
-                            listOf(
-                                TipoUsuario.PROFESOR,
-                                TipoUsuario.FAMILIAR,
-                                TipoUsuario.ALUMNO
-                            )
-                        }
-
-                        Column {
-                            usuariosDisponibles.forEach { tipo ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .selectable(
-                                            selected = (uiState.tipoUsuario == tipo),
-                                            onClick = { onUpdateTipoUsuario(tipo) }
-                                        )
-                                        .padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = (uiState.tipoUsuario == tipo),
-                                        onClick = { onUpdateTipoUsuario(tipo) }
-                                    )
-
-                                    Text(
-                                        text = when (tipo) {
-                                            TipoUsuario.ADMIN_APP -> "Administrador de Aplicación"
-                                            TipoUsuario.ADMIN_CENTRO -> "Administrador de Centro"
-                                            TipoUsuario.PROFESOR -> "Profesor"
-                                            TipoUsuario.FAMILIAR -> "Familiar"
-                                            TipoUsuario.ALUMNO -> "Alumno"
-                                            else -> "Otro"
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        // Si es profesor, admin centro o alumno, mostrar selector de centro
-                        AnimatedVisibility(
-                            visible = uiState.tipoUsuario == TipoUsuario.PROFESOR ||
-                                    uiState.tipoUsuario == TipoUsuario.ADMIN_CENTRO ||
-                                    uiState.tipoUsuario == TipoUsuario.ALUMNO
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Centro Educativo",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                                )
-
-                                CentroDropdown(
-                                    centroSeleccionado = uiState.centroSeleccionado?.nombre ?: "",
-                                    onCentroSelected = { centroId ->
-                                        onUpdateCentroSeleccionado(centroId)
-                                    },
-                                    centros = uiState.centrosDisponibles.map { 
-                                        it.nombre to it.id 
-                                    },
-                                    error = null,
-                                    isLoading = uiState.isLoading,
-                                    focusRequester = centroFocusRequester,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Información personal
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp).padding(end = 8.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Información Personal",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        // DNI
-                        OutlinedTextField(
-                            value = uiState.dni,
-                            onValueChange = onUpdateDni,
-                            label = { Text("DNI") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Badge,
-                                    contentDescription = null,
-                                    tint = if (uiState.dniError != null)
-                                        MaterialTheme.colorScheme.error
-                                    else
-                                        MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Ascii,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            ),
-                            isError = uiState.dniError != null,
-                            supportingText = {
-                                if (uiState.dniError != null) {
-                                    Text(text = uiState.dniError)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().focusRequester(dniFocusRequester),
-                            shape = RoundedCornerShape(8.dp),
-                            singleLine = true
-                        )
-
-                        // Nombre
-                        OutlinedTextField(
-                            value = uiState.nombre,
-                            onValueChange = onUpdateNombre,
-                            label = { Text("Nombre") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = if (uiState.nombreError != null)
-                                        MaterialTheme.colorScheme.error
-                                    else
-                                        MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            ),
-                            isError = uiState.nombreError != null,
-                            supportingText = {
-                                if (uiState.nombreError != null) {
-                                    Text(text = uiState.nombreError)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().focusRequester(nombreFocusRequester),
-                            shape = RoundedCornerShape(8.dp),
-                            singleLine = true
-                        )
-
-                        // Apellidos
-                        OutlinedTextField(
-                            value = uiState.apellidos,
-                            onValueChange = onUpdateApellidos,
-                            label = { Text("Apellidos") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = if (uiState.apellidosError != null)
-                                        MaterialTheme.colorScheme.error
-                                    else
-                                        MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            ),
-                            isError = uiState.apellidosError != null,
-                            supportingText = {
-                                if (uiState.apellidosError != null) {
-                                    Text(text = uiState.apellidosError)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().focusRequester(apellidosFocusRequester),
-                            shape = RoundedCornerShape(8.dp),
-                            singleLine = true
-                        )
-
-                        // Teléfono
-                        OutlinedTextField(
-                            value = uiState.telefono,
-                            onValueChange = onUpdateTelefono,
-                            label = { Text("Teléfono") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Phone,
-                                    contentDescription = null,
-                                    tint = if (uiState.telefonoError != null)
-                                        MaterialTheme.colorScheme.error
-                                    else
-                                        MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Phone,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            ),
-                            isError = uiState.telefonoError != null,
-                            supportingText = {
-                                if (uiState.telefonoError != null) {
-                                    Text(text = uiState.telefonoError)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().focusRequester(telefonoFocusRequester),
-                            visualTransformation = PhoneNumberVisualTransformation(),
-                            shape = RoundedCornerShape(8.dp),
-                            singleLine = true
-                        )
-                    }
-                }
-
-                // Para alumnos, mostrar campos específicos
-                AnimatedVisibility(
-                    visible = uiState.tipoUsuario == TipoUsuario.ALUMNO
-                ) {
-                    AlumnoFields(
-                        fechaNacimiento = uiState.fechaNacimiento,
-                        fechaNacimientoError = uiState.fechaNacimientoError,
-                        cursoSeleccionado = uiState.cursoSeleccionado,
-                        cursosDisponibles = uiState.cursosDisponibles,
-                        claseSeleccionada = uiState.claseSeleccionada,
-                        clasesDisponibles = uiState.clasesDisponibles,
-                        isLoading = uiState.isLoading,
-                        onUpdateFechaNacimiento = onUpdateFechaNacimiento,
-                        onCursoSelected = onCursoSelectedAlumno,
-                        onUpdateClaseSeleccionada = onUpdateClaseSeleccionada,
-                        fechaNacimientoFocusRequester = fechaNacimientoFocusRequester,
-                        cursoFocusRequester = cursoFocusRequester,
-                        claseFocusRequester = claseFocusRequester,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // Credenciales (solo para usuarios excepto alumnos)
-                AnimatedVisibility(
-                    visible = uiState.tipoUsuario != TipoUsuario.ALUMNO
-                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Tipo de usuario
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -857,226 +562,530 @@ fun AddUserScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.LockOpen,
+                                    imageVector = Icons.Default.ManageAccounts,
                                     contentDescription = null,
                                     modifier = Modifier.size(28.dp).padding(end = 8.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "Credenciales de Acceso",
+                                    text = "Tipo de Usuario",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
 
-                            // Email
+                            // Mostrar opciones según el tipo de administrador
+                            val usuariosDisponibles = if (uiState.isAdminApp) {
+                                // Admin App puede crear todos los tipos
+                                listOf(
+                                    TipoUsuario.ADMIN_APP,
+                                    TipoUsuario.ADMIN_CENTRO,
+                                    TipoUsuario.PROFESOR,
+                                    TipoUsuario.FAMILIAR,
+                                    TipoUsuario.ALUMNO
+                                )
+                            } else {
+                                // Admin Centro solo puede crear profesores, familiares y alumnos
+                                listOf(
+                                    TipoUsuario.PROFESOR,
+                                    TipoUsuario.FAMILIAR,
+                                    TipoUsuario.ALUMNO
+                                )
+                            }
+
+                            Column {
+                                usuariosDisponibles.forEach { tipo ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .selectable(
+                                                selected = (uiState.tipoUsuario == tipo),
+                                                onClick = { onUpdateTipoUsuario(tipo) }
+                                            )
+                                            .padding(vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = (uiState.tipoUsuario == tipo),
+                                            onClick = { onUpdateTipoUsuario(tipo) }
+                                        )
+
+                                        Text(
+                                            text = when (tipo) {
+                                                TipoUsuario.ADMIN_APP -> "Administrador de Aplicación"
+                                                TipoUsuario.ADMIN_CENTRO -> "Administrador de Centro"
+                                                TipoUsuario.PROFESOR -> "Profesor"
+                                                TipoUsuario.FAMILIAR -> "Familiar"
+                                                TipoUsuario.ALUMNO -> "Alumno"
+                                                else -> "Otro"
+                                            },
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Si es profesor, admin centro o alumno, mostrar selector de centro
+                            AnimatedVisibility(
+                                visible = uiState.tipoUsuario == TipoUsuario.PROFESOR ||
+                                        uiState.tipoUsuario == TipoUsuario.ADMIN_CENTRO ||
+                                        uiState.tipoUsuario == TipoUsuario.ALUMNO
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Centro Educativo",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                    )
+
+                                    CentroDropdown(
+                                        centroSeleccionado = uiState.centroSeleccionado?.nombre ?: "",
+                                        onCentroSelected = { centroId ->
+                                            onUpdateCentroSeleccionado(centroId)
+                                        },
+                                        centros = uiState.centrosDisponibles.map { 
+                                            it.nombre to it.id 
+                                        },
+                                        error = null,
+                                        isLoading = uiState.isLoading,
+                                        focusRequester = centroFocusRequester,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = !uiState.isCentroBloqueado
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Información personal
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp).padding(end = 8.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Información Personal",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // DNI
                             OutlinedTextField(
-                                value = uiState.email,
-                                onValueChange = onUpdateEmail,
-                                label = { Text("Email") },
+                                value = uiState.dni,
+                                onValueChange = onUpdateDni,
+                                label = { Text("DNI") },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Default.Email,
+                                        imageVector = Icons.Default.Badge,
                                         contentDescription = null,
-                                        tint = if (uiState.emailError != null)
+                                        tint = if (uiState.dniError != null)
                                             MaterialTheme.colorScheme.error
                                         else
                                             MaterialTheme.colorScheme.primary
                                     )
                                 },
                                 keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Email,
+                                    keyboardType = KeyboardType.Ascii,
                                     imeAction = ImeAction.Next
                                 ),
                                 keyboardActions = KeyboardActions(
                                     onNext = { focusManager.moveFocus(FocusDirection.Down) }
                                 ),
-                                isError = uiState.emailError != null,
+                                isError = uiState.dniError != null,
                                 supportingText = {
-                                    if (uiState.emailError != null) {
-                                        Text(text = uiState.emailError)
+                                    if (uiState.dniError != null) {
+                                        Text(text = uiState.dniError)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth().focusRequester(emailFocusRequester),
+                                modifier = Modifier.fillMaxWidth().focusRequester(dniFocusRequester),
                                 shape = RoundedCornerShape(8.dp),
                                 singleLine = true
                             )
 
-                            // Contraseña
+                            // Nombre
                             OutlinedTextField(
-                                value = uiState.password,
-                                onValueChange = onUpdatePassword,
-                                label = { Text("Contraseña") },
+                                value = uiState.nombre,
+                                onValueChange = onUpdateNombre,
+                                label = { Text("Nombre") },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Default.Lock,
+                                        imageVector = Icons.Default.Person,
                                         contentDescription = null,
-                                        tint = if (uiState.passwordError != null)
+                                        tint = if (uiState.nombreError != null)
                                             MaterialTheme.colorScheme.error
                                         else
                                             MaterialTheme.colorScheme.primary
                                     )
                                 },
-                                trailingIcon = {
-                                    IconButton(onClick = { showPassword = !showPassword }) {
-                                        Icon(
-                                            imageVector = if (showPassword) 
-                                                Icons.Default.VisibilityOff 
-                                            else 
-                                                Icons.Default.Visibility,
-                                            contentDescription = if (showPassword)
-                                                "Ocultar contraseña"
-                                            else
-                                                "Mostrar contraseña"
-                                        )
-                                    }
-                                },
-                                visualTransformation = if (showPassword) 
-                                    VisualTransformation.None 
-                                else 
-                                    PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
+                                    keyboardType = KeyboardType.Text,
                                     imeAction = ImeAction.Next
                                 ),
                                 keyboardActions = KeyboardActions(
                                     onNext = { focusManager.moveFocus(FocusDirection.Down) }
                                 ),
-                                isError = uiState.passwordError != null,
+                                isError = uiState.nombreError != null,
                                 supportingText = {
-                                    if (uiState.passwordError != null) {
-                                        Text(text = uiState.passwordError)
+                                    if (uiState.nombreError != null) {
+                                        Text(text = uiState.nombreError)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
+                                modifier = Modifier.fillMaxWidth().focusRequester(nombreFocusRequester),
                                 shape = RoundedCornerShape(8.dp),
                                 singleLine = true
                             )
 
-                            // Confirmar contraseña
+                            // Apellidos
                             OutlinedTextField(
-                                value = uiState.confirmPassword,
-                                onValueChange = onUpdateConfirmPassword,
-                                label = { Text("Confirmar contraseña") },
+                                value = uiState.apellidos,
+                                onValueChange = onUpdateApellidos,
+                                label = { Text("Apellidos") },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Default.Lock,
+                                        imageVector = Icons.Default.Person,
                                         contentDescription = null,
-                                        tint = if (uiState.confirmPasswordError != null)
+                                        tint = if (uiState.apellidosError != null)
                                             MaterialTheme.colorScheme.error
                                         else
                                             MaterialTheme.colorScheme.primary
                                     )
                                 },
-                                trailingIcon = {
-                                    IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) {
-                                        Icon(
-                                            imageVector = if (showConfirmPassword) 
-                                                Icons.Default.VisibilityOff 
-                                            else 
-                                                Icons.Default.Visibility,
-                                            contentDescription = if (showConfirmPassword)
-                                                "Ocultar contraseña"
-                                            else
-                                                "Mostrar contraseña"
-                                        )
-                                    }
-                                },
-                                visualTransformation = if (showConfirmPassword) 
-                                    VisualTransformation.None 
-                                else 
-                                    PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    imeAction = ImeAction.Done
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Next
                                 ),
                                 keyboardActions = KeyboardActions(
-                                    onDone = { 
-                                        keyboardController?.hide()
-                                        if (uiState.isFormValid) {
-                                            onSaveUser()
-                                        } else {
-                                            // Mostrar Snackbar si el formulario no es válido
-                                            scope.launch { // Necesita un CoroutineScope
-                                                snackbarHostState.showSnackbar(
-                                                    message = "Por favor, complete todos los campos requeridos correctamente.",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                        }
-                                    }
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
                                 ),
-                                isError = uiState.confirmPasswordError != null,
+                                isError = uiState.apellidosError != null,
                                 supportingText = {
-                                    if (uiState.confirmPasswordError != null) {
-                                        Text(text = uiState.confirmPasswordError)
+                                    if (uiState.apellidosError != null) {
+                                        Text(text = uiState.apellidosError)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth().focusRequester(confirmPasswordFocusRequester),
+                                modifier = Modifier.fillMaxWidth().focusRequester(apellidosFocusRequester),
+                                shape = RoundedCornerShape(8.dp),
+                                singleLine = true
+                            )
+
+                            // Teléfono
+                            OutlinedTextField(
+                                value = uiState.telefono,
+                                onValueChange = onUpdateTelefono,
+                                label = { Text("Teléfono") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Phone,
+                                        contentDescription = null,
+                                        tint = if (uiState.telefonoError != null)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Phone,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                ),
+                                isError = uiState.telefonoError != null,
+                                supportingText = {
+                                    if (uiState.telefonoError != null) {
+                                        Text(text = uiState.telefonoError)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().focusRequester(telefonoFocusRequester),
+                                visualTransformation = PhoneNumberVisualTransformation(),
                                 shape = RoundedCornerShape(8.dp),
                                 singleLine = true
                             )
                         }
                     }
-                }
 
-                // Botón de guardar
-                Button(
-                    onClick = { 
-                        keyboardController?.hide()
-                        // Añadir comprobación de validez y feedback
-                        if (uiState.isFormValid) {
-                            onSaveUser() 
-                        } else {
-                            // Lanzar trigger para focus y mostrar snackbar genérico
-                            onAttemptSaveAndFocusError()
-                            scope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = "Por favor, complete todos los campos requeridos correctamente.",
-                                    duration = SnackbarDuration.Short
+                    // Para alumnos, mostrar campos específicos
+                    AnimatedVisibility(
+                        visible = uiState.tipoUsuario == TipoUsuario.ALUMNO
+                    ) {
+                        AlumnoFields(
+                            fechaNacimiento = uiState.fechaNacimiento,
+                            fechaNacimientoError = uiState.fechaNacimientoError,
+                            cursoSeleccionado = uiState.cursoSeleccionado,
+                            cursosDisponibles = uiState.cursosDisponibles,
+                            claseSeleccionada = uiState.claseSeleccionada,
+                            clasesDisponibles = uiState.clasesDisponibles,
+                            isLoading = uiState.isLoading,
+                            onUpdateFechaNacimiento = onUpdateFechaNacimiento,
+                            onCursoSelected = onCursoSelectedAlumno,
+                            onUpdateClaseSeleccionada = onUpdateClaseSeleccionada,
+                            fechaNacimientoFocusRequester = fechaNacimientoFocusRequester,
+                            cursoFocusRequester = cursoFocusRequester,
+                            claseFocusRequester = claseFocusRequester,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // Credenciales (solo para usuarios excepto alumnos)
+                    AnimatedVisibility(
+                        visible = uiState.tipoUsuario != TipoUsuario.ALUMNO
+                    ) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.LockOpen,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(28.dp).padding(end = 8.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Credenciales de Acceso",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                // Email
+                                OutlinedTextField(
+                                    value = uiState.email,
+                                    onValueChange = onUpdateEmail,
+                                    label = { Text("Email") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Email,
+                                            contentDescription = null,
+                                            tint = if (uiState.emailError != null)
+                                                MaterialTheme.colorScheme.error
+                                            else
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Email,
+                                        imeAction = ImeAction.Next
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                    ),
+                                    isError = uiState.emailError != null,
+                                    supportingText = {
+                                        if (uiState.emailError != null) {
+                                            Text(text = uiState.emailError)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().focusRequester(emailFocusRequester),
+                                    shape = RoundedCornerShape(8.dp),
+                                    singleLine = true
+                                )
+
+                                // Contraseña
+                                OutlinedTextField(
+                                    value = uiState.password,
+                                    onValueChange = onUpdatePassword,
+                                    label = { Text("Contraseña") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = null,
+                                            tint = if (uiState.passwordError != null)
+                                                MaterialTheme.colorScheme.error
+                                            else
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        IconButton(onClick = { showPassword = !showPassword }) {
+                                            Icon(
+                                                imageVector = if (showPassword) 
+                                                    Icons.Default.VisibilityOff 
+                                                else 
+                                                    Icons.Default.Visibility,
+                                                contentDescription = if (showPassword)
+                                                    "Ocultar contraseña"
+                                                else
+                                                    "Mostrar contraseña"
+                                            )
+                                        }
+                                    },
+                                    visualTransformation = if (showPassword) 
+                                        VisualTransformation.None 
+                                    else 
+                                        PasswordVisualTransformation(),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Password,
+                                        imeAction = ImeAction.Next
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                    ),
+                                    isError = uiState.passwordError != null,
+                                    supportingText = {
+                                        if (uiState.passwordError != null) {
+                                            Text(text = uiState.passwordError)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
+                                    shape = RoundedCornerShape(8.dp),
+                                    singleLine = true
+                                )
+
+                                // Confirmar contraseña
+                                OutlinedTextField(
+                                    value = uiState.confirmPassword,
+                                    onValueChange = onUpdateConfirmPassword,
+                                    label = { Text("Confirmar contraseña") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = null,
+                                            tint = if (uiState.confirmPasswordError != null)
+                                                MaterialTheme.colorScheme.error
+                                            else
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) {
+                                            Icon(
+                                                imageVector = if (showConfirmPassword) 
+                                                    Icons.Default.VisibilityOff 
+                                                else 
+                                                    Icons.Default.Visibility,
+                                                contentDescription = if (showConfirmPassword)
+                                                    "Ocultar contraseña"
+                                                else
+                                                    "Mostrar contraseña"
+                                            )
+                                        }
+                                    },
+                                    visualTransformation = if (showConfirmPassword) 
+                                        VisualTransformation.None 
+                                    else 
+                                        PasswordVisualTransformation(),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Password,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onDone = { 
+                                            keyboardController?.hide()
+                                            if (uiState.isFormValid) {
+                                                onSaveUser()
+                                            } else {
+                                                // Mostrar Snackbar si el formulario no es válido
+                                                scope.launch { // Necesita un CoroutineScope
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "Por favor, complete todos los campos requeridos correctamente.",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    ),
+                                    isError = uiState.confirmPasswordError != null,
+                                    supportingText = {
+                                        if (uiState.confirmPasswordError != null) {
+                                            Text(text = uiState.confirmPasswordError)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().focusRequester(confirmPasswordFocusRequester),
+                                    shape = RoundedCornerShape(8.dp),
+                                    singleLine = true
                                 )
                             }
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                        .height(56.dp),
-                    enabled = uiState.isFormValid && !uiState.isLoading,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = userColor,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
+                    }
+
+                    // Botón de guardar
+                    Button(
+                        onClick = { 
+                            keyboardController?.hide()
+                            // Añadir comprobación de validez y feedback
+                            if (uiState.isFormValid) {
+                                onSaveUser() 
+                            } else {
+                                // Lanzar trigger para focus y mostrar snackbar genérico
+                                onAttemptSaveAndFocusError()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "Por favor, complete todos los campos requeridos correctamente.",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
+                            .height(56.dp),
+                        enabled = uiState.isFormValid && !uiState.isLoading,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = userColor,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    } else {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (uiState.isEditMode) "Actualizar" else "Guardar",
-                                style = MaterialTheme.typography.titleMedium
-                            )
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Save,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (uiState.isEditMode) "Actualizar" else "Guardar",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
-                
-                Spacer(modifier = Modifier.height(32.dp))
             }
 
             // Indicador de carga general
@@ -1306,13 +1315,14 @@ fun CentroDropdown(
     error: String?,
     isLoading: Boolean,
     focusRequester: FocusRequester,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (!isLoading) expanded = it },
+        expanded = expanded && enabled,
+        onExpandedChange = { if (!isLoading && enabled) expanded = it },
         modifier = modifier
     ) {
         OutlinedTextField(
@@ -1330,7 +1340,7 @@ fun CentroDropdown(
                 )
             },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            enabled = !isLoading,
+            enabled = !isLoading && enabled,
             isError = error != null,
             supportingText = error?.let { { Text(text = it) } },
             modifier = Modifier
@@ -1386,17 +1396,18 @@ fun CentroDropdown(
 fun CursoDropdown(
     cursoSeleccionado: String,
     onCursoSelected: (String) -> Unit,
-    cursos: List<String>,
+    cursos: List<Pair<String, String>>, // Pair de (nombre, id)
     error: String?,
     isLoading: Boolean,
     focusRequester: FocusRequester,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (!isLoading) expanded = it },
+        expanded = expanded && enabled,
+        onExpandedChange = { if (!isLoading && enabled) expanded = it },
         modifier = modifier
     ) {
         OutlinedTextField(
@@ -1414,7 +1425,7 @@ fun CursoDropdown(
                 )
             },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            enabled = !isLoading,
+            enabled = !isLoading && enabled,
             isError = error != null,
             supportingText = error?.let { { Text(text = it) } },
             modifier = Modifier
@@ -1442,11 +1453,11 @@ fun CursoDropdown(
                     onClick = { expanded = false }
                 )
             } else {
-                cursos.forEach { curso ->
+                cursos.forEach { (nombre, id) ->
                     DropdownMenuItem(
-                        text = { Text(curso) },
+                        text = { Text(nombre) },
                         onClick = {
-                            onCursoSelected(curso)
+                            onCursoSelected(id)
                             expanded = false
                         }
                     )
@@ -1462,6 +1473,7 @@ fun CursoDropdown(
 @Composable
 fun ClaseDropdown(
     clases: List<Clase>,
+    cursoSeleccionado: Curso?,
     selectedClase: Clase?,
     onClaseSelected: (String) -> Unit,
     isLoading: Boolean,
@@ -1469,6 +1481,7 @@ fun ClaseDropdown(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val cursoHaSidoSeleccionado = cursoSeleccionado != null
     
     Column(modifier = modifier) {
         Text(
@@ -1480,31 +1493,44 @@ fun ClaseDropdown(
         
         if (isLoading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        } else if (clases.isEmpty()) {
-            Text(
-                text = "Primero selecciona un curso",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(top = 8.dp)
-            )
         } else {
             OutlinedTextField(
-                value = selectedClase?.nombre ?: "",
+                value = selectedClase?.nombre ?: "Elija la clase",
                 onValueChange = { },
                 readOnly = true,
                 label = { Text("Clase") },
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = {
-                    IconButton(onClick = { expanded = true }) {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Seleccionar clase")
+                    IconButton(onClick = { if (cursoHaSidoSeleccionado) expanded = true }) {
+                        Icon(
+                            Icons.Default.ArrowDropDown, 
+                            contentDescription = "Seleccionar clase",
+                            tint = if (cursoHaSidoSeleccionado) 
+                                   MaterialTheme.colorScheme.primary 
+                                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        )
+                    }
+                },
+                enabled = cursoHaSidoSeleccionado,
+                supportingText = {
+                    if (!cursoHaSidoSeleccionado) {
+                        Text("Primero seleccione un curso")
                     }
                 }
             )
             
             DropdownMenu(
-                expanded = expanded,
+                expanded = expanded && cursoHaSidoSeleccionado,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.fillMaxWidth(0.9f)
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .shadow(elevation = 4.dp, shape = RoundedCornerShape(8.dp))
+                    .border(
+                        width = 1.dp, 
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 clases.forEach { clase ->
                     DropdownMenuItem(
@@ -1540,6 +1566,19 @@ fun AlumnoFields(
     claseFocusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
+    // Estados para animaciones
+    var cursoSeleccionadoAnimacion by remember { mutableStateOf(false) }
+    var showContextualHelp by remember { mutableStateOf(false) }
+    
+    // Efecto para animar cuando se selecciona un curso
+    LaunchedEffect(cursoSeleccionado) {
+        if (cursoSeleccionado != null) {
+            cursoSeleccionadoAnimacion = true
+            delay(300)
+            cursoSeleccionadoAnimacion = false
+        }
+    }
+    
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -1554,7 +1593,10 @@ fun AlumnoFields(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Icon(
                     imageVector = Icons.Default.School,
                     contentDescription = null,
@@ -1566,7 +1608,74 @@ fun AlumnoFields(
                 Text(
                     text = "Información Académica",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Botón de información/ayuda
+                IconButton(
+                    onClick = { showContextualHelp = !showContextualHelp }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Información",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            
+            // Mensaje de ayuda contextual
+            AnimatedVisibility(
+                visible = showContextualHelp,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Seleccione un curso y luego una clase para el alumno. " +
+                              "También debe indicar su fecha de nacimiento para completar el registro.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(12.dp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            
+            // Jerarquía visual de selección
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Indicador de progreso en la selección
+                LinearProgressIndicator(
+                    progress = when {
+                        cursoSeleccionado != null && claseSeleccionada != null -> 1f
+                        cursoSeleccionado != null -> 0.5f
+                        else -> 0.25f
+                    },
+                    modifier = Modifier
+                        .height(8.dp)
+                        .weight(1f),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Contador de pasos completados
+                Text(
+                    text = when {
+                        cursoSeleccionado != null && claseSeleccionada != null -> "3/3"
+                        cursoSeleccionado != null -> "2/3"
+                        else -> "1/3"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -1578,24 +1687,107 @@ fun AlumnoFields(
                 modifier = Modifier.fillMaxWidth()
             )
             
+            // Curso con efecto de highlight cuando se selecciona
             CursoDropdown(
-                cursoSeleccionado = cursoSeleccionado?.id ?: "",
-                onCursoSelected = onCursoSelected,
-                cursos = cursosDisponibles.map { it.id },
+                cursoSeleccionado = cursoSeleccionado?.nombre ?: "Elija el curso",
+                onCursoSelected = { cursoId ->
+                    onCursoSelected(cursoId)
+                    // El LaunchedEffect se encargará de la animación
+                },
+                cursos = cursosDisponibles.map { it.nombre to it.id },
                 error = null,
                 isLoading = isLoading,
                 focusRequester = cursoFocusRequester,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (cursoSeleccionadoAnimacion) {
+                            Modifier.border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
             )
+            
+            // Visualización del curso seleccionado como chip
+            AnimatedVisibility(
+                visible = cursoSeleccionado != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                cursoSeleccionado?.let { curso ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Curso: ${curso.nombre}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+            }
             
             ClaseDropdown(
                 clases = clasesDisponibles,
+                cursoSeleccionado = cursoSeleccionado,
                 selectedClase = claseSeleccionada,
                 onClaseSelected = onUpdateClaseSeleccionada,
                 isLoading = isLoading,
                 focusRequester = claseFocusRequester,
                 modifier = Modifier.fillMaxWidth()
             )
+            
+            // Visualización de la clase seleccionada como chip
+            AnimatedVisibility(
+                visible = claseSeleccionada != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                claseSeleccionada?.let { clase ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Class,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Clase: ${clase.nombre} (Aula: ${clase.aula})",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
