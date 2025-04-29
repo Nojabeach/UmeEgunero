@@ -17,6 +17,7 @@ import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.common.academico.viewmodel.GestorAcademicoViewModel
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 
 enum class ModoVisualizacion { CURSOS, CLASES }
 
@@ -93,44 +95,42 @@ fun GestorAcademicoScreen(
 
     Scaffold(
         topBar = {
-            if (modo == ModoVisualizacion.CURSOS) {
-                CenterAlignedTopAppBar(
-                    title = { Text("Gestión de Cursos", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = { onNavigate("back") }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = AcademicoColor,
-                        titleContentColor = Color.White
-                    )
-                )
-            } else {
-                CenterAlignedTopAppBar(
-                    title = { Text("Clases de ${selectedCurso?.nombre ?: "Curso"}", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = { onNavigate("back") }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = AcademicoColor,
-                        titleContentColor = Color.White
-                    )
-                )
-            }
+            DefaultTopAppBar(
+                title = if (modo == ModoVisualizacion.CURSOS) "Gestión de Cursos" else "Gestión de Clases",
+                showBackButton = true,
+                onBackClick = { onNavigate("back") },
+                containerColor = AcademicoColor,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                if (modo == ModoVisualizacion.CURSOS) {
-                    onNavigate("add_curso?centroId=${selectedCentro?.id ?: centroId}")
+            if (perfilUsuario == TipoUsuario.ADMIN_APP || perfilUsuario == TipoUsuario.ADMIN_CENTRO) {
+                val fabEnabled = if (modo == ModoVisualizacion.CURSOS) {
+                    selectedCentro != null
                 } else {
-                    onNavigate("add_clase?centroId=${selectedCentro?.id ?: centroId}&cursoId=${selectedCurso?.id ?: cursoId}")
+                    selectedCurso != null
                 }
-            }) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                
+                // Solo mostrar el FAB si está habilitado
+                if (fabEnabled) {
+                    FloatingActionButton(
+                        onClick = {
+                            if (modo == ModoVisualizacion.CURSOS) {
+                                onNavigate("add_curso?centroId=${selectedCentro?.id ?: centroId}")
+                            } else {
+                                onNavigate("add_clase?centroId=${selectedCentro?.id ?: centroId}&cursoId=${selectedCurso?.id ?: cursoId}")
+                            }
+                        },
+                        containerColor = AcademicoColor
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = if (modo == ModoVisualizacion.CURSOS) "Añadir curso" else "Añadir clase",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
             }
         }
     ) { paddingValues ->
