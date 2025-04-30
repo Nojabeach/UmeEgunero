@@ -66,16 +66,25 @@ fun SeguridadScreen(
     viewModel: SeguridadViewModel,
     onNavigateBack: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
-    var complejidadPassword by remember { mutableStateOf(2) }
-    var tiempoSesion by remember { mutableStateOf(30) }
-    var maxIntentos by remember { mutableStateOf(3) }
-    var verificacionDosFactores by remember { mutableStateOf(false) }
-    var notificacionesActividad by remember { mutableStateOf(true) }
-    var registroCompleto by remember { mutableStateOf(true) }
-    var bloqueoIP by remember { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    
+    // Mostrar mensajes de error o éxito
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+    
+    LaunchedEffect(uiState.success) {
+        uiState.success?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearSuccess()
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -97,7 +106,7 @@ fun SeguridadScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -132,8 +141,8 @@ fun SeguridadScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Slider(
-                            value = complejidadPassword.toFloat(),
-                            onValueChange = { complejidadPassword = it.toInt() },
+                            value = uiState.complejidadPassword.toFloat(),
+                            onValueChange = { viewModel.updateComplejidadPassword(it.toInt()) },
                             valueRange = 1f..4f,
                             steps = 2,
                             modifier = Modifier.weight(1f)
@@ -142,7 +151,7 @@ fun SeguridadScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         
                         Text(
-                            text = when (complejidadPassword) {
+                            text = when (uiState.complejidadPassword) {
                                 1 -> "Baja"
                                 2 -> "Media"
                                 3 -> "Alta"
@@ -156,7 +165,7 @@ fun SeguridadScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Text(
-                        text = when (complejidadPassword) {
+                        text = when (uiState.complejidadPassword) {
                             1 -> "Mínimo 6 caracteres"
                             2 -> "Mínimo 8 caracteres, mayúsculas y números"
                             3 -> "Mínimo 10 caracteres, mayúsculas, números y símbolos"
@@ -252,13 +261,8 @@ fun SeguridadScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Slider(
-                            value = tiempoSesion.toFloat(),
-                            onValueChange = { 
-                                tiempoSesion = it.toInt()
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Tiempo de sesión actualizado a $tiempoSesion minutos")
-                                }
-                            },
+                            value = uiState.tiempoSesion.toFloat(),
+                            onValueChange = { viewModel.updateTiempoSesion(it.toInt()) },
                             valueRange = 5f..60f,
                             steps = 10,
                             modifier = Modifier.weight(1f)
@@ -267,7 +271,7 @@ fun SeguridadScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         
                         Text(
-                            text = "$tiempoSesion min",
+                            text = "${uiState.tiempoSesion} min",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -328,8 +332,8 @@ fun SeguridadScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Slider(
-                            value = maxIntentos.toFloat(),
-                            onValueChange = { maxIntentos = it.toInt() },
+                            value = uiState.maxIntentos.toFloat(),
+                            onValueChange = { viewModel.updateMaxIntentos(it.toInt()) },
                             valueRange = 1f..10f,
                             steps = 8,
                             modifier = Modifier.weight(1f)
@@ -338,7 +342,7 @@ fun SeguridadScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         
                         Text(
-                            text = "$maxIntentos intentos",
+                            text = "${uiState.maxIntentos} intentos",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -363,12 +367,12 @@ fun SeguridadScreen(
                         }
                         
                         Switch(
-                            checked = verificacionDosFactores,
-                            onCheckedChange = { verificacionDosFactores = it }
+                            checked = uiState.verificacionDosFactores,
+                            onCheckedChange = { viewModel.updateVerificacionDosFactores(it) }
                         )
                     }
                     
-                    AnimatedVisibility(visible = verificacionDosFactores) {
+                    AnimatedVisibility(visible = uiState.verificacionDosFactores) {
                         Column(
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
@@ -436,8 +440,8 @@ fun SeguridadScreen(
                         }
                         
                         Switch(
-                            checked = notificacionesActividad,
-                            onCheckedChange = { notificacionesActividad = it }
+                            checked = uiState.notificacionesActividad,
+                            onCheckedChange = { viewModel.updateNotificacionesActividad(it) }
                         )
                     }
                     
@@ -461,8 +465,8 @@ fun SeguridadScreen(
                         }
                         
                         Switch(
-                            checked = registroCompleto,
-                            onCheckedChange = { registroCompleto = it }
+                            checked = uiState.registroCompleto,
+                            onCheckedChange = { viewModel.updateRegistroCompleto(it) }
                         )
                     }
                     
@@ -486,8 +490,8 @@ fun SeguridadScreen(
                         }
                         
                         Switch(
-                            checked = bloqueoIP,
-                            onCheckedChange = { bloqueoIP = it }
+                            checked = uiState.bloqueoIP,
+                            onCheckedChange = { viewModel.updateBloqueoIP(it) }
                         )
                     }
                 }
@@ -495,13 +499,18 @@ fun SeguridadScreen(
             
             // Botón para guardar cambios
             Button(
-                onClick = { 
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Configuración de seguridad guardada correctamente")
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
+                onClick = { viewModel.guardarConfiguracion() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading
             ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Icon(
                     imageVector = Icons.Default.Save,
                     contentDescription = null
