@@ -685,14 +685,7 @@ fun Navigation(
 
         composable(route = AppScreens.VincularAlumnoFamiliar.route) {
             com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
-                onBackClick = { navController.popBackStack() },
-                onDashboardClick = {
-                    navController.navigate(AppScreens.CentroDashboard.route) {
-                        popUpTo(AppScreens.CentroDashboard.route) {
-                            inclusive = true
-                        }
-                    }
-                }
+                navController = navController
             )
         }
 

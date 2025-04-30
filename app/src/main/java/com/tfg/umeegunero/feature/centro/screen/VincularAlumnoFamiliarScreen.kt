@@ -51,12 +51,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.Familiar
 import com.tfg.umeegunero.feature.centro.viewmodel.VinculacionFamiliarViewModel
 import com.tfg.umeegunero.ui.components.SearchBar
 import com.tfg.umeegunero.ui.theme.Green500
 import com.tfg.umeegunero.ui.theme.Red500
 import kotlinx.coroutines.launch
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import android.content.res.Configuration
 import androidx.compose.ui.tooling.preview.Preview
@@ -84,7 +86,7 @@ import androidx.compose.ui.tooling.preview.Preview
 @Composable
 fun VincularAlumnoFamiliarScreen(
     navController: NavController,
-    viewModel: VincularAlumnoFamiliarViewModel = hiltViewModel()
+    viewModel: VinculacionFamiliarViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
