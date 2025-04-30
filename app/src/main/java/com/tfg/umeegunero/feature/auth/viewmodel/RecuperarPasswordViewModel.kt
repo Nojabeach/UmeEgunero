@@ -16,7 +16,13 @@ import javax.inject.Inject
 import android.util.Patterns
 
 /**
- * Estado UI para la pantalla de recuperación de contraseña
+ * Estado de la UI para la recuperación de contraseña.
+ * 
+ * @property email Email introducido
+ * @property emailError Error de validación
+ * @property isLoading Estado de carga
+ * @property success Éxito de la operación
+ * @property error Mensaje de error
  */
 data class RecuperarPasswordUiState(
     val email: String = "",
@@ -25,23 +31,41 @@ data class RecuperarPasswordUiState(
     val success: Boolean = false,
     val error: String? = null
 ) {
+    /**
+     * Indica si se puede enviar la solicitud.
+     */
     val isSubmitEnabled: Boolean
         get() = email.isNotBlank() && emailError == null && !isLoading
 }
 
 /**
- * ViewModel para la pantalla de recuperación de contraseña
+ * ViewModel para la recuperación de contraseña en UmeEgunero.
+ * 
+ * Gestiona el proceso de recuperación mediante email, incluyendo validaciones
+ * y comunicación con el servicio de autenticación.
+ * 
+ * ## Validaciones
+ * - Formato de email
+ * - Campos obligatorios
+ * 
+ * @property authRepository Repositorio de autenticación
+ * @see RecuperarPasswordUiState
  */
 @HiltViewModel
 class RecuperarPasswordViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
+    /**
+     * Estado actual de la UI.
+     */
     private val _uiState = MutableStateFlow(RecuperarPasswordUiState())
     val uiState: StateFlow<RecuperarPasswordUiState> = _uiState.asStateFlow()
 
     /**
-     * Actualiza el email y valida en tiempo real
+     * Actualiza y valida el email en tiempo real.
+     * 
+     * @param email Nuevo valor del email
      */
     fun updateEmail(email: String) {
         _uiState.update { 
@@ -54,7 +78,10 @@ class RecuperarPasswordViewModel @Inject constructor(
     }
 
     /**
-     * Valida el formato del email
+     * Valida el formato del email.
+     * 
+     * @param email Email a validar
+     * @return Mensaje de error o null si es válido
      */
     private fun validateEmail(email: String): String? {
         return when {
@@ -66,7 +93,9 @@ class RecuperarPasswordViewModel @Inject constructor(
     }
 
     /**
-     * Envía la solicitud de recuperación de contraseña
+     * Procesa la solicitud de recuperación de contraseña.
+     * 
+     * Envía un email con instrucciones para resetear la contraseña.
      */
     fun recuperarPassword() {
         val state = _uiState.value
@@ -115,7 +144,7 @@ class RecuperarPasswordViewModel @Inject constructor(
     }
 
     /**
-     * Limpia el mensaje de error
+     * Limpia el mensaje de error del estado.
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }

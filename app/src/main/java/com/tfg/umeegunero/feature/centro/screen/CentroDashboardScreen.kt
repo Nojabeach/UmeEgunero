@@ -1,3 +1,10 @@
+/**
+ * Módulo de panel de control para centros educativos de UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz principal del panel de control
+ * para los administradores de centros educativos, proporcionando
+ * acceso rápido a todas las funcionalidades del sistema.
+ */
 package com.tfg.umeegunero.feature.centro.screen
 
 import androidx.compose.animation.AnimatedVisibility
@@ -55,19 +62,37 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import android.content.res.Configuration
 
 /**
- * Pantalla principal del dashboard para administradores de centro educativo.
+ * Pantalla principal del panel de control para administradores de centro.
  * 
- * Esta pantalla presenta un panel de control completo con estadísticas, accesos rápidos
- * y gestión de diferentes áreas del centro educativo. Implementa un diseño moderno
- * siguiendo las directrices de Material 3.
+ * Esta pantalla proporciona una interfaz completa para la gestión del centro
+ * educativo, con acceso rápido a todas las funcionalidades principales y
+ * visualización de información relevante.
  * 
- * @param navController Controlador de navegación para gestionar la navegación entre pantallas
- * @param viewModel ViewModel que contiene la lógica de negocio del dashboard de centro
+ * ## Características
+ * - Panel de control intuitivo
+ * - Accesos directos a funciones principales
+ * - Estadísticas en tiempo real
+ * - Notificaciones y alertas
  * 
- * @author Maitane (Estudiante 2º DAM)
- * @version 3.0
+ * ## Secciones principales
+ * - Gestión académica (cursos y clases)
+ * - Gestión de personal (profesores)
+ * - Gestión de alumnado
+ * - Comunicaciones y notificaciones
+ * 
+ * ## Estados
+ * - Carga de datos
+ * - Visualización normal
+ * - Diálogo de cierre de sesión
+ * - Errores y mensajes
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica del panel
+ * 
+ * @see CentroDashboardViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -404,12 +429,30 @@ fun CentroDashboardScreen(
     } // Cierre de la función @Composable CentroDashboardScreen
 
 /**
- * Previsualización del Dashboard de Centro.
+ * Vista previa de la pantalla del panel de control en modo claro.
  */
 @Preview(showBackground = true)
 @Composable
 fun CentroDashboardScreenPreview() {
     UmeEguneroTheme {
-        CentroDashboardScreen(navController = rememberNavController())
+        CentroDashboardScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla del panel de control en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun CentroDashboardScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        CentroDashboardScreen(
+            navController = rememberNavController()
+        )
     }
 } 

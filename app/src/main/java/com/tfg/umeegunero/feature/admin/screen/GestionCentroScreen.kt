@@ -1,3 +1,9 @@
+/**
+ * Módulo de gestión de centros educativos de UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz de administración completa para
+ * la gestión de un centro educativo específico.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.foundation.background
@@ -23,13 +29,39 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
 
 /**
- * Pantalla para gestionar diferentes opciones relacionadas con un centro educativo.
- * Esta pantalla presenta un panel con múltiples opciones para la administración completa del centro,
- * incluyendo la gestión de cursos, clases, profesores, alumnos y familias.
- *
- * @param navController Controlador de navegación para gestionar la navegación entre pantallas
+ * Pantalla principal para la gestión de un centro educativo.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la administración
+ * de todos los aspectos de un centro educativo, organizada en secciones
+ * claramente definidas.
+ * 
+ * ## Secciones principales
+ * - Gestión Académica (cursos y clases)
+ * - Gestión de Personas (profesores, alumnos y familias)
+ * - Ajustes del Centro
+ * 
+ * ## Características
+ * - Navegación intuitiva por categorías
+ * - Accesos directos a funciones principales
+ * - Interfaz adaptativa Material Design 3
+ * - Feedback visual de acciones
+ * 
+ * ## Funcionalidades
+ * - Gestión de cursos académicos
+ * - Organización de clases y aulas
+ * - Creación y gestión de usuarios
+ * - Vinculación de profesores a clases
+ * - Gestión de relaciones familiares
+ * 
+ * @param navController Controlador de navegación para la gestión de rutas
+ * 
+ * @see AppScreens
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -171,7 +203,22 @@ fun GestionCentroScreen(
 }
 
 /**
- * Tarjeta de opción para las diferentes funcionalidades de gestión de centro.
+ * Componente de tarjeta para opciones de gestión.
+ * 
+ * Este componente implementa una tarjeta interactiva que representa
+ * una opción de gestión dentro del centro educativo.
+ * 
+ * ## Características
+ * - Diseño Material Design 3
+ * - Feedback táctil
+ * - Iconografía descriptiva
+ * - Elevación dinámica
+ * 
+ * @param title Título de la opción
+ * @param description Descripción detallada de la funcionalidad
+ * @param icon Icono representativo de la opción
+ * @param color Color de acento para el icono
+ * @param onClick Callback ejecutado al seleccionar la opción
  */
 @Composable
 fun GestionCentroOptionCard(
@@ -239,5 +286,34 @@ fun GestionCentroOptionCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
+    }
+}
+
+/**
+ * Vista previa de la pantalla de gestión de centro en modo claro.
+ */
+@Preview(showBackground = true)
+@Composable
+fun GestionCentroScreenPreview() {
+    UmeEguneroTheme {
+        GestionCentroScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de gestión de centro en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+fun GestionCentroScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        GestionCentroScreen(
+            navController = rememberNavController()
+        )
     }
 } 

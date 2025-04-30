@@ -1,3 +1,9 @@
+/**
+ * Módulo de estadísticas del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la visualización y análisis de estadísticas
+ * del sistema para los administradores.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.animation.*
@@ -55,7 +61,34 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Schedule
 
 /**
- * Pantalla de estadísticas para el administrador
+ * Pantalla de estadísticas para el administrador del sistema.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la visualización y análisis
+ * de estadísticas del sistema, incluyendo gráficos interactivos y filtros temporales.
+ * 
+ * ## Características
+ * - Visualización de estadísticas en tiempo real
+ * - Filtros por períodos temporales
+ * - Gráficos interactivos
+ * - Indicadores de rendimiento
+ * - Exportación de datos
+ * 
+ * ## Componentes principales
+ * - Gráficos de uso del sistema
+ * - Estadísticas de usuarios activos
+ * - Métricas de rendimiento
+ * - Análisis de tendencias
+ * 
+ * ## Funcionalidades
+ * - Selección de períodos de tiempo
+ * - Actualización en tiempo real
+ * - Filtrado de datos
+ * - Exportación de informes
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica de estadísticas
+ * 
+ * @see EstadisticasViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -874,128 +907,32 @@ fun FechaActualizacionBadge(fechaActualizacion: String) {
     }
 }
 
-// Añadir previews para la pantalla de estadísticas
+/**
+ * Vista previa de la pantalla de estadísticas en modo claro.
+ */
 @Preview(showBackground = true)
 @Composable
-fun EstadisticasPreview() {
+fun EstadisticasScreenPreview() {
     UmeEguneroTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Estadísticas del Sistema",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Resumen de Actividad",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        // Indicador de estadística
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Usuarios",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            
-                            Text(
-                                text = "356",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        
-                        // Indicador de estadística
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Centros",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            
-                            Text(
-                                text = "12",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        
-                        // Indicador de estadística
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Actividad",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            
-                            Text(
-                                text = "87%",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        EstadisticasScreen(
+            navController = rememberNavController()
+        )
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+/**
+ * Vista previa de la pantalla de estadísticas en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
-fun EstadisticasPreviewDark() {
+fun EstadisticasScreenDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Estadísticas del Sistema",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Resumen de Actividad",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
+        EstadisticasScreen(
+            navController = rememberNavController()
+        )
     }
 }
 

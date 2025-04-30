@@ -1,3 +1,9 @@
+/**
+ * Módulo de gestión de administradores del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para listar y gestionar los
+ * administradores del sistema, con diferentes niveles de acceso.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.foundation.layout.Arrangement
@@ -41,7 +47,23 @@ import com.tfg.umeegunero.feature.admin.viewmodel.ListAdministradoresViewModel
 import com.tfg.umeegunero.ui.theme.AdminColor
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Button
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.navigation.compose.rememberNavController
+import android.content.res.Configuration
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
+/**
+ * Punto de entrada para la pantalla de lista de administradores con inyección de dependencias Hilt.
+ * 
+ * Este componente actúa como wrapper para la inyección del ViewModel a través de Hilt,
+ * proporcionando una instancia del ViewModel a la pantalla principal.
+ * 
+ * @param onNavigateBack Callback para navegar hacia atrás
+ * 
+ * @see ListAdministradoresScreen
+ * @see ListAdministradoresViewModel
+ */
 @Composable
 fun HiltListAdministradoresScreen(
     onNavigateBack: () -> Unit
@@ -53,6 +75,36 @@ fun HiltListAdministradoresScreen(
     )
 }
 
+/**
+ * Pantalla principal para la gestión de administradores del sistema.
+ * 
+ * Esta pantalla proporciona una interfaz completa para visualizar y gestionar
+ * los administradores del sistema, con diferentes niveles de acceso según
+ * el tipo de administrador.
+ * 
+ * ## Características
+ * - Lista de administradores con detalles
+ * - Búsqueda en tiempo real
+ * - Creación de nuevos administradores (solo ADMIN_APP)
+ * - Visualización de detalles
+ * 
+ * ## Funcionalidades
+ * - Filtrado por nombre o email
+ * - Visualización de información de contacto
+ * - Gestión de permisos
+ * - Feedback visual de acciones
+ * 
+ * ## Seguridad
+ * - Control de acceso basado en roles
+ * - Validación de permisos
+ * - Registro de acciones
+ * 
+ * @param viewModel ViewModel que gestiona la lógica de la lista de administradores
+ * @param onNavigateBack Callback para navegar hacia atrás
+ * 
+ * @see ListAdministradoresViewModel
+ * @see UserCard
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListAdministradoresScreen(
@@ -176,5 +228,36 @@ fun ListAdministradoresScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * Vista previa de la pantalla de lista de administradores en modo claro.
+ */
+@Preview(showBackground = true)
+@Composable
+fun ListAdministradoresScreenPreview() {
+    UmeEguneroTheme {
+        ListAdministradoresScreen(
+            viewModel = hiltViewModel(),
+            onNavigateBack = {}
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de lista de administradores en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun ListAdministradoresScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        ListAdministradoresScreen(
+            viewModel = hiltViewModel(),
+            onNavigateBack = {}
+        )
     }
 } 

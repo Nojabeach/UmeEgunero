@@ -1,3 +1,10 @@
+/**
+ * Módulo de configuración de seguridad del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz de configuración de seguridad
+ * para los administradores del sistema, permitiendo establecer
+ * políticas y parámetros de seguridad.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.foundation.layout.*
@@ -18,23 +25,46 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material3.HorizontalDivider
 import kotlinx.coroutines.launch
+import android.content.res.Configuration
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.SeguridadViewModel
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
 /**
- * Pantalla de configuración de seguridad para el administrador del sistema.
+ * Pantalla de configuración de seguridad para administradores.
  * 
- * Esta pantalla permite configurar diversos parámetros de seguridad como:
+ * Esta pantalla proporciona una interfaz completa para la configuración
+ * de todos los aspectos de seguridad del sistema, incluyendo políticas
+ * de contraseñas, gestión de sesiones y control de acceso.
+ * 
+ * ## Secciones principales
  * - Políticas de contraseñas
- * - Tiempo de sesión
- * - Intentos de acceso
- * - Activación de verificación en dos pasos
- * - Registro de actividad sospechosa
- *
- * @param navController Controlador de navegación para gestionar la navegación entre pantallas
+ * - Gestión de sesiones
+ * - Control de acceso
+ * - Auditoría y registro
+ * 
+ * ## Características
+ * - Configuración de complejidad de contraseñas
+ * - Control de tiempo de sesión
+ * - Gestión de intentos de acceso
+ * - Verificación en dos pasos
+ * - Registro de actividad
+ * 
+ * ## Funcionalidades
+ * - Ajuste de parámetros de seguridad
+ * - Activación/desactivación de características
+ * - Feedback visual de configuraciones
+ * - Validación en tiempo real
+ * 
+ * @param navController Controlador de navegación
+ * 
+ * @see SnackbarHostState
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeguridadScreen(
-    navController: NavController
+    viewModel: SeguridadViewModel,
+    onNavigateBack: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     var complejidadPassword by remember { mutableStateOf(2) }
@@ -52,7 +82,7 @@ fun SeguridadScreen(
             TopAppBar(
                 title = { Text("Configuración de Seguridad") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
@@ -487,16 +517,32 @@ fun SeguridadScreen(
 }
 
 /**
- * Vista previa de la pantalla de configuración de seguridad.
- * 
- * Muestra una representación de la pantalla con valores predeterminados.
+ * Vista previa de la pantalla de seguridad en modo claro.
  */
 @Preview(showBackground = true)
 @Composable
 fun SeguridadScreenPreview() {
-    MaterialTheme {
+    UmeEguneroTheme {
         SeguridadScreen(
-            navController = rememberNavController()
+            viewModel = hiltViewModel(),
+            onNavigateBack = {}
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de seguridad en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun SeguridadScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        SeguridadScreen(
+            viewModel = hiltViewModel(),
+            onNavigateBack = {}
         )
     }
 } 

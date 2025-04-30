@@ -1,3 +1,10 @@
+/**
+ * Módulo de configuración de email del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para la configuración de las
+ * direcciones de correo electrónico utilizadas por el sistema para
+ * comunicaciones y soporte técnico.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.foundation.layout.*
@@ -22,7 +29,34 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Pantalla de configuración de email para el administrador
+ * Pantalla de configuración de email del sistema.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la configuración
+ * de las direcciones de correo electrónico utilizadas por el sistema,
+ * incluyendo soporte técnico y comunicaciones generales.
+ * 
+ * ## Características
+ * - Configuración de email de soporte
+ * - Validación en tiempo real
+ * - Historial de cambios
+ * - Feedback visual
+ * 
+ * ## Funcionalidades
+ * - Gestión de emails del sistema
+ * - Validación de formatos
+ * - Guardado de configuración
+ * - Seguimiento de cambios
+ * 
+ * ## Estados
+ * - Carga de configuración
+ * - Validación de campos
+ * - Proceso de guardado
+ * - Cambios pendientes
+ * 
+ * @param viewModel ViewModel que gestiona la lógica de configuración
+ * @param onNavigateBack Callback para navegar hacia atrás
+ * 
+ * @see EmailConfigViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,3 +1,11 @@
+/**
+ * Módulo de pantallas de autenticación para la aplicación UmeEgunero.
+ * 
+ * Este módulo contiene los componentes relacionados con el proceso de registro
+ * y gestión de datos personales de los usuarios.
+ * 
+ * @see DatosPersonalesStep
+ */
 package com.tfg.umeegunero.feature.auth.screen
 
 import android.content.res.Configuration
@@ -43,6 +51,47 @@ import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.compose.ui.tooling.preview.Preview
 
+/**
+ * Paso del formulario de registro para la introducción de datos personales.
+ * 
+ * Este componente implementa un formulario completo para la captura de datos personales
+ * con validación en tiempo real y feedback visual.
+ * 
+ * ## Campos del formulario
+ * - DNI/NIE del usuario
+ * - Email de contacto
+ * - Contraseña y confirmación
+ * - Nombre y apellidos
+ * - Teléfono de contacto
+ * - Tipo de relación familiar
+ * 
+ * ## Características
+ * - Validación en tiempo real de todos los campos
+ * - Feedback visual de errores
+ * - Enmascaramiento de contraseñas
+ * - Organización en tarjetas por tipo de datos
+ * - Soporte para scroll vertical
+ * 
+ * @param dni DNI/NIE del usuario
+ * @param email Email de contacto
+ * @param password Contraseña
+ * @param confirmPassword Confirmación de contraseña
+ * @param nombre Nombre del usuario
+ * @param apellidos Apellidos del usuario
+ * @param telefono Teléfono de contacto
+ * @param subtipo Tipo de relación familiar
+ * @param onDniChange Callback para cambios en DNI
+ * @param onEmailChange Callback para cambios en email
+ * @param onPasswordChange Callback para cambios en contraseña
+ * @param onConfirmPasswordChange Callback para cambios en confirmación de contraseña
+ * @param onNombreChange Callback para cambios en nombre
+ * @param onApellidosChange Callback para cambios en apellidos
+ * @param onTelefonoChange Callback para cambios en teléfono
+ * @param onSubtipoChange Callback para cambios en tipo de relación
+ * @param errors Mapa de errores por campo
+ * 
+ * @see SubtipoFamiliar
+ */
 @Composable
 fun DatosPersonalesStep(
     dni: String,
@@ -323,7 +372,16 @@ fun TipoFamiliarOptions(
     }
 }
 
-@Preview(showBackground = true)
+/**
+ * Vista previa del componente DatosPersonalesStep en modo claro.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo y sin errores.
+ */
+@Preview(
+    name = "DatosPersonalesStep - Light Mode",
+    showBackground = true,
+    backgroundColor = 0xFFF0F0F0
+)
 @Composable
 fun DatosPersonalesStepPreview() {
     UmeEguneroTheme {
@@ -349,10 +407,55 @@ fun DatosPersonalesStepPreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+/**
+ * Vista previa del componente DatosPersonalesStep en modo oscuro.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo y sin errores.
+ */
+@Preview(
+    name = "DatosPersonalesStep - Dark Mode",
+    showBackground = true,
+    backgroundColor = 0xFF121212,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
 fun DatosPersonalesStepDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
+        DatosPersonalesStep(
+            dni = "12345678X",
+            email = "ejemplo@email.com",
+            password = "password123",
+            confirmPassword = "password123",
+            nombre = "Juan",
+            apellidos = "García López",
+            telefono = "600123456",
+            subtipo = SubtipoFamiliar.PADRE,
+            onDniChange = {},
+            onEmailChange = {},
+            onPasswordChange = {},
+            onConfirmPasswordChange = {},
+            onNombreChange = {},
+            onApellidosChange = {},
+            onTelefonoChange = {},
+            onSubtipoChange = {},
+            errors = mapOf("dni" to "Este DNI ya está registrado")
+        )
+    }
+}
+
+/**
+ * Vista previa del componente DatosPersonalesStep con errores.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo y errores de validación.
+ */
+@Preview(
+    name = "DatosPersonalesStep - With Errors",
+    showBackground = true,
+    backgroundColor = 0xFFF0F0F0
+)
+@Composable
+fun DatosPersonalesStepErrorPreview() {
+    UmeEguneroTheme {
         DatosPersonalesStep(
             dni = "12345678X",
             email = "ejemplo@email.com",

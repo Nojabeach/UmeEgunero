@@ -1,3 +1,12 @@
+/**
+ * Módulo de pantallas de autenticación para la aplicación UmeEgunero.
+ * 
+ * Este módulo contiene los componentes relacionados con el proceso de recuperación
+ * de contraseña y gestión de credenciales de usuario.
+ * 
+ * @see RecuperarPasswordScreen
+ * @see RecuperarPasswordViewModel
+ */
 package com.tfg.umeegunero.feature.auth.screen
 
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +60,35 @@ import androidx.compose.ui.tooling.preview.Preview
 import android.content.res.Configuration
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
+/**
+ * Pantalla principal para la recuperación de contraseña.
+ * 
+ * Implementa un flujo completo de recuperación de contraseña con las siguientes características:
+ * - Formulario de entrada de email
+ * - Validación en tiempo real
+ * - Feedback visual del proceso
+ * - Gestión de estados de carga
+ * - Manejo de errores
+ * - Confirmación de envío
+ * 
+ * ## Estados de la pantalla
+ * - Estado inicial: Formulario de email
+ * - Estado de carga: Indicador de progreso
+ * - Estado de éxito: Mensaje de confirmación
+ * - Estado de error: Mensaje de error en Snackbar
+ * 
+ * ## Seguridad
+ * - Validación de formato de email
+ * - Prevención de múltiples envíos
+ * - Mensajes de error genéricos
+ * 
+ * @param viewModel ViewModel que gestiona la lógica de recuperación
+ * @param onNavigateBack Callback para volver a la pantalla anterior
+ * 
+ * @see RecuperarPasswordViewModel
+ * @see RecuperarPasswordForm
+ * @see SuccessContent
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecuperarPasswordScreen(
@@ -131,6 +169,23 @@ fun RecuperarPasswordScreen(
     }
 }
 
+/**
+ * Formulario para la recuperación de contraseña.
+ * 
+ * Componente que implementa el formulario de entrada de email con validación
+ * y feedback visual en tiempo real.
+ * 
+ * ## Características
+ * - Campo de email con validación
+ * - Indicador de errores
+ * - Botón de envío
+ * - Soporte para teclado
+ * 
+ * @param email Email actual
+ * @param emailError Error de validación si existe
+ * @param onEmailChange Callback para cambios en el email
+ * @param onSubmit Callback para el envío del formulario
+ */
 @Composable
 fun RecuperarPasswordForm(
     email: String,
@@ -201,6 +256,19 @@ fun RecuperarPasswordForm(
     }
 }
 
+/**
+ * Contenido mostrado después de un envío exitoso.
+ * 
+ * Muestra un mensaje de confirmación y las instrucciones para el usuario
+ * después de enviar el correo de recuperación.
+ * 
+ * ## Elementos
+ * - Título de confirmación
+ * - Mensaje informativo
+ * - Botón para volver
+ * 
+ * @param onNavigateBack Callback para volver a la pantalla anterior
+ */
 @Composable
 fun SuccessContent(
     onNavigateBack: () -> Unit
@@ -234,6 +302,9 @@ fun SuccessContent(
     }
 }
 
+/**
+ * Vista previa del formulario de recuperación en estado normal.
+ */
 @Preview(showBackground = true)
 @Composable
 fun RecuperarPasswordScreenPreview() {
@@ -247,6 +318,9 @@ fun RecuperarPasswordScreenPreview() {
     }
 }
 
+/**
+ * Vista previa del formulario de recuperación con error.
+ */
 @Preview(showBackground = true)
 @Composable
 fun RecuperarPasswordScreenErrorPreview() {
@@ -260,6 +334,9 @@ fun RecuperarPasswordScreenErrorPreview() {
     }
 }
 
+/**
+ * Vista previa del contenido de éxito.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SuccessContentPreview() {
@@ -268,6 +345,9 @@ fun SuccessContentPreview() {
     }
 }
 
+/**
+ * Vista previa del formulario en modo oscuro.
+ */
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun RecuperarPasswordScreenDarkPreview() {

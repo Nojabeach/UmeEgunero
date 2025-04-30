@@ -60,7 +60,7 @@ data class LoginUiState(
 }
 
 /**
- * ViewModel para la pantalla de inicio de sesión.
+ * ViewModel para la pantalla de inicio de sesión en la aplicación UmeEgunero.
  * 
  * Este ViewModel implementa la lógica de autenticación para el sistema UmeEgunero,
  * gestionando todo el proceso de inicio de sesión para los diferentes tipos de usuarios
@@ -79,12 +79,28 @@ data class LoginUiState(
  * Se integra con Hilt para la inyección de dependencias, recibiendo el repositorio
  * de usuarios y las preferencias compartidas necesarias para su funcionamiento.
  * 
- * @param usuarioRepository Repositorio que gestiona la autenticación y datos de usuarios
- * @param sharedPreferences Preferencias compartidas para almacenar datos de sesión
+ * ## Seguridad
  * 
- * @see LoginUiState Para los diferentes estados de la UI
- * @see UsuarioRepository Para la implementación de la autenticación
- * @see LoginScreen Para la vista asociada a este ViewModel
+ * Implementa las siguientes medidas de seguridad:
+ * - Validación de credenciales en tiempo real
+ * - Persistencia segura de credenciales
+ * - Manejo de sesiones
+ * - Verificación de tipos de usuario
+ * 
+ * ## Gestión de Estado
+ * 
+ * Utiliza un estado inmutable que contiene:
+ * - Credenciales del usuario
+ * - Errores de validación
+ * - Estado de carga
+ * - Tipo de usuario autenticado
+ * 
+ * @property usuarioRepository Repositorio para operaciones de autenticación
+ * @property sharedPreferences Preferencias para persistencia de credenciales
+ * @property uiState Estado actual de la UI
+ * 
+ * @see LoginUiState
+ * @see UsuarioRepository
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(

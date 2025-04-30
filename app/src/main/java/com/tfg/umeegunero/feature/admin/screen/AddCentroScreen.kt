@@ -1,3 +1,10 @@
+/**
+ * Módulo de creación y edición de centros educativos del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para la creación y edición de centros
+ * educativos, incluyendo toda la información necesaria para su registro
+ * en el sistema.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import android.content.Intent
@@ -116,6 +123,39 @@ import com.tfg.umeegunero.feature.admin.viewmodel.AdminCentroUsuario
 import com.tfg.umeegunero.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
+/**
+ * Pantalla principal para la creación y edición de centros educativos.
+ * 
+ * Esta pantalla proporciona un formulario completo para la gestión de
+ * centros educativos, permitiendo tanto la creación de nuevos centros
+ * como la edición de los existentes.
+ * 
+ * ## Características
+ * - Formulario completo de datos
+ * - Validación en tiempo real
+ * - Indicador de progreso
+ * - Gestión de administradores
+ * 
+ * ## Funcionalidades
+ * - Datos básicos del centro
+ * - Información de contacto
+ * - Ubicación geográfica
+ * - Gestión de administradores
+ * - Guardado y eliminación
+ * 
+ * ## Estados
+ * - Modo creación/edición
+ * - Validación de campos
+ * - Proceso de guardado
+ * - Confirmación de eliminación
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica del formulario
+ * @param centroId Identificador del centro a editar (null para creación)
+ * 
+ * @see AddCentroViewModel
+ * @see Centro
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCentroScreen(
@@ -258,120 +298,51 @@ fun AddCentroScreen(
 }
 
 /**
- * Preview del formulario para agregar un centro educativo
+ * Contenido principal del formulario de centro educativo.
+ * 
+ * Este componente implementa el formulario completo para la gestión
+ * de centros educativos, incluyendo todos los campos necesarios y
+ * su validación.
+ * 
+ * ## Secciones
+ * - Información básica
+ * - Dirección y ubicación
+ * - Contacto y comunicación
+ * - Administradores del centro
+ * 
+ * @param uiState Estado actual del formulario
+ * @param provincias Lista de provincias disponibles
+ * @param porcentajeCompletado Porcentaje de campos completados
+ * @param isEditMode Modo de edición activo
+ * @param onNombreChange Callback para cambio de nombre
+ * @param onCalleChange Callback para cambio de calle
+ * @param onNumeroChange Callback para cambio de número
+ * @param onCodigoPostalChange Callback para cambio de código postal
+ * @param onCiudadChange Callback para cambio de ciudad
+ * @param onProvinciaChange Callback para cambio de provincia
+ * @param onTelefonoChange Callback para cambio de teléfono
+ * @param onCiudadSelected Callback para selección de ciudad
+ * @param onToggleMapa Callback para mostrar/ocultar mapa
+ * @param onSaveClick Callback para guardar cambios
+ * @param onCancelClick Callback para cancelar
+ * @param onAddAdminCentro Callback para añadir administrador
+ * @param onRemoveAdminCentro Callback para eliminar administrador
+ * @param onUpdateAdminCentroDni Callback para actualizar DNI de administrador
+ * @param onUpdateAdminCentroNombre Callback para actualizar nombre de administrador
+ * @param onUpdateAdminCentroApellidos Callback para actualizar apellidos de administrador
+ * @param onUpdateAdminCentroEmail Callback para actualizar email de administrador
+ * @param onUpdateAdminCentroTelefono Callback para actualizar teléfono de administrador
+ * @param onUpdateAdminCentroPassword Callback para actualizar contraseña de administrador
+ * @param modifier Modificador de composición
+ * 
+ * @see AddCentroViewModel.AddCentroState
  */
-@Preview(showBackground = true)
-@Composable
-fun AddCentroScreenPreview() {
-    UmeEguneroTheme {
-        // Para previews, mostramos solo el contenido en lugar de la pantalla completa
-        Surface {
-            // Usar un estado simulado para el preview
-            val previewState = AddCentroViewModel.AddCentroState(
-                nombre = "Colegio Ejemplo",
-                calle = "Calle Mayor",
-                numero = "25",
-                codigoPostal = "48001",
-                ciudad = "Bilbao",
-                provincia = "Vizcaya",
-                telefono = "944123456",
-                adminCentro = listOf(
-                    AdminCentroUsuario(
-                        dni = "12345678A",
-                        nombre = "Juan",
-                        apellidos = "García López",
-                        email = "admin@ejemplo.com",
-                        telefono = "666777888",
-                        password = "123456"
-                    )
-                )
-            )
-            
-            // Mostrar directamente el contenido de la pantalla
-            AddCentroScreenContent(
-                uiState = previewState,
-                provincias = listOf("Vizcaya", "Guipúzcoa", "Álava"),
-                porcentajeCompletado = 0.8f,
-                isEditMode = false,
-                onNombreChange = {},
-                onCalleChange = {},
-                onNumeroChange = {},
-                onCodigoPostalChange = {},
-                onCiudadChange = {},
-                onProvinciaChange = {},
-                onTelefonoChange = {},
-                onCiudadSelected = {},
-                onToggleMapa = {},
-                onSaveClick = {},
-                onCancelClick = {},
-                onAddAdminCentro = {},
-                onRemoveAdminCentro = { _ -> },
-                onUpdateAdminCentroDni = { _, _ -> },
-                onUpdateAdminCentroNombre = { _, _ -> },
-                onUpdateAdminCentroApellidos = { _, _ -> },
-                onUpdateAdminCentroEmail = { _, _ -> },
-                onUpdateAdminCentroTelefono = { _, _ -> },
-                onUpdateAdminCentroPassword = { _, _ -> }
-            )
-        }
-    }
-}
-
-/**
- * Preview de un paso específico del formulario
- */
-@Preview(showBackground = true)
-@Composable
-fun AddCentroFormStepPreview() {
-    UmeEguneroTheme {
-        Surface {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Información Básica",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                EnhancedFormTextField(
-                    value = "Colegio Ejemplo",
-                    onValueChange = {},
-                    label = "Nombre del Centro",
-                    error = null,
-                    modifier = Modifier.fillMaxWidth(),
-                    icon = Icons.Default.School
-                )
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Spacer(modifier = Modifier.width(64.dp))
-                    
-                    Button(
-                        onClick = { }
-                    ) {
-                        Text("Siguiente")
-                    }
-                }
-            }
-        }
-    }
-}
-
 @Composable
 fun AddCentroScreenContent(
     uiState: AddCentroViewModel.AddCentroState,
     provincias: List<String>,
     porcentajeCompletado: Float,
-    isEditMode: Boolean,
+    isEditMode: Boolean = false,
     onNombreChange: (String) -> Unit,
     onCalleChange: (String) -> Unit,
     onNumeroChange: (String) -> Unit,
@@ -589,6 +560,30 @@ fun AddCentroScreenContent(
                 CircularProgressIndicator()
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddCentroScreenPreview() {
+    UmeEguneroTheme {
+        AddCentroScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+@Preview(
+    name = "Modo oscuro",
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun AddCentroScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        AddCentroScreen(
+            navController = rememberNavController()
+        )
     }
 }
 
@@ -1680,282 +1675,6 @@ private fun countErrors(uiState: AddCentroViewModel.AddCentroState): Int {
     }
 
     return errores
-}
-
-/**
- * Obtiene una latitud por defecto para una ciudad y provincia
- * Esto es usado cuando no se puede obtener la ubicación exacta mediante geocodificación
- */
-private fun obtenerLatitudPorDefecto(ciudad: String, provincia: String): Double {
-    // Coordenadas por defecto para algunas ciudades principales
-    val coordenadasPorDefecto = mapOf(
-        "Madrid" to 40.416775,
-        "Barcelona" to 41.390205,
-        "Valencia" to 39.469907,
-        "Sevilla" to 37.389092,
-        "Zaragoza" to 41.648823,
-        "Málaga" to 36.721261,
-        "Murcia" to 37.992235,
-        "Palma" to 39.569600,
-        "Las Palmas de Gran Canaria" to 28.124169,
-        "Bilbao" to 43.262985
-    )
-    
-    // Si la ciudad está en nuestro mapa, usamos su latitud
-    if (coordenadasPorDefecto.containsKey(ciudad)) {
-        return coordenadasPorDefecto[ciudad]!!
-    }
-    
-    // Si no, usamos una aproximación por provincia o una ubicación en el centro de España
-    val latitudPorProvincia = mapOf(
-        "Madrid" to 40.416775,
-        "Barcelona" to 41.390205,
-        "Valencia" to 39.469907,
-        "Alicante" to 38.346544,
-        "Sevilla" to 37.389092,
-        "Málaga" to 36.721261,
-        "Murcia" to 37.992235,
-        "Cádiz" to 36.527061,
-        "Vizcaya" to 43.262985,
-        "Asturias" to 43.361915,
-        "La Coruña" to 43.370876,
-        "Zaragoza" to 41.648823,
-        "Granada" to 37.178055,
-        "Tarragona" to 41.118883,
-        "Córdoba" to 37.888175,
-        "Gerona" to 41.979401,
-        "Guipúzcoa" to 43.320812,
-        "Toledo" to 39.862832,
-        "Almería" to 36.834047,
-        "Badajoz" to 38.880050,
-        "La Rioja" to 42.466,
-        "Huelva" to 37.261422,
-        "Valladolid" to 41.652251,
-        "Castellón" to 39.986356,
-        "Jaén" to 37.778424,
-        "Ciudad Real" to 38.986006,
-        "Cáceres" to 39.475388,
-        "Cantabria" to 43.462306,
-        "Albacete" to 38.994349,
-        "Lérida" to 41.617060,
-        "León" to 42.598726,
-        "Navarra" to 42.695391,
-        "Salamanca" to 40.970104,
-        "Burgos" to 42.343926,
-        "Álava" to 42.846718,
-        "Lugo" to 43.010681,
-        "Zamora" to 41.503490,
-        "Huesca" to 42.135986,
-        "Cuenca" to 40.070782,
-        "Segovia" to 40.942903,
-        "Pontevedra" to 42.431196,
-        "Orense" to 42.335344,
-        "Guadalajara" to 40.632771,
-        "Palencia" to 42.010369,
-        "Ávila" to 40.656685,
-        "Teruel" to 40.345673,
-        "Soria" to 41.764431,
-        "Islas Baleares" to 39.569600,
-        "Las Palmas" to 28.124169,
-        "Santa Cruz de Tenerife" to 28.463628
-    )
-    
-    return latitudPorProvincia[provincia] ?: 40.416775 // Madrid por defecto
-}
-
-/**
- * Obtiene una longitud por defecto para una ciudad y provincia
- * Esto es usado cuando no se puede obtener la ubicación exacta mediante geocodificación
- */
-private fun obtenerLongitudPorDefecto(ciudad: String, provincia: String): Double {
-    // Coordenadas por defecto para algunas ciudades principales
-    val coordenadasPorDefecto = mapOf(
-        "Madrid" to -3.703790,
-        "Barcelona" to 2.154007,
-        "Valencia" to -0.376288,
-        "Sevilla" to -5.984459,
-        "Zaragoza" to -0.889085,
-        "Málaga" to -4.421766,
-        "Murcia" to -1.130542,
-        "Palma" to 2.650200,
-        "Las Palmas de Gran Canaria" to -15.430700,
-        "Bilbao" to -2.935013
-    )
-    
-    // Si la ciudad está en nuestro mapa, usamos su longitud
-    if (coordenadasPorDefecto.containsKey(ciudad)) {
-        return coordenadasPorDefecto[ciudad]!!
-    }
-    
-    // Si no, usamos una aproximación por provincia o una ubicación en el centro de España
-    val longitudPorProvincia = mapOf(
-        "Madrid" to -3.703790,
-        "Barcelona" to 2.154007,
-        "Valencia" to -0.376288,
-        "Alicante" to -0.486357,
-        "Sevilla" to -5.984459,
-        "Málaga" to -4.421766,
-        "Murcia" to -1.130542,
-        "Cádiz" to -6.288597,
-        "Vizcaya" to -2.935013,
-        "Asturias" to -5.849389,
-        "La Coruña" to -8.396027,
-        "Zaragoza" to -0.889085,
-        "Granada" to -3.600217,
-        "Tarragona" to 1.244044,
-        "Córdoba" to -4.779424,
-        "Gerona" to 2.820334,
-        "Guipúzcoa" to -1.984503,
-        "Toledo" to -4.027323,
-        "Almería" to -2.457819,
-        "Badajoz" to -6.970720,
-        "La Rioja" to -2.446,
-        "Huelva" to -6.944722,
-        "Valladolid" to -4.724532,
-        "Castellón" to -0.045149,
-        "Jaén" to -3.789757,
-        "Ciudad Real" to -3.927526,
-        "Cáceres" to -6.371308,
-        "Cantabria" to -3.805119,
-        "Albacete" to -1.856469,
-        "Lérida" to 0.620800,
-        "León" to -5.569710,
-        "Navarra" to -1.676069,
-        "Salamanca" to -5.663149,
-        "Burgos" to -3.696906,
-        "Álava" to -2.671635,
-        "Lugo" to -7.555851,
-        "Zamora" to -5.743510,
-        "Huesca" to -0.408900,
-        "Cuenca" to -2.134647,
-        "Segovia" to -4.108807,
-        "Pontevedra" to -8.644134,
-        "Orense" to -7.864380,
-        "Guadalajara" to -3.166493,
-        "Palencia" to -4.523238,
-        "Ávila" to -4.681185,
-        "Teruel" to -1.106543,
-        "Soria" to -2.464921,
-        "Islas Baleares" to 2.650200,
-        "Las Palmas" to -15.430700,
-        "Santa Cruz de Tenerife" to -16.251881
-    )
-    
-    return longitudPorProvincia[provincia] ?: -3.703790 // Madrid por defecto
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AddCentroScreenContentPreview() {
-    // Estado para el preview con campos vacíos para mostrar los placeholders
-    val previewState = AddCentroViewModel.AddCentroState(
-        nombre = "",
-        calle = "",
-        numero = "",
-        codigoPostal = "",
-        ciudad = "",
-        provincia = "",
-        telefono = "",
-        adminCentro = listOf(
-            AdminCentroUsuario(
-                dni = "",
-                nombre = "",
-                apellidos = "",
-                email = "",
-                telefono = "",
-                password = ""
-            )
-        ),
-        latitud = null,
-        longitud = null
-    )
-
-    UmeEguneroTheme {
-        Surface {
-            AddCentroScreenContent(
-                uiState = previewState,
-                provincias = listOf("Vizcaya / Bizkaia", "Guipúzcoa / Gipuzkoa", "Álava / Araba"),
-                porcentajeCompletado = 0.2f,
-                isEditMode = false,
-                onNombreChange = {},
-                onCalleChange = {},
-                onNumeroChange = {},
-                onCodigoPostalChange = {},
-                onCiudadChange = {},
-                onProvinciaChange = {},
-                onTelefonoChange = {},
-                onCiudadSelected = {},
-                onToggleMapa = {},
-                onSaveClick = {},
-                onCancelClick = {},
-                onAddAdminCentro = {},
-                onRemoveAdminCentro = { _ -> },
-                onUpdateAdminCentroDni = { _, _ -> },
-                onUpdateAdminCentroNombre = { _, _ -> },
-                onUpdateAdminCentroApellidos = { _, _ -> },
-                onUpdateAdminCentroEmail = { _, _ -> },
-                onUpdateAdminCentroTelefono = { _, _ -> },
-                onUpdateAdminCentroPassword = { _, _ -> }
-            )
-        }
-    }
-}
-
-@Composable
-@Preview(name = "Modo oscuro", uiMode = Configuration.UI_MODE_NIGHT_YES)
-fun AddCentroScreenDarkPreview() {
-    // Estado para el preview con campos vacíos para mostrar los placeholders
-    val previewState = AddCentroViewModel.AddCentroState(
-        nombre = "",
-        calle = "",
-        numero = "",
-        codigoPostal = "",
-        ciudad = "",
-        provincia = "",
-        telefono = "",
-        adminCentro = listOf(
-            AdminCentroUsuario(
-                dni = "",
-                nombre = "",
-                apellidos = "",
-                email = "",
-                telefono = "",
-                password = ""
-            )
-        ),
-        latitud = null,
-        longitud = null
-    )
-
-    UmeEguneroTheme(darkTheme = true) {
-        Surface {
-            AddCentroScreenContent(
-                uiState = previewState,
-                provincias = listOf("Vizcaya / Bizkaia", "Guipúzcoa / Gipuzkoa", "Álava / Araba"),
-                porcentajeCompletado = 0.2f,
-                isEditMode = false,
-                onNombreChange = {},
-                onCalleChange = {},
-                onNumeroChange = {},
-                onCodigoPostalChange = {},
-                onCiudadChange = {},
-                onProvinciaChange = {},
-                onTelefonoChange = {},
-                onCiudadSelected = {},
-                onToggleMapa = {},
-                onSaveClick = {},
-                onCancelClick = {},
-                onAddAdminCentro = {},
-                onRemoveAdminCentro = { _ -> },
-                onUpdateAdminCentroDni = { _, _ -> },
-                onUpdateAdminCentroNombre = { _, _ -> },
-                onUpdateAdminCentroApellidos = { _, _ -> },
-                onUpdateAdminCentroEmail = { _, _ -> },
-                onUpdateAdminCentroTelefono = { _, _ -> },
-                onUpdateAdminCentroPassword = { _, _ -> }
-            )
-        }
-    }
 }
 
 /**

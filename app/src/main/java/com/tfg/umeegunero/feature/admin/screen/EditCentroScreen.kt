@@ -1,3 +1,10 @@
+/**
+ * Módulo de edición de centros educativos del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para la edición de centros
+ * educativos existentes, reutilizando componentes del formulario
+ * de creación.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.foundation.layout.padding
@@ -35,14 +42,43 @@ import com.tfg.umeegunero.feature.admin.viewmodel.AddCentroViewModel
 import kotlin.math.max
 import com.tfg.umeegunero.feature.admin.screen.AddCentroScreenContent
 import com.tfg.umeegunero.feature.admin.screen.DeleteCentroConfirmationDialog
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalConfiguration
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.navigation.compose.rememberNavController
+import android.content.res.Configuration
 
 /**
- * Pantalla para editar un centro educativo existente.
- * Esta pantalla reutiliza los componentes de AddCentroScreen pero precarga los datos del centro a editar.
+ * Pantalla de edición de centro educativo.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la edición
+ * de los datos de un centro educativo existente, reutilizando los
+ * componentes del formulario de creación.
+ * 
+ * ## Características
+ * - Formulario precargado con datos existentes
+ * - Validación en tiempo real
+ * - Indicador de progreso
+ * - Gestión de errores
+ * 
+ * ## Funcionalidades
+ * - Edición de datos básicos
+ * - Gestión de administradores
+ * - Eliminación del centro
+ * - Guardado de cambios
+ * 
+ * ## Estados
+ * - Carga de datos
+ * - Validación de campos
+ * - Proceso de guardado
+ * - Confirmación de eliminación
  * 
  * @param navController Controlador de navegación
- * @param centroId ID del centro a editar
- * @param viewModel ViewModel para la edición de centros
+ * @param centroId Identificador del centro a editar
+ * @param viewModel ViewModel que gestiona la lógica de edición
+ * 
+ * @see AddCentroViewModel
+ * @see AddCentroScreenContent
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -185,7 +221,20 @@ fun EditCentroScreen(
 }
 
 /**
- * Calcula el porcentaje de llenado del formulario
+ * Calcula el porcentaje de completado del formulario.
+ * 
+ * Esta función evalúa los campos requeridos del formulario y
+ * calcula el porcentaje de campos completados correctamente.
+ * 
+ * ## Campos evaluados
+ * - Datos básicos del centro
+ * - Información de contacto
+ * - Datos del administrador
+ * 
+ * @param uiState Estado actual del formulario
+ * @return Porcentaje de campos completados (0.0 a 1.0)
+ * 
+ * @see AddCentroViewModel.AddCentroState
  */
 private fun calcularPorcentajeCompletado(uiState: AddCentroViewModel.AddCentroState): Float {
     var camposRequeridos = 7 // Nombre, calle, número, CP, ciudad, provincia, admin principal
@@ -239,6 +288,37 @@ private fun calcularPorcentajeCompletado(uiState: AddCentroViewModel.AddCentroSt
     }
     
     return porcentaje.coerceIn(0f, 1f)
+}
+
+/**
+ * Vista previa de la pantalla de edición de centro en modo claro.
+ */
+@Preview(showBackground = true)
+@Composable
+fun EditCentroScreenPreview() {
+    UmeEguneroTheme {
+        EditCentroScreen(
+            navController = rememberNavController(),
+            centroId = "1"
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de edición de centro en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun EditCentroScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        EditCentroScreen(
+            navController = rememberNavController(),
+            centroId = "1"
+        )
+    }
 }
 
 /**

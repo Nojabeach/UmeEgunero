@@ -1,3 +1,9 @@
+/**
+ * Módulo de notificaciones del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la gestión y visualización de notificaciones
+ * del sistema para los administradores.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.animation.AnimatedVisibility
@@ -44,7 +50,19 @@ import java.util.*
 import com.tfg.umeegunero.data.model.TipoNotificacion
 
 /**
- * Modelo de datos para las notificaciones
+ * Modelo de datos para las notificaciones del sistema.
+ * 
+ * Esta clase representa una notificación individual con toda la información
+ * necesaria para su visualización y gestión.
+ * 
+ * @property id Identificador único de la notificación
+ * @property titulo Título descriptivo de la notificación
+ * @property mensaje Contenido detallado de la notificación
+ * @property fecha Fecha y hora de la notificación
+ * @property leida Estado de lectura de la notificación
+ * @property tipo Tipo de notificación según su naturaleza
+ * 
+ * @see TipoNotificacion
  */
 data class Notificacion(
     val id: String,
@@ -56,8 +74,28 @@ data class Notificacion(
 )
 
 /**
- * Pantalla de notificaciones para administrador
- * Muestra una lista de notificaciones del sistema
+ * Pantalla de gestión de notificaciones para administradores.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la visualización
+ * y gestión de notificaciones del sistema, con diferentes categorías
+ * y estados.
+ * 
+ * ## Características
+ * - Lista de notificaciones con detalles
+ * - Categorización por tipo
+ * - Indicadores de estado (leído/no leído)
+ * - Ordenamiento cronológico
+ * 
+ * ## Funcionalidades
+ * - Visualización de notificaciones
+ * - Marcado de lectura
+ * - Filtrado por tipo
+ * - Gestión de estados
+ * 
+ * @param navController Controlador de navegación
+ * 
+ * @see Notificacion
+ * @see TipoNotificacion
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,6 +196,22 @@ fun AdminNotificacionesScreen(
     }
 }
 
+/**
+ * Componente que representa un ítem individual de notificación.
+ * 
+ * Este componente implementa la visualización de una notificación
+ * individual, mostrando su información relevante y estado.
+ * 
+ * ## Características
+ * - Icono según tipo de notificación
+ * - Indicador de estado de lectura
+ * - Formato de fecha localizado
+ * - Diseño Material Design 3
+ * 
+ * @param notificacion Datos de la notificación a mostrar
+ * 
+ * @see Notificacion
+ */
 @Composable
 private fun NotificacionItem(notificacion: Notificacion) {
     val dateFormatter = SimpleDateFormat("dd/MM/yyyy - HH:mm", Locale.getDefault())
@@ -246,27 +300,29 @@ private fun NotificacionItem(notificacion: Notificacion) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun NotificacionItemPreview() {
-    UmeEguneroTheme {
-        NotificacionItem(
-            notificacion = Notificacion(
-                id = "1",
-                titulo = "Nueva actualización disponible",
-                mensaje = "Se ha detectado una nueva versión del sistema. Se recomienda actualizar tan pronto como sea posible para disfrutar de las mejoras y correcciones.",
-                fecha = Date(),
-                leida = false,
-                tipo = TipoNotificacion.SISTEMA
-            )
-        )
-    }
-}
-
+/**
+ * Vista previa de la pantalla de notificaciones en modo claro.
+ */
 @Preview(showBackground = true)
 @Composable
 fun AdminNotificacionesScreenPreview() {
     UmeEguneroTheme {
+        AdminNotificacionesScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de notificaciones en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+fun AdminNotificacionesScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
         AdminNotificacionesScreen(
             navController = rememberNavController()
         )

@@ -1,3 +1,11 @@
+/**
+ * Módulo de pantallas de autenticación para la aplicación UmeEgunero.
+ * 
+ * Este módulo contiene las pantallas relacionadas con el proceso de autenticación y registro de usuarios.
+ * 
+ * @see AlumnosCentroStep
+ * @see AlumnoItem
+ */
 package com.tfg.umeegunero.feature.auth.screen
 
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +46,31 @@ import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import android.content.res.Configuration
+
+/**
+ * Componente de paso para la gestión de alumnos y selección de centro educativo.
+ * 
+ * Este componente implementa la interfaz para:
+ * - Añadir y eliminar alumnos mediante su DNI
+ * - Seleccionar el centro educativo
+ * - Mostrar errores de validación
+ * 
+ * ## Características
+ * - Gestión dinámica de lista de alumnos
+ * - Validación en tiempo real de DNIs
+ * - Selección de centro educativo con dropdown
+ * - Indicador de carga para centros
+ * - Manejo de errores por campo
+ * 
+ * @param alumnos Lista de DNIs de alumnos
+ * @param centroId ID del centro seleccionado
+ * @param centros Lista de centros disponibles
+ * @param isLoadingCentros Estado de carga de centros
+ * @param onAddAlumno Callback para añadir alumno
+ * @param onRemoveAlumno Callback para eliminar alumno
+ * @param onCentroSelect Callback para seleccionar centro
+ * @param errors Map de errores por campo
+ */
 @Composable
 fun AlumnosCentroStep(
     alumnos: List<String>,
@@ -230,6 +263,16 @@ fun AlumnosCentroStep(
     }
 }
 
+/**
+ * Componente de ítem de alumno en la lista.
+ * 
+ * Muestra el DNI de un alumno con opción de eliminación y manejo de errores.
+ * 
+ * @param dni DNI del alumno
+ * @param onRemove Callback de eliminación
+ * @param isError Estado de error
+ * @param errorText Mensaje de error
+ */
 @Composable
 fun AlumnoItem(
     dni: String,
@@ -299,7 +342,11 @@ fun AlumnoItem(
     }
 }
 
-
+/**
+ * Vista previa del componente AlumnosCentroStep en modo claro.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo.
+ */
 @Preview(
     name = "AlumnosCentroStep - Vacío",
     showBackground = true,
@@ -325,6 +372,11 @@ fun AlumnosCentroStepEmptyPreview() {
     }
 }
 
+/**
+ * Vista previa del componente AlumnosCentroStep en modo claro.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo.
+ */
 @Preview(
     name = "AlumnosCentroStep - Con Alumnos",
     showBackground = true,
@@ -350,6 +402,11 @@ fun AlumnosCentroStepWithStudentsPreview() {
     }
 }
 
+/**
+ * Vista previa del componente AlumnosCentroStep en modo claro.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo.
+ */
 @Preview(
     name = "AlumnosCentroStep - Cargando Centros",
     showBackground = true,
@@ -371,6 +428,11 @@ fun AlumnosCentroStepLoadingPreview() {
     }
 }
 
+/**
+ * Vista previa del componente AlumnosCentroStep en modo claro.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo.
+ */
 @Preview(
     name = "AlumnosCentroStep - Con Errores",
     showBackground = true,
@@ -399,6 +461,11 @@ fun AlumnosCentroStepWithErrorsPreview() {
     }
 }
 
+/**
+ * Vista previa del componente AlumnosCentroStep en modo oscuro.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo en modo oscuro.
+ */
 @Preview(
     name = "AlumnosCentroStep - Dark Mode",
     showBackground = true,

@@ -1,5 +1,15 @@
+/**
+ * Módulo de pantallas de autenticación para la aplicación UmeEgunero.
+ * 
+ * Este módulo contiene las pantallas relacionadas con el proceso de autenticación y registro de usuarios.
+ * 
+ * @see RegistroScreen
+ * @see RegistroViewModel
+ * @see RegistroUiState
+ */
 package com.tfg.umeegunero.feature.auth.screen
 
+// Imports de Android y Jetpack Compose
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -166,15 +176,16 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
-// Importar los componentes de otros archivos
-import com.tfg.umeegunero.feature.auth.screen.TipoFamiliarOptions
-import com.tfg.umeegunero.feature.auth.screen.DireccionStep
-import com.tfg.umeegunero.feature.auth.screen.AlumnosCentroStep
-import com.tfg.umeegunero.BuildConfig
-
-// Función para manejar la luminosidad ya que 'luminance' es privado
+/**
+ * Función de extensión para calcular la luminosidad de un color.
+ * 
+ * Esta función calcula la luminosidad de un color RGB utilizando la fórmula estándar de luminosidad.
+ * 
+ * @return La luminosidad del color como un valor entre 0.0 y 1.0
+ * 
+ * @see Color
+ */
 fun Color.getLuminance(): Float {
-    // Esta función calcula la luminosidad de un color similar a 'luminance' internamente
     val r = this.red
     val g = this.green 
     val b = this.blue
@@ -182,14 +193,30 @@ fun Color.getLuminance(): Float {
 }
 
 /**
- * Función de extensión para determinar si un ColorScheme es claro u oscuro
+ * Función de extensión para determinar si un ColorScheme es claro u oscuro.
+ * 
+ * @return `true` si el esquema de color es claro, `false` si es oscuro
+ * 
+ * @see ColorScheme
  */
 fun ColorScheme.isLight(): Boolean {
-    // La luminosidad del color background puede ser un buen indicador
     return background.getLuminance() > 0.5f
 }
 
-// Función para calcular el porcentaje de completado de la contraseña
+/**
+ * Función de extensión para calcular el porcentaje de completado de la contraseña.
+ * 
+ * Esta función evalúa la fortaleza de una contraseña basándose en varios criterios:
+ * - Longitud mínima (8 caracteres)
+ * - Presencia de dígitos
+ * - Presencia de letras mayúsculas y minúsculas
+ * - Presencia de caracteres especiales
+ * 
+ * @return Un valor entre 0.0 y 1.0 que representa el porcentaje de completado
+ * 
+ * @sample "Password123!".calcularPorcentajeCompletado() // Devuelve 1.0
+ * @sample "password".calcularPorcentajeCompletado() // Devuelve 0.25
+ */
 fun String.calcularPorcentajeCompletado(): Float {
     var porcentaje = 0f
     
@@ -208,6 +235,155 @@ fun String.calcularPorcentajeCompletado(): Float {
     return porcentaje
 }
 
+/**
+ * Función para validar el formato de un DNI español.
+ * 
+ * Esta función implementa la validación completa de un DNI español, incluyendo:
+ * - Formato correcto (8 números y 1 letra)
+ * - Letras permitidas (excluye I, Ñ, O, U)
+ * - Validación de la letra de control según el algoritmo oficial español
+ * 
+ * @param dni El DNI a validar
+ * @return `true` si el DNI es válido, `false` en caso contrario
+ * 
+ * @throws NumberFormatException Si el número del DNI no es un entero válido
+ * 
+ * @sample validateDni("12345678Z") // Devuelve true para un DNI válido
+ * @sample validateDni("12345678I") // Devuelve false para un DNI inválido
+ */
+private fun validateDni(dni: String): Boolean {
+    // DNI español: 8 números y 1 letra
+    val dniPattern = Regex("^\\d{8}[A-HJ-NP-TV-Z]$")
+    if (!dniPattern.matches(dni.uppercase())) return false
+
+    // Validación de letra de control
+    val letras = "TRWAGMYFPDXBNJZSQVHLCKE"
+    val numero = dni.substring(0, 8).toIntOrNull() ?: return false
+    val letra = dni[8]
+    return letra == letras[numero % 23]
+}
+
+/**
+ * Función para validar si el formulario es válido.
+ * 
+ * Esta función verifica que todos los campos obligatorios del formulario estén completos
+ * y cumplan con las validaciones correspondientes.
+ * 
+ * @param uiState El estado actual del formulario
+ * @return `true` si el formulario es válido, `false` en caso contrario
+ * 
+ * @see RegistroUiState
+ */
+private fun isFormValid(uiState: RegistroUiState): Boolean {
+    return uiState.form.email.isNotBlank() &&
+           uiState.form.dni.isNotBlank() &&
+           uiState.form.nombre.isNotBlank() &&
+           uiState.form.apellidos.isNotBlank() &&
+           uiState.form.telefono.isNotBlank() &&
+           uiState.form.password.isNotBlank() &&
+           validatePassword(uiState.form.password) &&
+           uiState.emailError == null &&
+           uiState.dniError == null &&
+           uiState.nombreError == null &&
+           uiState.apellidosError == null &&
+           uiState.telefonoError == null
+}
+
+/**
+ * Función para validar si la contraseña es válida.
+ * 
+ * Esta función verifica que la contraseña cumpla con los requisitos mínimos:
+ * - Longitud mínima de 6 caracteres
+ * - Al menos una letra
+ * - Al menos un dígito
+ * 
+ * @param password La contraseña a validar
+ * @return `true` si la contraseña es válida, `false` en caso contrario
+ */
+private fun validatePassword(password: String): Boolean {
+    return password.length >= 6 &&
+           password.any { it.isLetter() } &&
+           password.any { it.isDigit() }
+}
+
+/**
+ * Función para calcular la fortaleza de la contraseña.
+ * 
+ * Esta función evalúa la fortaleza de una contraseña basándose en:
+ * - Longitud
+ * - Diversidad de caracteres (mayúsculas, minúsculas, números, especiales)
+ * 
+ * @param password La contraseña a evaluar
+ * @return Un valor entre 0.0 y 1.0 que representa la fortaleza de la contraseña
+ */
+private fun calculatePasswordStrength(password: String): Float {
+    if (password.isBlank()) return 0f
+    
+    var strength = 0.0f
+    
+    // Longitud
+    strength += minOf(0.4f, password.length * 0.033f)
+    
+    // Diversidad de caracteres
+    val hasLowercase = password.any { it.isLowerCase() }
+    val hasUppercase = password.any { it.isUpperCase() }
+    val hasDigit = password.any { it.isDigit() }
+    val hasSpecial = password.any { !it.isLetterOrDigit() }
+    
+    if (hasLowercase) strength += 0.15f
+    if (hasUppercase) strength += 0.15f
+    if (hasDigit) strength += 0.15f
+    if (hasSpecial) strength += 0.15f
+    
+    return minOf(1.0f, strength)
+}
+
+/**
+ * Función para generar sugerencias de contraseñas seguras.
+ * 
+ * Esta función genera una lista de contraseñas seguras combinando:
+ * - Palabras base relacionadas con la educación
+ * - Números
+ * - Caracteres especiales
+ * 
+ * @return Lista de sugerencias de contraseñas seguras
+ */
+private fun generatePasswordSuggestions(): List<String> {
+    val base = listOf(
+        "Escuela", "Colegio", "Familia", "Educacion", "Aprender"
+    )
+    
+    val numbers = listOf("2023", "2024", "123", "456", "789")
+    val special = listOf("!", "@", "#", "$", "%")
+    
+    return List(4) { index ->
+        val word = base[index % base.size]
+        val number = numbers[index % numbers.size]
+        val specialChar = special[index % special.size]
+        
+        "${word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}${number}${specialChar}"
+    }
+}
+
+/**
+ * Pantalla de registro para UmeEgunero.
+ * 
+ * Implementa un formulario de registro multi-paso con validaciones en tiempo real,
+ * utilizando Jetpack Compose y Material 3.
+ * 
+ * ## Características
+ * - Formulario multi-paso con indicador de progreso
+ * - Validación en tiempo real de campos
+ * - Gestión de DNIs de alumnos
+ * - Selección de relación familiar
+ * - Indicador de fortaleza de contraseña
+ * - Términos y condiciones
+ * 
+ * @param viewModel ViewModel de registro
+ * @param onNavigateBack Callback de navegación atrás
+ * @param onRegistroCompletado Callback de registro exitoso
+ * @param onNavigateToTerminosCondiciones Callback de navegación a términos
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegistroScreen(
@@ -219,48 +395,26 @@ fun RegistroScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var showPasswordRequirements by remember { mutableStateOf(false) }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var showPasswordSuggestions by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    
+    // Estado para controlar la visibilidad de los campos
+    var showPasswordRequirements by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var showPasswordSuggestions by remember { mutableStateOf(false) }
     var showDepuracionDialog by remember { mutableStateOf(false) }
     
-    // Simplificar código sin animaciones
+    // Animaciones y estados visuales
     val passwordIconColor = if (validatePassword(uiState.form.password)) 
         MaterialTheme.colorScheme.primary 
     else 
         MaterialTheme.colorScheme.error
 
-    // Calcular el porcentaje de completado
     val porcentajeCompletado = uiState.form.password.calcularPorcentajeCompletado()
-
-    // Detector de éxito en el registro
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) {
-            onRegistroCompletado()
-        }
-    }
-
-    // Mostrar errores en Snackbar
-    LaunchedEffect(uiState.error, uiState.passwordError) {
-        if (uiState.error != null) {
-            scope.launch {
-                snackbarHostState.showSnackbar(message = uiState.error ?: "Error desconocido")
-                viewModel.clearError()
-            }
-        } else if (uiState.passwordError != null) {
-            scope.launch {
-                snackbarHostState.showSnackbar(message = uiState.passwordError ?: "")
-            }
-        }
-    }
-
-    // Determinar si estamos en modo claro u oscuro
     val isLight = MaterialTheme.colorScheme.isLight()
 
-    // Crear un gradiente elegante para el fondo
+    // Gradiente de fondo
     val gradientColors = if (!isLight) {
         listOf(
             MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
@@ -314,7 +468,6 @@ fun RegistroScreen(
                     strokeWidth = 4.dp
                 )
             } else {
-                // Formulario de registro
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -323,19 +476,20 @@ fun RegistroScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Progreso de registro
-                    if (BuildConfig.DEBUG) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            IconButton(onClick = { showDepuracionDialog = true }) {
-                                Icon(Icons.Default.Info, contentDescription = "Información de depuración")
-                            }
-                        }
-                    }
-                    
-                    // Formulario elegante con efecto de elevación
+                    // Indicador de progreso del formulario
+                    FormProgressIndicator(
+                        progress = calcularPorcentajeCompletado(uiState),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Indicador de pasos
+                    StepIndicator(
+                        currentStep = uiState.currentStep,
+                        totalSteps = uiState.totalSteps,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Formulario principal
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -351,36 +505,26 @@ fun RegistroScreen(
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Text(
-                                text = "Datos de Acceso",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            // Email
-                            OutlinedTextField(
+                            // Campos del formulario con mejor feedback visual
+                            FormField(
                                 value = uiState.form.email,
                                 onValueChange = { viewModel.updateEmail(it) },
-                                label = { Text("Email") },
-                                placeholder = { Text("ejemplo@dominio.com") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Email,
-                                        contentDescription = "Email"
-                                    )
-                                },
-                                supportingText = {
-                                    if (uiState.emailError != null) {
-                                        Text(uiState.emailError!!, color = MaterialTheme.colorScheme.error)
-                                    }
-                                },
-                                isError = uiState.emailError != null,
+                                label = "Email",
+                                placeholder = "ejemplo@dominio.com",
+                                icon = Icons.Default.Email,
+                                error = uiState.emailError,
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Email,
                                     imeAction = ImeAction.Next
-                                )
+                                ),
+                                supportingText = {
+                                    if (uiState.emailError != null) {
+                                        Text(
+                                            uiState.emailError!!,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
                             )
                             
                             // DNI
@@ -589,6 +733,88 @@ fun RegistroScreen(
                         )
                     )
                     
+                    // Sección para DNIs de alumnos
+                    AnimatedVisibility(
+                        visible = uiState.form.subtipo != null,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "DNIs de Alumnos",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                uiState.form.alumnosDni.forEachIndexed { index, dni ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        OutlinedTextField(
+                                            value = dni,
+                                            onValueChange = { viewModel.updateAlumnoDni(index, it) },
+                                            label = { Text("DNI del alumno") },
+                                            modifier = Modifier.weight(1f),
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            isError = dni.isNotBlank() && !validateDni(dni),
+                                            supportingText = {
+                                                if (dni.isNotBlank() && !validateDni(dni)) {
+                                                    Text(
+                                                        "El DNI debe tener 8 números y una letra",
+                                                        color = MaterialTheme.colorScheme.error
+                                                    )
+                                                }
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.Badge,
+                                                    contentDescription = "DNI del alumno"
+                                                )
+                                            }
+                                        )
+
+                                        IconButton(
+                                            onClick = { viewModel.removeAlumnoDni(index) },
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Eliminar DNI"
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Button(
+                                    onClick = { viewModel.addAlumnoDni() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Añadir DNI"
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Añadir otro DNI")
+                                }
+                            }
+                        }
+                    }
+                    
                     // Tipo de relación familiar
                     Column(
                         modifier = Modifier
@@ -629,27 +855,35 @@ fun RegistroScreen(
                         onNavigateToTerminosCondiciones = onNavigateToTerminosCondiciones
                     )
                     
-                    // Botón de registro
-                    Button(
-                        onClick = { 
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                            viewModel.submitRegistration() 
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        enabled = isFormValid(uiState) && !uiState.isLoading,
-                        shape = RoundedCornerShape(12.dp)
+                    // Botones de navegación
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Registrarse")
+                        OutlinedButton(
+                            onClick = { viewModel.previousStep() },
+                            enabled = uiState.currentStep > 1
+                        ) {
+                            Text("Anterior")
+                        }
+
+                        Button(
+                            onClick = { 
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                                viewModel.nextStep() 
+                            },
+                            enabled = isFormValid(uiState) && !uiState.isLoading
+                        ) {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Siguiente")
+                            }
                         }
                     }
                 }
@@ -768,47 +1002,13 @@ fun RegistroScreen(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun RegistroScreenPreview() {
-    UmeEguneroTheme {
-        PreviewRegistroScreen()
-    }
-}
-
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun RegistroScreenDarkPreview() {
-    UmeEguneroTheme(darkTheme = true) {
-        PreviewRegistroScreen()
-    }
-}
-
-@Composable
-fun PreviewRegistroScreen() {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Registro Familiar") },
-                navigationIcon = {
-                    IconButton(onClick = { }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                }
-            )
-        }
-    ) { _ ->
-        RegistroScreen(
-            onNavigateBack = { },
-            onRegistroCompletado = { },
-            onNavigateToTerminosCondiciones = { }
-        )
-    }
-}
-
+/**
+ * Componente de tarjeta de requisitos de contraseña.
+ * 
+ * Muestra los requisitos de la contraseña y su estado de cumplimiento.
+ * 
+ * @param password Contraseña a validar
+ */
 @Composable
 private fun PasswordRequirementsCard(password: String) {
     Card(
@@ -854,8 +1054,15 @@ private fun PasswordRequirementsCard(password: String) {
     }
 }
 
+/**
+ * Componente de ítem de requisito de contraseña.
+ * 
+ * @param text Texto del requisito
+ * @param isMet Estado de cumplimiento
+ * @param icon Icono del requisito
+ */
 @Composable
-fun PasswordRequirementItem(
+private fun PasswordRequirementItem(
     text: String,
     isMet: Boolean,
     icon: ImageVector
@@ -887,6 +1094,11 @@ fun PasswordRequirementItem(
     }
 }
 
+/**
+ * Componente de tarjeta de términos y condiciones.
+ * 
+ * @param onNavigateToTerminosCondiciones Callback de navegación
+ */
 @Composable
 private fun TermsAndConditionsCard(
     onNavigateToTerminosCondiciones: () -> Unit
@@ -922,8 +1134,15 @@ private fun TermsAndConditionsCard(
     }
 }
 
+/**
+ * Componente de tarjeta de opción de relación familiar.
+ * 
+ * @param selected Estado de selección
+ * @param onClick Callback de clic
+ * @param title Título de la opción
+ */
 @Composable
-fun RelacionFamiliarOptionCard(
+private fun RelacionFamiliarOptionCard(
     selected: Boolean,
     onClick: () -> Unit,
     title: String
@@ -976,7 +1195,15 @@ fun RelacionFamiliarOptionCard(
 }
 
 /**
- * Función para calcular el porcentaje de completado del formulario
+ * Función para calcular el porcentaje de completado del formulario.
+ * 
+ * Esta función verifica que todos los campos obligatorios del formulario estén completos
+ * y cumplan con las validaciones correspondientes.
+ * 
+ * @param uiState El estado actual del formulario
+ * @return Un valor entre 0.0 y 1.0 que representa el porcentaje de completado
+ * 
+ * @see RegistroUiState
  */
 private fun calcularPorcentajeCompletado(uiState: RegistroUiState): Float {
     var camposCompletados = 0
@@ -994,82 +1221,16 @@ private fun calcularPorcentajeCompletado(uiState: RegistroUiState): Float {
 }
 
 /**
- * Función para validar si el formulario es válido
- */
-private fun isFormValid(uiState: RegistroUiState): Boolean {
-    return uiState.form.email.isNotBlank() &&
-           uiState.form.dni.isNotBlank() &&
-           uiState.form.nombre.isNotBlank() &&
-           uiState.form.apellidos.isNotBlank() &&
-           uiState.form.telefono.isNotBlank() &&
-           uiState.form.password.isNotBlank() &&
-           validatePassword(uiState.form.password) &&
-           uiState.emailError == null &&
-           uiState.dniError == null &&
-           uiState.nombreError == null &&
-           uiState.apellidosError == null &&
-           uiState.telefonoError == null
-}
-
-/**
- * Función para validar si la contraseña es válida
- */
-private fun validatePassword(password: String): Boolean {
-    return password.length >= 6 &&
-           password.any { it.isLetter() } &&
-           password.any { it.isDigit() }
-}
-
-/**
- * Función para calcular la fortaleza de la contraseña
- */
-private fun calculatePasswordStrength(password: String): Float {
-    if (password.isBlank()) return 0f
-    
-    var strength = 0.0f
-    
-    // Longitud
-    strength += minOf(0.4f, password.length * 0.033f)
-    
-    // Diversidad de caracteres
-    val hasLowercase = password.any { it.isLowerCase() }
-    val hasUppercase = password.any { it.isUpperCase() }
-    val hasDigit = password.any { it.isDigit() }
-    val hasSpecial = password.any { !it.isLetterOrDigit() }
-    
-    if (hasLowercase) strength += 0.15f
-    if (hasUppercase) strength += 0.15f
-    if (hasDigit) strength += 0.15f
-    if (hasSpecial) strength += 0.15f
-    
-    return minOf(1.0f, strength)
-}
-
-/**
- * Función para generar sugerencias de contraseñas
- */
-private fun generatePasswordSuggestions(): List<String> {
-    val base = listOf(
-        "Escuela", "Colegio", "Familia", "Educacion", "Aprender"
-    )
-    
-    val numbers = listOf("2023", "2024", "123", "456", "789")
-    val special = listOf("!", "@", "#", "$", "%")
-    
-    return List(4) { index ->
-        val word = base[index % base.size]
-        val number = numbers[index % numbers.size]
-        val specialChar = special[index % special.size]
-        
-        "${word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}${number}${specialChar}"
-    }
-}
-
-/**
- * Componente para mostrar el progreso del formulario
+ * Componente de indicador de progreso del formulario.
+ * 
+ * @param progress Progreso actual (0.0 a 1.0)
+ * @param modifier Modificador de composición
  */
 @Composable
-fun FormProgressIndicator(progress: Float, modifier: Modifier = Modifier) {
+private fun FormProgressIndicator(
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier) {
         LinearProgressIndicator(
             progress = { progress },
@@ -1089,6 +1250,175 @@ fun FormProgressIndicator(progress: Float, modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.End,
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+/**
+ * Componente de indicador de paso actual.
+ * 
+ * @param currentStep Paso actual
+ * @param totalSteps Total de pasos
+ * @param modifier Modificador de composición
+ */
+@Composable
+private fun StepIndicator(
+    currentStep: Int,
+    totalSteps: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(totalSteps) { step ->
+            val isCurrentStep = step + 1 == currentStep
+            val isCompleted = step + 1 < currentStep
+            
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when {
+                            isCurrentStep -> MaterialTheme.colorScheme.primary
+                            isCompleted -> MaterialTheme.colorScheme.primaryContainer
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isCompleted) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Paso completado",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                } else {
+                    Text(
+                        text = "${step + 1}",
+                        color = if (isCurrentStep) 
+                            MaterialTheme.colorScheme.onPrimary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            if (step < totalSteps - 1) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(2.dp)
+                        .background(
+                            if (step + 1 < currentStep) 
+                                MaterialTheme.colorScheme.primaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Componente reutilizable para campos del formulario.
+ * 
+ * @param value Valor actual
+ * @param onValueChange Callback de cambio
+ * @param label Etiqueta del campo
+ * @param placeholder Texto de placeholder
+ * @param icon Icono del campo
+ * @param error Mensaje de error
+ * @param keyboardOptions Opciones de teclado
+ * @param supportingText Texto de soporte
+ * @param modifier Modificador de composición
+ */
+@Composable
+private fun FormField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String?,
+    icon: ImageVector,
+    error: String?,
+    keyboardOptions: KeyboardOptions,
+    supportingText: @Composable (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it) } },
+        singleLine = true,
+        modifier = modifier.fillMaxWidth(),
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = label
+            )
+        },
+        isError = error != null,
+        keyboardOptions = keyboardOptions,
+        supportingText = supportingText
+    )
+}
+
+/**
+ * Vista previa de la pantalla de registro en modo claro.
+ * 
+ * Esta vista previa muestra cómo se ve la pantalla de registro en modo claro.
+ */
+@Preview(showBackground = true)
+@Composable
+fun RegistroScreenPreview() {
+    UmeEguneroTheme {
+        PreviewRegistroScreen()
+    }
+}
+
+/**
+ * Vista previa de la pantalla de registro en modo oscuro.
+ * 
+ * Esta vista previa muestra cómo se ve la pantalla de registro en modo oscuro.
+ */
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun RegistroScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        PreviewRegistroScreen()
+    }
+}
+
+/**
+ * Componente de vista previa para la pantalla de registro.
+ * 
+ * Este componente proporciona una vista previa de la pantalla de registro con datos de ejemplo.
+ */
+@Composable
+fun PreviewRegistroScreen() {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Registro Familiar") },
+                navigationIcon = {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                }
+            )
+        }
+    ) { _ ->
+        RegistroScreen(
+            onNavigateBack = { },
+            onRegistroCompletado = { },
+            onNavigateToTerminosCondiciones = { }
         )
     }
 }

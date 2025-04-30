@@ -1,3 +1,10 @@
+/**
+ * Módulo de gestión de profesorado del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para la gestión completa del
+ * profesorado de un centro educativo, incluyendo altas, bajas,
+ * modificaciones y asignación a clases.
+ */
 package com.tfg.umeegunero.feature.centro.screen
 
 import androidx.compose.foundation.background
@@ -27,15 +34,45 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.centro.viewmodel.GestionProfesoresViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import android.content.res.Configuration
 
 /**
- * Pantalla para gestionar profesores del centro
- * Permite al administrador del centro visualizar, añadir, editar y asignar profesores a clases
+ * Pantalla principal para la gestión de profesores del centro.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la administración
+ * del profesorado, permitiendo realizar todas las operaciones de gestión
+ * necesarias de forma intuitiva y eficiente.
+ * 
+ * ## Características
+ * - Lista completa de profesores
+ * - Formularios de alta y edición
+ * - Asignación a clases
+ * - Gestión de datos personales
+ * 
+ * ## Funcionalidades
+ * - Alta de nuevos profesores
+ * - Edición de datos existentes
+ * - Asignación a grupos y materias
+ * - Búsqueda y filtrado
+ * 
+ * ## Estados
+ * - Carga de datos
+ * - Lista vacía
+ * - Formularios de edición
+ * - Errores y mensajes
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica de profesores
+ * 
+ * @see GestionProfesoresViewModel
+ * @see Usuario
+ * @see Clase
  */
 @Composable
 fun GestionProfesoresScreen(
@@ -291,7 +328,21 @@ fun GestionProfesoresScreen(
 }
 
 /**
- * Elemento de la lista de profesores
+ * Componente que representa un profesor en la lista.
+ * 
+ * Este componente implementa la visualización de un profesor individual,
+ * mostrando su información básica y permitiendo acceder a más detalles.
+ * 
+ * ## Características
+ * - Datos básicos del profesor
+ * - Acceso a edición
+ * - Indicadores de estado
+ * - Diseño Material Design 3
+ * 
+ * @param profesor Datos del profesor a mostrar
+ * @param onProfesorClick Callback para gestionar el click
+ * 
+ * @see Usuario
  */
 @Composable
 fun ProfesorItemSimple(
@@ -821,25 +872,31 @@ fun AsignarClasesDialog(
     }
 }
 
+/**
+ * Vista previa de la pantalla de gestión de profesores en modo claro.
+ */
 @Preview(showBackground = true)
 @Composable
 fun GestionProfesoresScreenPreview() {
     UmeEguneroTheme {
-        val profesor = Usuario(
-            dni = "12345678Z",
-            nombre = "Juan",
-            apellidos = "García López",
-            email = "juan.garcia@ejemplo.com",
-            telefono = "666123456"
+        GestionProfesoresScreen(
+            navController = rememberNavController()
         )
-        
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            ProfesorItemSimple(
-                profesor = profesor,
-                onProfesorClick = {}
-            )
-        }
+    }
+}
+
+/**
+ * Vista previa de la pantalla de gestión de profesores en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun GestionProfesoresScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        GestionProfesoresScreen(
+            navController = rememberNavController()
+        )
     }
 } 

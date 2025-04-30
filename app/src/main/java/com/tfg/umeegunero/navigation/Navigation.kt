@@ -45,6 +45,8 @@ import com.tfg.umeegunero.feature.common.perfil.screen.EditProfileScreen
 import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
 import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
 import com.tfg.umeegunero.feature.common.users.screen.ListAlumnosScreen
+import com.tfg.umeegunero.feature.admin.viewmodel.SeguridadViewModel
+import com.tfg.umeegunero.feature.admin.screen.SeguridadScreen
 
 /**
  * Navegación principal de la aplicación
@@ -567,8 +569,10 @@ fun Navigation(
 
         // Pantalla de seguridad
         composable(route = AppScreens.Seguridad.route) {
-            com.tfg.umeegunero.feature.admin.screen.SeguridadScreen(
-                navController = navController
+            val viewModel: SeguridadViewModel = hiltViewModel()
+            SeguridadScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

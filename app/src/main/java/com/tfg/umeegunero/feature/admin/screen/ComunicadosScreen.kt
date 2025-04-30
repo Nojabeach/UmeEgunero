@@ -1,3 +1,9 @@
+/**
+ * Módulo de comunicados del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para la gestión y envío de
+ * comunicados generales a diferentes grupos de usuarios del sistema.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.foundation.layout.*
@@ -28,9 +34,39 @@ import com.tfg.umeegunero.feature.admin.viewmodel.ComunicadosViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.content.res.Configuration
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
 /**
- * Pantalla para la gestión y envío de comunicados generales
+ * Pantalla principal para la gestión de comunicados del sistema.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la creación,
+ * envío y gestión de comunicados a diferentes grupos de usuarios,
+ * con capacidades de segmentación y seguimiento.
+ * 
+ * ## Características
+ * - Creación de comunicados
+ * - Selección de destinatarios
+ * - Historial de comunicados
+ * - Estado de envío
+ * 
+ * ## Funcionalidades
+ * - Redacción de comunicados
+ * - Selección de grupos objetivo
+ * - Envío programado
+ * - Seguimiento de entrega
+ * 
+ * ## Estados
+ * - Formulario de creación
+ * - Lista de comunicados
+ * - Carga de datos
+ * - Errores y mensajes
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica de comunicados
+ * 
+ * @see ComunicadosViewModel
+ * @see Comunicado
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -327,9 +363,25 @@ fun ComunicadosScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Componente que representa un comunicado individual.
+ * 
+ * Este componente implementa la visualización de un comunicado,
+ * mostrando su información relevante y estado de envío.
+ * 
+ * ## Características
+ * - Información del comunicado
+ * - Estado de envío
+ * - Destinatarios
+ * - Fecha de envío
+ * 
+ * @param comunicado Datos del comunicado a mostrar
+ * @param onDelete Callback para eliminar el comunicado
+ * 
+ * @see Comunicado
+ */
 @Composable
-fun ComunicadoItem(
+private fun ComunicadoItem(
     comunicado: Comunicado
 ) {
     Card(
@@ -385,12 +437,28 @@ fun ComunicadoItem(
 }
 
 /**
- * Vista previa de la pantalla de comunicados
+ * Vista previa de la pantalla de comunicados en modo claro.
  */
 @Preview(showBackground = true)
 @Composable
 fun ComunicadosScreenPreview() {
     MaterialTheme {
+        ComunicadosScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de comunicados en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun ComunicadosScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
         ComunicadosScreen(
             navController = rememberNavController()
         )

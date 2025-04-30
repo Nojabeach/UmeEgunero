@@ -1,3 +1,9 @@
+/**
+ * Módulo de gestión de centros educativos del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para listar y gestionar los
+ * centros educativos registrados en el sistema.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import androidx.compose.foundation.layout.Arrangement
@@ -70,9 +76,39 @@ import com.tfg.umeegunero.navigation.AppScreens
 import androidx.compose.ui.tooling.preview.Preview
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.navigation.compose.rememberNavController
+import android.content.res.Configuration
 
 /**
- * Pantalla que muestra el listado de todos los centros educativos.
+ * Pantalla principal para la gestión de centros educativos.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la visualización
+ * y gestión de todos los centros educativos registrados en el sistema,
+ * con capacidades de búsqueda y filtrado.
+ * 
+ * ## Características
+ * - Lista de centros con detalles
+ * - Búsqueda en tiempo real
+ * - Filtrado por nombre y ubicación
+ * - Acciones rápidas por centro
+ * 
+ * ## Funcionalidades
+ * - Visualización de centros
+ * - Búsqueda y filtrado
+ * - Creación de nuevos centros
+ * - Edición de centros existentes
+ * - Actualización de datos
+ * 
+ * ## Estados
+ * - Carga de datos
+ * - Lista vacía
+ * - Resultados de búsqueda
+ * - Errores y mensajes
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica de la lista de centros
+ * 
+ * @see ListCentrosViewModel
+ * @see Centro
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -273,6 +309,25 @@ fun ListCentrosScreen(
     }
 }
 
+/**
+ * Componente que representa un centro educativo en la lista.
+ * 
+ * Este componente implementa la visualización de un centro individual,
+ * mostrando su información relevante y acciones disponibles.
+ * 
+ * ## Características
+ * - Información básica del centro
+ * - Acciones rápidas (editar, eliminar)
+ * - Indicadores de estado
+ * - Diseño Material Design 3
+ * 
+ * @param centro Datos del centro a mostrar
+ * @param onEditClick Callback para editar el centro
+ * @param onDeleteClick Callback para eliminar el centro
+ * @param onItemClick Callback para ver detalles del centro
+ * 
+ * @see Centro
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CentroItem(
@@ -449,38 +504,29 @@ fun CentroItem(
 }
 
 /**
- * Preview de un centro educativo
- */
-@Preview(showBackground = true)
-@Composable
-fun CentroItemPreview() {
-    UmeEguneroTheme {
-        Surface {
-            CentroItem(
-                centro = Centro(
-                    id = "1",
-                    nombre = "Colegio San José",
-                    direccion = "Calle Principal 123, 48001 Bilbao, Vizcaya",
-                    telefono = "944123123",
-                    email = "contacto@sanjose.edu.es",
-                    latitud = 43.2569629,
-                    longitud = -2.9234409
-                ),
-                onViewDetails = {},
-                onEditClick = {},
-                onDeleteClick = {}
-            )
-        }
-    }
-}
-
-/**
- * Preview de la pantalla de listado de centros
+ * Vista previa de la pantalla de lista de centros en modo claro.
  */
 @Preview(showBackground = true)
 @Composable
 fun ListCentrosScreenPreview() {
     UmeEguneroTheme {
+        ListCentrosScreen(
+            navController = rememberNavController(),
+            viewModel = hiltViewModel()
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de lista de centros en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun ListCentrosScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
         ListCentrosScreen(
             navController = rememberNavController(),
             viewModel = hiltViewModel()

@@ -1,3 +1,11 @@
+/**
+ * Módulo de pantallas de autenticación para la aplicación UmeEgunero.
+ * 
+ * Este módulo contiene los componentes relacionados con el proceso de registro
+ * y gestión de datos de dirección de los usuarios.
+ * 
+ * @see DireccionStep
+ */
 package com.tfg.umeegunero.feature.auth.screen
 
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +37,52 @@ import androidx.compose.ui.tooling.preview.Preview
 import android.content.res.Configuration
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 
+/**
+ * Paso del formulario de registro para la introducción de datos de dirección.
+ * 
+ * Este componente implementa un formulario para la captura de datos de dirección
+ * con validación en tiempo real y feedback visual. Utiliza Material Design 3
+ * para proporcionar una experiencia de usuario coherente y moderna.
+ * 
+ * ## Campos del formulario
+ * - Calle (vía pública)
+ * - Número de portal
+ * - Piso y puerta
+ * - Código postal
+ * - Ciudad
+ * - Provincia
+ * 
+ * ## Características
+ * - Validación en tiempo real de todos los campos
+ * - Feedback visual de errores
+ * - Organización optimizada del espacio
+ * - Teclados específicos para cada tipo de dato
+ * - Navegación fluida entre campos
+ * - Soporte para scroll vertical
+ * 
+ * ## Validaciones implementadas
+ * - Formato de código postal español (5 dígitos)
+ * - Campos obligatorios
+ * - Longitud máxima de campos
+ * 
+ * @param calle Nombre de la vía pública
+ * @param numero Número del portal
+ * @param piso Identificador de piso y puerta
+ * @param codigoPostal Código postal (5 dígitos)
+ * @param ciudad Nombre de la ciudad
+ * @param provincia Nombre de la provincia
+ * @param onCalleChange Callback para cambios en calle
+ * @param onNumeroChange Callback para cambios en número
+ * @param onPisoChange Callback para cambios en piso
+ * @param onCodigoPostalChange Callback para cambios en código postal
+ * @param onCiudadChange Callback para cambios en ciudad
+ * @param onProvinciaChange Callback para cambios en provincia
+ * @param errors Mapa de errores por campo
+ * 
+ * @see Card
+ * @see OutlinedTextField
+ * @see MaterialTheme
+ */
 @Composable
 fun DireccionStep(
     calle: String,
@@ -193,8 +247,11 @@ fun DireccionStep(
     }
 }
 
-// Previews para DireccionStep
-
+/**
+ * Vista previa del componente DireccionStep en estado vacío.
+ * 
+ * Muestra el formulario sin datos introducidos y sin errores.
+ */
 @Preview(
     name = "Dirección Step",
     showBackground = true,
@@ -221,6 +278,11 @@ fun DireccionStepPreview() {
     }
 }
 
+/**
+ * Vista previa del componente DireccionStep con datos de ejemplo.
+ * 
+ * Muestra el formulario con todos los campos completados correctamente.
+ */
 @Preview(
     name = "Dirección Step - Con Datos",
     showBackground = true,
@@ -247,6 +309,11 @@ fun DireccionStepWithDataPreview() {
     }
 }
 
+/**
+ * Vista previa del componente DireccionStep con errores.
+ * 
+ * Muestra el formulario con errores de validación en varios campos.
+ */
 @Preview(
     name = "Dirección Step - Con Errores",
     showBackground = true,
@@ -256,12 +323,12 @@ fun DireccionStepWithDataPreview() {
 fun DireccionStepWithErrorsPreview() {
     UmeEguneroTheme {
         DireccionStep(
-            calle = "",
-            numero = "abc",
-            piso = "",
-            codigoPostal = "123",
-            ciudad = "",
-            provincia = "",
+            calle = "Calle Principal",
+            numero = "abc", // Error: no es un número válido
+            piso = "3B",
+            codigoPostal = "123", // Error: código postal incompleto
+            ciudad = "",  // Error: campo requerido
+            provincia = "Madrid",
             onCalleChange = {},
             onNumeroChange = {},
             onPisoChange = {},
@@ -269,14 +336,19 @@ fun DireccionStepWithErrorsPreview() {
             onCiudadChange = {},
             onProvinciaChange = {},
             errors = mapOf(
-                "calle" to "La calle es obligatoria",
-                "numero" to "El número debe ser válido",
-                "codigoPostal" to "El código postal debe tener 5 dígitos"
+                "numero" to "Debe ser un número válido",
+                "codigoPostal" to "El código postal debe tener 5 dígitos",
+                "ciudad" to "La ciudad es obligatoria"
             )
         )
     }
 }
 
+/**
+ * Vista previa del componente DireccionStep en modo oscuro.
+ * 
+ * Muestra el formulario con el tema oscuro de Material Design.
+ */
 @Preview(
     name = "Dirección Step - Dark Mode",
     showBackground = true,

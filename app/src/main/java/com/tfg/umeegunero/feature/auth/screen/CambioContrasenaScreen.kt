@@ -1,3 +1,11 @@
+/**
+ * Módulo de pantallas de autenticación para la aplicación UmeEgunero.
+ * 
+ * Este módulo contiene las pantallas relacionadas con el proceso de autenticación y gestión de usuarios.
+ * 
+ * @see CambioContrasenaScreen
+ * @see CambioContrasenaViewModel
+ */
 package com.tfg.umeegunero.feature.auth.screen
 
 import androidx.compose.foundation.layout.*
@@ -25,16 +33,28 @@ import androidx.compose.ui.tooling.preview.Preview
 /**
  * Pantalla para cambiar la contraseña de un usuario.
  * 
- * Esta pantalla permite a los usuarios cambiar su contraseña actual por una nueva,
- * implementando las validaciones necesarias y mostrando feedback visual del proceso.
- *
+ * Implementa un formulario seguro para el cambio de contraseña con las siguientes características:
+ * - Validación de contraseña actual
+ * - Validación de nueva contraseña
+ * - Confirmación de nueva contraseña
+ * - Visualización/ocultación de contraseñas
+ * - Feedback visual del proceso
+ * - Manejo de errores
+ * 
+ * ## Características de Seguridad
+ * - Enmascaramiento de contraseñas por defecto
+ * - Validación de coincidencia de contraseñas
+ * - Indicador de carga durante el proceso
+ * - Mensajes de error descriptivos
+ * 
  * @param dni DNI del usuario que cambiará su contraseña
  * @param onNavigateBack Callback para volver a la pantalla anterior
  * @param onPasswordChanged Callback que se ejecuta cuando la contraseña se cambia exitosamente
  * @param viewModel ViewModel que gestiona la lógica de cambio de contraseña
- *
- * @author Maitane (Estudiante 2º DAM)
- * @version 1.0
+ * 
+ * @see CambioContrasenaViewModel
+ * @see LoadingDialog
+ * @see AppTopBar
  */
 @Composable
 fun CambioContrasenaScreen(
@@ -170,6 +190,13 @@ fun CambioContrasenaScreen(
     }
 }
 
+/**
+ * Vista previa del componente CambioContrasenaScreen.
+ * 
+ * Muestra una versión de prueba con datos de ejemplo.
+ * 
+ * @see CambioContrasenaScreen
+ */
 @Preview(showBackground = true)
 @Composable
 fun CambioContrasenaScreenPreview() {

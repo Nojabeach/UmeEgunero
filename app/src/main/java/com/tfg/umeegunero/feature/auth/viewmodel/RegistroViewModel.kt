@@ -44,12 +44,47 @@ data class RegistroUiState(
     val direccionError: String? = null
 )
 
+/**
+ * ViewModel para el proceso de registro de usuarios en la aplicación UmeEgunero.
+ * 
+ * Este ViewModel implementa el patrón MVVM (Model-View-ViewModel) y utiliza las mejores prácticas
+ * de desarrollo Android moderno, incluyendo:
+ * - Jetpack Compose para la UI
+ * - Coroutines para operaciones asíncronas
+ * - StateFlow para la gestión del estado
+ * - Hilt para la inyección de dependencias
+ * 
+ * @property authRepository Repositorio para operaciones de autenticación
+ * @property uiState Estado actual de la UI
+ * @property currentStep Paso actual del formulario
+ * @property totalSteps Total de pasos del formulario
+ * 
+ * @see RegistroUiState
+ * @see RegistroUsuarioForm
+ */
 @HiltViewModel
 class RegistroViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val debugUtils: DebugUtils
 ) : ViewModel() {
 
+    /**
+     * Estado actual de la UI del registro.
+     * 
+     * Este estado es inmutable y contiene toda la información necesaria para renderizar la UI.
+     * Se actualiza mediante el patrón de diseño StateFlow para garantizar la reactividad.
+     * 
+     * @property form Datos actuales del formulario
+     * @property isLoading Indica si hay operaciones en curso
+     * @property error Mensaje de error, si existe
+     * @property success Indica si el registro fue exitoso
+     * @property emailError Error de validación del email
+     * @property dniError Error de validación del DNI
+     * @property passwordError Error de validación de la contraseña
+     * @property nombreError Error de validación del nombre
+     * @property apellidosError Error de validación de los apellidos
+     * @property telefonoError Error de validación del teléfono
+     */
     private val _uiState = MutableStateFlow(RegistroUiState())
     val uiState: StateFlow<RegistroUiState> = _uiState.asStateFlow()
 
@@ -168,13 +203,26 @@ class RegistroViewModel @Inject constructor(
     }
 
     /**
-     * Añade un DNI de alumno al formulario
+     * Añade un nuevo campo para DNI de alumno
      */
-    fun addAlumnoDni(dni: String) {
-        if (dni.isNotBlank() && !_uiState.value.form.alumnosDni.contains(dni)) {
-            val currentAlumnos = _uiState.value.form.alumnosDni.toMutableList()
-            currentAlumnos.add(dni)
+    fun addAlumnoDni() {
+        val currentAlumnos = _uiState.value.form.alumnosDni.toMutableList()
+        currentAlumnos.add("")
 
+        _uiState.update {
+            it.copy(
+                form = it.form.copy(alumnosDni = currentAlumnos)
+            )
+        }
+    }
+
+    /**
+     * Actualiza el DNI de un alumno específico
+     */
+    fun updateAlumnoDni(index: Int, dni: String) {
+        val currentAlumnos = _uiState.value.form.alumnosDni.toMutableList()
+        if (index in currentAlumnos.indices) {
+            currentAlumnos[index] = dni
             _uiState.update {
                 it.copy(
                     form = it.form.copy(alumnosDni = currentAlumnos)
@@ -184,18 +232,20 @@ class RegistroViewModel @Inject constructor(
     }
 
     /**
-     * Elimina un DNI de alumno del formulario
+     * Elimina el DNI de un alumno específico
      */
-    fun removeAlumnoDni(dni: String) {
+    fun removeAlumnoDni(index: Int) {
         val currentAlumnos = _uiState.value.form.alumnosDni.toMutableList()
-        currentAlumnos.remove(dni)
-
-        _uiState.update {
-            it.copy(
-                form = it.form.copy(alumnosDni = currentAlumnos)
-            )
+        if (index in currentAlumnos.indices) {
+            currentAlumnos.removeAt(index)
+            _uiState.update {
+                it.copy(
+                    form = it.form.copy(alumnosDni = currentAlumnos)
+                )
+            }
         }
     }
+
     /**
      * Validaciones de formato
      */

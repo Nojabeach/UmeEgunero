@@ -12,20 +12,42 @@ import javax.inject.Inject
 import com.tfg.umeegunero.util.Result
 
 /**
- * ViewModel para la pantalla de cambio de contraseña.
+ * ViewModel para la gestión del cambio de contraseña en UmeEgunero.
  * 
- * @property usuarioRepository Repositorio para gestionar los datos de usuarios
+ * Implementa el patrón MVVM y gestiona el proceso de cambio de contraseña,
+ * incluyendo validaciones y comunicación con el repositorio de usuarios.
  * 
- * @author Maitane (Estudiante 2º DAM)
+ * ## Validaciones
+ * - Coincidencia de contraseñas
+ * - Longitud mínima (6 caracteres)
+ * - Diferencia con contraseña actual
+ * 
+ * @property usuarioRepository Repositorio para operaciones de usuario
+ * @see CambioContrasenaUiState
  */
 @HiltViewModel
 class CambioContrasenaViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
 
+    /**
+     * Estado actual de la UI.
+     * 
+     * @property isLoading Estado de carga
+     * @property isSuccess Éxito de la operación
+     * @property error Mensaje de error
+     */
     private val _uiState = MutableStateFlow(CambioContrasenaUiState())
     val uiState: StateFlow<CambioContrasenaUiState> = _uiState
 
+    /**
+     * Procesa el cambio de contraseña.
+     * 
+     * @param dni DNI del usuario
+     * @param contrasenaActual Contraseña actual
+     * @param nuevaContrasena Nueva contraseña
+     * @param confirmarContrasena Confirmación de nueva contraseña
+     */
     fun cambiarContrasena(dni: String, contrasenaActual: String, nuevaContrasena: String, confirmarContrasena: String) {
         if (nuevaContrasena != confirmarContrasena) {
             _uiState.update { it.copy(error = "Las contraseñas no coinciden") }
@@ -76,6 +98,10 @@ class CambioContrasenaViewModel @Inject constructor(
 
 /**
  * Estado de la UI para la pantalla de cambio de contraseña.
+ * 
+ * @property isLoading Indica si hay operación en curso
+ * @property isSuccess Indica si el cambio fue exitoso
+ * @property error Mensaje de error si existe
  */
 data class CambioContrasenaUiState(
     val isLoading: Boolean = false,

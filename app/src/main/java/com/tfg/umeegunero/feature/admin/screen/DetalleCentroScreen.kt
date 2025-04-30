@@ -1,3 +1,9 @@
+/**
+ * Módulo de gestión detallada de centros educativos del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para visualizar y gestionar los
+ * detalles específicos de un centro educativo.
+ */
 package com.tfg.umeegunero.feature.admin.screen
 
 import android.content.Intent
@@ -59,9 +65,32 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.tooling.preview.Preview
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.navigation.compose.rememberNavController
+import android.content.res.Configuration
 
 /**
- * Clase para gestionar el estado de la pantalla de detalle de centro
+ * Clase que gestiona el estado de la pantalla de detalle de centro.
+ * 
+ * Esta clase encapsula toda la lógica de estado y operaciones
+ * relacionadas con la visualización y gestión de un centro educativo.
+ * 
+ * ## Estados
+ * - Centro actual
+ * - Estado de carga
+ * - Diálogo de eliminación
+ * - Proceso de eliminación
+ * 
+ * ## Operaciones
+ * - Carga de datos del centro
+ * - Eliminación del centro
+ * - Gestión de estados de UI
+ * 
+ * @property centro Centro educativo actual
+ * @property isLoading Estado de carga de datos
+ * @property showDeleteDialog Visibilidad del diálogo de eliminación
+ * @property isDeleting Estado del proceso de eliminación
+ * 
+ * @see Centro
+ * @see AdminViewModel
  */
 class DetalleCentroState {
     var centro by mutableStateOf<Centro?>(null)
@@ -69,6 +98,12 @@ class DetalleCentroState {
     var showDeleteDialog by mutableStateOf(false)
     var isDeleting by mutableStateOf(false)
     
+    /**
+     * Carga los datos del centro educativo.
+     * 
+     * @param viewModel ViewModel que gestiona la lógica de administración
+     * @param centroId Identificador del centro a cargar
+     */
     fun cargarCentro(viewModel: AdminViewModel, centroId: String) {
         isLoading = true
         viewModel.getCentro(centroId) { loadedCentro ->
@@ -77,6 +112,14 @@ class DetalleCentroState {
         }
     }
     
+    /**
+     * Elimina el centro educativo.
+     * 
+     * @param viewModel ViewModel que gestiona la lógica de administración
+     * @param centroId Identificador del centro a eliminar
+     * @param onSuccess Callback ejecutado tras eliminación exitosa
+     * @param onError Callback ejecutado si ocurre un error
+     */
     fun eliminarCentro(
         viewModel: AdminViewModel, 
         centroId: String,
@@ -98,7 +141,32 @@ class DetalleCentroState {
 }
 
 /**
- * Pantalla de detalle de un centro educativo simplificada
+ * Pantalla de detalle de centro educativo.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la visualización
+ * y gestión de los detalles de un centro educativo específico.
+ * 
+ * ## Características
+ * - Información detallada del centro
+ * - Acciones de gestión (editar, eliminar)
+ * - Integración con mapas y comunicaciones
+ * - Estados de carga y error
+ * 
+ * ## Funcionalidades
+ * - Visualización de datos del centro
+ * - Edición de información
+ * - Eliminación del centro
+ * - Acciones rápidas (llamada, email, ubicación)
+ * 
+ * @param centroId Identificador del centro a mostrar
+ * @param viewModel ViewModel que gestiona la lógica de administración
+ * @param onNavigateBack Callback para navegar hacia atrás
+ * @param onNavigateToEdit Callback para navegar a edición
+ * @param onDeleteSuccess Callback ejecutado tras eliminación exitosa
+ * 
+ * @see DetalleCentroState
+ * @see AdminViewModel
+ * @see Centro
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -517,12 +585,34 @@ fun DetalleCentroScreen(
 }
 
 /**
- * Vista previa de la pantalla de detalle de centro
+ * Vista previa de la pantalla de detalle de centro en modo claro.
  */
 @Preview(showBackground = true)
 @Composable
 fun DetalleCentroScreenPreview() {
     UmeEguneroTheme {
+        Surface {
+            DetalleCentroScreen(
+                centroId = "1",
+                viewModel = hiltViewModel(),
+                onNavigateBack = {},
+                onNavigateToEdit = {},
+                onDeleteSuccess = {}
+            )
+        }
+    }
+}
+
+/**
+ * Vista previa de la pantalla de detalle de centro en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun DetalleCentroScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
         Surface {
             DetalleCentroScreen(
                 centroId = "1",
