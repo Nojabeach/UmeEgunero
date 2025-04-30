@@ -15,6 +15,22 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
+/**
+ * Estado UI para la pantalla de lista de cursos.
+ * 
+ * Esta clase representa el estado completo de la interfaz de usuario para
+ * la gestión de cursos, conteniendo toda la información necesaria para
+ * renderizar correctamente la pantalla.
+ * 
+ * @property cursos Lista de cursos del centro seleccionado
+ * @property centros Lista de centros disponibles
+ * @property centroSeleccionado Centro actualmente seleccionado
+ * @property isLoading Indica si hay operaciones en progreso
+ * @property error Mensaje de error a mostrar, null si no hay errores
+ * 
+ * @see ListaCursosViewModel
+ * @see ListaCursosScreen
+ */
 data class ListaCursosUiState(
     val cursos: List<Curso> = emptyList(),
     val centros: List<Centro> = emptyList(),
@@ -23,6 +39,36 @@ data class ListaCursosUiState(
     val error: String? = null
 )
 
+/**
+ * ViewModel para la gestión de cursos en un centro educativo.
+ * 
+ * Este ViewModel implementa la lógica de negocio relacionada con la gestión
+ * de cursos, proporcionando funcionalidades para:
+ * - Listar cursos por centro
+ * - Crear nuevos cursos
+ * - Actualizar cursos existentes
+ * - Eliminar cursos
+ * - Gestionar la selección de centros
+ * 
+ * ## Características principales
+ * - Gestión del estado de la UI mediante [StateFlow]
+ * - Carga automática de datos al inicializar
+ * - Manejo de errores y estados de carga
+ * - Integración con repositorios de cursos y centros
+ * 
+ * ## Flujo de datos
+ * 1. Carga inicial de centros
+ * 2. Selección de centro por defecto
+ * 3. Carga de cursos del centro seleccionado
+ * 4. Actualización del estado UI
+ * 
+ * @constructor Crea una instancia del ViewModel con las dependencias necesarias
+ * @param cursosRepository Repositorio para acceder a los datos de cursos
+ * @param centroRepository Repositorio para acceder a los datos de centros
+ * 
+ * @see ListaCursosUiState
+ * @see ListaCursosScreen
+ */
 @HiltViewModel
 class ListaCursosViewModel @Inject constructor(
     private val cursosRepository: CursosRepository,

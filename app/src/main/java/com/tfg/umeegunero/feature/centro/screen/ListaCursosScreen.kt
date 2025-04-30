@@ -30,7 +30,39 @@ import com.tfg.umeegunero.navigation.AppScreens
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla para gestionar los cursos del centro educativo
+ * Pantalla para gestionar los cursos del centro educativo.
+ * 
+ * Esta pantalla proporciona una interfaz completa para la gestión de cursos,
+ * permitiendo visualizar, crear, editar y eliminar cursos del centro educativo
+ * seleccionado.
+ * 
+ * ## Características
+ * - Lista de cursos del centro seleccionado
+ * - Selector de centro educativo
+ * - Creación de nuevos cursos
+ * - Edición de cursos existentes
+ * - Eliminación de cursos
+ * - Gestión de estados de carga y errores
+ * 
+ * ## Estados
+ * - Carga de datos
+ * - Visualización de lista
+ * - Diálogo de creación/edición
+ * - Mensajes de error y éxito
+ * 
+ * ## Componentes principales
+ * - TopAppBar con navegación
+ * - Selector de centro
+ * - Lista de cursos
+ * - FloatingActionButton para añadir cursos
+ * - Diálogos de creación/edición
+ * - Snackbar para mensajes
+ * 
+ * @param navController Controlador de navegación para la gestión de rutas
+ * @param viewModel ViewModel que gestiona la lógica de cursos
+ * 
+ * @see ListaCursosViewModel
+ * @see ListaCursosUiState
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

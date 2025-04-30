@@ -4,6 +4,15 @@
  * Este módulo implementa la interfaz principal del panel de control
  * para los administradores de centros educativos, proporcionando
  * acceso rápido a todas las funcionalidades del sistema.
+ * 
+ * ## Características principales
+ * - Interfaz moderna y responsive
+ * - Navegación intuitiva
+ * - Gestión de estado con Compose
+ * - Integración con ViewModel
+ * 
+ * @see CentroDashboardViewModel
+ * @see CentroDashboardUiState
  */
 package com.tfg.umeegunero.feature.centro.screen
 
@@ -89,10 +98,23 @@ import android.content.res.Configuration
  * - Diálogo de cierre de sesión
  * - Errores y mensajes
  * 
- * @param navController Controlador de navegación
+ * ## Navegación
+ * La pantalla proporciona acceso a:
+ * - Lista de cursos
+ * - Lista de clases
+ * - Gestión de profesores
+ * - Gestión de alumnos
+ * - Vinculación profesor-clase
+ * - Vinculación familiar
+ * - Creación rápida de usuarios
+ * - Calendario
+ * - Notificaciones
+ * 
+ * @param navController Controlador de navegación para la gestión de rutas
  * @param viewModel ViewModel que gestiona la lógica del panel
  * 
  * @see CentroDashboardViewModel
+ * @see CentroDashboardUiState
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

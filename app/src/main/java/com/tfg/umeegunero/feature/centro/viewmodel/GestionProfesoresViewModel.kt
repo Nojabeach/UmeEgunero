@@ -21,11 +21,33 @@ import javax.inject.Inject
 
 /**
  * Estado de la UI para la pantalla de gestión de profesores
+ * 
+ * Esta clase representa el estado completo de la interfaz de usuario para
+ * la gestión de profesores, conteniendo toda la información necesaria para
+ * renderizar correctamente la pantalla.
+ * 
+ * Sigue el patrón de UI State en Jetpack Compose, donde el estado se mantiene
+ * de forma inmutable y cada cambio genera un nuevo objeto de estado.
+ * 
+ * @property profesores Lista de profesores del centro
+ * @property isLoading Indica si hay operaciones de carga en progreso
+ * @property error Mensaje de error a mostrar, null si no hay errores
+ * @property clases Lista de clases del centro
+ * @property clasesAsignadas Lista de clases asignadas al profesor seleccionado
+ * @property selectedProfesor Profesor seleccionado para edición
+ * @property showAddProfesorDialog Flag para controlar la visibilidad del diálogo de añadir
+ * @property showEditProfesorDialog Flag para controlar la visibilidad del diálogo de editar
+ * @property showAsignarClasesDialog Flag para controlar la visibilidad del diálogo de asignar clases
+ * @property showDeleteConfirmDialog Flag para controlar la visibilidad del diálogo de confirmación de eliminación
+ * @property showSuccessMessage Mensaje de éxito a mostrar, null si no hay éxito
+ * 
+ * @see GestionProfesoresViewModel
+ * @see GestionProfesoresScreen
  */
 data class GestionProfesoresUiState(
+    val profesores: List<Usuario> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val profesores: List<Usuario> = emptyList(),
     val clases: List<Clase> = emptyList(),
     val clasesAsignadas: List<Clase> = emptyList(),
     val selectedProfesor: Usuario? = null,
@@ -38,6 +60,33 @@ data class GestionProfesoresUiState(
 
 /**
  * ViewModel para la gestión de profesores del centro
+ * 
+ * Este ViewModel implementa la lógica de negocio relacionada con la gestión
+ * de profesores, proporcionando funcionalidades para:
+ * - Listar profesores del centro
+ * - Añadir nuevos profesores
+ * - Editar profesores existentes
+ * - Eliminar profesores
+ * - Gestionar permisos y roles
+ * 
+ * ## Características principales
+ * - Gestión del estado de la UI mediante [StateFlow]
+ * - Carga automática de datos al inicializar
+ * - Manejo de errores y estados de carga
+ * - Integración con repositorios de usuarios y centros
+ * 
+ * ## Flujo de datos
+ * 1. Carga inicial del centro actual
+ * 2. Obtención de profesores del centro
+ * 3. Gestión de operaciones CRUD
+ * 4. Actualización del estado UI
+ * 
+ * @constructor Crea una instancia del ViewModel con las dependencias necesarias
+ * @param usuarioRepository Repositorio para acceder a los datos de usuarios
+ * @param claseRepository Repositorio para acceder a los datos de clases
+ * 
+ * @see GestionProfesoresUiState
+ * @see GestionProfesoresScreen
  */
 @HiltViewModel
 class GestionProfesoresViewModel @Inject constructor(

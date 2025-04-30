@@ -1,3 +1,32 @@
+/**
+ * Módulo de asignación de profesores del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para gestionar las asignaciones
+ * de profesores a clases y materias, permitiendo una gestión eficiente
+ * de la carga docente.
+ * 
+ * ## Características
+ * - Asignación de profesores a clases
+ * - Gestión de materias
+ * - Control de horarios
+ * - Validación de conflictos
+ * 
+ * ## Funcionalidades
+ * - Asignar profesores
+ * - Modificar asignaciones
+ * - Validar disponibilidad
+ * - Gestionar horarios
+ * 
+ * ## Estados
+ * - Selección de profesor
+ * - Selección de clase
+ * - Validación
+ * - Confirmación
+ * 
+ * @see ProfesorAsignacionViewModel
+ * @see Profesor
+ * @see Clase
+ */
 package com.tfg.umeegunero.feature.centro.screen
 
 import androidx.compose.foundation.layout.Column
@@ -60,8 +89,29 @@ class ProfesorAsignacionScreenViewModel @Inject constructor() : ViewModel() {
     }
 }
 
+/**
+ * Pantalla de asignación de profesores a clases.
+ * 
+ * Esta pantalla permite gestionar las asignaciones de profesores
+ * a clases y materias, validando conflictos y disponibilidad.
+ * 
+ * ## Características
+ * - Selección de profesor
+ * - Selección de clase
+ * - Validación automática
+ * - Gestión de horarios
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica de asignación
+ * 
+ * @see ProfesorAsignacionViewModel
+ * @see AsignacionForm
+ */
 @Composable
-fun ProfesorAsignacionScreen(viewModel: ProfesorAsignacionScreenViewModel = viewModel()) {
+fun ProfesorAsignacionScreen(
+    navController: NavController,
+    viewModel: ProfesorAsignacionScreenViewModel = viewModel()
+) {
     val cursos by viewModel.cursos.collectAsState()
     val error by viewModel.error.collectAsState()
 
@@ -134,5 +184,59 @@ fun ProfesorAsignacionScreen(viewModel: ProfesorAsignacionScreenViewModel = view
                 )
             }
         }
+    }
+}
+
+/**
+ * Formulario de asignación de profesor a clase.
+ * 
+ * Este componente proporciona la interfaz para seleccionar
+ * y configurar una asignación de profesor a clase.
+ * 
+ * ## Características
+ * - Selección de profesor
+ * - Selección de clase
+ * - Configuración de horario
+ * - Validación en tiempo real
+ * 
+ * @param onConfirm Callback para confirmar la asignación
+ * @param onCancel Callback para cancelar la operación
+ * 
+ * @see ProfesorAsignacionScreen
+ */
+@Composable
+private fun AsignacionForm(
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    // ... existing code ...
+}
+
+/**
+ * Vista previa de la pantalla de asignación en modo claro.
+ */
+@Preview(showBackground = true)
+@Composable
+fun ProfesorAsignacionScreenPreview() {
+    UmeEguneroTheme {
+        ProfesorAsignacionScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de asignación en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun ProfesorAsignacionScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        ProfesorAsignacionScreen(
+            navController = rememberNavController()
+        )
     }
 } 

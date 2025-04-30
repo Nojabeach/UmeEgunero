@@ -21,7 +21,7 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Estado UI para la pantalla de dashboard del centro educativo
+ * Estado UI para la pantalla de dashboard del centro educativo.
  * 
  * Esta clase representa el estado completo de la interfaz de usuario para
  * la gestión a nivel de centro educativo, conteniendo toda la información
@@ -38,8 +38,8 @@ import javax.inject.Inject
  * @property nombreCentro Nombre del centro educativo a mostrar en el dashboard
  * @property centroId ID del centro educativo asociado al usuario actual
  *
- * @author Maitane (Estudiante 2º DAM)
- * @version 1.2
+ * @see CentroDashboardViewModel
+ * @see CentroDashboardScreen
  */
 data class CentroDashboardUiState(
     val isLoading: Boolean = false,
@@ -52,7 +52,7 @@ data class CentroDashboardUiState(
 )
 
 /**
- * ViewModel para la gestión del dashboard de centro educativo
+ * ViewModel para la gestión del dashboard de centro educativo.
  * 
  * Este ViewModel implementa la lógica de negocio relacionada con la administración
  * a nivel de centro educativo, proporcionando datos y funcionalidades para:
@@ -64,13 +64,26 @@ data class CentroDashboardUiState(
  * Utiliza el patrón MVVM junto con Flows para exponer el estado de forma reactiva
  * y corrutinas para manejar operaciones asíncronas.
  * 
- * @property cursoRepository Repositorio para acceder a los datos de cursos
- * @property usuarioRepository Repositorio para acceder a los datos de usuarios
- * @property authRepository Repositorio para gestionar la autenticación
- * @property centroRepository Repositorio para acceder a los datos de centros
+ * ## Características principales
+ * - Gestión del estado de la UI mediante [StateFlow]
+ * - Carga automática de datos al inicializar
+ * - Manejo de errores y estados de carga
+ * - Integración con múltiples repositorios
  * 
- * @author Maitane (Estudiante 2º DAM)
- * @version 1.2
+ * ## Flujo de datos
+ * 1. Inicialización y carga del usuario actual
+ * 2. Obtención del centro asociado
+ * 3. Carga de cursos y datos relacionados
+ * 4. Actualización del estado UI
+ * 
+ * @constructor Crea una instancia del ViewModel con las dependencias necesarias
+ * @param cursoRepository Repositorio para acceder a los datos de cursos
+ * @param usuarioRepository Repositorio para acceder a los datos de usuarios
+ * @param authRepository Repositorio para gestionar la autenticación
+ * @param centroRepository Repositorio para acceder a los datos de centros
+ * 
+ * @see CentroDashboardUiState
+ * @see CentroDashboardScreen
  */
 @HiltViewModel
 class CentroDashboardViewModel @Inject constructor(

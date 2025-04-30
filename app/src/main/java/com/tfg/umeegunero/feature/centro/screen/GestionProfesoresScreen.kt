@@ -41,6 +41,7 @@ import com.tfg.umeegunero.feature.centro.viewmodel.GestionProfesoresViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import android.content.res.Configuration
+import com.tfg.umeegunero.ui.components.*
 
 /**
  * Pantalla principal para la gestión de profesores del centro.

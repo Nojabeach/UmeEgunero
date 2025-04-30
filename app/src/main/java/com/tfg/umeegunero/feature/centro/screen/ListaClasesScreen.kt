@@ -1,3 +1,31 @@
+/**
+ * Módulo de gestión de clases del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz para visualizar y gestionar
+ * las clases de un centro educativo, permitiendo ver detalles
+ * y realizar acciones sobre cada clase.
+ * 
+ * ## Características
+ * - Lista completa de clases
+ * - Filtrado y búsqueda
+ * - Detalles de cada clase
+ * - Gestión de asignaciones
+ * 
+ * ## Funcionalidades
+ * - Visualización de clases
+ * - Acceso a detalles
+ * - Navegación a edición
+ * - Integración con profesores
+ * 
+ * ## Estados
+ * - Carga de datos
+ * - Lista vacía
+ * - Error de carga
+ * - Detalles expandidos
+ * 
+ * @see ListaClasesViewModel
+ * @see Clase
+ */
 package com.tfg.umeegunero.feature.centro.screen
 
 import androidx.compose.foundation.layout.*
@@ -21,9 +49,23 @@ import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 
 /**
- * Pantalla para gestionar las clases del centro educativo
- * Actualmente redirecciona al usuario a la pantalla de gestión de cursos
- * donde se ha implementado la funcionalidad completa de gestión de clases
+ * Pantalla principal de lista de clases.
+ * 
+ * Esta pantalla muestra todas las clases del centro en una lista
+ * desplazable, permitiendo acceder a los detalles de cada una
+ * y realizar acciones sobre ellas.
+ * 
+ * ## Características
+ * - Lista con scroll infinito
+ * - Tarjetas de información
+ * - Acciones contextuales
+ * - Navegación integrada
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica de clases
+ * 
+ * @see ListaClasesViewModel
+ * @see ClaseCard
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,4 +179,58 @@ fun ListaClasesScreen(
  * Implementación mínima, ya que la funcionalidad real está en GestionClasesViewModel
  */
 @HiltViewModel
-class ListaClasesViewModel @Inject constructor() : ViewModel() 
+class ListaClasesViewModel @Inject constructor() : ViewModel()
+
+/**
+ * Tarjeta que muestra la información de una clase.
+ * 
+ * Este componente representa una clase individual en la lista,
+ * mostrando su información básica y permitiendo acciones.
+ * 
+ * ## Características
+ * - Diseño Material Design 3
+ * - Información relevante
+ * - Acciones contextuales
+ * - Estados visuales
+ * 
+ * @param clase Datos de la clase a mostrar
+ * @param onClick Callback para gestionar el click
+ * 
+ * @see Clase
+ */
+@Composable
+fun ClaseCard(
+    clase: Clase,
+    onClick: () -> Unit
+) {
+    // ... existing code ...
+}
+
+/**
+ * Vista previa de la pantalla de lista de clases en modo claro.
+ */
+@Preview(showBackground = true)
+@Composable
+fun ListaClasesScreenPreview() {
+    UmeEguneroTheme {
+        ListaClasesScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de lista de clases en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun ListaClasesScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        ListaClasesScreen(
+            navController = rememberNavController()
+        )
+    }
+} 

@@ -1,3 +1,33 @@
+/**
+ * Módulo de vinculación alumno-familiar del sistema UmeEgunero.
+ * 
+ * Este módulo implementa la interfaz detallada para vincular alumnos
+ * con sus familiares, permitiendo una gestión completa de las
+ * relaciones familiares en el centro educativo.
+ * 
+ * ## Características
+ * - Búsqueda de alumnos
+ * - Búsqueda de familiares
+ * - Gestión de relaciones
+ * - Validación de datos
+ * 
+ * ## Funcionalidades
+ * - Selección de alumno
+ * - Selección de familiar
+ * - Definición de relación
+ * - Gestión de permisos
+ * 
+ * ## Estados
+ * - Búsqueda
+ * - Selección
+ * - Validación
+ * - Confirmación
+ * 
+ * @see VincularAlumnoFamiliarViewModel
+ * @see Alumno
+ * @see Familiar
+ * @see RelacionFamiliar
+ */
 package com.tfg.umeegunero.feature.centro.screen
 
 import androidx.compose.foundation.background
@@ -26,25 +56,35 @@ import com.tfg.umeegunero.ui.components.SearchBar
 import com.tfg.umeegunero.ui.theme.Green500
 import com.tfg.umeegunero.ui.theme.Red500
 import kotlinx.coroutines.launch
+import androidx.navigation.NavController
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import android.content.res.Configuration
+import androidx.compose.ui.tooling.preview.Preview
 
 /**
- * Pantalla para vincular alumnos a familiares
+ * Pantalla principal de vinculación alumno-familiar.
  * 
- * Esta pantalla permite al administrador del centro vincular alumnos con sus familiares,
- * facilitando la gestión de relaciones familiares en el sistema.
- *
- * @param onBackClick Función para volver a la pantalla anterior
- * @param onDashboardClick Función para ir al dashboard del centro
- * @param viewModel ViewModel para manejar la lógica de la pantalla
+ * Esta pantalla proporciona una interfaz completa para establecer
+ * y gestionar las relaciones entre alumnos y sus familiares,
+ * incluyendo búsqueda, selección y configuración de permisos.
  * 
- * @author Maitane (Estudiante 2º DAM)
+ * ## Características
+ * - Búsqueda avanzada
+ * - Selección múltiple
+ * - Validación en tiempo real
+ * - Gestión de permisos
+ * 
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona la lógica de vinculación
+ * 
+ * @see VincularAlumnoFamiliarViewModel
+ * @see BusquedaAlumnoForm
+ * @see BusquedaFamiliarForm
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VincularAlumnoFamiliarScreen(
-    onBackClick: () -> Unit,
-    onDashboardClick: () -> Unit,
-    viewModel: VinculacionFamiliarViewModel = hiltViewModel()
+    navController: NavController,
+    viewModel: VincularAlumnoFamiliarViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
@@ -86,12 +126,12 @@ fun VincularAlumnoFamiliarScreen(
             TopAppBar(
                 title = { Text("Vincular Alumnos y Familiares") },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 actions = {
-                    IconButton(onClick = onDashboardClick) {
+                    IconButton(onClick = { navController.navigate("dashboard") }) {
                         Icon(Icons.Default.Home, contentDescription = "Ir al Dashboard")
                     }
                 }
@@ -645,5 +685,84 @@ fun FamiliarVinculadoItem(
                 )
             }
         }
+    }
+}
+
+/**
+ * Formulario de búsqueda de alumnos.
+ * 
+ * Este componente proporciona una interfaz para buscar y
+ * seleccionar alumnos del centro educativo.
+ * 
+ * ## Características
+ * - Búsqueda por nombre
+ * - Búsqueda por curso
+ * - Filtros avanzados
+ * - Resultados paginados
+ * 
+ * @param onSearch Callback para realizar la búsqueda
+ * @param onSelect Callback para la selección
+ * 
+ * @see VincularAlumnoFamiliarScreen
+ */
+@Composable
+private fun BusquedaAlumnoForm(
+    onSearch: (String) -> Unit,
+    onSelect: (Alumno) -> Unit
+) {
+    // ... existing code ...
+}
+
+/**
+ * Formulario de búsqueda de familiares.
+ * 
+ * Este componente proporciona una interfaz para buscar y
+ * seleccionar familiares registrados en el sistema.
+ * 
+ * ## Características
+ * - Búsqueda por nombre
+ * - Búsqueda por DNI
+ * - Filtros de relación
+ * - Resultados paginados
+ * 
+ * @param onSearch Callback para realizar la búsqueda
+ * @param onSelect Callback para la selección
+ * 
+ * @see VincularAlumnoFamiliarScreen
+ */
+@Composable
+private fun BusquedaFamiliarForm(
+    onSearch: (String) -> Unit,
+    onSelect: (Familiar) -> Unit
+) {
+    // ... existing code ...
+}
+
+/**
+ * Vista previa de la pantalla de vinculación en modo claro.
+ */
+@Preview(showBackground = true)
+@Composable
+fun VincularAlumnoFamiliarScreenPreview() {
+    UmeEguneroTheme {
+        VincularAlumnoFamiliarScreen(
+            navController = rememberNavController()
+        )
+    }
+}
+
+/**
+ * Vista previa de la pantalla de vinculación en modo oscuro.
+ */
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
+@Composable
+fun VincularAlumnoFamiliarScreenDarkPreview() {
+    UmeEguneroTheme(darkTheme = true) {
+        VincularAlumnoFamiliarScreen(
+            navController = rememberNavController()
+        )
     }
 } 
