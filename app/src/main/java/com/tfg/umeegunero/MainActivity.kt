@@ -1,15 +1,18 @@
 // Añadida función para cerrar la app desde la navegación
 package com.tfg.umeegunero
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
@@ -25,6 +28,9 @@ import com.tfg.umeegunero.ui.theme.rememberDarkThemeState
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import timber.log.Timber
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
 
 /**
  * Actividad principal de la aplicación UmeEgunero.
@@ -93,11 +99,26 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     } else {
-                        Navigation(
-                            navController = navController,
-                            startDestination = AppScreens.Welcome.route,
-                            onCloseApp = { closeApp() }
-                        )
+                        // Capa principal con NavigationBox
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Navigation(
+                                navController = navController,
+                                startDestination = AppScreens.Welcome.route,
+                                onCloseApp = { closeApp() }
+                            )
+                            
+                            // Botón para probar el envío de email (solo en debug)
+                            FloatingActionButton(
+                                onClick = { startEmailTestActivity() },
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .align(Alignment.BottomEnd)
+                            ) {
+                                androidx.compose.material3.Text("📧")
+                            }
+                        }
                     }
                 }
             }
@@ -150,5 +171,14 @@ class MainActivity : ComponentActivity() {
      */
     fun closeApp() {
         finishAndRemoveTask()
+    }
+    
+    /**
+     * Inicia la actividad de prueba de email para enviar correos de prueba.
+     * Este método solo se usa durante desarrollo.
+     */
+    private fun startEmailTestActivity() {
+        val intent = Intent(this, EmailTestActivity::class.java)
+        startActivity(intent)
     }
 }

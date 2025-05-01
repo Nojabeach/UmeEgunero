@@ -27,6 +27,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +46,7 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -70,8 +74,12 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import android.content.res.Configuration
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.Date
+import androidx.compose.foundation.BorderStroke
+import com.tfg.umeegunero.data.model.SolicitudVinculacion
 
 /**
  * Pantalla principal del panel de control para administradores de centro.
@@ -127,6 +135,9 @@ fun CentroDashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var mostrarDialogoSolicitudes by remember { mutableStateOf(false) }
+    val solicitudesPendientes by viewModel.solicitudesPendientes.collectAsState()
+    val emailStatus by viewModel.emailStatus.collectAsState()
     val currentDate = remember { 
         LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).replaceFirstChar { it.uppercase() } 
     }
@@ -146,6 +157,12 @@ fun CentroDashboardScreen(
             navController.navigate(AppScreens.Welcome.route) {
                 popUpTo(AppScreens.CentroDashboard.route) { inclusive = true }
             }
+        }
+    }
+    // Cargar solicitudes de vinculación cuando se abre el diálogo
+    LaunchedEffect(mostrarDialogoSolicitudes) {
+        if (mostrarDialogoSolicitudes) {
+            viewModel.cargarSolicitudesPendientes()
         }
     }
     // Obtener el ID del centro del usuario actual
@@ -208,6 +225,16 @@ fun CentroDashboardScreen(
                             tint = Color.White
                         )
                     }
+                    
+                    // Botón de prueba de email (solo para desarrollo)
+                    IconButton(onClick = { navController.navigate(AppScreens.PruebaEmail.route) }) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = "Prueba Email",
+                            tint = Color.White
+                        )
+                    }
+                    
                     IconButton(onClick = { showLogoutDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
@@ -417,6 +444,18 @@ fun CentroDashboardScreen(
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Solicitudes de Vinculación",
+                                    descripcion = "Gestiona las solicitudes de los padres para vincularse con sus hijos",
+                                    icono = Icons.Default.People,
+                                    color = CentroColor,
+                                    iconTint = AppColors.Pink80,
+                                    border = true,
+                                    onClick = { mostrarDialogoSolicitudes = true },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
                             // --- Fin Nueva Sección: Herramientas Administrativas ---
 
                             // Espaciador final para scroll
@@ -445,6 +484,101 @@ fun CentroDashboardScreen(
                     )
                 }
                 // --- Fin AlertDialog movido ---
+                
+                // --- Diálogo de Solicitudes de Vinculación ---
+                if (mostrarDialogoSolicitudes) {
+                    AlertDialog(
+                        onDismissRequest = { 
+                            mostrarDialogoSolicitudes = false 
+                            viewModel.limpiarEstadoEmail()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 600.dp),
+                        title = { 
+                            Text(
+                                "Solicitudes de Vinculación Pendientes",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = CentroColor
+                            ) 
+                        },
+                        text = {
+                            Column {
+                                // Mostrar mensaje cuando no hay solicitudes
+                                if (solicitudesPendientes.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "No hay solicitudes pendientes",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
+                                } else {
+                                    // Lista de solicitudes pendientes
+                                    LazyColumn(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 400.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(solicitudesPendientes) { solicitud ->
+                                            SolicitudVinculacionItem(
+                                                solicitud = solicitud,
+                                                onAprobar = { 
+                                                    viewModel.procesarSolicitud(
+                                                        solicitudId = solicitud.id, 
+                                                        aprobar = true,
+                                                        enviarEmail = true,
+                                                        emailFamiliar = null // Aquí deberíamos obtener el email del familiar
+                                                    )
+                                                },
+                                                onRechazar = { 
+                                                    viewModel.procesarSolicitud(
+                                                        solicitudId = solicitud.id, 
+                                                        aprobar = false,
+                                                        enviarEmail = true,
+                                                        emailFamiliar = null // Aquí deberíamos obtener el email del familiar
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                
+                                // Mostrar estado del envío de emails
+                                emailStatus?.let { status ->
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = status,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { 
+                                // Recargar solicitudes por si hay cambios
+                                viewModel.cargarSolicitudesPendientes()
+                            }) { 
+                                Text("Actualizar") 
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { 
+                                mostrarDialogoSolicitudes = false 
+                                viewModel.limpiarEstadoEmail()
+                            }) { 
+                                Text("Cerrar") 
+                            }
+                        }
+                    )
+                }
+                // --- Fin Diálogo de Solicitudes de Vinculación ---
                 
             } // Cierre Box
         } // Cierre lambda de contenido del Scaffold
@@ -477,4 +611,125 @@ fun CentroDashboardScreenDarkPreview() {
             navController = rememberNavController()
         )
     }
+}
+
+/**
+ * Componente que muestra una solicitud de vinculación con opciones para aprobarla o rechazarla.
+ *
+ * @param solicitud La solicitud de vinculación a mostrar
+ * @param onAprobar Función a ejecutar cuando se aprueba la solicitud
+ * @param onRechazar Función a ejecutar cuando se rechaza la solicitud
+ */
+@Composable
+fun SolicitudVinculacionItem(
+    solicitud: SolicitudVinculacion,
+    onAprobar: () -> Unit,
+    onRechazar: () -> Unit
+) {
+    var procesando by remember { mutableStateOf(false) }
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Información del alumno
+            Text(
+                text = "Alumno: ${solicitud.alumnoNombre ?: "No especificado"}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "DNI: ${solicitud.alumnoDni}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Fecha de solicitud formateada
+            Text(
+                text = "Fecha: ${formatearFecha(solicitud.fechaSolicitud.toDate())}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Botones de acción o Indicador de procesamiento
+            if (procesando) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = CentroColor,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Procesando solicitud...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    OutlinedButton(
+                        onClick = { 
+                            procesando = true
+                            onRechazar()
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Rechazar")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = { 
+                            procesando = true
+                            onAprobar()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CentroColor
+                        )
+                    ) {
+                        Text("Aprobar")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Formatea una fecha de tipo Date a un formato legible.
+ *
+ * @param fecha La fecha a formatear
+ * @return String con la fecha formateada
+ */
+private fun formatearFecha(fecha: Date): String {
+    val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
+    return formato.format(fecha)
 } 

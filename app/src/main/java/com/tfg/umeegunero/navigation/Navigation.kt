@@ -47,6 +47,9 @@ import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
 import com.tfg.umeegunero.feature.common.users.screen.ListAlumnosScreen
 import com.tfg.umeegunero.feature.admin.viewmodel.SeguridadViewModel
 import com.tfg.umeegunero.feature.admin.screen.SeguridadScreen
+import com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen
+import com.tfg.umeegunero.feature.centro.screen.prueba.PruebaEmailScreen
+import com.tfg.umeegunero.feature.familiar.screen.FamiliaDashboardScreen
 
 /**
  * Navegación principal de la aplicación
@@ -794,6 +797,11 @@ fun Navigation(
                 navController = navController,
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+
+        // Nueva ruta para la pantalla de prueba de email
+        composable(AppScreens.PruebaEmail.route) {
+            PruebaEmailScreen()
         }
     }
 } 

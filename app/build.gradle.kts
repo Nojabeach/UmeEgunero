@@ -142,6 +142,9 @@ dependencies {
     implementation("com.sun.mail:android-mail:1.6.7")
     implementation("com.sun.mail:android-activation:1.6.7")
     
+    // SendGrid para servicio de email
+    implementation("com.sendgrid:sendgrid-java:4.9.3")
+    
     // Compose material divider
     implementation("androidx.compose.material3:material3-window-size-class:1.2.0")
     implementation("com.google.accompanist:accompanist-flowlayout:0.32.0")

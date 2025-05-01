@@ -5,11 +5,17 @@ import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.EstadoSolicitud
+import com.tfg.umeegunero.data.model.SolicitudVinculacion
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
+import com.tfg.umeegunero.data.repository.SolicitudRepository
+import com.tfg.umeegunero.data.repository.FamiliarRepository
+import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.EmailService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -81,6 +87,10 @@ data class CentroDashboardUiState(
  * @param usuarioRepository Repositorio para acceder a los datos de usuarios
  * @param authRepository Repositorio para gestionar la autenticación
  * @param centroRepository Repositorio para acceder a los datos de centros
+ * @param solicitudRepository Repositorio para acceder a los datos de solicitudes
+ * @param familiarRepository Repositorio para acceder a los datos de familiares
+ * @param alumnoRepository Repositorio para acceder a los datos de alumnos
+ * @param emailService Servicio para enviar correos electrónicos
  * 
  * @see CentroDashboardUiState
  * @see CentroDashboardScreen
@@ -90,7 +100,11 @@ class CentroDashboardViewModel @Inject constructor(
     private val cursoRepository: CursoRepository,
     private val usuarioRepository: UsuarioRepository,
     private val authRepository: AuthRepository,
-    private val centroRepository: CentroRepository
+    private val centroRepository: CentroRepository,
+    private val solicitudRepository: SolicitudRepository,
+    private val familiarRepository: FamiliarRepository,
+    private val alumnoRepository: AlumnoRepository,
+    private val emailService: EmailService
 ) : ViewModel() {
     // Estado mutable internamente para modificaciones dentro del ViewModel
     private val _uiState = MutableStateFlow(CentroDashboardUiState())
@@ -110,6 +124,14 @@ class CentroDashboardViewModel @Inject constructor(
      */
     val nombreCentro = _uiState.asStateFlow().map { it.nombreCentro }
     
+    // Flujo para las solicitudes de vinculación pendientes
+    private val _solicitudesPendientes = MutableStateFlow<List<SolicitudVinculacion>>(emptyList())
+    val solicitudesPendientes = _solicitudesPendientes.asStateFlow()
+    
+    // Estado para controlar el envío de emails
+    private val _emailStatus = MutableStateFlow<String?>(null)
+    val emailStatus = _emailStatus.asStateFlow()
+    
     /**
      * Inicialización del ViewModel
      * 
@@ -118,6 +140,17 @@ class CentroDashboardViewModel @Inject constructor(
      */
     init {
         loadCurrentUser()
+    }
+    
+    /**
+     * Actualiza las solicitudes cuando el centroId cambia
+     */
+    private fun checkCentroIdAndLoadData() {
+        val centroId = _uiState.value.centroId
+        if (centroId.isNotEmpty()) {
+            // Cargar solicitudes pendientes cuando tengamos el centroId
+            cargarSolicitudesPendientes()
+        }
     }
     
     /**
@@ -165,6 +198,9 @@ class CentroDashboardViewModel @Inject constructor(
                                         
                                         // Una vez que tenemos el centroId, cargamos los cursos
                                         loadCursos(centroId)
+                                        
+                                        // También cargamos las solicitudes pendientes
+                                        checkCentroIdAndLoadData()
                                     }
                                     is Result.Error -> {
                                         Timber.e(centroResult.exception, "Error al cargar datos del centro")
@@ -289,5 +325,234 @@ class CentroDashboardViewModel @Inject constructor(
                 }
             }
         }
+    }
+    
+    /**
+     * Carga las solicitudes de vinculación pendientes para el centro
+     * 
+     * Este método recupera todas las solicitudes que los familiares han enviado
+     * para vincularse con alumnos del centro y que están pendientes de aprobación.
+     */
+    fun cargarSolicitudesPendientes() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                val centroId = _uiState.value.centroId
+                if (centroId.isNotEmpty()) {
+                    when (val result = solicitudRepository.getSolicitudesPendientesByCentroId(centroId)) {
+                        is Result.Success -> {
+                            _solicitudesPendientes.value = result.data
+                            _uiState.update { it.copy(isLoading = false) }
+                        }
+                        is Result.Error -> {
+                            Timber.e(result.exception, "Error al cargar solicitudes pendientes")
+                            _uiState.update { it.copy(
+                                isLoading = false,
+                                error = "Error al cargar solicitudes: ${result.exception?.message}"
+                            ) }
+                        }
+                        else -> { /* Ignorar estado loading */ }
+                    }
+                } else {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "No hay centroId disponible para cargar solicitudes"
+                    ) }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error inesperado al cargar solicitudes pendientes")
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = e.message ?: "Error inesperado al cargar solicitudes"
+                ) }
+            }
+        }
+    }
+    
+    /**
+     * Procesa una solicitud de vinculación (aprobar o rechazar)
+     * 
+     * @param solicitudId ID de la solicitud a procesar
+     * @param aprobar true para aprobar, false para rechazar
+     * @param enviarEmail true para enviar email de confirmación
+     * @param emailFamiliar email del familiar para enviar la confirmación
+     */
+    fun procesarSolicitud(solicitudId: String, aprobar: Boolean, enviarEmail: Boolean = true, emailFamiliar: String? = null) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                val nuevoEstado = if (aprobar) EstadoSolicitud.APROBADA else EstadoSolicitud.RECHAZADA
+                
+                // Actualizar estado en la base de datos
+                when (val result = solicitudRepository.actualizarEstadoSolicitud(solicitudId, nuevoEstado.name)) {
+                    is Result.Success -> {
+                        // Buscar información detallada de la solicitud
+                        val solicitud = _solicitudesPendientes.value.find { it.id == solicitudId }
+                        
+                        // Si la solicitud fue aprobada, crear la vinculación entre familiar y alumno
+                        if (aprobar && solicitud != null) {
+                            // Si la solicitud fue aprobada, crear la vinculación entre familiar y alumno
+                            if (solicitud.alumnoDni.isNotEmpty()) {
+                                try {
+                                    // Buscar el alumno por su DNI
+                                    // Nota: No hay un método específico getAlumnoByDni, así que usamos la obtención de todos los alumnos
+                                    // y filtramos por DNI
+                                    when (val alumnosResult = alumnoRepository.getAlumnos()) {
+                                        is Result.Success -> {
+                                            // Encontrar el alumno con el DNI correspondiente
+                                            val alumno = alumnosResult.data.find { it.dni == solicitud.alumnoDni }
+                                            
+                                            if (alumno != null) {
+                                                // Vincular familiar-alumno usando el método disponible
+                                                // Usamos "FAMILIAR" como tipo de parentesco genérico
+                                                when (val vinculacionResult = familiarRepository.vincularFamiliarAlumno(
+                                                    familiarId = solicitud.familiarId,
+                                                    alumnoId = alumno.id,
+                                                    parentesco = "FAMILIAR"
+                                                )) {
+                                                    is Result.Success -> {
+                                                        Timber.d("Vinculación creada exitosamente entre familiar ${solicitud.familiarId} y alumno ${alumno.id}")
+                                                    }
+                                                    is Result.Error -> {
+                                                        val error = vinculacionResult.exception
+                                                        Timber.e(error, "Error al crear vinculación entre familiar y alumno")
+                                                        _uiState.update { it.copy(
+                                                            error = "Error al crear vinculación: ${error?.message}"
+                                                        ) }
+                                                    }
+                                                    else -> {
+                                                        // Caso loading, no debería ocurrir aquí
+                                                    }
+                                                }
+                                            } else {
+                                                // No se encontró alumno con ese DNI
+                                                Timber.w("No se encontró alumno con DNI ${solicitud.alumnoDni}")
+                                                _uiState.update { it.copy(
+                                                    error = "No se encontró alumno con DNI ${solicitud.alumnoDni}"
+                                                ) }
+                                            }
+                                        }
+                                        is Result.Error -> {
+                                            val error = alumnosResult.exception
+                                            Timber.e(error, "Error al obtener la lista de alumnos")
+                                            _uiState.update { it.copy(
+                                                error = "Error al buscar alumno: ${error?.message}"
+                                            ) }
+                                        }
+                                        else -> {
+                                            // Caso loading, no debería ocurrir aquí
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Excepción inesperada al procesar vinculación familiar-alumno")
+                                    _uiState.update { it.copy(
+                                        error = "Error inesperado al vincular familiar: ${e.message}"
+                                    ) }
+                                }
+                            } else {
+                                Timber.w("No se puede crear vinculación: DNI de alumno vacío en la solicitud ${solicitud.id}")
+                                _uiState.update { it.copy(
+                                    error = "No se puede vincular: falta DNI del alumno"
+                                ) }
+                            }
+                        }
+                        
+                        // Buscar el email del familiar si no se proporcionó
+                        val emailDestino = emailFamiliar ?: buscarEmailFamiliar(
+                            solicitud?.familiarId ?: ""
+                        )
+                        
+                        // Enviar email de confirmación si se solicitó y se encontró el email
+                        if (enviarEmail && emailDestino != null && solicitud != null) {
+                            try {
+                                // Obtener el nombre del centro para personalizar el email
+                                val centroNombre = _uiState.value.nombreCentro
+                                
+                                // Usar el nombre del alumno proporcionado en la solicitud o uno genérico
+                                val alumnoNombre = solicitud.alumnoNombre ?: "alumno/a"
+                                
+                                // Enviar email usando el servicio
+                                when (val emailResult = emailService.sendVinculacionNotification(
+                                    to = emailDestino,
+                                    isApproved = aprobar,
+                                    alumnoNombre = alumnoNombre,
+                                    centroNombre = centroNombre
+                                )) {
+                                    is Result.Success -> {
+                                        _emailStatus.value = "Email enviado correctamente a $emailDestino"
+                                        Timber.d("Email de vinculación enviado correctamente a $emailDestino")
+                                    }
+                                    is Result.Error -> {
+                                        val error = emailResult.exception
+                                        _emailStatus.value = "Error al enviar email: ${error?.message}"
+                                        Timber.e(error, "Error al enviar email de vinculación")
+                                    }
+                                    else -> {
+                                        // Caso loading, no debería ocurrir aquí
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Excepción al enviar email de vinculación")
+                                _emailStatus.value = "Error al enviar email: ${e.message}"
+                            }
+                        } else if (enviarEmail) {
+                            _emailStatus.value = "No se pudo enviar el email: dirección de correo no disponible"
+                        }
+                        
+                        // Actualizar la lista de solicitudes pendientes
+                        cargarSolicitudesPendientes()
+                        
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "Error al procesar solicitud")
+                        _uiState.update { it.copy(
+                            isLoading = false,
+                            error = "Error al procesar solicitud: ${result.exception?.message}"
+                        ) }
+                    }
+                    else -> { /* Ignorar estado loading */ }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error inesperado al procesar solicitud")
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = e.message ?: "Error inesperado al procesar solicitud"
+                ) }
+            }
+        }
+    }
+    
+    /**
+     * Busca el email de un familiar por su ID
+     * 
+     * @param familiarId ID del familiar
+     * @return Email del familiar o null si no se encuentra
+     */
+    private suspend fun buscarEmailFamiliar(familiarId: String): String? {
+        if (familiarId.isEmpty()) return null
+        
+        return try {
+            // Intentamos obtener el usuario a partir del ID del familiar
+            val usuarioResult = usuarioRepository.getUsuarioById(familiarId)
+            
+            if (usuarioResult is Result.Success) {
+                return usuarioResult.data.email
+            }
+            
+            null
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar email de familiar: $familiarId")
+            null
+        }
+    }
+    
+    /**
+     * Limpia el estado de envío de email
+     */
+    fun limpiarEstadoEmail() {
+        _emailStatus.value = null
     }
 } 

@@ -217,6 +217,9 @@ sealed class AppScreens(val route: String) {
     /** Pantalla de notificaciones del sistema */
     object Notificaciones : AppScreens("notificaciones")
     
+    /** Pantalla de prueba de envío de emails */
+    object PruebaEmail : AppScreens("prueba_email")
+    
     /** Pantalla de configuración de la aplicación */
     object Config : AppScreens("config")
     
