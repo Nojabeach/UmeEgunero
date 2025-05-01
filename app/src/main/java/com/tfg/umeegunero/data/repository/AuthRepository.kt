@@ -123,6 +123,13 @@ interface AuthRepository {
      * Obtiene el ID del centro educativo al que pertenece el usuario actual
      */
     suspend fun getCurrentCentroId(): String
+
+    /**
+     * Obtiene el ID del usuario actualmente autenticado.
+     * 
+     * @return ID del usuario actual o null si no hay usuario autenticado
+     */
+    suspend fun getCurrentUserId(): String?
 }
 
 /**
@@ -411,5 +418,14 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun getCurrentCentroId(): String {
         val currentUser = getCurrentUser() ?: return ""
         return currentUser.perfiles.firstOrNull()?.centroId ?: ""
+    }
+
+    /**
+     * Obtiene el ID del usuario actualmente autenticado.
+     * 
+     * @return ID del usuario actual o null si no hay usuario autenticado
+     */
+    override suspend fun getCurrentUserId(): String? {
+        return getCurrentUser()?.documentId
     }
 } 

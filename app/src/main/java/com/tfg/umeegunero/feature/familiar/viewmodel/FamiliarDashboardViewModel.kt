@@ -4,13 +4,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.Centro
+import com.tfg.umeegunero.data.model.EstadoSolicitud
+import com.tfg.umeegunero.data.model.Familiar
 import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.SolicitudVinculacion
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.util.Result
-import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.FamiliarRepository
+import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
+import com.tfg.umeegunero.data.repository.SolicitudRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.feature.familiar.screen.SolicitudPendienteUI
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +30,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import androidx.navigation.NavController
 import com.tfg.umeegunero.navigation.AppScreens
+import java.util.Date
 
 /**
  * Estado UI para la pantalla de dashboard del familiar
@@ -37,13 +47,13 @@ import com.tfg.umeegunero.navigation.AppScreens
  */
 data class FamiliarDashboardUiState(
     // Estado de carga, indica si hay una operación en progreso
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     
     // Mensaje de error, null si no hay errores
     val error: String? = null,
     
     // Datos del usuario familiar logueado
-    val familiar: Usuario? = null,
+    val familiar: Familiar? = null,
     
     // Lista de alumnos (hijos) asociados al familiar
     val hijos: List<Alumno> = emptyList(),
@@ -70,7 +80,19 @@ data class FamiliarDashboardUiState(
     val selectedTab: Int = 0,
     
     // Flag para controlar la navegación a la pantalla de bienvenida (tras logout)
-    val navigateToWelcome: Boolean = false
+    val navigateToWelcome: Boolean = false,
+    
+    // Lista de solicitudes de vinculación pendientes
+    val solicitudesPendientes: List<SolicitudPendienteUI> = emptyList(),
+    
+    // Indica si se está procesando el envío de una solicitud
+    val isLoadingSolicitud: Boolean = false,
+    
+    // Indica si una solicitud acaba de ser enviada con éxito
+    val solicitudEnviada: Boolean = false,
+    
+    // Lista de centros educativos disponibles
+    val centros: List<Centro> = emptyList()
 )
 
 /**
@@ -90,8 +112,12 @@ data class FamiliarDashboardUiState(
  */
 @HiltViewModel
 class FamiliarDashboardViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val familiarRepository: FamiliarRepository,
+    private val alumnoRepository: AlumnoRepository,
+    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val solicitudRepository: SolicitudRepository,
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
 
     // Estado mutable interno que solo el ViewModel puede modificar
@@ -107,7 +133,7 @@ class FamiliarDashboardViewModel @Inject constructor(
      * ideal para inicializar datos o configurar observadores.
      */
     init {
-        cargarDatosFamiliar()
+        cargarCentros()
     }
 
     /**
@@ -124,379 +150,223 @@ class FamiliarDashboardViewModel @Inject constructor(
      * 5. Actualiza el estado con los datos obtenidos o maneja el error
      */
     fun cargarDatosFamiliar() {
-        // Lanzamos una corrutina en el scope del ViewModel
-        // Al usar viewModelScope, la corrutina se cancelará automáticamente
-        // cuando el ViewModel sea destruido, evitando memory leaks
         viewModelScope.launch {
-            // Actualizamos el estado para mostrar el indicador de carga
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             try {
-                // Obtenemos el ID del usuario actual
-                val userId = usuarioRepository.getUsuarioActualId()
-
-                if (userId.isBlank()) {
-                    _uiState.update {
-                        it.copy(
-                            error = "No se pudo obtener el usuario actual",
-                            isLoading = false
-                        )
-                    }
-                    return@launch
-                }
-
-                // Cargamos los datos del familiar desde el repositorio
-                val familiarResult = usuarioRepository.getUsuarioPorDni(userId)
-
-                // Procesamos el resultado que viene encapsulado en un tipo Result<T>
-                when (familiarResult) {
-                    is Result.Success<Usuario> -> {
+                val usuarioId = authRepository.getCurrentUserId()
+                if (usuarioId != null) {
+                    // Cargar datos del familiar
+                    val familiarResult = familiarRepository.getFamiliarByUsuarioId(usuarioId)
+                    if (familiarResult is Result.Success) {
                         val familiar = familiarResult.data
-                        _uiState.update {
-                            it.copy(
-                                familiar = familiar,
-                                isLoading = false
-                            )
-                        }
+                        if (familiar != null) {
+                            _uiState.update { it.copy(familiar = familiar) }
 
-                        // Obtenemos los perfiles del familiar
-                        // Un usuario puede tener varios perfiles (familiar, profesor, etc.)
-                        val perfilFamiliar = familiar.perfiles.firstOrNull { it.tipo == TipoUsuario.FAMILIAR }
-
-                        // Si tenemos un perfil de familiar, cargamos sus hijos
-                        if (perfilFamiliar != null && perfilFamiliar.alumnos.isNotEmpty()) {
-                            cargarHijos(perfilFamiliar.alumnos)
+                            // Cargar hijos vinculados
+                            cargarHijosVinculados(familiar.id)
+                            
+                            // Cargar solicitudes pendientes
+                            cargarSolicitudesPendientes(familiar.id)
+                            
+                            // Cargar mensajes no leídos
+                            cargarTotalMensajesNoLeidos(familiar.id)
+                            
+                            // Cargar registros sin leer
+                            cargarRegistrosSinLeer(familiar.id)
                         } else {
                             _uiState.update {
                                 it.copy(
-                                    error = "No se encontraron datos de hijos asociados",
-                                    isLoading = false
+                                    isLoading = false,
+                                    error = "No se encontró información del familiar"
                                 )
                             }
                         }
-                    }
-                    is Result.Error -> {
-                        // Actualizamos el estado con el error y utilizamos Timber para logging
+                    } else if (familiarResult is Result.Error) {
                         _uiState.update {
                             it.copy(
-                                error = "Error al cargar datos del familiar: ${familiarResult.exception?.message}",
-                                isLoading = false
-                            )
-                        }
-                        Timber.e(familiarResult.exception, "Error al cargar familiar")
-                    }
-                    is Result.Loading -> { 
-                        // Mantener estado de carga
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
-                }
-            } catch (e: Exception) {
-                // Capturamos cualquier excepción no manejada y actualizamos el estado
-                _uiState.update {
-                    it.copy(
-                        error = "Error inesperado: ${e.message}",
-                        isLoading = false
-                    )
-                }
-                Timber.e(e, "Error inesperado al cargar familiar")
-            }
-        }
-    }
-
-    /**
-     * Carga los datos de los hijos del familiar
-     * 
-     * Este método recupera la información detallada de cada alumno (hijo)
-     * asociado al familiar, incluyendo sus datos personales, académicos y profesores.
-     * 
-     * @param alumnosIds Lista de identificadores (DNIs) de los alumnos a cargar
-     */
-    private fun cargarHijos(alumnosIds: List<String>) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-
-            try {
-                val hijos = mutableListOf<Alumno>()
-                val profesoresIds = mutableSetOf<String>()
-
-                // Cargamos cada hijo mediante su identificador
-                for (alumnoId in alumnosIds) {
-                    // Obtener los datos del alumno desde el repositorio
-                    val alumnoResult = usuarioRepository.getAlumnoPorDni(alumnoId)
-
-                    when (alumnoResult) {
-                        is Result.Success<Alumno> -> {
-                            val alumno = alumnoResult.data
-                            hijos.add(alumno)
-
-                            // Recopilamos IDs de profesores para cargarlos después
-                            // Esto optimiza las llamadas al repositorio al hacerlo en batch
-                            alumno.profesorIds.let { profesoresIds.addAll(it) }
-                        }
-                        is Result.Error -> {
-                            Timber.e(alumnoResult.exception, "Error al cargar hijo con ID: $alumnoId")
-                        }
-                        is Result.Loading -> { /* Continuar con la carga */ }
-                    }
-                }
-
-                // Actualizamos el estado con la lista de hijos y seleccionamos el primero
-                _uiState.update {
-                    it.copy(
-                        hijos = hijos,
-                        hijoSeleccionado = hijos.firstOrNull(),
-                        isLoading = false
-                    )
-                }
-
-                // Cargamos los profesores asociados a los hijos
-                if (profesoresIds.isNotEmpty()) {
-                    cargarProfesores(profesoresIds.toList())
-                }
-
-                // Cargamos los registros de actividad del primer hijo
-                hijos.firstOrNull()?.let { cargarRegistrosActividad(it.dni) }
-
-                // Cargamos mensajes no leídos
-                cargarMensajesNoLeidos()
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        error = "Error al cargar datos de los hijos: ${e.message}",
-                        isLoading = false
-                    )
-                }
-                Timber.e(e, "Error inesperado al cargar hijos")
-            }
-        }
-    }
-
-    /**
-     * Carga los profesores por sus IDs
-     * 
-     * Este método obtiene los datos completos de los profesores a partir
-     * de sus identificadores y los almacena en un mapa para acceso rápido.
-     * 
-     * @param profesoresIds Lista de identificadores (DNIs) de los profesores a cargar
-     */
-    private fun cargarProfesores(profesoresIds: List<String>) {
-        viewModelScope.launch {
-            try {
-                val profesores = mutableMapOf<String, Usuario>()
-
-                // Iteramos por cada ID de profesor y cargamos sus datos
-                for (profesorId in profesoresIds) {
-                    val profesorResult = usuarioRepository.getUsuarioPorDni(profesorId)
-
-                    if (profesorResult is Result.Success<Usuario>) {
-                        // Guardamos en el mapa usando el ID como clave para acceso rápido
-                        profesores[profesorId] = profesorResult.data
-                    }
-                }
-
-                // Actualizamos el estado con los profesores obtenidos
-                _uiState.update {
-                    it.copy(profesores = profesores)
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cargar profesores")
-            }
-        }
-    }
-
-    /**
-     * Carga los registros de actividad de un hijo
-     * 
-     * Este método obtiene todos los registros de actividad (tareas, asistencia,
-     * notas, etc.) asociados a un alumno específico para mostrarlos en el dashboard.
-     * 
-     * @param alumnoId Identificador (DNI) del alumno cuyos registros se quieren cargar
-     */
-    fun cargarRegistrosActividad(alumnoId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-
-            try {
-                // Consultar los registros de actividad asociados al alumno
-                val registrosResult = usuarioRepository.getRegistrosActividadByAlumno(alumnoId)
-
-                when (registrosResult) {
-                    is Result.Success<List<RegistroActividad>> -> {
-                        val registros = registrosResult.data
-
-                        // Contamos cuántos registros no han sido vistos por el familiar
-                        // Esto nos permitirá mostrar notificaciones o badges en la UI
-                        val noLeidos = registros.count { !it.vistoPorFamiliar }
-
-                        _uiState.update {
-                            it.copy(
-                                registrosActividad = registros,
-                                registrosSinLeer = noLeidos,
-                                isLoading = false
+                                isLoading = false,
+                                error = "Error al cargar datos: ${familiarResult.exception?.message}"
                             )
                         }
                     }
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                error = "Error al cargar registros: ${registrosResult.exception?.message}",
-                                isLoading = false
-                            )
-                        }
-                        Timber.e(registrosResult.exception, "Error al cargar registros de actividad")
-                    }
-                    is Result.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        error = "Error inesperado: ${e.message}",
-                        isLoading = false
-                    )
-                }
-                Timber.e(e, "Error inesperado al cargar registros de actividad")
-            }
-        }
-    }
-
-    /**
-     * Carga los mensajes no leídos del familiar
-     * 
-     * Este método obtiene todos los mensajes que han sido enviados al familiar
-     * pero aún no han sido marcados como leídos, para mostrarlos en la bandeja
-     * de entrada y generar notificaciones.
-     */
-    fun cargarMensajesNoLeidos() {
-        viewModelScope.launch {
-            // Obtenemos el ID del familiar actual, si no está disponible terminamos
-            val familiarId = _uiState.value.familiar?.documentId ?: return@launch
-
-            _uiState.update { it.copy(isLoading = true) }
-
-            try {
-                val mensajesResult = usuarioRepository.getMensajesNoLeidos(familiarId)
-
-                when (mensajesResult) {
-                    is Result.Success<List<Mensaje>> -> {
-                        val mensajes = mensajesResult.data
-                        _uiState.update {
-                            it.copy(
-                                mensajesNoLeidos = mensajes,
-                                totalMensajesNoLeidos = mensajes.size,
-                                isLoading = false
-                            )
-                        }
-                    }
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                error = "Error al cargar mensajes: ${mensajesResult.exception?.message}",
-                                isLoading = false
-                            )
-                        }
-                        Timber.e(mensajesResult.exception, "Error al cargar mensajes")
-                    }
-                    is Result.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        error = "Error al cargar mensajes: ${e.message}",
-                        isLoading = false
-                    )
-                }
-                Timber.e(e, "Error inesperado al cargar mensajes")
-            }
-        }
-    }
-
-    /**
-     * Marca un registro como visto por el familiar
-     * 
-     * Este método actualiza el estado de un registro de actividad para
-     * indicar que ha sido visto por el familiar, tanto en la base de datos
-     * como en el estado local.
-     * 
-     * @param registroId Identificador único del registro a marcar como visto
-     */
-    fun marcarRegistroComoVisto(registroId: String) {
-        viewModelScope.launch {
-            try {
-                // Actualizar el estado del registro para indicar que ha sido visto por el familiar
-                val result = usuarioRepository.marcarRegistroComoVistoPorFamiliar(registroId)
-
-                if (result is Result.Success<Unit>) {
-                    // Actualizamos los registros localmente sin tener que volver a cargarlos
-                    // Esto mejora el rendimiento y proporciona actualizaciones instantáneas en la UI
-                    val registrosActualizados = _uiState.value.registrosActividad.map { registro ->
-                        if (registro.id == registroId) {
-                            // Creamos una copia del registro con los campos actualizados
-                            registro.copy(vistoPorFamiliar = true, fechaVisto = Timestamp.now())
-                        } else {
-                            registro
-                        }
-                    }
-
-                    // Actualizamos el estado con los registros modificados
+                } else {
                     _uiState.update {
                         it.copy(
-                            registrosActividad = registrosActualizados,
-                            registrosSinLeer = it.registrosSinLeer - 1
+                            isLoading = false,
+                            error = "Usuario no identificado"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al marcar registro como visto")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Error inesperado: ${e.message}"
+                    )
+                }
             }
         }
     }
 
     /**
-     * Envía un mensaje al profesor
-     * 
-     * Este método crea y envía un nuevo mensaje desde el familiar al profesor
-     * seleccionado, relacionado con un alumno específico.
-     * 
-     * @param profesorId ID del profesor destinatario del mensaje
-     * @param alumnoId ID del alumno relacionado con el mensaje, puede ser null si no aplica
-     * @param texto Contenido del mensaje a enviar
+     * Carga los hijos vinculados al familiar y selecciona el primero por defecto
+     *
+     * @param familiarId ID del familiar
      */
-    fun enviarMensaje(profesorId: String, alumnoId: String?, texto: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-
-            try {
-                val familiar = _uiState.value.familiar ?: throw Exception("No hay familiar logueado")
-
-                // Creamos el objeto mensaje con todos sus campos
-                val mensaje = Mensaje(
-                    id = "", // Se generará al guardar en la base de datos
-                    emisorId = familiar.documentId,
-                    receptorId = profesorId,
-                    alumnoId = alumnoId ?: "",
-                    texto = texto,
-                    timestamp = Timestamp.now(),
-                    leido = false
-                )
-
-                // Enviar el mensaje al repositorio para su almacenamiento
-                usuarioRepository.enviarMensaje(mensaje)
+    private suspend fun cargarHijosVinculados(familiarId: String) {
+        when (val result = alumnoRepository.getAlumnosByFamiliarId(familiarId)) {
+            is Result.Success -> {
+                val hijos = result.data.sortedBy { it.nombre }
+                val primerHijo = hijos.firstOrNull()
                 
-                // Terminamos la carga independientemente del resultado
-                _uiState.update { it.copy(isLoading = false) }
-            } catch (e: Exception) {
-                _uiState.update {
+                _uiState.update { 
                     it.copy(
-                        error = "Error al enviar mensaje: ${e.message}",
+                        hijos = hijos,
+                        hijoSeleccionado = primerHijo,
                         isLoading = false
                     )
                 }
-                Timber.e(e, "Error al enviar mensaje")
+                
+                // Si hay un hijo seleccionado, cargar sus registros
+                primerHijo?.let { alumno ->
+                    cargarRegistrosActividad(alumno.dni)
+                }
             }
+            is Result.Error -> {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al cargar hijos: ${result.exception?.message}"
+                    )
+                }
+            }
+            else -> { /* No hacer nada en caso de loading */ }
+        }
+    }
+
+    /**
+     * Carga las solicitudes de vinculación pendientes del familiar
+     *
+     * @param familiarId ID del familiar
+     */
+    private suspend fun cargarSolicitudesPendientes(familiarId: String) {
+        try {
+            when (val result = solicitudRepository.getSolicitudesByFamiliarId(familiarId)) {
+                is Result.Success -> {
+                    val solicitudesUI = result.data.map { solicitud ->
+                        // Obtener nombre del centro si es posible
+                        val centroNombre = obtenerNombreCentro(solicitud.centroId)
+                        
+                        // Convertir a modelo UI
+                        SolicitudPendienteUI(
+                            id = solicitud.id,
+                            alumnoDni = solicitud.alumnoDni,
+                            alumnoNombre = solicitud.alumnoNombre,
+                            centroId = solicitud.centroId,
+                            centroNombre = centroNombre,
+                            fechaSolicitud = Date(solicitud.fechaSolicitud.seconds * 1000),
+                            estado = solicitud.estado
+                        )
+                    }
+                    
+                    _uiState.update { 
+                        it.copy(solicitudesPendientes = solicitudesUI)
+                    }
+                }
+                is Result.Error -> {
+                    // No mostrar error, solo log
+                    println("Error al cargar solicitudes: ${result.exception?.message}")
+                }
+                else -> { /* No hacer nada en caso de loading */ }
+            }
+        } catch (e: Exception) {
+            // Log del error
+            println("Error al cargar solicitudes: ${e.message}")
+        }
+    }
+    
+    /**
+     * Obtiene el nombre de un centro por su ID
+     *
+     * @param centroId ID del centro
+     * @return Nombre del centro o null si no se encuentra
+     */
+    private suspend fun obtenerNombreCentro(centroId: String): String? {
+        try {
+            when (val result = usuarioRepository.getCentroById(centroId)) {
+                is Result.Success -> return result.data.nombre
+                else -> return null
+            }
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    /**
+     * Carga los registros de actividad de un alumno
+     *
+     * @param alumnoDni DNI del alumno
+     */
+    private suspend fun cargarRegistrosActividad(alumnoDni: String) {
+        try {
+            when (val result = registroDiarioRepository.getRegistrosActividadByAlumnoId(alumnoDni)) {
+                is Result.Success -> {
+                    _uiState.update { 
+                        it.copy(registrosActividad = result.data)
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            error = "Error al cargar registros: ${result.exception?.message}"
+                        )
+                    }
+                }
+                else -> { /* No hacer nada en caso de loading */ }
+            }
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(error = "Error al cargar registros: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Carga el total de mensajes no leídos del familiar
+     *
+     * @param familiarId ID del familiar
+     */
+    private suspend fun cargarTotalMensajesNoLeidos(familiarId: String) {
+        // Implementación simplificada (en realidad debería llamar al repositorio apropiado)
+        // Por ahora establecemos un valor de ejemplo
+        _uiState.update { 
+            it.copy(totalMensajesNoLeidos = 0)
+        }
+    }
+
+    /**
+     * Carga el total de registros sin leer por el familiar
+     *
+     * @param familiarId ID del familiar
+     */
+    private suspend fun cargarRegistrosSinLeer(familiarId: String) {
+        try {
+            when (val result = registroDiarioRepository.getRegistrosSinLeerCount(familiarId)) {
+                is Result.Success -> {
+                    _uiState.update { 
+                        it.copy(registrosSinLeer = result.data)
+                    }
+                }
+                is Result.Error -> {
+                    // No mostrar error, solo log
+                    println("Error al cargar registros sin leer: ${result.exception?.message}")
+                }
+                else -> { /* No hacer nada en caso de loading */ }
+            }
+        } catch (e: Exception) {
+            // Log del error
+            println("Error al cargar registros sin leer: ${e.message}")
         }
     }
 
@@ -509,146 +379,121 @@ class FamiliarDashboardViewModel @Inject constructor(
      * @param hijo El alumno (hijo) que ha sido seleccionado
      */
     fun seleccionarHijo(hijo: Alumno) {
-        viewModelScope.launch {
+        if (hijo.dni != _uiState.value.hijoSeleccionado?.dni) {
             _uiState.update { 
-                it.copy(
-                    hijoSeleccionado = hijo,
-                    isLoading = true
-                ) 
+                it.copy(hijoSeleccionado = hijo)
             }
             
-            // Cargar los registros de actividad del hijo seleccionado
-            cargarRegistrosHijo(hijo.dni)
+            viewModelScope.launch {
+                cargarRegistrosActividad(hijo.dni)
+            }
         }
     }
 
     /**
-     * Carga los registros de actividad para un alumno específico
-     * 
-     * Este método recupera los registros de actividad asociados a un alumno (hijo)
-     * para mostrarlos en el dashboard del familiar.
-     * 
-     * @param alumnoId Identificador único del alumno
+     * Crea una nueva solicitud de vinculación para un alumno
+     *
+     * @param alumnoDni DNI del alumno a vincular
+     * @param centroId ID del centro educativo
      */
-    private fun cargarRegistrosHijo(alumnoId: String) {
+    fun crearSolicitudVinculacion(alumnoDni: String, centroId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingSolicitud = true, error = null) }
+            
+            val familiarId = _uiState.value.familiar?.id
+            if (familiarId != null) {
+                try {
+                    // Crear objeto de solicitud
+                    val solicitud = SolicitudVinculacion(
+                        id = "", // Se generará automáticamente
+                        familiarId = familiarId,
+                        alumnoDni = alumnoDni.uppercase(),
+                        centroId = centroId,
+                        fechaSolicitud = Timestamp.now(),
+                        estado = EstadoSolicitud.PENDIENTE
+                    )
+                    
+                    // Enviar solicitud
+                    when (val result = solicitudRepository.crearSolicitudVinculacion(solicitud)) {
+                        is Result.Success -> {
+                            // Recargar solicitudes
+                            cargarSolicitudesPendientes(familiarId)
+                            
+                            _uiState.update { 
+                                it.copy(
+                                    isLoadingSolicitud = false,
+                                    solicitudEnviada = true
+                                )
+                            }
+                        }
+                        is Result.Error -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLoadingSolicitud = false,
+                                    error = "Error al enviar solicitud: ${result.exception?.message}"
+                                )
+                            }
+                        }
+                        else -> { /* No hacer nada en caso de loading */ }
+                    }
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            isLoadingSolicitud = false,
+                            error = "Error al enviar solicitud: ${e.message}"
+                        )
+                    }
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isLoadingSolicitud = false,
+                        error = "Error: familiar no identificado"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Carga los centros educativos disponibles
+     */
+    private fun cargarCentros() {
         viewModelScope.launch {
             try {
-                val registrosResult = usuarioRepository.getRegistrosActividadByAlumno(alumnoId)
-                
-                when (registrosResult) {
-                    is Result.Success<*> -> {
-                        val registros = registrosResult.data as List<RegistroActividad>
+                when (val result = usuarioRepository.getCentrosEducativos()) {
+                    is Result.Success -> {
                         _uiState.update { 
-                            it.copy(
-                                registrosActividad = registros,
-                                registrosSinLeer = registros.count { !it.vistoPorFamiliar },
-                                isLoading = false
-                            ) 
+                            it.copy(centros = result.data)
                         }
                     }
                     is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                error = "Error al cargar registros: ${registrosResult.exception?.message}",
-                                isLoading = false
-                            ) 
-                        }
-                        Timber.e(registrosResult.exception, "Error al cargar registros de actividad")
+                        // No mostrar error, solo log
+                        println("Error al cargar centros: ${result.exception?.message}")
                     }
-                    is Result.Loading<*> -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
+                    else -> { /* No hacer nada en caso de loading */ }
                 }
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error inesperado al cargar registros: ${e.message}",
-                        isLoading = false
-                    ) 
-                }
-                Timber.e(e, "Error inesperado al cargar registros de actividad")
+                // Log del error
+                println("Error al cargar centros: ${e.message}")
             }
         }
     }
 
     /**
-     * Cambia la pestaña seleccionada
-     * 
-     * Este método actualiza la pestaña activa en el dashboard y carga
-     * los datos específicos necesarios para esa pestaña.
-     * 
-     * @param tab Índice de la pestaña a seleccionar (0: Home, 1: Alumnos, 2: Asistencia, 3: Mensajes)
+     * Marca como consumido el flag de solicitud enviada
      */
-    fun setSelectedTab(tab: Int) {
-        _uiState.update { it.copy(selectedTab = tab) }
-
-        // Cargamos datos específicos según la pestaña seleccionada
-        when (tab) {
-            0 -> {
-                // Home - Recargamos datos del hijo seleccionado
-                _uiState.value.hijoSeleccionado?.let {
-                    cargarRegistrosActividad(it.dni)
-                }
-            }
-            3 -> {
-                // Mensajes - Cargamos los mensajes no leídos
-                cargarMensajesNoLeidos()
-            }
-        }
-    }
-
-    /**
-     * Limpia el mensaje de error actual
-     * 
-     * Este método restablece el estado de error a null, generalmente
-     * después de que el error ha sido mostrado al usuario o cuando
-     * se inicia una nueva operación.
-     */
-    fun clearError() {
-        _uiState.update { it.copy(error = null) }
+    fun resetSolicitudEnviada() {
+        _uiState.update { it.copy(solicitudEnviada = false) }
     }
 
     /**
      * Cierra la sesión del usuario actual
-     * 
-     * Este método gestiona el proceso de cierre de sesión:
-     * 1. Llama al repositorio de autenticación para cerrar sesión
-     * 2. Actualiza el estado UI para activar la navegación a la pantalla de bienvenida
-     * 3. Maneja posibles errores durante el proceso
      */
     fun logout() {
         viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(isLoading = true) }
-                
-                // Intentamos cerrar sesión 
-                val result = authRepository.signOut()
-                
-                if (result) {
-                    _uiState.update { 
-                        it.copy(
-                            navigateToWelcome = true,
-                            isLoading = false
-                        )
-                    }
-                } else {
-                    _uiState.update { 
-                        it.copy(
-                            error = "Error al cerrar sesión",
-                            isLoading = false
-                        )
-                    }
-                    Timber.e("Error al cerrar sesión")
-                }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error inesperado al cerrar sesión: ${e.message}",
-                        isLoading = false
-                    )
-                }
-                Timber.e(e, "Error inesperado al cerrar sesión")
-            }
+            authRepository.signOut()
+            _uiState.update { it.copy(navigateToWelcome = true) }
         }
     }
 

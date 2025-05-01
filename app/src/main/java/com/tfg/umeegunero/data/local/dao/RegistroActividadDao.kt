@@ -118,4 +118,22 @@ interface RegistroActividadDao {
      */
     @Query("DELETE FROM registros_actividad")
     suspend fun deleteAllRegistros(): Int
+    
+    /**
+     * Obtiene todos los registros de actividad para un alumno específico como lista.
+     * A diferencia de getRegistrosActividadByAlumno, este método devuelve una lista directamente, no un Flow.
+     * 
+     * @param alumnoId ID del alumno
+     * @return Lista de registros
+     */
+    @Query("SELECT * FROM registros_actividad WHERE alumnoId = :alumnoId ORDER BY fechaTimestamp DESC")
+    suspend fun getRegistrosActividadByAlumnoIdList(alumnoId: String): List<RegistroActividadEntity>
+    
+    /**
+     * Obtiene el número de registros no leídos.
+     * 
+     * @return Número de registros sin leer
+     */
+    @Query("SELECT COUNT(*) FROM registros_actividad WHERE vistoPorFamiliar = 0")
+    suspend fun getRegistrosSinLeerCount(): Int
 } 

@@ -555,4 +555,79 @@ class RegistroDiarioRepository @Inject constructor(
     private fun generateLocalId(): String {
         return "local_${System.currentTimeMillis()}_${(0..999).random()}"
     }
+    
+    /**
+     * Obtiene los registros de actividad de un alumno específico.
+     * 
+     * @param alumnoId ID del alumno
+     * @return Resultado con la lista de registros del alumno
+     */
+    suspend fun getRegistrosActividadByAlumnoId(alumnoId: String): Result<List<RegistroActividad>> = withContext(Dispatchers.IO) {
+        try {
+            // Intentar obtener desde Firestore si hay conexión
+            if (isNetworkAvailable()) {
+                try {
+                    val query = registrosCollection
+                        .whereEqualTo("alumnoId", alumnoId)
+                        .orderBy("fecha", Query.Direction.DESCENDING)
+                        .limit(20) // Limitamos a los 20 registros más recientes
+                        .get()
+                        .await()
+                    
+                    val registros = query.documents.mapNotNull { doc ->
+                        doc.toObject(RegistroActividad::class.java)
+                    }
+                    
+                    // Almacenar en caché local
+                    registros.forEach { registro ->
+                        localRegistroRepository.saveRegistroActividad(registro, true)
+                    }
+                    
+                    return@withContext Result.Success(registros)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener registros desde Firestore, intentando con local")
+                    // Si falla, continuamos con local
+                }
+            }
+            
+            // Obtener desde local si no hay conexión o falló Firestore
+            val registrosLocales = localRegistroRepository.getRegistrosActividadByAlumnoId(alumnoId)
+            return@withContext Result.Success(registrosLocales)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros del alumno $alumnoId")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene el número de registros sin leer por un familiar.
+     * 
+     * @param familiarId ID del familiar
+     * @return Resultado con el número de registros sin leer
+     */
+    suspend fun getRegistrosSinLeerCount(familiarId: String): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            if (isNetworkAvailable()) {
+                try {
+                    // Consultar los registros no leídos por este familiar
+                    val query = registrosCollection
+                        .whereNotEqualTo("vistoPor.$familiarId", true)
+                        .get()
+                        .await()
+                    
+                    return@withContext Result.Success(query.size())
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al contar registros sin leer desde Firestore")
+                    // Si falla, intentamos con local
+                }
+            }
+            
+            // Contar desde local si no hay conexión o falló Firestore
+            val count = localRegistroRepository.getRegistrosSinLeerCount(familiarId)
+            return@withContext Result.Success(count)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al contar registros sin leer del familiar $familiarId")
+            return@withContext Result.Error(e)
+        }
+    }
 } 

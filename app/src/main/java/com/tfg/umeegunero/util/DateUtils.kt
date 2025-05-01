@@ -236,4 +236,75 @@ fun Date.formatRelative(): String {
         isYesterday() -> "Ayer ${formatTime()}"
         else -> formatDateShort()
     }
+}
+
+/**
+ * Clase de utilidades para manejo de fechas
+ */
+object DateUtils {
+    
+    /**
+     * Calcula la edad en años a partir de un Timestamp de Firebase
+     * 
+     * @param fechaNacimiento Timestamp de la fecha de nacimiento
+     * @return Edad en años
+     */
+    fun calcularEdad(fechaNacimiento: Timestamp): Int {
+        val fechaNacimientoDate = Date(fechaNacimiento.seconds * 1000)
+        val calendar = Calendar.getInstance()
+        val hoy = calendar.time
+        
+        val years = calendar.get(Calendar.YEAR) - fechaNacimientoDate.year - 1900
+        
+        calendar.time = fechaNacimientoDate
+        val nacimientoMes = calendar.get(Calendar.MONTH)
+        val nacimientoDia = calendar.get(Calendar.DAY_OF_MONTH)
+        
+        calendar.time = hoy
+        val hoyMes = calendar.get(Calendar.MONTH)
+        val hoyDia = calendar.get(Calendar.DAY_OF_MONTH)
+        
+        return if (hoyMes > nacimientoMes || (hoyMes == nacimientoMes && hoyDia >= nacimientoDia)) {
+            years + 1
+        } else {
+            years
+        }
+    }
+    
+    /**
+     * Calcula la edad en años a partir de un String de fecha
+     * 
+     * @param fechaNacimiento String con la fecha de nacimiento (formato esperado: YYYY-MM-DD)
+     * @return Edad en años o 0 si la fecha no es válida
+     */
+    fun calcularEdad(fechaNacimiento: String): Int {
+        if (fechaNacimiento.isBlank()) return 0
+        
+        try {
+            val partes = fechaNacimiento.split("-")
+            if (partes.size != 3) return 0
+            
+            val año = partes[0].toIntOrNull() ?: return 0
+            val mes = partes[1].toIntOrNull()?.minus(1) ?: return 0 // Restar 1 porque Calendar usa 0-11 para meses
+            val dia = partes[2].toIntOrNull() ?: return 0
+            
+            val fechaNacimientoCalendar = Calendar.getInstance()
+            fechaNacimientoCalendar.set(año, mes, dia)
+            
+            val hoyCalendar = Calendar.getInstance()
+            
+            var años = hoyCalendar.get(Calendar.YEAR) - fechaNacimientoCalendar.get(Calendar.YEAR)
+            
+            // Verificar si todavía no ha cumplido años en este año
+            if (hoyCalendar.get(Calendar.MONTH) < fechaNacimientoCalendar.get(Calendar.MONTH) ||
+                (hoyCalendar.get(Calendar.MONTH) == fechaNacimientoCalendar.get(Calendar.MONTH) && 
+                 hoyCalendar.get(Calendar.DAY_OF_MONTH) < fechaNacimientoCalendar.get(Calendar.DAY_OF_MONTH))) {
+                años--
+            }
+            
+            return if (años < 0) 0 else años
+        } catch (e: Exception) {
+            return 0
+        }
+    }
 } 

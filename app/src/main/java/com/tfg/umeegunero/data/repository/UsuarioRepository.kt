@@ -1839,4 +1839,32 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene un centro educativo por su ID
+     * 
+     * @param centroId ID del centro educativo
+     * @return Resultado con el centro o error
+     */
+    suspend fun getCentroById(centroId: String): Result<Centro> = withContext(Dispatchers.IO) {
+        try {
+            val centroDoc = centrosCollection.document(centroId).get().await()
+            
+            if (centroDoc.exists()) {
+                val centro = centroDoc.toObject(Centro::class.java)
+                if (centro != null) {
+                    // Asegurarse de que el ID esté establecido correctamente
+                    centro.id = centroId
+                    return@withContext Result.Success(centro)
+                } else {
+                    throw Exception("Error al convertir datos del centro")
+                }
+            } else {
+                throw Exception("Centro no encontrado")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener centro por ID: $centroId")
+            return@withContext Result.Error(e)
+        }
+    }
 }

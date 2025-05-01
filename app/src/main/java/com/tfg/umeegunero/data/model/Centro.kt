@@ -19,7 +19,7 @@ import com.google.firebase.firestore.DocumentId
  * @property profesorIds Lista de IDs de profesores asignados al centro
  */
 data class Centro(
-    val id: String = "",
+    var id: String = "",
     val nombre: String = "",
     val direccion: String = "",
     val telefono: String = "",

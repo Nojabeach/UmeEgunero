@@ -84,6 +84,13 @@ interface AlumnoRepository {
      * @return Resultado con la lista de alumnos.
      */
     suspend fun obtenerAlumnosPorFamiliar(familiarId: String): Result<List<Alumno>>
+
+    /**
+     * Obtiene la lista de alumnos asociados a un familiar
+     * @param familiarId ID del familiar
+     * @return Lista de alumnos vinculados al familiar
+     */
+    suspend fun getAlumnosByFamiliarId(familiarId: String): Result<List<Alumno>>
 }
 
 /**
@@ -266,6 +273,61 @@ class AlumnoRepositoryImpl @Inject constructor(
      * @return Resultado con la lista de alumnos.
      */
     override suspend fun obtenerAlumnosPorFamiliar(familiarId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            // 1. Obtener el documento del familiar para sacar los IDs de los hijos
+            val familiarDoc = firestore.collection("usuarios") // Asumiendo colección "usuarios"
+                .document(familiarId)
+                .get()
+                .await()
+
+            if (!familiarDoc.exists()) {
+                Timber.w("Familiar con ID $familiarId no encontrado.")
+                return@withContext Result.Success(emptyList()) // O Result.Error si se prefiere
+            }
+
+            // Asumiendo que el documento del familiar tiene un campo List<String> llamado "hijosIds"
+            val hijosIds = familiarDoc.get("hijosIds") as? List<String>
+
+            if (hijosIds == null || hijosIds.isEmpty()) {
+                Timber.i("Familiar con ID $familiarId no tiene hijos asociados.")
+                return@withContext Result.Success(emptyList())
+            }
+
+            // 2. Consultar los alumnos usando los IDs obtenidos (máximo 10 IDs por consulta 'in')
+            // Firestore limita las consultas 'in' a 10 elementos. Si hay más hijos, hay que dividir la consulta.
+            if (hijosIds.size > 10) {
+                 Timber.w("La consulta 'in' de Firestore está limitada a 10 IDs. Se necesitan múltiples consultas para $familiarId.")
+                 // Implementación simplificada: Por ahora, solo tomamos los primeros 10.
+                 // Una implementación completa dividiría hijosIds en chunks de 10 y haría múltiples consultas.
+                 val primerosDiezIds = hijosIds.take(10)
+                 val query = firestore.collection(COLLECTION_ALUMNOS)
+                     .whereIn(com.google.firebase.firestore.FieldPath.documentId(), primerosDiezIds)
+                     .get()
+                     .await()
+                 val alumnos = query.toObjects(Alumno::class.java)
+                 return@withContext Result.Success(alumnos)
+
+            } else {
+                 val query = firestore.collection(COLLECTION_ALUMNOS)
+                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), hijosIds)
+                    .get()
+                    .await()
+                 val alumnos = query.toObjects(Alumno::class.java)
+                 return@withContext Result.Success(alumnos)
+            }
+
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumnos por familiar ID: $familiarId")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene la lista de alumnos asociados a un familiar
+     * @param familiarId ID del familiar
+     * @return Lista de alumnos vinculados al familiar
+     */
+    override suspend fun getAlumnosByFamiliarId(familiarId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
         try {
             // 1. Obtener el documento del familiar para sacar los IDs de los hijos
             val familiarDoc = firestore.collection("usuarios") // Asumiendo colección "usuarios"

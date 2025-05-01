@@ -220,4 +220,38 @@ class LocalRegistroActividadRepository @Inject constructor(
             0
         }
     }
+    
+    /**
+     * Obtiene los registros de actividad de un alumno por su ID.
+     * 
+     * @param alumnoId ID del alumno
+     * @return Lista de registros del alumno
+     */
+    suspend fun getRegistrosActividadByAlumnoId(alumnoId: String): List<RegistroActividad> {
+        return try {
+            val entities = registroActividadDao.getRegistrosActividadByAlumnoIdList(alumnoId)
+            entities.map { it.toRegistroActividad() }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros por alumnoId: $alumnoId")
+            emptyList()
+        }
+    }
+    
+    /**
+     * Obtiene el número de registros no leídos.
+     * El parámetro familiarId se ignora en la implementación actual pero se mantiene
+     * para compatibilidad con la interfaz.
+     * 
+     * @param familiarId ID del familiar (ignorado en esta implementación)
+     * @return Número de registros sin leer
+     */
+    suspend fun getRegistrosSinLeerCount(familiarId: String): Int {
+        return try {
+            // Este DAO no tiene en cuenta el familiarId, solo cuenta todos los registros no vistos
+            registroActividadDao.getRegistrosSinLeerCount()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al contar registros sin leer para el familiar: $familiarId")
+            0
+        }
+    }
 } 

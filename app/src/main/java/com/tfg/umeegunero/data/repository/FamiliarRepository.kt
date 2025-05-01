@@ -63,6 +63,13 @@ interface FamiliarRepository {
         email: String, 
         telefono: String
     ): Result<String>
+
+    /**
+     * Obtiene un familiar por su ID de usuario
+     * @param usuarioId Identificador del usuario
+     * @return Información del familiar o null si no existe
+     */
+    suspend fun getFamiliarByUsuarioId(usuarioId: String): Result<Familiar?>
 }
 
 /**
@@ -288,6 +295,23 @@ class FamiliarRepositoryImpl @Inject constructor(
             Result.Success(dni)
         } catch (e: Exception) {
             Timber.e(e, "Error al crear familiar")
+            Result.Error(e)
+        }
+    }
+
+    override suspend fun getFamiliarByUsuarioId(usuarioId: String): Result<Familiar?> = withContext(Dispatchers.IO) {
+        try {
+            val familiarDoc = usuariosCollection.document(usuarioId).get().await()
+            
+            if (!familiarDoc.exists()) {
+                return@withContext Result.Error(Exception("El familiar no existe"))
+            }
+            
+            val familiar = familiarDoc.toObject<Familiar>()
+            
+            Result.Success(familiar)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener familiar por ID de usuario")
             Result.Error(e)
         }
     }
