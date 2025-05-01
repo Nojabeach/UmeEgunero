@@ -194,9 +194,10 @@ class RegistroViewModel @Inject constructor(
                     val latitud = place.lat.toDoubleOrNull()
                     val longitud = place.lon.toDoubleOrNull()
                     
-                    // Generar URL de mapa estático (Google Maps)
+                    // Generar URL de mapa estático (usar OpenStreetMap en lugar de Google Maps)
                     val mapaUrl = if (latitud != null && longitud != null) {
-                        "https://maps.googleapis.com/maps/api/staticmap?center=$latitud,$longitud&zoom=14&size=400x200&maptype=roadmap&markers=color:red%7C$latitud,$longitud&key=YOUR_API_KEY"
+                        // URL para OpenStreetMap
+                        "https://staticmap.openstreetmap.de/staticmap.php?center=$latitud,$longitud&zoom=14&size=400x200&markers=$latitud,$longitud"
                     } else null
                     
                     // Actualizar el formulario con los datos obtenidos
@@ -401,34 +402,51 @@ class RegistroViewModel @Inject constructor(
 
             val formToRegister = _uiState.value.form
 
-            // --- CORRECCIÓN TEMPORAL --- 
-            // TODO: Reemplaza 'registrarFamiliar' con el nombre del método REAL en tu AuthRepository
-            // TODO: y DESCOMENTA el bloque 'when'.
-            /* 
-            when (val result = authRepository.registrarFamiliar(formToRegister)) { 
-                is Result.Success<*> -> { 
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            success = true
-                        )
+            try {
+                // Llamar al método de registro del UsuarioRepository
+                when (val result = usuarioRepository.registrarUsuario(formToRegister)) { 
+                    is Result.Success -> { 
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                success = true
+                            )
+                        }
+                        // Registrar éxito en log
+                        Log.i("RegistroViewModel", "Usuario registrado exitosamente: ${formToRegister.email}")
                     }
-                    // Considera emitir un evento para navegación aquí
-                }
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = result.exception?.message ?: "Error desconocido durante el registro.",
-                            success = false
-                        )
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.exception?.message ?: "Error desconocido durante el registro.",
+                                success = false
+                            )
+                        }
+                        // Registrar error en log
+                        Log.e("RegistroViewModel", "Error en registro", result.exception)
+                    }
+                    else -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Estado de registro no reconocido.",
+                                success = false
+                            )
+                        }
                     }
                 }
-            } 
-            */
-            // Elimina esta línea una vez descomentado el bloque 'when'
-            _uiState.update { it.copy(isLoading = false, error = "Lógica de registro comentada temporalmente. Revisa el TODO en RegistroViewModel.") }
-
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false, 
+                        error = "Error en el registro: ${e.message ?: "Desconocido"}",
+                        success = false
+                    )
+                }
+                // Registrar excepción en log
+                Log.e("RegistroViewModel", "Excepción en el registro", e)
+            }
         }
     }
 

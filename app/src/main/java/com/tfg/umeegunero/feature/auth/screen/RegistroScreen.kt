@@ -185,6 +185,10 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.automirrored.filled.Segment
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
+import androidx.compose.animation.core.LinearEasing
 
 /**
  * Función de extensión para calcular la luminosidad de un color.
@@ -482,29 +486,27 @@ fun RegistroScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     
-    // Estado para controlar la visibilidad de los campos
-    var showPasswordRequirements by remember { mutableStateOf(false) }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var showPasswordSuggestions by remember { mutableStateOf(false) }
-    var showDepuracionDialog by remember { mutableStateOf(false) }
+    // Estado para controlar la visibilidad de diálogos
     var showCamposFaltantesDialog by remember { mutableStateOf(false) }
+    var showRegistroExitosoDialog by remember { mutableStateOf(false) }
     
-    // Animaciones y estados visuales
-    val passwordIconColor = if (validatePassword(uiState.form.password)) 
-        MaterialTheme.colorScheme.primary 
-    else 
-        MaterialTheme.colorScheme.error
-
-    val porcentajeCompletado = uiState.form.password.calcularPorcentajeCompletado()
-    val isLight = MaterialTheme.colorScheme.isLight()
-
+    // Efecto que detecta cuando el registro ha sido exitoso
+    LaunchedEffect(uiState.success) {
+        if (uiState.success) {
+            showRegistroExitosoDialog = true
+            // Después de 3 segundos, navegar automáticamente
+            delay(3000)
+            onRegistroCompletado()
+        }
+    }
+    
     // Gradiente de fondo
+    val isLight = MaterialTheme.colorScheme.isLight()
     val gradientColors = if (!isLight) {
         listOf(
             MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
@@ -548,8 +550,6 @@ fun RegistroScreen(
                 ) {
                     FormProgressIndicator(
                         progress = uiState.calculateOverallProgress(),
-                        currentStep = uiState.currentStep,
-                        totalSteps = uiState.totalSteps,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -661,6 +661,33 @@ fun RegistroScreen(
         }
     }
 
+    // Mostrar diálogo de registro exitoso
+    if (showRegistroExitosoDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showRegistroExitosoDialog = false
+                onRegistroCompletado()
+            },
+            icon = { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Registro completado") },
+            text = { 
+                Column {
+                    Text("Su solicitud de registro ha sido enviada correctamente.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Recibirá un correo electrónico cuando el centro haya procesado su solicitud.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRegistroExitosoDialog = false
+                    onRegistroCompletado()
+                }) {
+                    Text("Aceptar")
+                }
+            }
+        )
+    }
+    
     if (showCamposFaltantesDialog) {
         CamposFaltantesDialog(
             uiState = uiState,
@@ -967,8 +994,6 @@ fun Step2Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
              }
              
              // Mapa estático
-             // Este es un marcador de posición para un mapa estático
-             // En una aplicación real, se usaría una imagen cargada desde una URL
              Card(
                  modifier = Modifier
                      .fillMaxWidth()
@@ -982,7 +1007,19 @@ fun Step2Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
                      modifier = Modifier.fillMaxSize(),
                      contentAlignment = Alignment.Center
                  ) {
-                     Text("Mapa de la ubicación (${uiState.form.direccion.ciudad}, ${uiState.form.direccion.provincia})")
+                     if (uiState.mapaUrl != null) {
+                         // Cargar imagen desde URL usando AsyncImage (recomendado por Coil)
+                         AsyncImage(
+                             model = uiState.mapaUrl,
+                             contentDescription = "Mapa de ${uiState.form.direccion.ciudad}, ${uiState.form.direccion.provincia}",
+                             modifier = Modifier.fillMaxSize(),
+                             contentScale = ContentScale.Crop,
+                             error = painterResource(id = com.google.android.material.R.drawable.mtrl_ic_error),
+                             placeholder = painterResource(id = com.google.android.material.R.drawable.material_ic_calendar_black_24dp)
+                         )
+                     } else {
+                         Text("Mapa de la ubicación (${uiState.form.direccion.ciudad}, ${uiState.form.direccion.provincia})")
+                     }
                  }
              }
          }
@@ -1631,28 +1668,45 @@ private fun FormField(
 }
 
 /**
- * Componente de indicador de progreso del formulario.
- * 
- * @param progress Progreso actual (0.0f - 1.0f)
- * @param currentStep Paso actual
- * @param totalSteps Total de pasos
- * @param modifier Modificador de composición
+ * Indicador de progreso del formulario.
  */
 @Composable
 private fun FormProgressIndicator(
     progress: Float,
-    currentStep: Int = 1,  // Valor por defecto para currentStep
-    totalSteps: Int = 3,   // Valor por defecto para totalSteps
     modifier: Modifier = Modifier
 ) {
+    // Animación para visualizar el avance
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 800, easing = LinearEasing),
+        label = "Progress Indicator Animation"
+    )
+    
+    // Barra de progreso principal
     Column(modifier = modifier) {
         LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-            strokeCap = StrokeCap.Round
+            progress = { animatedProgress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(7.dp)
+                .clip(RoundedCornerShape(4.dp)),
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.primary
         )
+        
+        // Texto indicador del porcentaje
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "${(animatedProgress * 100).toInt()}% completado",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
