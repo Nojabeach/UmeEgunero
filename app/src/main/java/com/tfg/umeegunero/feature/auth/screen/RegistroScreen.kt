@@ -903,6 +903,7 @@ fun Step2Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
          placeholder = null,
          supportingText = null
      )
+     
      // Código Postal
      FormField(
          value = uiState.form.direccion.codigoPostal,
@@ -911,10 +912,82 @@ fun Step2Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
          icon = Icons.Filled.LocalPostOffice,
          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
          keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-         error = null,
-         placeholder = null,
-         supportingText = null
+         error = uiState.direccionError,
+         placeholder = "28001",
+         supportingText = { 
+             if (uiState.isLoadingDireccion) {
+                 Row(verticalAlignment = Alignment.CenterVertically) {
+                     CircularProgressIndicator(
+                         modifier = Modifier.size(16.dp),
+                         strokeWidth = 2.dp
+                     )
+                     Spacer(modifier = Modifier.width(8.dp))
+                     Text("Buscando localización...")
+                 }
+             } else {
+                 Text("Ingresa el código postal para autocompletar")
+             }
+         }
      )
+
+     // Información de geolocalización si está disponible
+     AnimatedVisibility(
+         visible = uiState.coordenadasLatitud != null && uiState.coordenadasLongitud != null,
+         enter = fadeIn() + expandVertically(),
+         exit = fadeOut() + shrinkVertically()
+     ) {
+         Column(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .padding(vertical = 8.dp)
+         ) {
+             Text(
+                 text = "Información de Localización",
+                 style = MaterialTheme.typography.titleMedium,
+                 color = MaterialTheme.colorScheme.primary
+             )
+             Spacer(modifier = Modifier.height(4.dp))
+             
+             // Coordenadas
+             Row(
+                 modifier = Modifier.fillMaxWidth(),
+                 verticalAlignment = Alignment.CenterVertically
+             ) {
+                 Icon(
+                     imageVector = Icons.Default.Map,
+                     contentDescription = null,
+                     tint = MaterialTheme.colorScheme.secondary,
+                     modifier = Modifier.size(16.dp)
+                 )
+                 Spacer(modifier = Modifier.width(4.dp))
+                 Text(
+                     text = "Coordenadas: ${uiState.coordenadasLatitud?.toString()?.take(8)}, ${uiState.coordenadasLongitud?.toString()?.take(8)}",
+                     style = MaterialTheme.typography.bodyMedium
+                 )
+             }
+             
+             // Mapa estático
+             // Este es un marcador de posición para un mapa estático
+             // En una aplicación real, se usaría una imagen cargada desde una URL
+             Card(
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .height(150.dp)
+                     .padding(vertical = 8.dp),
+                 colors = CardDefaults.cardColors(
+                     containerColor = MaterialTheme.colorScheme.surfaceVariant
+                 )
+             ) {
+                 Box(
+                     modifier = Modifier.fillMaxSize(),
+                     contentAlignment = Alignment.Center
+                 ) {
+                     Text("Mapa de la ubicación (${uiState.form.direccion.ciudad}, ${uiState.form.direccion.provincia})")
+                 }
+             }
+         }
+     }
+     
      // Ciudad
      FormField(
          value = uiState.form.direccion.ciudad,

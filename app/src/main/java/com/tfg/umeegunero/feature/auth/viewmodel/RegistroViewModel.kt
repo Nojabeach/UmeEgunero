@@ -9,6 +9,7 @@ import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.network.NominatimApiService
 import com.tfg.umeegunero.util.DebugUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,8 @@ import javax.inject.Inject
 import java.util.regex.Pattern
 import android.util.Log
 import com.tfg.umeegunero.data.repository.AuthRepository
+import retrofit2.HttpException
+import java.io.IOException
 
 /**
  * Estado UI para la pantalla de registro
@@ -44,7 +47,12 @@ data class RegistroUiState(
     val telefonoError: String? = null,
     val direccionError: String? = null,
     val centroIdError: String? = null,
-    val alumnosDniError: String? = null
+    val alumnosDniError: String? = null,
+    // Estado de búsqueda de dirección
+    val isLoadingDireccion: Boolean = false,
+    val coordenadasLatitud: Double? = null,
+    val coordenadasLongitud: Double? = null,
+    val mapaUrl: String? = null
 )
 
 /**
@@ -69,6 +77,7 @@ data class RegistroUiState(
 class RegistroViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val usuarioRepository: UsuarioRepository,
+    private val nominatimApiService: NominatimApiService,
     private val debugUtils: DebugUtils
 ) : ViewModel() {
 
@@ -138,7 +147,15 @@ class RegistroViewModel @Inject constructor(
                 "calle" -> currentState.form.copy(direccion = currentState.form.direccion.copy(calle = value))
                 "numero" -> currentState.form.copy(direccion = currentState.form.direccion.copy(numero = value))
                 "piso" -> currentState.form.copy(direccion = currentState.form.direccion.copy(piso = value))
-                "codigoPostal" -> currentState.form.copy(direccion = currentState.form.direccion.copy(codigoPostal = value))
+                "codigoPostal" -> {
+                    val formUpdated = currentState.form.copy(direccion = currentState.form.direccion.copy(codigoPostal = value))
+                    // Si el código postal tiene 5 dígitos, buscar automáticamente
+                    if (value.length == 5 && value.all { it.isDigit() }) {
+                        // Lanzar búsqueda en segundo plano
+                        buscarDireccionPorCP(value)
+                    }
+                    formUpdated
+                }
                 "ciudad" -> currentState.form.copy(direccion = currentState.form.direccion.copy(ciudad = value))
                 "provincia" -> currentState.form.copy(direccion = currentState.form.direccion.copy(provincia = value))
                 // Campo de Centro
@@ -147,6 +164,69 @@ class RegistroViewModel @Inject constructor(
             }
             // Llamar a validación después de actualizar el formulario
             validateField(field, newForm, currentState.copy(form = newForm))
+        }
+    }
+
+    /**
+     * Busca la dirección completa basada en un código postal usando la API de Nominatim.
+     * Actualiza automáticamente los campos de ciudad y provincia.
+     * 
+     * @param codigoPostal El código postal a buscar (5 dígitos para España)
+     */
+    private fun buscarDireccionPorCP(codigoPostal: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoadingDireccion = true) }
+                
+                val response = nominatimApiService.searchByPostalCode(
+                    postalCode = codigoPostal,
+                    limit = 1
+                )
+                
+                if (response.isSuccessful && response.body()?.isNotEmpty() == true) {
+                    val place = response.body()!!.first()
+                    
+                    // Extraer ciudad y provincia
+                    val ciudad = place.address?.getCityName() ?: ""
+                    val provincia = place.address?.province ?: place.address?.state ?: ""
+                    
+                    // Extraer coordenadas
+                    val latitud = place.lat.toDoubleOrNull()
+                    val longitud = place.lon.toDoubleOrNull()
+                    
+                    // Generar URL de mapa estático (Google Maps)
+                    val mapaUrl = if (latitud != null && longitud != null) {
+                        "https://maps.googleapis.com/maps/api/staticmap?center=$latitud,$longitud&zoom=14&size=400x200&maptype=roadmap&markers=color:red%7C$latitud,$longitud&key=YOUR_API_KEY"
+                    } else null
+                    
+                    // Actualizar el formulario con los datos obtenidos
+                    _uiState.update { state ->
+                        state.copy(
+                            form = state.form.copy(
+                                direccion = state.form.direccion.copy(
+                                    ciudad = ciudad,
+                                    provincia = provincia
+                                )
+                            ),
+                            coordenadasLatitud = latitud,
+                            coordenadasLongitud = longitud,
+                            mapaUrl = mapaUrl,
+                            isLoadingDireccion = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoadingDireccion = false) }
+                }
+            } catch (e: IOException) {
+                Log.e("RegistroViewModel", "Error de red al buscar dirección: ${e.message}")
+                _uiState.update { it.copy(isLoadingDireccion = false) }
+            } catch (e: HttpException) {
+                Log.e("RegistroViewModel", "Error HTTP al buscar dirección: ${e.message}")
+                _uiState.update { it.copy(isLoadingDireccion = false) }
+            } catch (e: Exception) {
+                Log.e("RegistroViewModel", "Error al buscar dirección: ${e.message}")
+                _uiState.update { it.copy(isLoadingDireccion = false) }
+            }
         }
     }
 
@@ -203,6 +283,14 @@ class RegistroViewModel @Inject constructor(
                      "Debes seleccionar un centro."
                  } else null
                  newState = newState.copy(centroIdError = centroError)
+             }
+             "codigoPostal" -> {
+                 val cpError = if (updatedForm.direccion.codigoPostal.isNotBlank() && 
+                                   (updatedForm.direccion.codigoPostal.length != 5 || 
+                                    !updatedForm.direccion.codigoPostal.all { it.isDigit() })) {
+                     "Código postal debe tener 5 dígitos"
+                 } else null
+                 newState = newState.copy(direccionError = cpError)
              }
             // Añadir validaciones para otros campos si es necesario (nombre, apellidos, dirección)
         }
