@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -175,6 +174,17 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.filled.SensorDoor
+import androidx.compose.material.icons.filled.LocalPostOffice
+import androidx.compose.material.icons.filled.LocationCity
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.automirrored.filled.Segment
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
 
 /**
  * Función de extensión para calcular la luminosidad de un color.
@@ -252,15 +262,11 @@ fun String.calcularPorcentajeCompletado(): Float {
  * @sample validateDni("12345678I") // Devuelve false para un DNI inválido
  */
 private fun validateDni(dni: String): Boolean {
-    // DNI español: 8 números y 1 letra
     val dniPattern = Regex("^\\d{8}[A-HJ-NP-TV-Z]$")
     if (!dniPattern.matches(dni.uppercase())) return false
-
-    // Validación de letra de control
     val letras = "TRWAGMYFPDXBNJZSQVHLCKE"
     val numero = dni.substring(0, 8).toIntOrNull() ?: return false
-    val letra = dni[8]
-    return letra == letras[numero % 23]
+    return dni.uppercase().getOrNull(8) == letras.getOrNull(numero % 23)
 }
 
 /**
@@ -366,6 +372,88 @@ private fun generatePasswordSuggestions(): List<String> {
 }
 
 /**
+ * Valida si los campos del Paso 1 (Datos Personales) del formulario son válidos.
+ *
+ * @param form El estado actual del formulario de registro.
+ * @param errors Mapa de errores de validación en tiempo real (e.g., formato email).
+ * @return `true` si los campos del Paso 1 son válidos, `false` en caso contrario.
+ */
+private fun isStep1Valid(form: RegistroUsuarioForm, errors: Map<String, String?>): Boolean {
+    return form.email.isNotBlank() &&
+           form.dni.isNotBlank() &&
+           form.nombre.isNotBlank() &&
+           form.apellidos.isNotBlank() &&
+           form.telefono.isNotBlank() &&
+           form.password.isNotBlank() &&
+           validatePassword(form.password) && // Asumiendo que validatePassword ya existe
+           form.password == form.confirmPassword && // Añadir validación de confirmación
+           errors["email"] == null &&
+           errors["dni"] == null &&
+           errors["password"] == null &&
+           errors["confirmPassword"] == null &&
+           errors["nombre"] == null &&
+           errors["apellidos"] == null &&
+           errors["telefono"] == null
+}
+
+/**
+ * Valida si los campos del Paso 2 (Dirección) del formulario son válidos.
+ *
+ * @param form El estado actual del formulario de registro.
+ * @return `true` si los campos del Paso 2 son válidos, `false` en caso contrario.
+ */
+private fun isStep2Valid(form: RegistroUsuarioForm): Boolean {
+    // Validar que los campos obligatorios de dirección no estén vacíos
+    return form.direccion.calle.isNotBlank() &&
+           form.direccion.numero.isNotBlank() && // Asumiendo número es obligatorio
+           form.direccion.codigoPostal.isNotBlank() &&
+           form.direccion.ciudad.isNotBlank() &&
+           form.direccion.provincia.isNotBlank()
+    // 'piso' puede ser opcional
+}
+
+/**
+ * Valida si los campos del Paso 3 (Datos Alumnos/Centro) del formulario son válidos.
+ *
+ * @param form El estado actual del formulario de registro.
+ * @return `true` si los campos del Paso 3 son válidos, `false` en caso contrario.
+ */
+private fun isStep3Valid(form: RegistroUsuarioForm): Boolean {
+    // Validar que se haya seleccionado un centro
+    val centroValido = form.centroId.isNotBlank()
+    // Validar que todos los DNIs de alumnos introducidos sean válidos o estén vacíos
+    val alumnosDniValidos = form.alumnosDni.all { it.isBlank() || validateDni(it) }
+    // Opcional: Validar que al menos un DNI de alumno se haya introducido
+    val alMenosUnAlumno = form.alumnosDni.any { it.isNotBlank() }
+
+    // Devolver true si el centro es válido, los DNIs son válidos Y al menos un DNI ha sido añadido
+    return centroValido && alumnosDniValidos && alMenosUnAlumno
+}
+
+/**
+ * Determina si el paso actual del formulario es válido.
+ *
+ * @param uiState El estado actual de la UI de registro.
+ * @return `true` si el paso actual es válido, `false` en caso contrario.
+ */
+private fun isCurrentStepValid(uiState: RegistroUiState): Boolean {
+    return when (uiState.currentStep) {
+        1 -> isStep1Valid(uiState.form, uiState.formErrors + mapOf( // Incluir errores en tiempo real
+            "email" to uiState.emailError,
+            "dni" to uiState.dniError,
+            "password" to uiState.passwordError,
+            "confirmPassword" to uiState.confirmPasswordError,
+            "nombre" to uiState.nombreError,
+            "apellidos" to uiState.apellidosError,
+            "telefono" to uiState.telefonoError
+        ))
+        2 -> isStep2Valid(uiState.form)
+        3 -> isStep3Valid(uiState.form)
+        else -> false
+    }
+}
+
+/**
  * Pantalla de registro para UmeEgunero.
  * 
  * Implementa un formulario de registro multi-paso con validaciones en tiempo real,
@@ -398,12 +486,14 @@ fun RegistroScreen(
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     
     // Estado para controlar la visibilidad de los campos
     var showPasswordRequirements by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
     var showPasswordSuggestions by remember { mutableStateOf(false) }
     var showDepuracionDialog by remember { mutableStateOf(false) }
+    var showCamposFaltantesDialog by remember { mutableStateOf(false) }
     
     // Animaciones y estados visuales
     val passwordIconColor = if (validatePassword(uiState.form.password)) 
@@ -431,8 +521,10 @@ fun RegistroScreen(
 
     // Interfaz principal
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
+            Column {
             TopAppBar(
                 title = { Text("Registro Familiar") },
                 navigationIcon = {
@@ -444,9 +536,30 @@ fun RegistroScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
+                         containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                    ),
+                    scrollBehavior = scrollBehavior
                 )
-            )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    FormProgressIndicator(
+                        progress = uiState.calculateOverallProgress(),
+                        currentStep = uiState.currentStep,
+                        totalSteps = uiState.totalSteps,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    StepIndicator(
+                        currentStep = uiState.currentStep,
+                        totalSteps = uiState.totalSteps,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
         }
     ) { paddingValues ->
         Box(
@@ -459,7 +572,7 @@ fun RegistroScreen(
                 )
                 .padding(paddingValues)
         ) {
-            if (uiState.isLoading) {
+            if (uiState.isLoading && uiState.currentStep == 0) {
                 CircularProgressIndicator(
                     modifier = Modifier
                         .size(50.dp)
@@ -476,20 +589,6 @@ fun RegistroScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Indicador de progreso del formulario
-                    FormProgressIndicator(
-                        progress = calcularPorcentajeCompletado(uiState),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // Indicador de pasos
-                    StepIndicator(
-                        currentStep = uiState.currentStep,
-                        totalSteps = uiState.totalSteps,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // Formulario principal
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -505,240 +604,409 @@ fun RegistroScreen(
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // Campos del formulario con mejor feedback visual
+                             when (uiState.currentStep) {
+                                 1 -> Step1Content(uiState = uiState, viewModel = viewModel)
+                                 2 -> Step2Content(uiState = uiState, viewModel = viewModel)
+                                 3 -> Step3Content(uiState = uiState, viewModel = viewModel, focusManager = focusManager)
+                             }
+                         }
+                     }
+
+                     if (uiState.currentStep == uiState.totalSteps) {
+                         TermsAndConditionsCard(
+                             onNavigateToTerminosCondiciones = onNavigateToTerminosCondiciones
+                         )
+                     }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        OutlinedButton(
+                            onClick = { viewModel.previousStep() },
+                            enabled = uiState.currentStep > 1 && !uiState.isLoading
+                        ) {
+                            Text("Anterior")
+                        }
+
+                        Button(
+                            onClick = {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                                if (isCurrentStepValid(uiState)) {
+                                     if (uiState.currentStep < uiState.totalSteps) {
+                                        viewModel.nextStep()
+                                    } else {
+                                        viewModel.registrarUsuario()
+                                    }
+                                } else {
+                                    showCamposFaltantesDialog = true
+                                }
+                            },
+                            enabled = !uiState.isLoading
+                        ) {
+                            if (uiState.isLoading && uiState.currentStep > 0) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(if (uiState.currentStep < uiState.totalSteps) "Siguiente" else "Finalizar Registro")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCamposFaltantesDialog) {
+        CamposFaltantesDialog(
+            uiState = uiState,
+            currentStep = uiState.currentStep,
+            onDismiss = { showCamposFaltantesDialog = false }
+        )
+    }
+}
+
+/**
+ * Calcula el progreso general del formulario multi-paso.
+ * Ajustado para incluir campos de dirección y centro/alumnos.
+ */
+fun RegistroUiState.calculateOverallProgress(): Float {
+     var camposCompletados = 0
+     val totalCamposObligatorios = 13 // 7 (P1) + 5 (P2) + 1 (P3: Centro) (+1 si al menos un DNI alumno es obligatorio)
+
+     // Paso 1
+     if (form.email.isNotBlank() && emailError == null) camposCompletados++
+     if (form.dni.isNotBlank() && dniError == null) camposCompletados++
+     if (form.nombre.isNotBlank() && nombreError == null) camposCompletados++
+     if (form.apellidos.isNotBlank() && apellidosError == null) camposCompletados++
+     if (form.telefono.isNotBlank() && telefonoError == null) camposCompletados++
+     if (form.password.isNotBlank() && passwordError == null && validatePassword(form.password)) camposCompletados++
+     if (form.confirmPassword.isNotBlank() && confirmPasswordError == null && form.password == form.confirmPassword) camposCompletados++
+
+     // Paso 2 (Dirección)
+     if (form.direccion.calle.isNotBlank()) camposCompletados++
+     if (form.direccion.numero.isNotBlank()) camposCompletados++
+     if (form.direccion.codigoPostal.isNotBlank()) camposCompletados++
+     if (form.direccion.ciudad.isNotBlank()) camposCompletados++
+     if (form.direccion.provincia.isNotBlank()) camposCompletados++
+
+     // Paso 3 (Centro/Alumnos)
+     if (form.centroId.isNotBlank()) camposCompletados++
+     // Opcional: añadir al progreso si al menos un DNI válido es introducido
+     // if (form.alumnosDni.any { it.isNotBlank() && validateDni(it) }) camposCompletados++
+
+
+     return if (totalCamposObligatorios > 0) {
+         camposCompletados.toFloat() / totalCamposObligatorios.toFloat()
+     } else {
+         0f
+     }
+}
+
+/**
+ * Componente para el contenido del Paso 1 del formulario.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Step1Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var showPasswordRequirements by remember { mutableStateOf(false) }
+     val focusManager = LocalFocusManager.current
+
+    // Email
                             FormField(
                                 value = uiState.form.email,
-                                onValueChange = { viewModel.updateEmail(it) },
+         onValueChange = { viewModel.updateFormField("email", it) },
                                 label = "Email",
                                 placeholder = "ejemplo@dominio.com",
                                 icon = Icons.Default.Email,
                                 error = uiState.emailError,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Email,
-                                    imeAction = ImeAction.Next
-                                ),
-                                supportingText = {
-                                    if (uiState.emailError != null) {
-                                        Text(
-                                            uiState.emailError!!,
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-                            )
-                            
+         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+         supportingText = uiState.emailError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
+     )
                             // DNI
-                            OutlinedTextField(
+    FormField(
                                 value = uiState.form.dni,
-                                onValueChange = { viewModel.updateDni(it) },
-                                label = { Text("DNI/NIE") },
-                                placeholder = { Text("12345678X") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Pin,
-                                        contentDescription = "DNI/NIE"
-                                    )
-                                },
-                                supportingText = {
-                                    if (uiState.dniError != null) {
-                                        Text(uiState.dniError!!, color = MaterialTheme.colorScheme.error)
-                                    } else {
-                                        Text("Este documento servirá como tu identificador único")
-                                    }
-                                },
-                                isError = uiState.dniError != null,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Text,
-                                    imeAction = ImeAction.Next
-                                )
+        onValueChange = { viewModel.updateFormField("dni", it) },
+        label = "DNI/NIE",
+        placeholder = "12345678X",
+        icon = Icons.Default.Pin,
+        error = uiState.dniError,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+         supportingText = uiState.dniError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } } ?: { Text("Será tu identificador único") }
+    )
+    // Nombre
+     FormField(
+         value = uiState.form.nombre,
+         onValueChange = { viewModel.updateFormField("nombre", it) },
+         label = "Nombre",
+         placeholder = null,
+         icon = Icons.Default.Person,
+         error = uiState.nombreError,
+         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+         supportingText = uiState.nombreError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
+     )
+    // Apellidos
+    FormField(
+         value = uiState.form.apellidos,
+         onValueChange = { viewModel.updateFormField("apellidos", it) },
+         label = "Apellidos",
+         placeholder = null,
+         icon = Icons.Default.TextFormat, // O usar otro icono relevante
+         error = uiState.apellidosError,
+         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+         supportingText = uiState.apellidosError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
+     )
+    // Teléfono
+    FormField(
+         value = uiState.form.telefono,
+         onValueChange = { viewModel.updateFormField("telefono", it) },
+         label = "Teléfono",
+         placeholder = null,
+         icon = Icons.Default.Phone,
+         error = uiState.telefonoError,
+         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+         supportingText = uiState.telefonoError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
                             )
                             
                             // Contraseña
                             OutlinedTextField(
                                 value = uiState.form.password,
-                                onValueChange = { viewModel.updatePassword(it) },
+         onValueChange = { viewModel.updateFormField("password", it) },
                                 label = { Text("Contraseña") },
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = "Contraseña",
-                                        tint = passwordIconColor
-                                    )
-                                },
+         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                                 trailingIcon = {
                                     Row {
                                         IconButton(onClick = { showPasswordRequirements = !showPasswordRequirements }) {
-                                            Icon(Icons.Default.Info, "Requisitos de contraseña")
+                     Icon(Icons.Default.Info, "Requisitos")
                                         }
                                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                             Icon(
                                                 imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                         contentDescription = if (passwordVisible) "Ocultar" else "Mostrar"
                                             )
                                         }
                                     }
                                 },
                                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    imeAction = ImeAction.Done
-                                ),
-                                supportingText = {
-                                    if (uiState.passwordError != null) {
-                                        Text(uiState.passwordError!!, color = MaterialTheme.colorScheme.error)
-                                    }
-                                },
-                                isError = uiState.passwordError != null
-                            )
-                            
-                            // Indicador de fortaleza de contraseña
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(
+         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+         isError = uiState.passwordError != null,
+         supportingText = uiState.passwordError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
+     )
+     // Indicador fortaleza y requisitos (si se quieren mantener)
+     // ... (LinearProgressIndicator y AnimatedVisibility con PasswordRequirementsCard)
+
+    // Confirmar Contraseña
+    OutlinedTextField(
+        value = uiState.form.confirmPassword,
+        onValueChange = { viewModel.updateFormField("confirmPassword", it) },
+        label = { Text("Confirmar Contraseña") },
+        singleLine = true,
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = when {
-                                            porcentajeCompletado < 0.5f -> "Débil"
-                                            porcentajeCompletado < 0.75f -> "Media"
-                                            porcentajeCompletado < 1f -> "Fuerte"
-                                            else -> "Muy fuerte"
-                                        },
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                    
-                                    Text(
-                                        text = "${(porcentajeCompletado * 100).toInt()}%",
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                }
-                                
-                                LinearProgressIndicator(
-                                    progress = { porcentajeCompletado },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(8.dp)
-                                        .clip(CircleShape),
-                                    color = when {
-                                        porcentajeCompletado < 0.5f -> MaterialTheme.colorScheme.error
-                                        porcentajeCompletado < 0.75f -> MaterialTheme.colorScheme.tertiary
-                                        porcentajeCompletado < 1f -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.primary
-                                    }
-                                )
-                            }
-                            
-                            // Animación para mostrar los requisitos de contraseña
-                            AnimatedVisibility(
-                                visible = showPasswordRequirements,
-                                enter = fadeIn() + expandVertically(),
-                                exit = fadeOut() + shrinkVertically()
-                            ) {
-                                PasswordRequirementsCard(password = uiState.form.password)
-                            }
-                            
-                            // Sugerencias de contraseña
+        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+        trailingIcon = {
+            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                Icon(
+                    imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = if (confirmPasswordVisible) "Ocultar" else "Mostrar"
+                )
+            }
+        },
+        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+        isError = uiState.confirmPasswordError != null || (uiState.form.password.isNotEmpty() && uiState.form.confirmPassword.isNotEmpty() && uiState.form.password != uiState.form.confirmPassword),
+        supportingText = {
+             if (uiState.confirmPasswordError != null) {
+                 Text(uiState.confirmPasswordError!!, color = MaterialTheme.colorScheme.error)
+             } else if (uiState.form.password.isNotEmpty() && uiState.form.confirmPassword.isNotEmpty() && uiState.form.password != uiState.form.confirmPassword) {
+                 Text("Las contraseñas no coinciden", color = MaterialTheme.colorScheme.error)
+             }
+         }
+    )
+
+     // Tipo de relación familiar
+     Column(modifier = Modifier.fillMaxWidth()) {
+         Text(
+             text = "Relación familiar",
+             style = MaterialTheme.typography.titleMedium,
+             fontWeight = FontWeight.Medium
+         )
+         Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                TextButton(
-                                    onClick = {
-                                        showPasswordSuggestions = true
-                                    }
-                                ) {
-                                    Text("¿Necesitas ayuda con la contraseña?")
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Nombre
+             horizontalArrangement = Arrangement.spacedBy(12.dp)
+         ) {
+             val tiposFamiliares = SubtipoFamiliar.entries.toList() // Usar enum directamente
+             tiposFamiliares.forEach { tipo ->
+                 RelacionFamiliarOptionCard(
+                     selected = uiState.form.subtipo == tipo,
+                     onClick = { viewModel.updateSubtipoFamiliar(tipo) },
+                     title = tipo.name.lowercase().replaceFirstChar { it.titlecase() } // Formatear nombre
+                 )
+             }
+         }
+     }
+}
+
+/**
+ * Componente para el contenido del Paso 2 del formulario (Dirección).
+ */
+@Composable
+fun Step2Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
+     val focusManager = LocalFocusManager.current
+
+     Text("Dirección Postal", style = MaterialTheme.typography.titleLarge)
+     Spacer(modifier = Modifier.height(16.dp))
+
+     // Calle
+     FormField(
+         value = uiState.form.direccion.calle,
+         onValueChange = { viewModel.updateFormField("calle", it) },
+         label = "Calle",
+         icon = Icons.AutoMirrored.Filled.Segment,
+         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+         error = null,
+         placeholder = null,
+         supportingText = null
+     )
+     // Número
+     FormField(
+         value = uiState.form.direccion.numero,
+         onValueChange = { viewModel.updateFormField("numero", it) },
+         label = "Número",
+         icon = Icons.Filled.Numbers,
+         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+         error = null,
+         placeholder = null,
+         supportingText = null
+     )
+     // Piso (Opcional?)
+     FormField(
+         value = uiState.form.direccion.piso ?: "",
+         onValueChange = { viewModel.updateFormField("piso", it) },
+         label = "Piso/Puerta (Opcional)",
+         icon = Icons.Filled.SensorDoor,
+         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+         error = null,
+         placeholder = null,
+         supportingText = null
+     )
+     // Código Postal
+     FormField(
+         value = uiState.form.direccion.codigoPostal,
+         onValueChange = { viewModel.updateFormField("codigoPostal", it) },
+         label = "Código Postal",
+         icon = Icons.Filled.LocalPostOffice,
+         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+         error = null,
+         placeholder = null,
+         supportingText = null
+     )
+     // Ciudad
+     FormField(
+         value = uiState.form.direccion.ciudad,
+         onValueChange = { viewModel.updateFormField("ciudad", it) },
+         label = "Ciudad",
+         icon = Icons.Filled.LocationCity,
+         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+         error = null,
+         placeholder = null,
+         supportingText = null
+     )
+     // Provincia
+     FormField(
+         value = uiState.form.direccion.provincia,
+         onValueChange = { viewModel.updateFormField("provincia", it) },
+         label = "Provincia",
+         icon = Icons.Filled.Map,
+         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+         error = null,
+         placeholder = null,
+         supportingText = null
+     )
+}
+
+/**
+ * Componente para el contenido del Paso 3 del formulario (Alumnos y Centro).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Step3Content(uiState: RegistroUiState, viewModel: RegistroViewModel, focusManager: androidx.compose.ui.focus.FocusManager) {
+    var centroDropdownExpanded by remember { mutableStateOf(false) }
+
+    Text("Datos Escolares", style = MaterialTheme.typography.titleLarge)
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Selección de Centro Educativo
+    ExposedDropdownMenuBox(
+        expanded = centroDropdownExpanded,
+        onExpandedChange = { centroDropdownExpanded = !centroDropdownExpanded },
+         modifier = Modifier.fillMaxWidth()
+    ) {
                     OutlinedTextField(
-                        value = uiState.form.nombre,
-                        onValueChange = { viewModel.updateNombre(it) },
-                        label = { Text("Nombre") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Nombre"
-                            )
-                        },
-                        supportingText = {
-                            if (uiState.nombreError != null) {
-                                Text(uiState.nombreError!!, color = MaterialTheme.colorScheme.error)
-                            }
-                        },
-                        isError = uiState.nombreError != null,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next
-                        )
-                    )
-                    
-                    // Apellidos
-                    OutlinedTextField(
-                        value = uiState.form.apellidos,
-                        onValueChange = { viewModel.updateApellidos(it) },
-                        label = { Text("Apellidos") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.TextFormat,
-                                contentDescription = "Apellidos"
-                            )
-                        },
-                        supportingText = {
-                            if (uiState.apellidosError != null) {
-                                Text(uiState.apellidosError!!, color = MaterialTheme.colorScheme.error)
-                            }
-                        },
-                        isError = uiState.apellidosError != null,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next
-                        )
-                    )
-                    
-                    // Teléfono
-                    OutlinedTextField(
-                        value = uiState.form.telefono,
-                        onValueChange = { viewModel.updateTelefono(it) },
-                        label = { Text("Teléfono") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = "Teléfono"
-                            )
-                        },
-                        supportingText = {
-                            if (uiState.telefonoError != null) {
-                                Text(uiState.telefonoError!!, color = MaterialTheme.colorScheme.error)
-                            }
-                        },
-                        isError = uiState.telefonoError != null,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Phone,
-                            imeAction = ImeAction.Next
-                        )
-                    )
-                    
-                    // Sección para DNIs de alumnos
-                    AnimatedVisibility(
-                        visible = uiState.form.subtipo != null,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
+            value = uiState.centros.find { it.id == uiState.form.centroId }?.nombre ?: "",
+            onValueChange = { /* No editable directamente */ },
+            readOnly = true,
+            label = { Text("Centro Educativo") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = centroDropdownExpanded) },
+            modifier = Modifier
+                .menuAnchor() // Importante para vincular el menú
+                .fillMaxWidth(),
+             leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
+             isError = uiState.form.centroId.isBlank() && uiState.currentStep == 3 // Mostrar error si está vacío en este paso
+        )
+        ExposedDropdownMenu(
+            expanded = centroDropdownExpanded,
+            onDismissRequest = { centroDropdownExpanded = false }
+        ) {
+            if (uiState.isLoadingCentros) {
+                 DropdownMenuItem(
+                     text = { Text("Cargando centros...") },
+                     onClick = { },
+                     enabled = false
+                 )
+             } else if (uiState.centros.isEmpty()) {
+                 DropdownMenuItem(
+                     text = { Text("No hay centros disponibles") },
+                     onClick = { },
+                     enabled = false
+                 )
+            } else {
+                 uiState.centros.forEach { centro ->
+                     DropdownMenuItem(
+                         text = { Text(centro.nombre) },
+                         onClick = {
+                             viewModel.updateFormField("centroId", centro.id)
+                             centroDropdownExpanded = false
+                         }
+                     )
+                 }
+             }
+        }
+    }
+     if (uiState.form.centroId.isBlank() && uiState.currentStep == 3) {
+         Text("Debes seleccionar un centro", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+     }
+
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Sección para DNIs de alumnos (movida aquí desde el Card principal)
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -751,11 +1019,24 @@ fun RegistroScreen(
                                     .padding(16.dp)
                             ) {
                                 Text(
-                                    text = "DNIs de Alumnos",
+                text = "DNIs de Alumnos Vinculados", // Título más descriptivo
                                     style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.padding(bottom = 8.dp)
-                                )
+            )
+            Text(
+                text = "Introduce el DNI de cada alumno que deseas vincular. El centro verificará esta información.",
+                 style = MaterialTheme.typography.bodySmall,
+                 modifier = Modifier.padding(bottom = 12.dp)
+             )
 
+            if (uiState.form.alumnosDni.isEmpty()) {
+                Text(
+                    "Aún no has añadido ningún DNI.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            } else {
                                 uiState.form.alumnosDni.forEachIndexed { index, dni ->
                                     Row(
                                         modifier = Modifier
@@ -765,22 +1046,28 @@ fun RegistroScreen(
                                     ) {
                                         OutlinedTextField(
                                             value = dni,
+                             // Usar onValueChange directamente para actualizar alumno específico
                                             onValueChange = { viewModel.updateAlumnoDni(index, it) },
-                                            label = { Text("DNI del alumno") },
+                            label = { Text("DNI Alumno ${index + 1}") },
                                             modifier = Modifier.weight(1f),
-                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = if (index == uiState.form.alumnosDni.lastIndex) ImeAction.Done else ImeAction.Next),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                                onDone = { focusManager.clearFocus() }
+                            ),
+                             singleLine = true,
                                             isError = dni.isNotBlank() && !validateDni(dni),
                                             supportingText = {
                                                 if (dni.isNotBlank() && !validateDni(dni)) {
                                                     Text(
-                                                        "El DNI debe tener 8 números y una letra",
+                                        "Formato DNI inválido", // Mensaje más corto
                                                         color = MaterialTheme.colorScheme.error
                                                     )
                                                 }
                                             },
                                             leadingIcon = {
                                                 Icon(
-                                                    Icons.Default.Badge,
+                                    Icons.Default.Badge, // O usar otro icono como ChildCare
                                                     contentDescription = "DNI del alumno"
                                                 )
                                             }
@@ -791,215 +1078,170 @@ fun RegistroScreen(
                                             modifier = Modifier.padding(start = 8.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Delete,
-                                                contentDescription = "Eliminar DNI"
-                                            )
-                                        }
-                                    }
+                                 imageVector = Icons.Filled.Delete,
+                                 contentDescription = "Eliminar DNI",
+                                 tint = MaterialTheme.colorScheme.error
+                             )
+                         }
+                    }
+                 }
+            }
+
+             // Mostrar error si no se ha añadido ningún alumno y es obligatorio
+             val showErrorAlMenosUno = !uiState.form.alumnosDni.any { it.isNotBlank() } && uiState.currentStep == 3
+             if (showErrorAlMenosUno) {
+                 Text(
+                     "Debes añadir el DNI de al menos un alumno.",
+                     color = MaterialTheme.colorScheme.error,
+                     style = MaterialTheme.typography.bodySmall,
+                     modifier = Modifier.padding(top = 4.dp)
+                 )
                                 }
 
                                 Button(
                                     onClick = { viewModel.addAlumnoDni() },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 8.dp)
+                    .padding(top = 16.dp) // Más espacio antes del botón
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Add,
                                         contentDescription = "Añadir DNI"
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Añadir otro DNI")
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Tipo de relación familiar
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "Relación familiar",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Opciones de relación familiar
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            val tiposFamiliares = listOf("Padre", "Madre", "Tutor")
-                            
-                            tiposFamiliares.forEach { tipo ->
-                                RelacionFamiliarOptionCard(
-                                    selected = uiState.form.subtipo.name == tipo.uppercase(),
-                                    onClick = { 
-                                        viewModel.updateSubtipoFamiliar(
-                                            SubtipoFamiliar.valueOf(tipo.uppercase())
-                                        ) 
-                                    },
-                                    title = tipo
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Términos y condiciones
-                    TermsAndConditionsCard(
-                        onNavigateToTerminosCondiciones = onNavigateToTerminosCondiciones
-                    )
-                    
-                    // Botones de navegación
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        OutlinedButton(
-                            onClick = { viewModel.previousStep() },
-                            enabled = uiState.currentStep > 1
-                        ) {
-                            Text("Anterior")
-                        }
+                Text("Añadir DNI de Alumno")
+            }
+        }
+    }
+}
 
-                        Button(
-                            onClick = { 
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                                viewModel.nextStep() 
-                            },
-                            enabled = isFormValid(uiState) && !uiState.isLoading
-                        ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
-                                )
+/**
+ * Diálogo que muestra los campos faltantes o inválidos para el paso actual.
+ * Utiliza los errores específicos del UiState para mensajes más precisos.
+ */
+@Composable
+private fun CamposFaltantesDialog(
+    uiState: RegistroUiState,
+    currentStep: Int,
+    onDismiss: () -> Unit
+) {
+    // Recalcular la lista de errores si cambian los inputs relevantes
+    val camposConError = remember(currentStep, uiState.form, uiState.emailError, uiState.dniError,
+                                uiState.nombreError, uiState.apellidosError, uiState.telefonoError,
+                                uiState.passwordError, uiState.confirmPasswordError,
+                                uiState.centroIdError, uiState.alumnosDniError) {
+        mutableListOf<String>().apply {
+            when (currentStep) {
+                1 -> {
+                    // Paso 1: Datos Personales
+                    if (uiState.form.email.isBlank()) add("Email: Campo obligatorio")
+                    else uiState.emailError?.let { add("Email: $it") }
+
+                    if (uiState.form.dni.isBlank()) add("DNI/NIE: Campo obligatorio")
+                    else uiState.dniError?.let { add("DNI/NIE: $it") }
+
+                    if (uiState.form.nombre.isBlank()) add("Nombre: Campo obligatorio")
+                    else uiState.nombreError?.let { add("Nombre: $it") }
+
+                    if (uiState.form.apellidos.isBlank()) add("Apellidos: Campo obligatorio")
+                    else uiState.apellidosError?.let { add("Apellidos: $it") }
+
+                    if (uiState.form.telefono.isBlank()) add("Teléfono: Campo obligatorio")
+                    else uiState.telefonoError?.let { add("Teléfono: $it") }
+
+                    if (uiState.form.password.isBlank()) add("Contraseña: Campo obligatorio")
+                    // Validar requisitos directamente aquí si no hay error específico en UiState
+                    else if (!validatePassword(uiState.form.password)) add("Contraseña: No cumple los requisitos mínimos")
+                    else uiState.passwordError?.let { add("Contraseña: $it") }
+
+                    if (uiState.form.confirmPassword.isBlank()) add("Confirmar Contraseña: Campo obligatorio")
+                    else if (uiState.form.password != uiState.form.confirmPassword) add("Confirmar Contraseña: Las contraseñas no coinciden")
+                    else uiState.confirmPasswordError?.let { add("Confirmar Contraseña: $it") }
+                }
+                2 -> {
+                    // Paso 2: Dirección
+                    if (uiState.form.direccion.calle.isBlank()) add("Calle: Campo obligatorio")
+                    // Añadir errores específicos si existen (calleError)
+
+                    if (uiState.form.direccion.numero.isBlank()) add("Número: Campo obligatorio")
+
+                    if (uiState.form.direccion.codigoPostal.isBlank()) add("Código Postal: Campo obligatorio")
+                    // Añadir validación de formato si existe (codigoPostalError)
+
+                    if (uiState.form.direccion.ciudad.isBlank()) add("Ciudad: Campo obligatorio")
+
+                    if (uiState.form.direccion.provincia.isBlank()) add("Provincia: Campo obligatorio")
+                }
+                3 -> {
+                    // Paso 3: Centro y Alumnos
+                    if (uiState.form.centroId.isBlank()) add("Centro Educativo: Debes seleccionar uno")
+                    else uiState.centroIdError?.let { add("Centro Educativo: $it") }
+
+                    // Validar si se requiere al menos un alumno
+                    if (uiState.form.alumnosDni.all { it.isBlank() }) {
+                         add("Alumnos: Debes añadir el DNI de al menos un alumno")
                             } else {
-                                Text("Siguiente")
+                         // Validar formato de cada DNI introducido
+                         uiState.form.alumnosDni.forEachIndexed { index, dni ->
+                             if (dni.isNotBlank() && !validateDni(dni)) {
+                                 add("DNI Alumno ${index + 1}: Formato inválido")
                             }
                         }
                     }
+                     uiState.alumnosDniError?.let { add("Alumnos: $it") } // Error general de la lista
                 }
             }
         }
     }
     
-    // Diálogo de sugerencias de contraseña
-    if (showPasswordSuggestions) {
         AlertDialog(
-            onDismissRequest = { showPasswordSuggestions = false },
-            title = { Text("Sugerencias de contraseñas") },
+        onDismissRequest = onDismiss,
+        title = { Text("Revisa estos campos") },
             text = {
-                Column {
+            LazyColumn {
+                item {
                     Text(
-                        "Estas son algunas sugerencias de contraseñas seguras:",
-                        style = MaterialTheme.typography.bodyMedium
+                        "Por favor, corrige los siguientes puntos del Paso $currentStep para continuar:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    val suggestions = generatePasswordSuggestions()
-                    suggestions.forEach { suggestion ->
+                }
+                if (camposConError.isNotEmpty()) {
+                    items(camposConError.toList()) { errorMsg: String ->
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                            modifier = Modifier.padding(vertical = 4.dp).fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(
+                                imageVector = Icons.Filled.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = suggestion,
+                                text = errorMsg,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.weight(1f)
                             )
-                            
-                            IconButton(
-                                onClick = { 
-                                    viewModel.updatePassword(suggestion)
-                                    showPasswordSuggestions = false
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ContentCopy,
-                                    contentDescription = "Usar esta contraseña"
-                                )
-                            }
+                        }
+                    }
+                } else {
+                    item {
+                        Text(
+                            "Parece que todo está correcto en este paso, pero la validación general falló. Contacta con soporte.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showPasswordSuggestions = false }) {
-                    Text("Cerrar")
-                }
+            TextButton(onClick = onDismiss) {
+                Text("Entendido")
             }
-        )
-    }
-    
-    // Diálogo de depuración
-    if (showDepuracionDialog) {
-        AlertDialog(
-            onDismissRequest = { showDepuracionDialog = false },
-            title = { Text("Información de depuración") },
-            text = {
-                Column {
-                    Text(
-                        "Estado actual del formulario:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text("Email: ${uiState.form.email}")
-                    Text("DNI: ${uiState.form.dni}")
-                    Text("Nombre: ${uiState.form.nombre}")
-                    Text("Apellidos: ${uiState.form.apellidos}")
-                    Text("Teléfono: ${uiState.form.telefono}")
-                    Text("Tipo familiar: ${uiState.form.subtipo.name}")
-                    Text("Porcentaje completado: ${(porcentajeCompletado * 100).toInt()}%")
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        "Errores:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Text("Email: ${uiState.emailError ?: "Sin errores"}")
-                    Text("DNI: ${uiState.dniError ?: "Sin errores"}")
-                    Text("Nombre: ${uiState.nombreError ?: "Sin errores"}")
-                    Text("Apellidos: ${uiState.apellidosError ?: "Sin errores"}")
-                    Text("Teléfono: ${uiState.telefonoError ?: "Sin errores"}")
-                    Text("Contraseña: ${uiState.passwordError ?: "Sin errores"}")
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        "Estado general:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Text("Cargando: ${if (uiState.isLoading) "Sí" else "No"}")
-                    Text("Error: ${uiState.error ?: "Sin errores"}")
-                    Text("Éxito: ${if (uiState.success) "Sí" else "No"}")
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDepuracionDialog = false }) {
-                    Text("Cerrar")
-                }
-            }
-        )
-    }
+        }
+    )
 }
 
 /**
@@ -1195,66 +1437,6 @@ private fun RelacionFamiliarOptionCard(
 }
 
 /**
- * Función para calcular el porcentaje de completado del formulario.
- * 
- * Esta función verifica que todos los campos obligatorios del formulario estén completos
- * y cumplan con las validaciones correspondientes.
- * 
- * @param uiState El estado actual del formulario
- * @return Un valor entre 0.0 y 1.0 que representa el porcentaje de completado
- * 
- * @see RegistroUiState
- */
-private fun calcularPorcentajeCompletado(uiState: RegistroUiState): Float {
-    var camposCompletados = 0
-    val totalCampos = 7 // email, dni, nombre, apellidos, telefono, password, subtipo
-    
-    if (uiState.form.email.isNotBlank()) camposCompletados++
-    if (uiState.form.dni.isNotBlank()) camposCompletados++
-    if (uiState.form.nombre.isNotBlank()) camposCompletados++
-    if (uiState.form.apellidos.isNotBlank()) camposCompletados++
-    if (uiState.form.telefono.isNotBlank()) camposCompletados++
-    if (uiState.form.password.isNotBlank()) camposCompletados++
-    camposCompletados++
-    
-    return camposCompletados / totalCampos.toFloat()
-}
-
-/**
- * Componente de indicador de progreso del formulario.
- * 
- * @param progress Progreso actual (0.0 a 1.0)
- * @param modifier Modificador de composición
- */
-@Composable
-private fun FormProgressIndicator(
-    progress: Float,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp)),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        Text(
-            text = "${(progress * 100).toInt()}% completado",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-/**
  * Componente de indicador de paso actual.
  * 
  * @param currentStep Paso actual
@@ -1333,8 +1515,11 @@ private fun StepIndicator(
  * @param icon Icono del campo
  * @param error Mensaje de error
  * @param keyboardOptions Opciones de teclado
+ * @param keyboardActions Acciones de teclado
  * @param supportingText Texto de soporte
  * @param modifier Modificador de composición
+ * @param singleLine Si el campo es de una sola línea
+ * @param visualTransformation Transformación visual del texto
  */
 @Composable
 private fun FormField(
@@ -1345,15 +1530,18 @@ private fun FormField(
     icon: ImageVector,
     error: String?,
     keyboardOptions: KeyboardOptions,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     supportingText: @Composable (() -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
-        singleLine = true,
+        singleLine = singleLine,
         modifier = modifier.fillMaxWidth(),
         leadingIcon = {
             Icon(
@@ -1363,8 +1551,36 @@ private fun FormField(
         },
         isError = error != null,
         keyboardOptions = keyboardOptions,
-        supportingText = supportingText
+        keyboardActions = keyboardActions,
+        supportingText = supportingText,
+        visualTransformation = visualTransformation
     )
+}
+
+/**
+ * Componente de indicador de progreso del formulario.
+ * 
+ * @param progress Progreso actual (0.0f - 1.0f)
+ * @param currentStep Paso actual
+ * @param totalSteps Total de pasos
+ * @param modifier Modificador de composición
+ */
+@Composable
+private fun FormProgressIndicator(
+    progress: Float,
+    currentStep: Int = 1,  // Valor por defecto para currentStep
+    totalSteps: Int = 3,   // Valor por defecto para totalSteps
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+            strokeCap = StrokeCap.Round
+        )
+    }
 }
 
 /**
