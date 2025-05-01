@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -78,9 +79,9 @@ fun SupportAndTermsButtons(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Soporte técnico",
-                        maxLines = 2,
-                        softWrap = true,
-                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Medium
                     )
                 }

@@ -10,8 +10,11 @@ import com.google.firebase.Timestamp
  * 
  * @property id Identificador único de la solicitud
  * @property familiarId ID del familiar que hace la solicitud
+ * @property alumnoId ID del alumno que se quiere vincular
  * @property alumnoDni DNI del alumno que se quiere vincular
- * @property alumnoNombre Nombre del alumno (opcional, puede estar vacío)
+ * @property alumnoNombre Nombre del alumno
+ * @property nombreFamiliar Nombre del familiar que hace la solicitud
+ * @property tipoRelacion Tipo de relación entre el familiar y el alumno
  * @property centroId ID del centro educativo
  * @property fechaSolicitud Fecha en que se realizó la solicitud
  * @property estado Estado actual de la solicitud (Pendiente, Aprobada, Rechazada)
@@ -19,8 +22,11 @@ import com.google.firebase.Timestamp
 data class SolicitudVinculacion(
     val id: String = "",
     val familiarId: String = "",
+    val alumnoId: String = "",
     val alumnoDni: String = "",
-    val alumnoNombre: String? = null,
+    val alumnoNombre: String = "",
+    val nombreFamiliar: String = "",
+    val tipoRelacion: String = "",
     val centroId: String = "",
     val fechaSolicitud: Timestamp = Timestamp.now(),
     val estado: EstadoSolicitud = EstadoSolicitud.PENDIENTE

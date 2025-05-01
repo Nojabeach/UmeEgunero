@@ -189,6 +189,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import androidx.compose.animation.core.LinearEasing
+import timber.log.Timber
 
 /**
  * Función de extensión para calcular la luminosidad de un color.
@@ -498,8 +499,20 @@ fun RegistroScreen(
     // Efecto que detecta cuando el registro ha sido exitoso
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
+            // --- ENVÍO DE EMAIL ELIMINADO --- 
+            // // Enviar email de solicitud recibida al registrar familiar
+            // MailjetEmailSender.sendSolicitudRecibidaEmail(
+            //     destinatario = uiState.form.email,
+            //     nombre = uiState.form.nombre
+            // ) { success -> 
+            //     // Registrar si el envío falló
+            //     if (!success) {
+            //         Timber.w("Fallo al intentar enviar email de solicitud recibida a ${uiState.form.email}")
+            //     }
+            // } 
+            
+            // Ahora solo muestra el diálogo y navega
             showRegistroExitosoDialog = true
-            // Después de 3 segundos, navegar automáticamente
             delay(3000)
             onRegistroCompletado()
         }
@@ -1198,7 +1211,7 @@ fun Step3Content(uiState: RegistroUiState, viewModel: RegistroViewModel, focusMa
             }
 
              // Mostrar error si no se ha añadido ningún alumno y es obligatorio
-             val showErrorAlMenosUno = !uiState.form.alumnosDni.any { it.isNotBlank() } && uiState.currentStep == 3
+             val showErrorAlMenosUno = !uiState.form.alumnosDni.any { it.isBlank() } && uiState.currentStep == 3
              if (showErrorAlMenosUno) {
                  Text(
                      "Debes añadir el DNI de al menos un alumno.",

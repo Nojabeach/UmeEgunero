@@ -409,6 +409,67 @@ class LoginScreenTest {
 - Internacionalización (strings.xml) y soporte multilenguaje.
 - Accesibilidad (contentDescription, contraste, tamaño mínimo de touch targets).
 
+## Envío de Correos Electrónicos HTML
+
+Una funcionalidad clave de la aplicación es la notificación a usuarios (familiares, profesores) mediante correo electrónico en eventos como aprobación/rechazo de solicitudes, bienvenida, recordatorios, etc. Se requiere que estos correos tengan un formato HTML enriquecido y consistente con la imagen de la aplicación.
+
+### Desafío: Limitaciones de `Intent.ACTION_SEND`
+
+Inicialmente, se exploró el uso del sistema estándar de Android `Intent.ACTION_SEND` con el tipo MIME `text/html` para delegar el envío al cliente de correo del usuario (Gmail, K-9 Mail, etc.). Sin embargo, se encontraron limitaciones significativas:
+
+*   **Renderizado Inconsistente:** Muchos clientes de correo populares en Android (notablemente Gmail) no renderizan correctamente el HTML proporcionado a través de `Intent.EXTRA_HTML_TEXT` en la *ventana de composición*, mostrando en su lugar el texto plano de fallback (`Intent.EXTRA_TEXT`) o incluso el código HTML fuente.
+*   **Experiencia de Usuario Pobre:** Esto generaba confusión, ya que la previsualización interna en la app (usando WebView) mostraba el HTML correctamente, pero la composición en el cliente de correo no.
+
+### Solución: Backend con Google Apps Script
+
+Para asegurar un envío fiable y un renderizado consistente del HTML en el correo *recibido*, se optó por implementar un pequeño backend utilizando Google Apps Script (GAS).
+
+**Ventajas:**
+
+*   **Envío Directo:** El script envía el correo directamente usando `MailApp.sendEmail`, que soporta `htmlBody` de forma nativa.
+*   **Consistencia:** El formato HTML se mantiene intacto hasta llegar al servidor de correo del destinatario, mejorando la probabilidad de un renderizado correcto en la mayoría de clientes.
+*   **Centralización:** La lógica de generación de plantillas HTML reside en el script, simplificando el código Android.
+*   **Seguridad:** Evita manejar credenciales SMTP directamente en la aplicación Android. El script se ejecuta bajo la autoridad de la cuenta de Google que lo despliega.
+
+**Componentes:**
+
+1.  **Google Apps Script (`doGet`):**
+    *   Desplegado como **Aplicación web** accesible mediante una URL `/exec`.
+    *   Recibe parámetros por URL (GET): `destinatario`, `asunto`, `nombre`, `tipoPlantilla`.
+    *   Contiene funciones JavaScript (`generarHtmlSegunPlantilla`) que replican las plantillas HTML definidas originalmente en Kotlin.
+    *   Utiliza `MailApp.sendEmail()` especificando el `htmlBody`.
+    *   Devuelve una respuesta JSON simple (`{status: "OK" | "ERROR", message: "..."}`).
+    *   **Configuración de Despliegue:** Se ejecuta como "Yo" (el desarrollador) y con acceso para "Cualquier usuario" (requiere consideración de seguridad adicional, como un token secreto, para producción).
+
+2.  **Implementación Android (Ktor Client):**
+    *   Se utiliza **Ktor Client** para realizar llamadas HTTP GET a la URL del script desplegado.
+    *   Se requiere la dependencia de Ktor (`ktor-client-core`, `ktor-client-cio`, `ktor-client-content-negotiation`, `ktor-serialization-kotlinx-json`) y el permiso `INTERNET`.
+    *   Se usa **Kotlinx Serialization** (`kotlinx-serialization-json` y el plugin) para parsear la respuesta JSON del script en una data class (`ScriptResponse`).
+    *   La llamada de red se ejecuta dentro de una **Coroutine** en el dispatcher `Dispatchers.IO` para no bloquear el hilo principal.
+    *   La construcción de la URL con parámetros se realiza usando `Uri.Builder`.
+    *   Se manejan los posibles errores de red y se informa al usuario mediante `Snackbar`.
+
+**Flujo:**
+
+```mermaid
+graph LR
+    A[App Android (EmailTestScreen)] -- GET Request con parámetros --> B(URL Apps Script /exec);
+    B -- Ejecuta doGet() --> C{Google Apps Script};
+    C -- Genera HTML --> C;
+    C -- MailApp.sendEmail() --> D(Servidor Gmail);
+    D -- Envía Email HTML --> E(Destinatario);
+    C -- JSON Response (OK/ERROR) --> A;
+```
+
+**Consideraciones:**
+
+*   **Dependencia Externa:** Introduce una dependencia en Google Apps Script.
+*   **Mantenimiento de Plantillas:** Las plantillas HTML deben mantenerse sincronizadas entre el código original (si se conserva para previsualización) y el script JavaScript.
+*   **Seguridad URL:** La URL del script es pública si se configura con acceso para "Cualquier usuario". Se recomienda añadir un token secreto como parámetro para validación básica en el script para entornos de producción.
+*   **Cuotas de GAS/Gmail:** El envío está sujeto a las cuotas diarias de la cuenta de Google que ejecuta el script.
+
+Esta solución proporciona una forma robusta y gratuita (dentro de las cuotas) de enviar correos HTML correctamente formateados desde la aplicación, superando las limitaciones de los Intents de Android.
+
 ## Conclusión
 
 Esta documentación técnica proporciona una visión general de la arquitectura y los principales componentes de UmeEgunero. La aplicación sigue las mejores prácticas de desarrollo para Android, utilizando tecnologías modernas y un enfoque arquitectónico que facilita la mantenibilidad y la escalabilidad.

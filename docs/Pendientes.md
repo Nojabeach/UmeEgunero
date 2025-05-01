@@ -123,13 +123,13 @@ Lista simplificada de tareas pendientes para completar el desarrollo del proyect
 18. **Sistema de Tareas**
 19. **Módulo completo de Actividades Preescolares**
 
-## Implementación de Servicio de Email (SendGrid)
+## Implementación de Servicio de Email (Mailjet)
 
-Para completar al 100% la implementación del servicio de email con SendGrid:
+Para completar al 100% la implementación del servicio de email con Mailjet:
 
 1. **Configuración inicial**
-   - Obtener API Key de SendGrid registrándose en https://sendgrid.com/free/
-   - Verificar dominio de email del remitente en el panel de SendGrid
+   - Obtener API Key de Mailjet registrándose en https://www.mailjet.com/
+   - Verificar dominio de email del remitente en el panel de Mailjet
    - Configurar la API Key en el archivo EmailService.kt
 
 2. **Completar funcionalidades de EmailService**
@@ -149,7 +149,7 @@ Para completar al 100% la implementación del servicio de email con SendGrid:
 
 4. **Seguridad y monitorización**
    - Implementar sistema de reintento para emails fallidos
-   - Crear mecanismo para cambiar de proveedor de email si SendGrid falla
+   - Crear mecanismo para cambiar de proveedor de email si Mailjet falla
    - Añadir panel de monitorización de emails enviados/fallidos
    - Implementar cifrado adicional para datos sensibles en los emails
 
@@ -160,10 +160,10 @@ Para completar al 100% la implementación del servicio de email con SendGrid:
 
 6. **Testing completo**
    - Desarrollar tests unitarios para cada tipo de email
-   - Implementar tests de integración con SendGrid
+   - Implementar tests de integración con Mailjet
    - Crear tests de regresión para asegurar compatibilidad con futuras versiones
 
 7. **Documentación detallada**
-   - Crear manual de configuración para SendGrid
-   - Documentar API completa del servicio EmailService
+   - Crear manual de configuración para Mailjet
+   - Documentar API completa del servicio MailjetEmailSender
    - Incluir ejemplos de uso para cada tipo de email

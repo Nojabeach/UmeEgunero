@@ -26,8 +26,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.feature.common.welcome.viewmodel.SoporteTecnicoViewModel
 import com.tfg.umeegunero.ui.theme.GradientEnd
 import com.tfg.umeegunero.ui.theme.GradientStart
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 
 /**
  * Pantalla de soporte técnico que permite enviar un correo electrónico
@@ -41,31 +39,14 @@ fun SoporteTecnicoScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     
-    // Mostrar mensajes de error
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            scope.launch {
-                snackbarHostState.showSnackbar(it)
-                viewModel.clearError()
-            }
-        }
-    }
-    
-    // Mostrar mensaje de éxito y navegar hacia atrás cuando se envía el correo
     LaunchedEffect(uiState.enviado) {
         if (uiState.enviado) {
-            scope.launch {
-                snackbarHostState.showSnackbar("Mensaje enviado correctamente")
-                delay(1500) // Esperar un momento antes de volver
-                onNavigateBack()
-            }
+            snackbarHostState.showSnackbar("Mensaje enviado correctamente")
+            viewModel.clearError()
         }
     }
-    
-    val gradientColors = listOf(GradientStart, GradientEnd)
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -77,24 +58,18 @@ fun SoporteTecnicoScreen(
                             contentDescription = "Volver"
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
-        // Contenido principal
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(
                     brush = Brush.linearGradient(
-                        colors = gradientColors,
+                        colors = listOf(GradientStart, GradientEnd),
                         start = Offset(0f, 0f),
                         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                     )
@@ -103,48 +78,25 @@ fun SoporteTecnicoScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Tarjeta con el formulario
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = 4.dp
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(16.dp)
                     ) {
-                        // Título de la pantalla
                         Text(
-                            text = "Contacta con Soporte Técnico",
+                            text = "Envíanos tu consulta",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
-                        
-                        // Descripción
-                        Text(
-                            text = "Completa el formulario para enviar un correo al equipo de soporte técnico.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = 24.dp)
-                        )
-                        
+
                         // Campo de nombre
                         OutlinedTextField(
                             value = uiState.nombre,
@@ -169,7 +121,7 @@ fun SoporteTecnicoScreen(
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp)
                         )
-                        
+
                         // Campo de email
                         OutlinedTextField(
                             value = uiState.email,
@@ -195,7 +147,7 @@ fun SoporteTecnicoScreen(
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp)
                         )
-                        
+
                         // Campo de asunto
                         OutlinedTextField(
                             value = uiState.asunto,
@@ -220,7 +172,7 @@ fun SoporteTecnicoScreen(
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp)
                         )
-                        
+
                         // Campo de mensaje
                         OutlinedTextField(
                             value = uiState.mensaje,
@@ -238,26 +190,32 @@ fun SoporteTecnicoScreen(
                                 .padding(bottom = 24.dp),
                             minLines = 5
                         )
-                        
+
                         // Botón de enviar
                         Button(
                             onClick = { viewModel.enviarEmail() },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),
+                            enabled = !uiState.isLoading,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
                             ),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text(
-                                "Enviar Mensaje",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold
-                            )
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            } else {
+                                Text(
+                                    "Enviar Mensaje",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }

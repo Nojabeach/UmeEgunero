@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.EmailSoporteConstants
 import com.tfg.umeegunero.feature.common.support.viewmodel.SupportViewModel
-import com.tfg.umeegunero.util.EmailSender
 import kotlinx.coroutines.launch
 
 @Composable
@@ -260,21 +259,7 @@ fun TechnicalSupportScreen(
                         """.trimIndent()
 
                         coroutineScope.launch {
-                            val result = viewModel.sendEmail(
-                                from = EmailSoporteConstants.EMAIL_SOPORTE,
-                                to = EmailSoporteConstants.EMAIL_DESTINATARIO,
-                                subject = selectedTopic,
-                                messageBody = emailMessage,
-                                senderName = name
-                            )
-                            
-                            if (result) {
-                                showEmailDialog = false
-                                showSuccessDialog = true
-                            } else {
-                                errorMessage = "No se pudo enviar el email. Inténtalo más tarde."
-                                showErrorDialog = true
-                            }
+                            viewModel.sendEmailSoporte(destinatario = EmailSoporteConstants.EMAIL_DESTINATARIO, nombre = name, asunto = selectedTopic, mensaje = emailMessage)
                         }
                     },
                     enabled = name.isNotBlank() && email.isNotBlank() && 

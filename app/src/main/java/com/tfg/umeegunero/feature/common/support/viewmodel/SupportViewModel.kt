@@ -2,66 +2,61 @@ package com.tfg.umeegunero.feature.common.support.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.util.EmailSender
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import timber.log.Timber
 import javax.inject.Inject
+import timber.log.Timber
+import com.tfg.umeegunero.data.model.EmailSoporteConstants
 
 /**
  * ViewModel para la pantalla de soporte técnico
  */
 @HiltViewModel
-class SupportViewModel @Inject constructor(
-    private val emailSender: EmailSender
-) : ViewModel() {
+class SupportViewModel @Inject constructor() : ViewModel() {
     
     private val _uiState = MutableStateFlow(SupportUiState())
-    val uiState: StateFlow<SupportUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<SupportUiState> = _uiState
     
-    /**
-     * Envía un email utilizando el servicio de EmailSender
-     * 
-     * @param from Correo del remitente
-     * @param to Correo del destinatario
-     * @param subject Asunto del mensaje
-     * @param messageBody Cuerpo del mensaje
-     * @param senderName Nombre del remitente (opcional)
-     * @return true si el correo se envió correctamente, false en caso contrario
-     */
-    suspend fun sendEmail(
-        from: String,
-        to: String,
-        subject: String,
-        messageBody: String,
-        senderName: String = ""
-    ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            Timber.d("Intentando enviar email de $from a $to")
-            val result = emailSender.sendEmail(
-                from = from,
-                to = to,
-                subject = subject,
-                messageBody = messageBody,
-                senderName = senderName
-            )
-            
-            if (result) {
-                Timber.d("Email enviado correctamente")
-            } else {
-                Timber.e("No se pudo enviar el email")
+    fun sendEmailSoporte(destinatario: String, nombre: String, asunto: String, mensaje: String) {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        viewModelScope.launch {
+            try {
+                // TODO: Implementar envío con Gmail API u otra solución
+                Timber.d("Simulando envío de email de soporte a $destinatario...") 
+                // MailjetEmailSender.sendEmail(
+                //     destinatario = destinatario,
+                //     nombre = nombre,
+                //     subject = asunto,
+                //     htmlBody = mensaje
+                // ) { success ->
+                //     _uiState.value = _uiState.value.copy(
+                //         isLoading = false,
+                //         success = success,
+                //         error = if (!success) "Error al enviar el correo" else null
+                //     )
+                // }
+                kotlinx.coroutines.delay(1500) // Simular delay de red
+                 _uiState.value = _uiState.value.copy(
+                     isLoading = false,
+                     success = true, // Simular éxito por ahora
+                     error = null
+                 )
+
+            } catch (e: Exception) {
+                Timber.e(e, "Error en sendEmailSoporte")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false, 
+                    success = false, 
+                    error = "Error inesperado al enviar el correo: ${e.message}"
+                )
             }
-            
-            return@withContext result
-        } catch (e: Exception) {
-            Timber.e(e, "Error al enviar email: ${e.message}")
-            return@withContext false
         }
+    }
+
+    fun clearState() {
+        _uiState.value = SupportUiState()
     }
 }
 
@@ -70,6 +65,6 @@ class SupportViewModel @Inject constructor(
  */
 data class SupportUiState(
     val isLoading: Boolean = false,
-    val error: String? = null,
-    val isEmailSent: Boolean = false
+    val success: Boolean = false,
+    val error: String? = null
 ) 

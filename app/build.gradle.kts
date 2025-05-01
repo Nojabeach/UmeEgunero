@@ -6,6 +6,7 @@ plugins {
     id("kotlin-parcelize")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.23"
 }
 
 android {
@@ -131,6 +132,15 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.5.4")
     implementation("androidx.compose.animation:animation:1.5.4")
     
+    // Ktor Client
+    implementation("io.ktor:ktor-client-core:2.3.10")
+    implementation("io.ktor:ktor-client-cio:2.3.10")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.10")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.10")
+    
+    // Kotlinx Serialization Runtime
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    
     // Coil para carga de imágenes
     implementation("io.coil-kt:coil-compose:2.5.0")
     
@@ -141,9 +151,6 @@ dependencies {
     // Java Mail
     implementation("com.sun.mail:android-mail:1.6.7")
     implementation("com.sun.mail:android-activation:1.6.7")
-    
-    // SendGrid para servicio de email
-    implementation("com.sendgrid:sendgrid-java:4.9.3")
     
     // Compose material divider
     implementation("androidx.compose.material3:material3-window-size-class:1.2.0")
@@ -245,4 +252,7 @@ dependencies {
     implementation("org.apache.poi:poi:5.2.3")
     implementation("org.apache.poi:poi-ooxml:5.2.3")
     implementation("org.apache.commons:commons-csv:1.10.0")
+
+    // Dependencias de Google Play Services
+    implementation("com.google.android.gms:play-services-auth:21.1.1")
 }

@@ -54,10 +54,12 @@ UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en des
   - Firestore: Base de datos NoSQL en tiempo real
   - Firebase Authentication: Gestión de usuarios y autenticación
   - Cloud Storage: Almacenamiento de archivos y documentos
-  - Cloud Functions: Lógica de servidor y procesos automatizados
+- **Google Apps Script**: Utilizado como backend simple para el envío fiable de correos electrónicos HTML, superando limitaciones de Intents.
 - **Inyección de Dependencias**: Hilt para gestión eficiente de dependencias
 - **Navegación**: Jetpack Navigation Compose para rutas y transiciones
 - **Asincronía**: Coroutines y Flow para operaciones no bloqueantes
+- **Networking**: Ktor Client para realizar llamadas HTTP al backend (Google Apps Script).
+- **Serialización**: Kotlinx Serialization para parsear respuestas JSON.
 
 ## 📂 Estructura del Proyecto
 

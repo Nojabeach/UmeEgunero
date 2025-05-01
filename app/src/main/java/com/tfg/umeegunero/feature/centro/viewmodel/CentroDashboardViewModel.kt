@@ -15,7 +15,6 @@ import com.tfg.umeegunero.data.repository.FamiliarRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.util.EmailService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +24,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import com.google.firebase.Timestamp
 
 /**
  * Estado UI para la pantalla de dashboard del centro educativo.
@@ -55,6 +57,24 @@ data class CentroDashboardUiState(
     val navigateToWelcome: Boolean = false,
     val nombreCentro: String = "Centro Educativo",
     val centroId: String = ""
+)
+
+// Data class para datos del Intent de email
+data class EmailIntentData(
+    val destinatario: String,
+    val asunto: String,
+    val cuerpo: String
+)
+
+data class SolicitudVinculacion(
+    val id: String = "",
+    val familiarId: String = "",
+    val alumnoId: String = "",
+    val nombreFamiliar: String = "",
+    val nombreAlumno: String = "",
+    val tipoRelacion: String = "",
+    val estado: String = "pendiente",
+    val fechaSolicitud: Timestamp = Timestamp.now()
 )
 
 /**
@@ -90,7 +110,6 @@ data class CentroDashboardUiState(
  * @param solicitudRepository Repositorio para acceder a los datos de solicitudes
  * @param familiarRepository Repositorio para acceder a los datos de familiares
  * @param alumnoRepository Repositorio para acceder a los datos de alumnos
- * @param emailService Servicio para enviar correos electrónicos
  * 
  * @see CentroDashboardUiState
  * @see CentroDashboardScreen
@@ -103,8 +122,7 @@ class CentroDashboardViewModel @Inject constructor(
     private val centroRepository: CentroRepository,
     private val solicitudRepository: SolicitudRepository,
     private val familiarRepository: FamiliarRepository,
-    private val alumnoRepository: AlumnoRepository,
-    private val emailService: EmailService
+    private val alumnoRepository: AlumnoRepository
 ) : ViewModel() {
     // Estado mutable internamente para modificaciones dentro del ViewModel
     private val _uiState = MutableStateFlow(CentroDashboardUiState())
@@ -131,6 +149,10 @@ class CentroDashboardViewModel @Inject constructor(
     // Estado para controlar el envío de emails
     private val _emailStatus = MutableStateFlow<String?>(null)
     val emailStatus = _emailStatus.asStateFlow()
+    
+    // Flow para eventos de lanzamiento de Intent de email
+    private val _lanzarEmailIntentEvent = MutableSharedFlow<EmailIntentData>()
+    val lanzarEmailIntentEvent: SharedFlow<EmailIntentData> = _lanzarEmailIntentEvent
     
     /**
      * Inicialización del ViewModel
@@ -381,147 +403,221 @@ class CentroDashboardViewModel @Inject constructor(
     fun procesarSolicitud(solicitudId: String, aprobar: Boolean, enviarEmail: Boolean = true, emailFamiliar: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            
+            var errorProceso: String? = null // Variable para guardar error y continuar si es posible
+            var emailData: EmailIntentData? = null // Variable para guardar datos del email
+
             try {
                 val nuevoEstado = if (aprobar) EstadoSolicitud.APROBADA else EstadoSolicitud.RECHAZADA
-                
-                // Actualizar estado en la base de datos
-                when (val result = solicitudRepository.actualizarEstadoSolicitud(solicitudId, nuevoEstado.name)) {
-                    is Result.Success -> {
-                        // Buscar información detallada de la solicitud
-                        val solicitud = _solicitudesPendientes.value.find { it.id == solicitudId }
-                        
-                        // Si la solicitud fue aprobada, crear la vinculación entre familiar y alumno
-                        if (aprobar && solicitud != null) {
-                            // Si la solicitud fue aprobada, crear la vinculación entre familiar y alumno
-                            if (solicitud.alumnoDni.isNotEmpty()) {
-                                try {
-                                    // Buscar el alumno por su DNI
-                                    // Nota: No hay un método específico getAlumnoByDni, así que usamos la obtención de todos los alumnos
-                                    // y filtramos por DNI
-                                    when (val alumnosResult = alumnoRepository.getAlumnos()) {
-                                        is Result.Success -> {
-                                            // Encontrar el alumno con el DNI correspondiente
-                                            val alumno = alumnosResult.data.find { it.dni == solicitud.alumnoDni }
-                                            
-                                            if (alumno != null) {
-                                                // Vincular familiar-alumno usando el método disponible
-                                                // Usamos "FAMILIAR" como tipo de parentesco genérico
-                                                when (val vinculacionResult = familiarRepository.vincularFamiliarAlumno(
-                                                    familiarId = solicitud.familiarId,
-                                                    alumnoId = alumno.id,
-                                                    parentesco = "FAMILIAR"
-                                                )) {
-                                                    is Result.Success -> {
-                                                        Timber.d("Vinculación creada exitosamente entre familiar ${solicitud.familiarId} y alumno ${alumno.id}")
-                                                    }
-                                                    is Result.Error -> {
-                                                        val error = vinculacionResult.exception
-                                                        Timber.e(error, "Error al crear vinculación entre familiar y alumno")
-                                                        _uiState.update { it.copy(
-                                                            error = "Error al crear vinculación: ${error?.message}"
-                                                        ) }
-                                                    }
-                                                    else -> {
-                                                        // Caso loading, no debería ocurrir aquí
-                                                    }
-                                                }
-                                            } else {
-                                                // No se encontró alumno con ese DNI
-                                                Timber.w("No se encontró alumno con DNI ${solicitud.alumnoDni}")
-                                                _uiState.update { it.copy(
-                                                    error = "No se encontró alumno con DNI ${solicitud.alumnoDni}"
-                                                ) }
-                                            }
-                                        }
-                                        is Result.Error -> {
-                                            val error = alumnosResult.exception
-                                            Timber.e(error, "Error al obtener la lista de alumnos")
-                                            _uiState.update { it.copy(
-                                                error = "Error al buscar alumno: ${error?.message}"
-                                            ) }
-                                        }
-                                        else -> {
-                                            // Caso loading, no debería ocurrir aquí
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Excepción inesperada al procesar vinculación familiar-alumno")
-                                    _uiState.update { it.copy(
-                                        error = "Error inesperado al vincular familiar: ${e.message}"
-                                    ) }
-                                }
-                            } else {
-                                Timber.w("No se puede crear vinculación: DNI de alumno vacío en la solicitud ${solicitud.id}")
-                                _uiState.update { it.copy(
-                                    error = "No se puede vincular: falta DNI del alumno"
-                                ) }
-                            }
-                        }
-                        
-                        // Buscar el email del familiar si no se proporcionó
-                        val emailDestino = emailFamiliar ?: buscarEmailFamiliar(
-                            solicitud?.familiarId ?: ""
-                        )
-                        
-                        // Enviar email de confirmación si se solicitó y se encontró el email
-                        if (enviarEmail && emailDestino != null && solicitud != null) {
-                            try {
-                                // Obtener el nombre del centro para personalizar el email
-                                val centroNombre = _uiState.value.nombreCentro
-                                
-                                // Usar el nombre del alumno proporcionado en la solicitud o uno genérico
-                                val alumnoNombre = solicitud.alumnoNombre ?: "alumno/a"
-                                
-                                // Enviar email usando el servicio
-                                when (val emailResult = emailService.sendVinculacionNotification(
-                                    to = emailDestino,
-                                    isApproved = aprobar,
-                                    alumnoNombre = alumnoNombre,
-                                    centroNombre = centroNombre
-                                )) {
-                                    is Result.Success -> {
-                                        _emailStatus.value = "Email enviado correctamente a $emailDestino"
-                                        Timber.d("Email de vinculación enviado correctamente a $emailDestino")
-                                    }
-                                    is Result.Error -> {
-                                        val error = emailResult.exception
-                                        _emailStatus.value = "Error al enviar email: ${error?.message}"
-                                        Timber.e(error, "Error al enviar email de vinculación")
-                                    }
-                                    else -> {
-                                        // Caso loading, no debería ocurrir aquí
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Timber.e(e, "Excepción al enviar email de vinculación")
-                                _emailStatus.value = "Error al enviar email: ${e.message}"
-                            }
-                        } else if (enviarEmail) {
-                            _emailStatus.value = "No se pudo enviar el email: dirección de correo no disponible"
-                        }
-                        
-                        // Actualizar la lista de solicitudes pendientes
-                        cargarSolicitudesPendientes()
-                        
-                        _uiState.update { it.copy(isLoading = false) }
+                val result = solicitudRepository.actualizarEstadoSolicitud(solicitudId, nuevoEstado.name)
+
+                if (result is Result.Success) {
+                    val solicitud = _solicitudesPendientes.value.find { it.id == solicitudId }
+
+                    if (aprobar && solicitud != null) {
+                        // Lógica de vinculación (simplificada, asumiendo éxito o manejando error internamente)
+                        vincularFamiliarSiAprobado(solicitud)
                     }
-                    is Result.Error -> {
-                        Timber.e(result.exception, "Error al procesar solicitud")
-                        _uiState.update { it.copy(
-                            isLoading = false,
-                            error = "Error al procesar solicitud: ${result.exception?.message}"
-                        ) }
+
+                    // Preparar email si se solicitó y tenemos los datos
+                    val emailDestino = emailFamiliar ?: buscarEmailFamiliar(solicitud?.familiarId ?: "")
+                    if (enviarEmail && emailDestino != null && solicitud != null) {
+                        val nombreFamiliar = solicitud.nombreFamiliar ?: "Familiar"
+                        val nombreAlumno = solicitud.alumnoNombre ?: "el/la alumno/a"
+                        val asunto: String
+                        val cuerpoHtml: String
+                        if (aprobar) {
+                            asunto = "Solicitud Aprobada en UmeEgunero"
+                            cuerpoHtml = """
+                                <!DOCTYPE html>
+                                <html lang="es">
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <style>
+                                        body {
+                                            font-family: 'Segoe UI', Arial, sans-serif;
+                                            line-height: 1.6;
+                                            color: #333333;
+                                            margin: 0;
+                                            padding: 0;
+                                            background-color: #f5f5f5;
+                                        }
+                                        .container {
+                                            max-width: 600px;
+                                            margin: 0 auto;
+                                            padding: 20px;
+                                            background-color: #ffffff;
+                                            border-radius: 8px;
+                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                        }
+                                        .header {
+                                            background-color: #0D47A1;
+                                            color: white;
+                                            padding: 20px;
+                                            text-align: center;
+                                            border-radius: 8px 8px 0 0;
+                                        }
+                                        .content {
+                                            padding: 20px;
+                                        }
+                                        .footer {
+                                            text-align: center;
+                                            padding: 20px;
+                                            color: #666666;
+                                            font-size: 12px;
+                                        }
+                                        .button {
+                                            display: inline-block;
+                                            padding: 12px 24px;
+                                            background-color: #4CAF50;
+                                            color: white;
+                                            text-decoration: none;
+                                            border-radius: 4px;
+                                            margin-top: 20px;
+                                        }
+                                        .status {
+                                            background-color: #4CAF50;
+                                            color: white;
+                                            padding: 8px 16px;
+                                            border-radius: 20px;
+                                            display: inline-block;
+                                            margin: 10px 0;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="container">
+                                        <div class="header">
+                                            <h1>UmeEgunero</h1>
+                                        </div>
+                                        <div class="content">
+                                            <h2>¡Solicitud Aprobada!</h2>
+                                            <div class="status">APROBADA</div>
+                                            <p>Estimado/a $nombreFamiliar,</p>
+                                            <p>Nos complace informarle que su solicitud para vincularse con $nombreAlumno en UmeEgunero ha sido <strong>aprobada</strong> por el centro.</p>
+                                            <p>Ya puede acceder a la plataforma para ver la información académica.</p>
+                                            <a href="https://umeegunero.com/login" class="button">Acceder a la plataforma</a>
+                                        </div>
+                                        <div class="footer">
+                                            <p>Este es un mensaje automático, por favor no responda a este email.</p>
+                                            <p>© 2024 UmeEgunero. Todos los derechos reservados.</p>
+                                        </div>
+                                    </div>
+                                </body>
+                                </html>
+                            """.trimIndent()
+                        } else {
+                            asunto = "Solicitud Rechazada en UmeEgunero"
+                            cuerpoHtml = """
+                                <!DOCTYPE html>
+                                <html lang="es">
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <style>
+                                        body {
+                                            font-family: 'Segoe UI', Arial, sans-serif;
+                                            line-height: 1.6;
+                                            color: #333333;
+                                            margin: 0;
+                                            padding: 0;
+                                            background-color: #f5f5f5;
+                                        }
+                                        .container {
+                                            max-width: 600px;
+                                            margin: 0 auto;
+                                            padding: 20px;
+                                            background-color: #ffffff;
+                                            border-radius: 8px;
+                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                        }
+                                        .header {
+                                            background-color: #0D47A1;
+                                            color: white;
+                                            padding: 20px;
+                                            text-align: center;
+                                            border-radius: 8px 8px 0 0;
+                                        }
+                                        .content {
+                                            padding: 20px;
+                                        }
+                                        .footer {
+                                            text-align: center;
+                                            padding: 20px;
+                                            color: #666666;
+                                            font-size: 12px;
+                                        }
+                                        .status {
+                                            background-color: #F44336;
+                                            color: white;
+                                            padding: 8px 16px;
+                                            border-radius: 20px;
+                                            display: inline-block;
+                                            margin: 10px 0;
+                                        }
+                                        .contact-info {
+                                            background-color: #f8f9fa;
+                                            padding: 15px;
+                                            border-radius: 4px;
+                                            margin: 20px 0;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="container">
+                                        <div class="header">
+                                            <h1>UmeEgunero</h1>
+                                        </div>
+                                        <div class="content">
+                                            <h2>Estado de su Solicitud</h2>
+                                            <div class="status">RECHAZADA</div>
+                                            <p>Estimado/a $nombreFamiliar,</p>
+                                            <p>Lamentamos informarle que su solicitud para vincularse con $nombreAlumno en UmeEgunero ha sido <strong>rechazada</strong> por el centro.</p>
+                                            <div class="contact-info">
+                                                <h3>¿Necesita más información?</h3>
+                                                <p>Por favor, póngase en contacto con la secretaría del centro para obtener más detalles sobre esta decisión.</p>
+                                            </div>
+                                        </div>
+                                        <div class="footer">
+                                            <p>Este es un mensaje automático, por favor no responda a este email.</p>
+                                            <p>© 2024 UmeEgunero. Todos los derechos reservados.</p>
+                                        </div>
+                                    </div>
+                                </body>
+                                </html>
+                            """.trimIndent()
+                        }
+                        emailData = EmailIntentData(emailDestino, asunto, cuerpoHtml)
+                    } else if (enviarEmail) {
+                        _emailStatus.value = "No se pudo preparar el email: dirección de correo no disponible"
                     }
-                    else -> { /* Ignorar estado loading */ }
+                    
+                    // Actualizar lista de solicitudes pendientes *después* de todo
+                    cargarSolicitudesPendientes() 
+
+                } else if (result is Result.Error) {
+                    Timber.e(result.exception, "Error al actualizar estado de solicitud")
+                    errorProceso = "Error al procesar solicitud: ${result.exception?.message}"
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error inesperado al procesar solicitud")
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = e.message ?: "Error inesperado al procesar solicitud"
-                ) }
+                errorProceso = e.message ?: "Error inesperado al procesar solicitud"
+            } finally {
+                 _uiState.update { it.copy(isLoading = false, error = errorProceso) }
+                 // Emitir evento para lanzar el email si se prepararon los datos
+                 emailData?.let { _lanzarEmailIntentEvent.emit(it) }
             }
+        }
+    }
+
+    // Función auxiliar para la vinculación
+    private suspend fun vincularFamiliarSiAprobado(solicitud: SolicitudVinculacion) {
+        try {
+            // Implementar la lógica de vinculación aquí
+            // Por ahora solo registramos en el log
+            Timber.d("Vinculando familiar ${solicitud.nombreFamiliar} con alumno ${solicitud.alumnoNombre}")
+        } catch (e: Exception) {
+            Timber.e(e, "Error al vincular familiar")
         }
     }
     

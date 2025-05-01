@@ -108,16 +108,6 @@ class MainActivity : ComponentActivity() {
                                 startDestination = AppScreens.Welcome.route,
                                 onCloseApp = { closeApp() }
                             )
-                            
-                            // Botón para probar el envío de email (solo en debug)
-                            FloatingActionButton(
-                                onClick = { startEmailTestActivity() },
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .align(Alignment.BottomEnd)
-                            ) {
-                                androidx.compose.material3.Text("📧")
-                            }
                         }
                     }
                 }
@@ -171,14 +161,5 @@ class MainActivity : ComponentActivity() {
      */
     fun closeApp() {
         finishAndRemoveTask()
-    }
-    
-    /**
-     * Inicia la actividad de prueba de email para enviar correos de prueba.
-     * Este método solo se usa durante desarrollo.
-     */
-    private fun startEmailTestActivity() {
-        val intent = Intent(this, EmailTestActivity::class.java)
-        startActivity(intent)
     }
 }

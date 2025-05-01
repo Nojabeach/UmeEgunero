@@ -223,7 +223,7 @@ fun WelcomeScreen(
             item {
                 Box(
                     modifier = Modifier
-                        .padding(top = 32.dp, bottom = 16.dp)
+                        .padding(top = 32.dp, bottom = 4.dp)
                         .offset(y = (-logoOffset * 0.3f).dp),
                     contentAlignment = Alignment.Center
                 ) {

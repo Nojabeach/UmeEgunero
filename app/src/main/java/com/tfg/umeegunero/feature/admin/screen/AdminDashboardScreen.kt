@@ -69,6 +69,7 @@ import androidx.compose.material3.HorizontalDivider
  * general de la aplicación, incluyendo gestión de centros, reportes, configuración
  * del sistema y comunicaciones.
  *
+ * @param navController NavController para la navegación
  * @param viewModel ViewModel que contiene la lógica de negocio del dashboard de administración
  * @param onNavigateToGestionUsuarios Callback para navegar a la gestión de usuarios
  * @param onNavigateToGestionCentros Callback para navegar a la gestión de centros
@@ -92,6 +93,7 @@ import androidx.compose.material3.HorizontalDivider
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
+    navController: NavController,
     viewModel: AdminDashboardViewModel = hiltViewModel(),
     onNavigateToGestionUsuarios: () -> Unit = {},
     onNavigateToGestionCentros: () -> Unit,
@@ -121,6 +123,7 @@ fun AdminDashboardScreen(
     var showSoporteTecnicoDialog by remember { mutableStateOf(false) }
     var showFAQDialog by remember { mutableStateOf(false) }
     var showTerminosDialog by remember { mutableStateOf(false) }
+    var showEmailTestScreen by remember { mutableStateOf(false) }
 
     // En la sección de gestión de usuarios, solo mostrar la opción si el usuario es ADMIN_APP
     val puedeGestionarUsuarios = uiState.currentUser?.perfiles?.any { it.tipo.name == "ADMIN_APP" } == true
@@ -355,7 +358,7 @@ fun AdminDashboardScreen(
             }
         )
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -367,6 +370,13 @@ fun AdminDashboardScreen(
                     ) 
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            navController.navigate(AppScreens.PruebaEmail.route)
+                        }
+                    ) {
+                        Icon(Icons.Default.Email, contentDescription = "Probar Email")
+                    }
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Default.Person, contentDescription = "Editar perfil")
                     }
@@ -383,16 +393,12 @@ fun AdminDashboardScreen(
         },
         containerColor = AdminColor.copy(alpha = 0.05f)
     ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
-        } else {
+            } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -540,6 +546,26 @@ fun AdminDashboardScreen(
                             }
                         }
                     }
+                    // En la sección de configuración, añadir un botón o card para acceder a la pantalla de prueba de emails
+                    item {
+                        AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                CategoriaCard(
+                                    titulo = "Prueba de Emails",
+                                    icono = Icons.Default.Send,
+                                    descripcion = "Probar envío de emails (Gmail API)",
+                                    color = AdminColor,
+                                    iconTint = AppColors.Green500,
+                                    border = true,
+                                    onClick = { showEmailTestScreen = true },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
                     // Separador visual
                     item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
                     // Sección: Comunicación y Soporte
@@ -615,6 +641,11 @@ fun AdminDashboardScreen(
                         Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
+            }
+
+            // Llamada a la pantalla de prueba (ajustar si se renombra EmailTestScreen)
+            if (showEmailTestScreen) {
+                com.tfg.umeegunero.feature.admin.screen.test.EmailTestScreen(onClose = { showEmailTestScreen = false })
             }
         }
     }
@@ -739,6 +770,7 @@ data class AdminDashboardUiState(
 fun VistaPreviaDashboardAdmin() {
     UmeEguneroTheme {
         AdminDashboardScreen(
+            navController = rememberNavController(),
             onNavigateToGestionUsuarios = {},
             onNavigateToGestionCentros = {},
             onNavigateToEstadisticas = {},

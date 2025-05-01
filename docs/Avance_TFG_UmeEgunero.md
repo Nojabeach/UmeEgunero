@@ -40,6 +40,12 @@ UmeEgunero es una plataforma digital integral para la gestión educativa, diseñ
   - **Room** para persistencia local estructurada y sincronización offline.
   - **DataStore** para almacenamiento eficiente de preferencias y configuración de usuario (tema, login, etc.).
 - **Navegación**: Navigation Compose.
+- **Networking**: 
+    - **Ktor Client**: Para realizar llamadas HTTP (ej. al servicio de envío de emails).
+- **Serialización**: 
+    - **Kotlinx Serialization**: Para parsear respuestas JSON (ej. del servicio de envío de emails).
+- **Backend Auxiliar (Envío Emails)**:
+    - **Google Apps Script**: Utilizado como backend simple para el envío fiable de correos electrónicos HTML, superando limitaciones de Intents.
 - **Control de versiones**: GitHub.
 - **Otras dependencias**:
   - **Timber** para logging avanzado.
@@ -171,6 +177,7 @@ graph TD;
 - **Logging profesional**: Uso de Timber para trazabilidad y depuración avanzada.
 - **Notificaciones push y mensajería interna**: Comunicación en tiempo real entre usuarios.
 - **Pruebas de accesibilidad y usabilidad**: Adaptación a diferentes públicos y dispositivos.
+- **Envío de Emails HTML Robusto vía Google Apps Script**: Superación de las limitaciones de los Intents de Android para el envío de correos HTML mediante la implementación de un backend simple en Google Apps Script y el uso de Ktor Client en Android para la comunicación. Esto asegura un renderizado consistente del formato en el cliente receptor.
 
 #### Ejemplo de ViewModel con StateFlow y uso de DataStore
 

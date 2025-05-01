@@ -80,6 +80,9 @@ import java.util.Locale
 import java.util.Date
 import androidx.compose.foundation.BorderStroke
 import com.tfg.umeegunero.data.model.SolicitudVinculacion
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Pantalla principal del panel de control para administradores de centro.
@@ -143,6 +146,7 @@ fun CentroDashboardScreen(
     }
     // Animación de entrada
     var showContent by remember { mutableStateOf(false) }
+    val context = LocalContext.current // Obtener contexto
     LaunchedEffect(Unit) { showContent = true }
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -206,6 +210,29 @@ fun CentroDashboardScreen(
     fun onNavigateToCrearUsuarioRapido() = navController.navigate(AppScreens.CrearUsuarioRapido.route)
     fun onNavigateToCalendario() = navController.navigate(AppScreens.Calendario.route)
     fun onNavigateToNotificaciones() = navController.navigate(AppScreens.Notificaciones.route)
+
+    // LaunchedEffect para observar eventos de email Intent
+    LaunchedEffect(Unit) {
+        viewModel.lanzarEmailIntentEvent.collect { emailData ->
+            scope.launch {
+                snackbarHostState.showSnackbar("Abriendo app de correo para enviar confirmación...")
+            }
+            // Crear y lanzar el Intent
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:") // Solo apps de email
+                putExtra(Intent.EXTRA_EMAIL, arrayOf(emailData.destinatario))
+                putExtra(Intent.EXTRA_SUBJECT, emailData.asunto)
+                putExtra(Intent.EXTRA_TEXT, emailData.cuerpo)
+            }
+            try {
+                context.startActivity(intent)
+            } catch (e: android.content.ActivityNotFoundException) {
+                 scope.launch {
+                    snackbarHostState.showSnackbar("Error: No se encontró app de correo.")
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -487,94 +514,15 @@ fun CentroDashboardScreen(
                 
                 // --- Diálogo de Solicitudes de Vinculación ---
                 if (mostrarDialogoSolicitudes) {
-                    AlertDialog(
-                        onDismissRequest = { 
-                            mostrarDialogoSolicitudes = false 
-                            viewModel.limpiarEstadoEmail()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 600.dp),
-                        title = { 
-                            Text(
-                                "Solicitudes de Vinculación Pendientes",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = CentroColor
-                            ) 
-                        },
-                        text = {
-                            Column {
-                                // Mostrar mensaje cuando no hay solicitudes
-                                if (solicitudesPendientes.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 32.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            "No hay solicitudes pendientes",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-                                } else {
-                                    // Lista de solicitudes pendientes
-                                    LazyColumn(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(max = 400.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        items(solicitudesPendientes) { solicitud ->
-                                            SolicitudVinculacionItem(
-                                                solicitud = solicitud,
-                                                onAprobar = { 
-                                                    viewModel.procesarSolicitud(
-                                                        solicitudId = solicitud.id, 
-                                                        aprobar = true,
-                                                        enviarEmail = true,
-                                                        emailFamiliar = null // Aquí deberíamos obtener el email del familiar
-                                                    )
-                                                },
-                                                onRechazar = { 
-                                                    viewModel.procesarSolicitud(
-                                                        solicitudId = solicitud.id, 
-                                                        aprobar = false,
-                                                        enviarEmail = true,
-                                                        emailFamiliar = null // Aquí deberíamos obtener el email del familiar
-                                                    )
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                                
-                                // Mostrar estado del envío de emails
-                                emailStatus?.let { status ->
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = status,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        },
-                        confirmButton = {
-                            TextButton(onClick = { 
-                                // Recargar solicitudes por si hay cambios
-                                viewModel.cargarSolicitudesPendientes()
-                            }) { 
-                                Text("Actualizar") 
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { 
-                                mostrarDialogoSolicitudes = false 
-                                viewModel.limpiarEstadoEmail()
-                            }) { 
-                                Text("Cerrar") 
-                            }
+                    SolicitudesPendientesDialog(
+                        solicitudes = solicitudesPendientes,
+                        onDismiss = { mostrarDialogoSolicitudes = false },
+                        onProcesarSolicitud = { solicitudId, aprobar ->
+                            viewModel.procesarSolicitud(
+                                solicitudId = solicitudId,
+                                aprobar = aprobar,
+                                enviarEmail = true
+                            )
                         }
                     )
                 }
@@ -732,4 +680,55 @@ fun SolicitudVinculacionItem(
 private fun formatearFecha(fecha: Date): String {
     val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES"))
     return formato.format(fecha)
+}
+
+@Composable
+fun SolicitudesPendientesDialog(
+    solicitudes: List<SolicitudVinculacion>,
+    onDismiss: () -> Unit,
+    onProcesarSolicitud: (solicitudId: String, aprobar: Boolean) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Solicitudes Pendientes de Vinculación") },
+        text = {
+            if (solicitudes.isEmpty()) {
+                Text("No hay solicitudes pendientes.")
+            } else {
+                LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                    items(solicitudes) { solicitud ->
+                        SolicitudItem(solicitud = solicitud, onProcesarSolicitud = onProcesarSolicitud)
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
+@Composable
+fun SolicitudItem(
+    solicitud: SolicitudVinculacion,
+    onProcesarSolicitud: (solicitudId: String, aprobar: Boolean) -> Unit
+) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text("Familiar: ${solicitud.nombreFamiliar ?: solicitud.familiarId}", fontWeight = FontWeight.Bold)
+        Text("Alumno DNI: ${solicitud.alumnoDni}")
+        Text("Relación: ${solicitud.tipoRelacion ?: "No especificada"}")
+        Text("Fecha: ${solicitud.fechaSolicitud?.toDate()?.let { SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(it) } ?: "-"}")
+        Row(modifier = Modifier.padding(top = 8.dp)) {
+            Button(onClick = { onProcesarSolicitud(solicitud.id, true) }) {
+                Text("Aprobar")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            OutlinedButton(onClick = { onProcesarSolicitud(solicitud.id, false) }) {
+                Text("Rechazar")
+            }
+        }
+    }
 } 

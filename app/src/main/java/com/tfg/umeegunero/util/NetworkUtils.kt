@@ -44,28 +44,4 @@ object NetworkUtils {
         Timber.d("Network: sin conexión a Internet")
         return false
     }
-    
-    /**
-     * Verifica la conectividad a los servidores de SendGrid
-     * @return true si se puede establecer conexión con SendGrid
-     */
-    suspend fun checkSendGridConnectivity(): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                val url = URL("https://api.sendgrid.com")
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 5000 // 5 segundos
-                connection.readTimeout = 5000
-                connection.requestMethod = "HEAD"
-                
-                val responseCode = connection.responseCode
-                Timber.d("SendGrid ping: código respuesta $responseCode")
-                
-                responseCode == HttpURLConnection.HTTP_OK
-            } catch (e: IOException) {
-                Timber.e(e, "Error al verificar conectividad con SendGrid")
-                false
-            }
-        }
-    }
 } 

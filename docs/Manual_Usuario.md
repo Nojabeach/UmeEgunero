@@ -286,6 +286,11 @@ El sistema de chat permite la comunicación directa entre profesores y familias.
    - Vaya a "Configuración" > "Sincronización" y pulse "Sincronizar ahora".
    - Si el problema persiste, cierre sesión y vuelva a iniciarla.
 
+3. **Error al realizar una acción que envía correo electrónico** (Ej. Test de Email, aprobación de usuario, etc.):
+   - La aplicación ahora utiliza un servicio externo para garantizar el envío correcto de correos HTML.
+   - Si ve errores como "Error de red al enviar" o "Error del script", primero verifique su conexión a Internet.
+   - Si el problema persiste con buena conexión, podría haber un problema temporal con el servicio de envío. Inténtelo de nuevo más tarde o contacte con soporte si el error es recurrente.
+
 ### Problemas de Cuenta
 
 1. **No puedo iniciar sesión**:
@@ -298,14 +303,14 @@ El sistema de chat permite la comunicación directa entre profesores y familias.
    - Para familias: contacte con el administrador del centro para verificar la vinculación.
    - Para profesores: compruebe sus asignaciones de clase con el administrador.
 
-### Problemas con Notificaciones
+### Problemas con Notificaciones (Push)
 
-1. **No recibo notificaciones**:
+1. **No recibo notificaciones push**:
    - Vaya a Configuración del dispositivo > Aplicaciones > UmeEgunero > Notificaciones y verifique que estén habilitadas.
    - En la aplicación, vaya a "Configuración" > "Notificaciones" y compruebe la configuración.
    - Verifique que no tenga activo el modo "No molestar" en su dispositivo.
 
-2. **Recibo notificaciones duplicadas**:
+2. **Recibo notificaciones push duplicadas**:
    - Vaya a "Configuración" > "Notificaciones" > "Restablecer preferencias".
    - Cierre sesión y vuelva a iniciarla.
 

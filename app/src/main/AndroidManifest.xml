@@ -34,30 +34,6 @@
             </intent-filter>
         </activity>
         
-        <!-- Actividad de prueba para enviar emails -->
-        <activity
-            android:name=".EmailTestActivity"
-            android:exported="true"
-            android:label="Prueba Email"
-            android:theme="@style/Theme.UmeEgunero">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-        
-        <!-- Actividad de diagnóstico y prueba de SendGrid -->
-        <activity
-            android:name=".SendGridTestActivity"
-            android:exported="true"
-            android:label="SendGrid Diagnóstico"
-            android:theme="@style/Theme.UmeEgunero">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-
         <!-- Firebase Cloud Messaging Service -->
         <service
             android:name=".notification.UmeEguneroMessagingService"
