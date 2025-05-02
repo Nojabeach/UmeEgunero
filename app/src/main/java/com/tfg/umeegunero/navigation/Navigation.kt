@@ -880,6 +880,39 @@ fun Navigation(
             )
         }
 
+        // Registro diario del profesor para un alumno
+        composable(
+            route = AppScreens.RegistroDiarioProfesor.route,
+            arguments = listOf(
+                navArgument("alumnoId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            com.tfg.umeegunero.feature.profesor.registros.screen.HiltRegistroDiarioScreen(
+                alumnoId = alumnoId,
+                alumnoNombre = "", // Se cargará en el ViewModel
+                claseId = "", // Se cargará en el ViewModel
+                claseNombre = "", // Se cargará en el ViewModel
+                profesorId = "", // Se obtendrá del usuario autenticado
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de chat entre usuarios
+        composable(
+            route = AppScreens.Chat.route,
+            arguments = listOf(
+                navArgument("familiarId") { type = NavType.StringType },
+                navArgument("alumnoId") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) { backStackEntry ->
+            val familiarId = backStackEntry.arguments?.getString("familiarId") ?: ""
+            com.tfg.umeegunero.feature.profesor.screen.ChatProfesorScreen(
+                navController = navController,
+                familiarId = familiarId
+            )
+        }
+
         // Reemplazo de la pantalla redundante:
         composable(route = AppScreens.VinculacionFamiliar.route) {
             // Redirigir a la implementación real sin complicaciones

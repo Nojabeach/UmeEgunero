@@ -227,7 +227,12 @@ private fun DetalleAlumnoContent(
                     title = "Chat Familia",
                     icon = Icons.AutoMirrored.Filled.Chat,
                     onClick = {
-                        println("Navegar a Chat Familia para alumno ${alumno.id}")
+                        if (alumno.familiarIds.isNotEmpty()) {
+                            val familiarId = alumno.familiarIds.first()
+                            navController.navigate(AppScreens.Chat.createRoute(familiarId, alumno.dni))
+                        } else {
+                            Timber.w("No hay familiares asociados a este alumno para iniciar chat")
+                        }
                     },
                     modifier = Modifier.weight(1f)
                 )
