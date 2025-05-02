@@ -572,6 +572,13 @@ fun Navigation(
             )
         }
         
+        // Pantalla de gestión de profesores
+        composable(route = AppScreens.ProfesorList.route) {
+            com.tfg.umeegunero.feature.common.users.screen.ListProfesoresScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
         
         // Pantalla de gestión de usuarios
         composable(

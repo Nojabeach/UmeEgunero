@@ -22,6 +22,7 @@ import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.feature.common.users.viewmodel.GestionUsuariosViewModel
 import com.tfg.umeegunero.feature.common.users.viewmodel.GestionUsuariosUiState
 import androidx.navigation.NavController
+import timber.log.Timber
 
 /**
  * Pantalla central para la gestión de usuarios del sistema
@@ -33,6 +34,7 @@ import androidx.navigation.NavController
  * @param onNavigateToUserList Callback para navegar a la lista de usuarios de un tipo específico
  * @param onNavigateToAddUser Callback para navegar a la pantalla de añadir usuario
  * @param onNavigateToProfile Callback para navegar a la pantalla de perfil del usuario
+ * @param isAdminApp Indica si el usuario actual es un administrador de aplicación (parámetro de respaldo)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,13 +44,23 @@ fun GestionUsuariosScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToUserList: (String) -> Unit = {},
     onNavigateToAddUser: (Boolean) -> Unit = {},
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    isAdminApp: Boolean = false
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentUser by viewModel.usuarioActual.collectAsState()
 
-    // Calcular si el usuario es ADMIN_APP
-    val isAdminApp = currentUser?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } == true
+    // Determinar si es admin de aplicación basándose en los perfiles del usuario actual
+    // Si el usuario tiene el perfil de ADMIN_APP, se muestra la interfaz para administradores de aplicación
+    // Si no, se usa el parámetro isAdminApp como respaldo
+    val esAdminApp = currentUser?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: isAdminApp
+    
+    // Log para debugging
+    LaunchedEffect(currentUser) {
+        Timber.d("Usuario actual: ${currentUser?.nombre} ${currentUser?.apellidos}")
+        Timber.d("Es admin de app: $esAdminApp")
+        Timber.d("Perfiles: ${currentUser?.perfiles?.map { it.tipo }}")
+    }
 
     val handleNavigateToUserList: (String) -> Unit = { route ->
         navController.navigate(route)
@@ -84,7 +96,7 @@ fun GestionUsuariosScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { onNavigateToAddUser(isAdminApp) },
+                onClick = { onNavigateToAddUser(esAdminApp) },
                 icon = { Icon(Icons.Default.Add, "Añadir") },
                 text = { Text("Nuevo Usuario") },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -127,42 +139,77 @@ fun GestionUsuariosScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        // Mostrar categorías según el rol
-                        if (isAdminApp) {
+                        
+                        if (esAdminApp) {
+                            // Interfaz para administrador de aplicación
+                            Text(
+                                text = "Administración del Sistema",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            
                             UserCategoryCard(
                                 title = "Administradores",
                                 subtitle = "Gestión de administradores del sistema",
                                 icon = Icons.Default.AdminPanelSettings,
                                 onClick = { handleNavigateToUserList(AppScreens.AdminList.route) }
                             )
-                        UserCategoryCard(
-                            title = "Administradores de Centro",
-                            subtitle = "Gestión de administradores de centros educativos",
-                            icon = Icons.Default.Business,
-                            onClick = { handleNavigateToUserList(AppScreens.AdminCentroList.route) }
-                        )
+                            
+                            UserCategoryCard(
+                                title = "Administradores de Centro",
+                                subtitle = "Gestión de administradores de centros educativos",
+                                icon = Icons.Default.Business,
+                                onClick = { handleNavigateToUserList(AppScreens.AdminCentroList.route) }
+                            )
                         } else {
-                        // Profesores
-                        UserCategoryCard(
-                            title = "Profesores",
-                            subtitle = "Gestión de profesores",
-                            icon = Icons.Default.School,
-                            onClick = { handleNavigateToUserList(AppScreens.ProfesorList.route) }
-                        )
-                        // Alumnos
-                        UserCategoryCard(
-                            title = "Alumnos",
-                            subtitle = "Gestión de alumnos",
-                            icon = Icons.Default.Person,
-                            onClick = { handleNavigateToUserList(AppScreens.AlumnoList.route) }
-                        )
-                        // Familiares
-                        UserCategoryCard(
-                            title = "Familiares",
-                            subtitle = "Gestión de familiares",
-                            icon = Icons.Default.People,
-                            onClick = { handleNavigateToUserList(AppScreens.FamiliarList.route) }
-                        )
+                            // Interfaz para administrador de centro
+                            Text(
+                                text = "Gestión de Personal",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            
+                            // Profesores
+                            UserCategoryCard(
+                                title = "Profesores",
+                                subtitle = "Gestión de profesores",
+                                icon = Icons.Default.School,
+                                onClick = { 
+                                    // Opción 1: Navegar a la lista de profesores
+                                    handleNavigateToUserList(AppScreens.ProfesorList.route)
+                                    
+                                    // Opción alternativa si preferimos navegar directamente a añadir profesor:
+                                    // navController.navigate(AppScreens.AddUser.createRoute(
+                                    //     isAdminApp = esAdminApp, 
+                                    //     tipoUsuario = TipoUsuario.PROFESOR.toString()
+                                    // ))
+                                }
+                            )
+                            
+                            Text(
+                                text = "Comunidad Educativa",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            
+                            // Alumnos
+                            UserCategoryCard(
+                                title = "Alumnos",
+                                subtitle = "Gestión de alumnos",
+                                icon = Icons.Default.Person,
+                                onClick = { handleNavigateToUserList(AppScreens.AlumnoList.route) }
+                            )
+                            
+                            // Familiares
+                            UserCategoryCard(
+                                title = "Familiares",
+                                subtitle = "Gestión de familiares",
+                                icon = Icons.Default.People,
+                                onClick = { handleNavigateToUserList(AppScreens.FamiliarList.route) }
+                            )
                         }
                     }
                 }

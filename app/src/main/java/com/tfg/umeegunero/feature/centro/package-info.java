@@ -10,14 +10,12 @@
  * ### Pantallas ({@code screen/})
  * - {@code CentroDashboardScreen}: Panel principal del centro
  * - {@code GestionAlumnosScreen}: Gestión de alumnos matriculados
- * - {@code GestionProfesoresScreen}: Gestión del profesorado
  * - {@code GestionClasesScreen}: Administración de clases y cursos
  * - {@code ComunicacionesScreen}: Sistema de comunicación con familias
  * 
  * ### ViewModels ({@code viewmodel/})
  * - {@code CentroDashboardViewModel}: Lógica del panel principal
  * - {@code GestionAlumnosViewModel}: Gestión de alumnos
- * - {@code GestionProfesoresViewModel}: Gestión de profesores
  * - {@code GestionClasesViewModel}: Gestión de clases
  * - {@code ComunicacionesViewModel}: Gestión de comunicaciones
  * 

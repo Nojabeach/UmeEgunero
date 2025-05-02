@@ -203,6 +203,14 @@ sealed class AppScreens(val route: String) {
     }
     
     /**
+     * Pantalla de detalle de clase
+     * @param claseId Identificador único de la clase
+     */
+    object DetalleClase : AppScreens("detalle_clase/{claseId}") {
+        fun createRoute(claseId: String) = "detalle_clase/$claseId"
+    }
+    
+    /**
      * Pantalla de detalle de día con eventos
      * @param fecha Fecha del día a mostrar
      */
@@ -472,9 +480,6 @@ sealed class AppScreens(val route: String) {
     
     /** Comunicados para familiares */
     object ComunicadosFamilia : AppScreens("comunicados_familia")
-
-    /** Pantalla de gestión de profesores */
-    object GestionProfesores : AppScreens("gestion_profesores")
 
     /** Registros de actividad diaria */
     object RegistroActividad : AppScreens("registro_actividad")

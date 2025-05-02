@@ -86,12 +86,9 @@ class VinculacionFamiliarViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 alumnos = listaAlumnos,
-                                alumnosFiltrados = listaAlumnos
+                                alumnosFiltrados = listaAlumnos,
+                                isLoading = false
                             )
-                        }
-                        
-                        if (_uiState.value.isLoading && _uiState.value.familiares.isNotEmpty()) {
-                            _uiState.update { it.copy(isLoading = false) }
                         }
                     }
                     is Result.Error -> {
@@ -127,12 +124,9 @@ class VinculacionFamiliarViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 familiares = listaFamiliares,
-                                familiaresFiltrados = listaFamiliares
+                                familiaresFiltrados = listaFamiliares,
+                                isLoading = false
                             )
-                        }
-                        
-                        if (_uiState.value.isLoading && _uiState.value.alumnos.isNotEmpty()) {
-                            _uiState.update { it.copy(isLoading = false) }
                         }
                     }
                     is Result.Error -> {

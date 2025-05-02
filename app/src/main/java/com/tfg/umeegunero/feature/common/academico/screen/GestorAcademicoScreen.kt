@@ -278,7 +278,7 @@ fun GestorAcademicoScreen(
                                         .padding(vertical = 6.dp),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                     elevation = CardDefaults.cardElevation(4.dp),
-                                    onClick = { /* Acción ver/editar clase */ }
+                                    onClick = { onNavigate("detalle_clase/${clase.id}") }
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(16.dp),

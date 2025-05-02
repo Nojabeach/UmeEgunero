@@ -678,8 +678,8 @@ class AddUserViewModel @Inject constructor(
                               return@launch
                          }
 
-                         // Crear usuario SIN la variable 'usuario' no usada
-                         Usuario(
+                         // Crear objeto Usuario y guardarlo en una variable para usarlo después
+                         val usuario = Usuario(
                               dni = currentState.dni,
                               email = currentState.email,
                               nombre = currentState.nombre,
@@ -690,15 +690,9 @@ class AddUserViewModel @Inject constructor(
                               activo = true // Por defecto activo al crear
                           )
                          
-                         // 3. Guardar usuario en Firestore usando el UID como ID del documento
-                         Timber.d("Guardando usuario en Firestore con ID (Auth UID): $uid")
-                         // TODO: Asegúrate de que guardarUsuario acepte UID y Usuario
-                         // val saveResult = usuarioRepository.guardarUsuario(uid, usuario)
-                         
-                         // --- SIMULACIÓN HASTA TENER EL REPO ACTUALIZADO --- 
-                         kotlinx.coroutines.delay(500) // Simular llamada de red
-                         val saveResult: Result<Unit> = Result.Success(Unit) // Simular éxito
-                         // --- FIN SIMULACIÓN --- 
+                         // 3. Guardar usuario en Firestore
+                         Timber.d("Guardando usuario en Firestore con ID (DNI): ${usuario.dni}")
+                         val saveResult = usuarioRepository.guardarUsuario(usuario)
                          
                          when (saveResult) {
                              is Result.Success -> {

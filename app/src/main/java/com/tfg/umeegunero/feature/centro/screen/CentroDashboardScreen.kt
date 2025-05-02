@@ -191,7 +191,7 @@ fun CentroDashboardScreen(
         }
     }
 
-    fun onNavigateToGestionProfesores() = navController.navigate(AppScreens.GestionProfesores.route)
+    fun onNavigateToGestionProfesores() = navController.navigate(AppScreens.ProfesorList.route)
     fun onNavigateToAddAlumno() = try {
         if (centroId.isNotBlank()) {
             navController.navigate(AppScreens.AlumnoList.createRoute(centroId))
@@ -207,7 +207,6 @@ fun CentroDashboardScreen(
     }
     fun onNavigateToVincularProfesorClase() = navController.navigate(AppScreens.VincularProfesorClase.route)
     fun onNavigateToVinculacionFamiliar() = navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
-    fun onNavigateToCrearUsuarioRapido() = navController.navigate(AppScreens.CrearUsuarioRapido.route)
     fun onNavigateToCalendario() = navController.navigate(AppScreens.Calendario.route)
     fun onNavigateToNotificaciones() = navController.navigate(AppScreens.Notificaciones.route)
 
@@ -429,18 +428,6 @@ fun CentroDashboardScreen(
                                     border = true,
                                     onClick = { onNavigateToVincularProfesorClase() },
                                     modifier = Modifier.padding(4.dp) // Quitado fillMaxWidth para que quepa en la grid
-                                )
-                            }
-                            item {
-                                CategoriaCard(
-                                    titulo = "Crear Usuario",
-                                    descripcion = "Registra nuevos usuarios en el sistema",
-                                    icono = Icons.Default.PersonAdd,
-                                    color = CentroColor,
-                                    iconTint = AppColors.PurplePrimary,
-                                    border = true,
-                                    onClick = { onNavigateToCrearUsuarioRapido() },
-                                    modifier = Modifier.padding(4.dp)
                                 )
                             }
                            
