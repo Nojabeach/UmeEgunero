@@ -730,6 +730,21 @@ fun Navigation(
             )
         }
 
+        // Pantalla de detalle de estudiante
+        composable(
+            route = AppScreens.StudentDetail.route,
+            arguments = listOf(
+                navArgument("alumnoId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen(
+                navController = navController,
+                alumnoId = alumnoId,
+                viewModel = hiltViewModel()
+            )
+        }
+
         // Pantallas de vinculación
         composable(route = AppScreens.VincularProfesorClase.route) {
             com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(

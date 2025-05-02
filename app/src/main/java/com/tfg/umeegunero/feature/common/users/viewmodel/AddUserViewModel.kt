@@ -645,23 +645,17 @@ class AddUserViewModel @Inject constructor(
                 
                 when (authResult) {
                     is Result.Success -> {
-                         // Asumimos que authResult.data es de tipo AuthResult o compatible
-                         val uid: String? // Declarar uid como nullable
+                         // Obtener el UID directamente, ya que ambos métodos devuelven Result<String>
+                         var uid: String = authResult.data as String
                          
-                         // Determinar el UID basado en qué repositorio se llamó
                          if (currentState.tipoUsuario == TipoUsuario.ADMIN_CENTRO || currentState.tipoUsuario == TipoUsuario.PROFESOR) {
-                             // centroRepository devuelve Result<AuthResult>
-                             val firebaseUser = (authResult.data as? com.google.firebase.auth.AuthResult)?.user // Cast puede fallar si tipo es incorrecto
-                              uid = firebaseUser?.uid
-                              Timber.d("Usuario Auth (Centro/Prof) creado con UID: $uid")
-                          } else {
-                              // usuarioRepository devuelve Result<String>
-                              uid = authResult.data as String // Cast directo, ya que esperamos String
-                              Timber.d("Usuario Auth (AdminApp/Familiar) creado con UID: $uid")
-                          }
+                             Timber.d("Usuario Auth (Centro/Prof) creado con UID: $uid")
+                         } else {
+                             Timber.d("Usuario Auth (AdminApp/Familiar) creado con UID: $uid")
+                         }
                          
                          // Validar que se obtuvo un UID
-                         if (uid == null) {
+                         if (uid.isBlank()) {
                              Timber.e("Error: UID nulo después de crear usuario en Auth para tipo ${currentState.tipoUsuario}.")
                              _uiState.update { it.copy(isLoading = false, error = "Error interno al obtener ID de usuario.") }
                              return@launch
