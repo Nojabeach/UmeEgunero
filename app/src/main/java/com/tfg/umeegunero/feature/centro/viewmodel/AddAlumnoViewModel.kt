@@ -8,6 +8,7 @@ import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.util.UsuarioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -77,6 +78,7 @@ data class AddAlumnoUiState(
 class AddAlumnoViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val cursoRepository: CursoRepository,
+    private val claseRepository: ClaseRepository,
     private val authRepository: AuthRepository,
     private val firestore: FirebaseFirestore
 ) : ViewModel() {
@@ -278,7 +280,23 @@ class AddAlumnoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Crear objeto Alumno con los campos correctos
+                // 1. Obtenemos el profesor asociado a la clase seleccionada (si existe)
+                val claseId = _uiState.value.claseSeleccionada?.id ?: ""
+                var profesorId = ""
+                
+                if (claseId.isNotEmpty()) {
+                    try {
+                        val claseResult = claseRepository.getClaseById(claseId)
+                        if (claseResult is Result.Success) {
+                            profesorId = claseResult.data.profesorId ?: ""
+                            Timber.d("Obtenido profesorId: $profesorId para la clase: $claseId")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al obtener la información de la clase")
+                    }
+                }
+                
+                // 2. Crear objeto Alumno con los campos correctos
                 val nuevoAlumno = Alumno(
                     // id se autogenera o usa dni? Usaremos dni como ID del documento
                     dni = _uiState.value.dni,
@@ -293,19 +311,26 @@ class AddAlumnoViewModel @Inject constructor(
                     medicacion = _uiState.value.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() },
                     necesidadesEspeciales = _uiState.value.necesidadesEspeciales,
                     observaciones = _uiState.value.observaciones,
-                    activo = true // Marcar como activo por defecto
+                    activo = true, // Marcar como activo por defecto
+                    profesorId = profesorId // Asignamos el profesor vinculado a la clase
                     // Otros campos como email, telefono, familiares, profesorIds se gestionarán aparte si es necesario
                 )
                 
-                // Guardar directamente en la colección "alumnos" usando DNI como ID
+                // 3. Guardar directamente en la colección "alumnos" usando DNI como ID
                 alumnosCollection.document(nuevoAlumno.dni).set(nuevoAlumno).await()
                 
-                // Si llegamos aquí, la operación fue exitosa
+                // 4. Si llegamos aquí, la operación fue exitosa
                 _uiState.update { it.copy(isLoading = false, success = true) }
-                Timber.d("Alumno guardado correctamente con DNI: ${nuevoAlumno.dni}")
+                
+                // 5. Registrar el resultado en logs
+                if (profesorId.isNotEmpty()) {
+                    Timber.d("Alumno ${nuevoAlumno.dni} asignado automáticamente al profesor: $profesorId")
+                } else {
+                    Timber.d("Alumno guardado correctamente con DNI: ${nuevoAlumno.dni} (sin profesor asignado)")
+                }
                 
             } catch (e: Exception) {
-                 _uiState.update { 
+                _uiState.update { 
                     it.copy(
                         isLoading = false, 
                         error = "Error inesperado al guardar: ${e.message}"

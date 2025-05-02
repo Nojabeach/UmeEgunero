@@ -110,32 +110,47 @@ class ListProfesoresViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                // En un caso real, aquí llamaríamos al repositorio para eliminar
-                // Por ahora, hacemos una eliminación simulada para demostración
-                _uiState.update { currentState ->
-                    val profesoresActualizados = currentState.profesoresCompletos.filter { it.dni != profesorId }
-                    val profesoresFiltrados = if (currentState.soloActivos) {
-                        profesoresActualizados.filter { it.activo }
-                    } else {
-                        profesoresActualizados
+                when (val result = usuarioRepository.borrarUsuarioByDni(profesorId)) {
+                    is Result.Success -> {
+                        // Actualización local de la lista después de eliminar
+                        _uiState.update { currentState ->
+                            val profesoresActualizados = currentState.profesoresCompletos.filter { it.dni != profesorId }
+                            val profesoresFiltrados = if (currentState.soloActivos) {
+                                profesoresActualizados.filter { it.activo }
+                            } else {
+                                profesoresActualizados
+                            }
+                            
+                            currentState.copy(
+                                profesores = profesoresFiltrados,
+                                profesoresCompletos = profesoresActualizados,
+                                isLoading = false
+                            )
+                        }
+                        
+                        Timber.d("Profesor eliminado correctamente: $profesorId")
                     }
-                    
-                    currentState.copy(
-                        profesores = profesoresFiltrados,
-                        profesoresCompletos = profesoresActualizados,
-                        isLoading = false
-                    )
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                error = "Error al eliminar profesor: ${result.exception?.message}",
+                                isLoading = false
+                            ) 
+                        }
+                        Timber.e(result.exception, "Error al eliminar profesor $profesorId")
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
                 }
-                
-                Timber.d("Profesor eliminado: $profesorId")
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        error = "Error al eliminar profesor: ${e.message}",
+                        error = "Error inesperado al eliminar profesor: ${e.message}",
                         isLoading = false
                     ) 
                 }
-                Timber.e(e, "Error al eliminar profesor $profesorId")
+                Timber.e(e, "Error inesperado al eliminar profesor $profesorId")
             }
         }
     }

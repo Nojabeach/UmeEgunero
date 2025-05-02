@@ -68,17 +68,41 @@ class AdminViewModel @Inject constructor(
             try {
                 val document = db.collection("centros").document(centroId).get().await()
                 if (document.exists()) {
-                    val centro = document.toObject(Centro::class.java)
-                    _isLoading.value = false
-                    onComplete(centro)
+                    try {
+                        val centro = document.toObject(Centro::class.java)
+                        
+                        // Verificar si hay datos adicionales que no se mapearon automáticamente
+                        // y que podrían ser necesarios para mantener la compatibilidad
+                        val data = document.data
+                        if (data != null) {
+                            // Log para depuración
+                            Timber.d("Datos del centro obtenidos: $data")
+                            
+                            // Si el centro es válido, actualizar propiedades si es necesario
+                            if (centro != null) {
+                                // Asegurar que se establezca el ID correctamente
+                                centro.id = centroId
+                            }
+                        }
+                        
+                        _isLoading.value = false
+                        onComplete(centro)
+                    } catch (e: Exception) {
+                        // Error específico de mapeo
+                        Timber.e(e, "Error al mapear el documento a Centro: ${e.message}")
+                        _error.value = "Error al procesar datos del centro: ${e.message}"
+                        _isLoading.value = false
+                        onComplete(null)
+                    }
                 } else {
+                    Timber.w("No se encontró el centro con ID: $centroId")
                     _isLoading.value = false
                     onComplete(null)
                 }
             } catch (e: Exception) {
-                _isLoading.value = false
+                Timber.e(e, "Error al obtener centro: ${e.message}")
                 _error.value = "Error al obtener centro: ${e.message}"
-                Timber.e(e, "Error al obtener centro")
+                _isLoading.value = false
                 onComplete(null)
             }
         }

@@ -2,6 +2,14 @@ package com.tfg.umeegunero.navigation
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.*
@@ -49,6 +57,10 @@ import com.tfg.umeegunero.feature.admin.viewmodel.SeguridadViewModel
 import com.tfg.umeegunero.feature.admin.screen.SeguridadScreen
 import com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen
 import com.tfg.umeegunero.feature.familiar.screen.FamiliaDashboardScreen
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 /**
  * Navegación principal de la aplicación
@@ -348,6 +360,21 @@ fun Navigation(
             )
         }
         
+        // Pantalla de detalles de un centro educativo
+        composable(
+            route = AppScreens.DetalleCentro.route,
+            arguments = listOf(
+                navArgument("centroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            com.tfg.umeegunero.feature.admin.screen.DetalleCentroScreen(
+                centroId = centroId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = { id -> navController.navigate(AppScreens.EditCentro.createRoute(id)) }
+            )
+        }
+        
         // Pantalla de configuración de email
         composable(route = AppScreens.EmailConfig.route) {
             com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen(
@@ -419,6 +446,7 @@ fun Navigation(
         
         // Pantalla del dashboard de profesor
         composable(route = AppScreens.ProfesorDashboard.route) {
+            // Muestra el dashboard del profesor directamente
             com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
@@ -686,6 +714,21 @@ fun Navigation(
             }
         }
 
+        // Pantalla de detalle de usuario
+        composable(
+            route = AppScreens.UserDetail.route,
+            arguments = listOf(
+                navArgument("dni") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val dni = backStackEntry.arguments?.getString("dni") ?: ""
+            com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
+                navController = navController,
+                userId = dni,
+                viewModel = hiltViewModel()
+            )
+        }
+
         // Pantallas de vinculación
         composable(route = AppScreens.VincularProfesorClase.route) {
             com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
@@ -804,6 +847,12 @@ fun Navigation(
                 navController = navController,
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+
+        // Reemplazo de la pantalla redundante:
+        composable(route = AppScreens.VinculacionFamiliar.route) {
+            // Redirigir a la implementación real sin complicaciones
+            navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
         }
     }
 } 

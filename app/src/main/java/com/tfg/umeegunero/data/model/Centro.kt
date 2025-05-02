@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.data.model
 
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.Exclude
 
 /**
  * Clase de datos que representa un centro educativo en la aplicación.
@@ -17,6 +18,11 @@ import com.google.firebase.firestore.DocumentId
  * @property numClases Número de clases asociadas al centro
  * @property adminIds Lista de IDs de administradores del centro
  * @property profesorIds Lista de IDs de profesores asignados al centro
+ * @property direccionCalle Calle de la dirección (compatible con formato anterior)
+ * @property direccionNumero Número de la dirección (compatible con formato anterior)
+ * @property direccionCodigoPostal Código postal (compatible con formato anterior)
+ * @property direccionCiudad Ciudad (compatible con formato anterior)
+ * @property direccionProvincia Provincia (compatible con formato anterior)
  */
 data class Centro(
     var id: String = "",
@@ -34,13 +40,20 @@ data class Centro(
     val adminIds: List<String> = emptyList(),
     val profesorIds: List<String> = emptyList(),
     val direccionObj: Direccion = Direccion(),
-    val contactoObj: Contacto = Contacto()
+    val contactoObj: Contacto = Contacto(),
+    
+    // Campos para compatibilidad con formato anterior en Firestore
+    val direccionCalle: String = "",
+    val direccionNumero: String = "",
+    val direccionCodigoPostal: String = "",
+    val direccionCiudad: String = "",
+    val direccionProvincia: String = ""
 ) {
-    fun getDireccionCalle(): String = direccionObj.calle.ifEmpty { direccion }
-    fun getDireccionNumero(): String = direccionObj.numero
-    fun getDireccionCodigoPostal(): String = direccionObj.codigoPostal
-    fun getDireccionCiudad(): String = direccionObj.ciudad
-    fun getDireccionProvincia(): String = direccionObj.provincia
+    fun obtenerDireccionCalle(): String = direccionObj.calle.ifEmpty { direccionCalle.ifEmpty { direccion } }
+    fun obtenerDireccionNumero(): String = direccionObj.numero.ifEmpty { direccionNumero }
+    fun obtenerDireccionCodigoPostal(): String = direccionObj.codigoPostal.ifEmpty { direccionCodigoPostal }
+    fun obtenerDireccionCiudad(): String = direccionObj.ciudad.ifEmpty { direccionCiudad }
+    fun obtenerDireccionProvincia(): String = direccionObj.provincia.ifEmpty { direccionProvincia }
     
     fun obtenerTelefono(): String = contactoObj.telefono.ifEmpty { telefono }
     fun obtenerEmail(): String = contactoObj.email.ifEmpty { email }

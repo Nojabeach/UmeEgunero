@@ -546,26 +546,6 @@ fun AdminDashboardScreen(
                             }
                         }
                     }
-                    // En la sección de configuración, añadir un botón o card para acceder a la pantalla de prueba de emails
-                    item {
-                        AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                CategoriaCard(
-                                    titulo = "Prueba de Emails",
-                                    icono = Icons.Default.Send,
-                                    descripcion = "Probar envío de emails (Gmail API)",
-                                    color = AdminColor,
-                                    iconTint = AppColors.Green500,
-                                    border = true,
-                                    onClick = { showEmailTestScreen = true },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
                     // Separador visual
                     item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
                     // Sección: Comunicación y Soporte

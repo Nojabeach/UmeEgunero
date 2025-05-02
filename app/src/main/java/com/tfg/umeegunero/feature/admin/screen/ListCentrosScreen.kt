@@ -127,8 +127,8 @@ fun ListCentrosScreen(
     } else {
         centros.filter { 
             it.nombre.contains(searchQuery, ignoreCase = true) || 
-            it.getDireccionCiudad().contains(searchQuery, ignoreCase = true) ||
-            it.getDireccionProvincia().contains(searchQuery, ignoreCase = true)
+            it.obtenerDireccionCiudad().contains(searchQuery, ignoreCase = true) ||
+            it.obtenerDireccionProvincia().contains(searchQuery, ignoreCase = true)
         }
     }
     
@@ -409,7 +409,7 @@ fun CentroItem(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${centro.getDireccionCiudad()}, ${centro.getDireccionProvincia()}",
+                            text = "${centro.obtenerDireccionCiudad()}, ${centro.obtenerDireccionProvincia()}",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }

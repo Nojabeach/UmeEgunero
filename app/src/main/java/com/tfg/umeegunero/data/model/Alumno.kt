@@ -25,7 +25,8 @@ import com.google.firebase.firestore.DocumentId
  * @property aulaId Identificador del aula específica a la que asiste.
  * @property curso Nombre del curso académico (por ejemplo, "Primero de Infantil").
  * @property clase Nombre de la clase específica (por ejemplo, "Clase A").
- * @property profesorIds Lista de identificadores de los profesores asignados.
+ * @property profesorId Identificador del profesor principal asignado al alumno.
+ * @property profesorIds Lista de identificadores de todos los profesores asignados.
  * @property familiarIds Lista de identificadores de los familiares vinculados.
  * @property activo Estado de actividad del alumno en el sistema.
  * @property necesidadesEspeciales Descripción de necesidades educativas especiales.
@@ -49,6 +50,7 @@ data class Alumno(
     val aulaId: String = "",
     val curso: String = "",
     val clase: String = "",
+    val profesorId: String = "",
     val profesorIds: List<String> = emptyList(),
     val familiarIds: List<String> = emptyList(),
     val activo: Boolean = true,

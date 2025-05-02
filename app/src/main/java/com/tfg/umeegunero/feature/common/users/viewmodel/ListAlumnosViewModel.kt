@@ -131,32 +131,47 @@ class ListAlumnosViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                // En un caso real, aquí llamaríamos al repositorio para eliminar
-                // Por ahora, hacemos una eliminación simulada para demostración
-                _uiState.update { currentState ->
-                    val alumnosActualizados = currentState.allAlumnos.filter { it.dni != alumnoId }
-                    val alumnosFiltrados = if (currentState.soloActivos) {
-                        alumnosActualizados.filter { (it as? Alumno)?.activo ?: true }
-                    } else {
-                        alumnosActualizados
+                // Los alumnos pueden estar en dos lugares: como documento en la colección de alumnos
+                // y como usuario en la autenticación. Necesitamos eliminar ambos.
+                when (val result = usuarioRepository.borrarUsuarioByDni(alumnoId)) {
+                    is Result.Success -> {
+                        // Actualización local de la lista después de eliminar
+                        _uiState.update { currentState ->
+                            val alumnosActualizados = currentState.allAlumnos.filter { it.dni != alumnoId }
+                            
+                            // Volvemos a aplicar los filtros actuales
+                            currentState.copy(
+                                allAlumnos = alumnosActualizados,
+                                isLoading = false
+                            )
+                        }
+                        
+                        // Volver a aplicar todos los filtros para actualizar la lista filtrada
+                        applyFilters()
+                        
+                        Timber.d("Alumno eliminado correctamente: $alumnoId")
                     }
-                    
-                    currentState.copy(
-                        allAlumnos = alumnosActualizados,
-                        filteredAlumnos = alumnosFiltrados,
-                        isLoading = false
-                    )
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                error = "Error al eliminar alumno: ${result.exception?.message}",
+                                isLoading = false
+                            ) 
+                        }
+                        Timber.e(result.exception, "Error al eliminar alumno $alumnoId")
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
                 }
-                
-                Timber.d("Alumno eliminado: $alumnoId")
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        error = "Error al eliminar alumno: ${e.message}",
+                        error = "Error inesperado al eliminar alumno: ${e.message}",
                         isLoading = false
                     ) 
                 }
-                Timber.e(e, "Error al eliminar alumno $alumnoId")
+                Timber.e(e, "Error inesperado al eliminar alumno $alumnoId")
             }
         }
     }

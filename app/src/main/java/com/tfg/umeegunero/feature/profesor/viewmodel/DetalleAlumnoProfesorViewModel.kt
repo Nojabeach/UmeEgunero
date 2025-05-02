@@ -15,37 +15,38 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel para la pantalla de detalle del alumno
- * Gestiona el estado de UI y las operaciones relacionadas con el alumno
+ * ViewModel para la pantalla de detalle del alumno del profesor.
+ * Gestiona el estado de UI y las operaciones relacionadas con el alumno.
  */
 @HiltViewModel
-open class StudentDetailViewModel @Inject constructor(
+open class DetalleAlumnoProfesorViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
-    
+
     // Constructor secundario sin parámetros para uso en previews
+    // Nota: El mock puede necesitar ajustarse a la implementación real de UsuarioRepository
     constructor() : this(UsuarioRepository.createMock())
-    
+
     // Constructor secundario que acepta un CoroutineScope para testing
     constructor(viewModelScope: CoroutineScope) : this(UsuarioRepository.createMock())
-    
+
     // Estado de UI expuesto como StateFlow inmutable
-    protected val _uiState = MutableStateFlow(StudentDetailUiState())
-    val uiState: StateFlow<StudentDetailUiState> = _uiState.asStateFlow()
-    
+    protected val _uiState = MutableStateFlow(DetalleAlumnoProfesorUiState())
+    val uiState: StateFlow<DetalleAlumnoProfesorUiState> = _uiState.asStateFlow()
+
     /**
-     * Carga la información de un alumno por su ID
+     * Carga la información de un alumno por su ID.
+     * Se llama desde la pantalla cuando se recibe el alumnoId.
      */
     open fun loadAlumno(alumnoId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            
+
             try {
-                val result = usuarioRepository.getAlumnoPorId(alumnoId)
-                
-                when (result) {
+                // Asumiendo que getAlumnoPorId existe en UsuarioRepository
+                when (val result = usuarioRepository.getAlumnoPorId(alumnoId)) {
                     is Result.Success<Alumno> -> {
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
                                 isLoading = false,
                                 alumno = result.data
@@ -53,19 +54,19 @@ open class StudentDetailViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = result.exception?.message ?: "Error al cargar el alumno"
+                                error = "Error al cargar alumno: ${result.exception?.message ?: "Error desconocido"}"
                             )
                         }
                     }
-                    is Result.Loading -> { 
-                        _uiState.update { it.copy(isLoading = true) }
+                    is Result.Loading -> {
+                        // Ya estamos en isLoading = true
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = e.message ?: "Error inesperado al cargar el alumno"
@@ -74,16 +75,16 @@ open class StudentDetailViewModel @Inject constructor(
             }
         }
     }
-    
+
     /**
-     * Establece directamente el estado para vistas previas
+     * Establece directamente el estado para vistas previas o testing.
      */
-    fun setStateForPreview(state: StudentDetailUiState) {
+    fun setStateForPreview(state: DetalleAlumnoProfesorUiState) {
         _uiState.value = state
     }
-    
+
     /**
-     * Limpia el mensaje de error
+     * Limpia el mensaje de error del estado de la UI.
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
@@ -91,9 +92,13 @@ open class StudentDetailViewModel @Inject constructor(
 }
 
 /**
- * Estado de UI para la pantalla de detalle del alumno
+ * Estado de UI para la pantalla de detalle del alumno del profesor.
+ *
+ * @property isLoading Indica si los datos del alumno se están cargando.
+ * @property alumno Los datos del alumno cargados, o null si no se han cargado o hubo error.
+ * @property error Mensaje de error si la carga falló, o null si no hay error.
  */
-data class StudentDetailUiState(
+data class DetalleAlumnoProfesorUiState(
     val isLoading: Boolean = false,
     val alumno: Alumno? = null,
     val error: String? = null

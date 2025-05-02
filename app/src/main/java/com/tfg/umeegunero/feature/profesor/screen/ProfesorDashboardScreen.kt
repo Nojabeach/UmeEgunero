@@ -7,7 +7,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,32 +19,30 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.automirrored.filled.SpeakerNotes
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.ChildCare
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Festival
+import androidx.compose.material.icons.filled.Grading
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocalActivity
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -66,424 +63,719 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
+import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardUiState
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
-import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Calendar
 import java.util.Locale
+import androidx.compose.foundation.layout.PaddingValues
 import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCard
 import com.tfg.umeegunero.ui.components.CategoriaCardData
-import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCardBienvenida
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-
+import timber.log.Timber
 
 /**
- * Calcula la edad en años a partir de una fecha de nacimiento en formato dd/MM/yyyy
- * 
- * @param fechaNacimiento Fecha de nacimiento en formato dd/MM/yyyy
- * @return Edad en años, o 0 si la fecha no es válida
- */
-fun calcularEdad(fechaNacimiento: String?): Int {
-    if (fechaNacimiento.isNullOrEmpty()) return 0
-    
-    val formatoFecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    try {
-        val fechaNac = formatoFecha.parse(fechaNacimiento) ?: return 0
-        val hoy = Calendar.getInstance()
-        val fechaNacCal = Calendar.getInstance().apply { time = fechaNac }
-        
-        var edad = hoy.get(Calendar.YEAR) - fechaNacCal.get(Calendar.YEAR)
-        
-        // Ajustar si todavía no ha cumplido años este año
-        if (hoy.get(Calendar.DAY_OF_YEAR) < fechaNacCal.get(Calendar.DAY_OF_YEAR)) {
-            edad--
-        }
-        
-        return edad
-    } catch (e: Exception) {
-        return 0
-    }
-}
-
-/**
- * Pantalla principal del dashboard para profesores.
- * 
- * Proporciona acceso rápido a todas las funcionalidades importantes del sistema para
- * los profesores: gestión de alumnos, comunicados, incidencias, actividades, calendario
- * y comunicación con familias.
+ * Pantalla principal del profesor, contiene un dashboard con acceso a todas las funcionalidades.
  *
- * @param navController Controlador de navegación para moverse entre pantallas
- * @param viewModel ViewModel que gestiona los datos y lógica del dashboard
+ * @param viewModel ViewModel que provee datos y funcionalidad a la pantalla
+ * @param navController Controlador de navegación
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesorDashboardScreen(
-    navController: NavController,
-    viewModel: ProfesorDashboardViewModel = hiltViewModel()
+    viewModel: ProfesorDashboardViewModel = hiltViewModel(),
+    navController: NavController = rememberNavController()
 ) {
+    // --- Estado y Efectos ---
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    
-    var showContent by remember { mutableStateOf(false) }
-    
+    var showContent by remember { mutableStateOf(false) } // Para animación de entrada
+
+    // Efecto para mostrar contenido con animación
     LaunchedEffect(Unit) {
         showContent = true
+        // Podrías llamar a una función explícita del ViewModel para cargar/refrescar si es necesario
+        // viewModel.cargarDatosDashboard()
     }
-    // Efecto para navegar a la pantalla de bienvenida tras logout
+
+    // Efecto para manejar la navegación al cerrar sesión
     LaunchedEffect(uiState.navigateToWelcome) {
         if (uiState.navigateToWelcome) {
-            navController.navigate(AppScreens.Welcome.route) {
-                popUpTo(AppScreens.ProfesorDashboard.route) { inclusive = true }
+            try {
+                // Navega a la pantalla de bienvenida, limpiando el backstack hasta el dashboard
+                navController.navigate(AppScreens.Welcome.route) {
+                    popUpTo(AppScreens.ProfesorDashboard.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+                // Notifica al ViewModel que la navegación se ha realizado
+                viewModel.onNavigationDone()
+                Timber.d("Navegación a Welcome completada correctamente")
+            } catch (e: Exception) {
+                Timber.e(e, "Error en la navegación al cerrar sesión")
+                // Intento alternativo de navegación en caso de error
+                try {
+                    navController.navigate(AppScreens.Welcome.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                } catch (e2: Exception) {
+                    Timber.e(e2, "Error en el segundo intento de navegación")
+                }
             }
         }
     }
-    
+
+    // --- UI Principal (Scaffold) ---
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "UmeEgunero - Profesor",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = ProfesorColor,
-                    titleContentColor = Color.White
-                ),
-                actions = {
-                    // Icono de perfil
-                    IconButton(onClick = { navController.navigate(AppScreens.Perfil.route) }) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Perfil",
-                            tint = Color.White
-                        )
-                    }
-                    // Botón de logout
-                    IconButton(onClick = { viewModel.logout() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Cerrar sesión",
-                            tint = Color.White
-                        )
-                    }
-                }
+            ProfesorDashboardTopBar(
+                onProfileClick = { navController.navigate(AppScreens.Perfil.route) },
+                onLogoutClick = { viewModel.logout() }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface // Color de fondo base
     ) { paddingValues ->
         AnimatedVisibility(
             visible = showContent,
-            enter = fadeIn() + slideInVertically(
-                initialOffsetY = { it / 2 },
-                animationSpec = spring(stiffness = Spring.StiffnessLow)
-            ),
+            enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessLow)) +
+                    slideInVertically(initialOffsetY = { it / 4 }), // Animación más sutil
             exit = fadeOut()
         ) {
+            // Contenido principal dentro de la animación
             ProfesorDashboardContent(
-                alumnosPendientes = uiState.alumnosPendientes,
-                navController = navController,
-                modifier = Modifier.padding(paddingValues)
+                paddingValues = paddingValues,
+                uiState = uiState,
+                viewModel = viewModel,
+                navController = navController
             )
         }
     }
 }
 
 /**
- * Contenido principal del Dashboard de Profesor
- * 
- * Esta composable organiza todos los elementos visuales del dashboard:
- * - Tarjeta de bienvenida con información del día
- * - Accesos directos a funcionalidades principales
- * - Listado de alumnos pendientes de registro
- * - Próximas actividades y eventos
+ * Barra superior (TopAppBar) específica para el Dashboard del Profesor.
  *
- * @param alumnosPendientes Lista de alumnos sin registro para el día actual
- * @param navController Controlador de navegación
- * @param modifier Modificador opcional para personalizar el diseño
+ * Incluye el título de la pantalla y acciones comunes como acceso al perfil y cierre de sesión.
+ *
+ * @param onProfileClick Lambda que se ejecuta al pulsar el icono de perfil.
+ * @param onLogoutClick Lambda que se ejecuta al pulsar el icono de cerrar sesión.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfesorDashboardTopBar(
+    onProfileClick: () -> Unit,
+    onLogoutClick: () -> Unit
+) {
+    CenterAlignedTopAppBar(
+        title = {
+            Text(
+                text = "Panel de Profesor", // Título más conciso
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+            )
+        },
+        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            containerColor = ProfesorColor, // Color corporativo del profesor
+            titleContentColor = Color.White, // Color del título
+            actionIconContentColor = Color.White // Color de los iconos de acción
+        ),
+        actions = {
+            // Icono de perfil
+            IconButton(onClick = onProfileClick) {
+                Icon(
+                    imageVector = Icons.Default.Face, // Icono más representativo para perfil
+                    contentDescription = "Ver Perfil",
+                    tint = Color.White // Asegurar tinte blanco
+                )
+            }
+            // Botón de cerrar sesión
+            IconButton(onClick = onLogoutClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    contentDescription = "Cerrar sesión",
+                    tint = Color.White // Asegurar tinte blanco
+                )
+            }
+        }
+    )
+}
+
+/**
+ * Contenido principal del Dashboard de Profesor, organizado en una cuadrícula.
+ *
+ * Muestra la tarjeta de bienvenida, secciones de acciones categorizadas y
+ * un resumen de alumnos pendientes si los hubiera. Las acciones diarias se
+ * deshabilitan si el día actual es festivo.
+ *
+ * @param paddingValues PaddingValues para aplicar padding al contenido principal.
+ * @param uiState Estado actual de la UI, proporcionado por el ViewModel.
+ * @param viewModel ViewModel que gestiona el estado y la lógica de negocio del dashboard.
+ * @param navController Controlador de navegación para las acciones de las tarjetas.
  */
 @Composable
 fun ProfesorDashboardContent(
-    alumnosPendientes: List<Alumno>,
-    navController: NavController,
-    modifier: Modifier = Modifier
+    paddingValues: PaddingValues,
+    uiState: ProfesorDashboardUiState,
+    viewModel: ProfesorDashboardViewModel,
+    navController: NavController
 ) {
-    // Sección: Gestión Académica
-    val gestionAcademicaCards = listOf(
-        CategoriaCardData("Asistencia", "Registra y revisa la asistencia de tus alumnos", Icons.Default.CheckCircle, MaterialTheme.colorScheme.secondary, onClick = { navController.navigate(AppScreens.AsistenciaProfesor.route) }),
-        CategoriaCardData("Mis Clases", "Accede a la gestión de tus clases asignadas", Icons.Default.School, MaterialTheme.colorScheme.primary, onClick = { /* TODO: Mis Clases */ }),
-        CategoriaCardData("Evaluación", "Evalúa el progreso académico de tus alumnos", Icons.Default.PieChart, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.Evaluacion.route) })
-    )
+    val hoyEsFestivo = uiState.esFestivoHoy
 
-    // Sección: Comunicación
-    val comunicacionCards = listOf(
-        CategoriaCardData("Comunicados", "Consulta y publica comunicados para tus clases", Icons.Default.Description, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ComunicadosCirculares.route) }),
-        CategoriaCardData("Chat", "Comunícate con familias y otros docentes", Icons.AutoMirrored.Filled.Chat, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ConversacionesProfesor.route) }),
-        CategoriaCardData("Incidencias", "Reporta y gestiona incidencias del aula", Icons.Default.Warning, MaterialTheme.colorScheme.error, onClick = { /* TODO: Incidencias */ })
-    )
-
-    // Sección: Actividades
-    val actividadesCards = listOf(
-        CategoriaCardData("Actividades", "Crea y gestiona actividades para tus clases", Icons.Default.PlayCircle, MaterialTheme.colorScheme.secondary, onClick = { navController.navigate(AppScreens.RegistroActividad.route) }),
-        CategoriaCardData("Calendario", "Consulta eventos y fechas importantes", Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.CalendarioProfesor.route) })
-    )
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Header de bienvenida
-        item(span = { GridItemSpan(2) }) {
-            CategoriaCardBienvenida(
-                data = CategoriaCardData(
-                    titulo = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM")).replaceFirstChar { it.uppercase() },
-                    descripcion = "2B - Educación Infantil\n15 alumnos a tu cargo",
-                    icono = Icons.Default.CalendarToday,
-                    color = ProfesorColor,
-                    onClick = {},
-                    iconTint = Color.White,
-                    border = true
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 64.dp, max = 100.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // ... contenido ...
+    // --- Definición de las tarjetas de acciones (usar AppScreens correctos) ---
+    val accionesDiariasCards = listOf(
+        CategoriaCardData(
+            titulo = "Registro Diario",
+            descripcion = "Anota comidas, siestas, pañales, etc.",
+            icono = Icons.AutoMirrored.Filled.ListAlt,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    // Usando la ruta definitiva en lugar de la pantalla Dummy
+                    navController.navigate(AppScreens.RegistroDiarioProfesor.route)
+                    // Registrar en el log
+                    Timber.d("Navegando a Registro Diario")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Registro Diario")
                 }
             }
+        ),
+        CategoriaCardData(
+            titulo = "Asistencia",
+            descripcion = "Marca quién ha venido hoy",
+            icono = Icons.Default.CheckCircleOutline,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.AsistenciaProfesor.route)
+                    Timber.d("Navegando a Control de Asistencia")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Control de Asistencia")
+                }
             }
-            
-        // Sección: Gestión Académica
-        item(span = { GridItemSpan(2) }) {
-            Spacer(Modifier.height(8.dp))
-        Text(
-            text = "Gestión Académica",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = ProfesorColor,
-                modifier = Modifier.padding(bottom = 4.dp)
+        ),
+        CategoriaCardData(
+            titulo = "Observaciones",
+            descripcion = "Anota incidencias o logros",
+            icono = Icons.Default.EditNote,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.ObservacionesProfesor.route)
+                    Timber.d("Navegando a Observaciones")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Observaciones")
+                }
+            }
         )
-            HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
-        }
-        items(gestionAcademicaCards.size) { index ->
-            val card = gestionAcademicaCards[index]
-            CategoriaCard(
-                titulo = card.titulo,
-                descripcion = card.descripcion,
-                icono = card.icono,
-                color = ProfesorColor,
-                iconTint = card.iconTint,
-                border = true,
-                onClick = card.onClick,
-                modifier = Modifier.padding(4.dp)
+    )
+    val comunicacionCards = listOf(
+        CategoriaCardData(
+            titulo = "Chat Familias",
+            descripcion = "Mensajes directos con padres/madres",
+            icono = Icons.AutoMirrored.Filled.Chat,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.ConversacionesProfesor.route)
+                    Timber.d("Navegando a Chat con Familias")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Chat con Familias")
+                }
+            }
+        ),
+        CategoriaCardData(
+            titulo = "Comunicados",
+            descripcion = "Avisos generales de clase o centro",
+            icono = Icons.AutoMirrored.Filled.SpeakerNotes,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.ComunicadosCirculares.route)
+                    Timber.d("Navegando a Comunicados y Circulares")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Comunicados y Circulares")
+                }
+            }
+        )
+    )
+    val gestionPlanificacionCards = listOf(
+        CategoriaCardData(
+            titulo = "Mis Alumnos",
+            descripcion = "Consulta fichas e información",
+            icono = Icons.Default.ChildCare,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.MisAlumnosProfesor.route)
+                    Timber.d("Navegando a Mis Alumnos")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Mis Alumnos")
+                }
+            }
+        ),
+        CategoriaCardData(
+            titulo = "Actividades",
+            descripcion = "Planifica y revisa actividades",
+            icono = Icons.Default.LocalActivity,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.ActividadesPreescolarProfesor.route)
+                    Timber.d("Navegando a Actividades")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Actividades")
+                }
+            }
+        ),
+        CategoriaCardData(
+            titulo = "Calendario",
+            descripcion = "Eventos escolares y festivos",
+            icono = Icons.Default.CalendarMonth,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.ProfesorCalendario.route)
+                    Timber.d("Navegando a Calendario")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Calendario")
+                }
+            }
+        ),
+        CategoriaCardData(
+            titulo = "Evaluación",
+            descripcion = "Registro de evaluaciones formales",
+            icono = Icons.Default.Grading,
+            color = ProfesorColor,
+            onClick = { 
+                try {
+                    navController.navigate(AppScreens.Evaluacion.route)
+                    Timber.d("Navegando a Evaluación")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Evaluación")
+                }
+            }
+        )
+    )
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        // --- Bienvenida ---
+        item {
+            BienvenidaProfesorCard(
+                nombreProfesor = uiState.profesorNombre,
+                infoClase = uiState.claseInfo,
+                esFestivo = hoyEsFestivo
             )
         }
 
-        // Sección: Comunicación
-        item(span = { GridItemSpan(2) }) {
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "Comunicación",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = ProfesorColor,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-            HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
-        }
-        items(comunicacionCards.size) { index ->
-            val card = comunicacionCards[index]
-            CategoriaCard(
-                titulo = card.titulo,
-                descripcion = card.descripcion,
-                icono = card.icono,
-                color = ProfesorColor,
-                iconTint = card.iconTint,
-                border = true,
-                onClick = card.onClick,
-                modifier = Modifier.padding(4.dp)
-            )
+        // --- Acciones Diarias ---
+        item { SeccionTitulo("Acciones Diarias") }
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Primera fila (2 elementos)
+                if (accionesDiariasCards.size >= 2) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Primer elemento - 50% del ancho
+                        Box(modifier = Modifier.weight(1f)) {
+                            CategoriaCard(
+                                titulo = accionesDiariasCards[0].titulo,
+                                descripcion = accionesDiariasCards[0].descripcion,
+                                icono = accionesDiariasCards[0].icono,
+                                color = accionesDiariasCards[0].color,
+                                iconTint = accionesDiariasCards[0].iconTint,
+                                border = true,
+                                enabled = !hoyEsFestivo,
+                                onClick = accionesDiariasCards[0].onClick
+                            )
+                        }
+                        // Segundo elemento - 50% del ancho
+                        Box(modifier = Modifier.weight(1f)) {
+                            CategoriaCard(
+                                titulo = accionesDiariasCards[1].titulo,
+                                descripcion = accionesDiariasCards[1].descripcion,
+                                icono = accionesDiariasCards[1].icono,
+                                color = accionesDiariasCards[1].color,
+                                iconTint = accionesDiariasCards[1].iconTint,
+                                border = true,
+                                enabled = !hoyEsFestivo,
+                                onClick = accionesDiariasCards[1].onClick
+                            )
+                        }
+                    }
+                }
+                
+                // Elemento adicional si hay 3 (centrado)
+                if (accionesDiariasCards.size >= 3) {
+                    // Usando ancho completo para el tercer elemento
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Espaciador a la izquierda (25%)
+                        Spacer(modifier = Modifier.weight(0.25f))
+                        // Tercer elemento (50%)
+                        Box(modifier = Modifier.weight(0.5f)) {
+                            CategoriaCard(
+                                titulo = accionesDiariasCards[2].titulo,
+                                descripcion = accionesDiariasCards[2].descripcion,
+                                icono = accionesDiariasCards[2].icono,
+                                color = accionesDiariasCards[2].color,
+                                iconTint = accionesDiariasCards[2].iconTint,
+                                border = true,
+                                enabled = !hoyEsFestivo,
+                                onClick = accionesDiariasCards[2].onClick
+                            )
+                        }
+                        // Espaciador a la derecha (25%)
+                        Spacer(modifier = Modifier.weight(0.25f))
+                    }
+                }
+            }
         }
 
-        // Sección: Actividades
-        item(span = { GridItemSpan(2) }) {
-            Spacer(Modifier.height(16.dp))
+        // --- Comunicación ---
+        item { SeccionTitulo("Comunicación") }
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Solo 2 elementos, una fila es suficiente
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    for (card in comunicacionCards) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            CategoriaCard(
+                                titulo = card.titulo,
+                                descripcion = card.descripcion,
+                                icono = card.icono,
+                                color = card.color,
+                                iconTint = card.iconTint,
+                                border = true,
+                                onClick = card.onClick
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Gestión y Planificación ---
+        item { SeccionTitulo("Gestión y Planificación") }
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Primera fila (2 elementos)
+                if (gestionPlanificacionCards.size >= 2) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Primer elemento - 50% del ancho
+                        Box(modifier = Modifier.weight(1f)) {
+                            CategoriaCard(
+                                titulo = gestionPlanificacionCards[0].titulo,
+                                descripcion = gestionPlanificacionCards[0].descripcion,
+                                icono = gestionPlanificacionCards[0].icono,
+                                color = gestionPlanificacionCards[0].color,
+                                iconTint = gestionPlanificacionCards[0].iconTint,
+                                border = true,
+                                onClick = gestionPlanificacionCards[0].onClick
+                            )
+                        }
+                        // Segundo elemento - 50% del ancho
+                        Box(modifier = Modifier.weight(1f)) {
+                            CategoriaCard(
+                                titulo = gestionPlanificacionCards[1].titulo,
+                                descripcion = gestionPlanificacionCards[1].descripcion,
+                                icono = gestionPlanificacionCards[1].icono,
+                                color = gestionPlanificacionCards[1].color,
+                                iconTint = gestionPlanificacionCards[1].iconTint,
+                                border = true,
+                                onClick = gestionPlanificacionCards[1].onClick
+                            )
+                        }
+                    }
+                }
+                
+                // Segunda fila (2 elementos más si existen)
+                if (gestionPlanificacionCards.size >= 4) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Tercer elemento - 50% del ancho
+                        Box(modifier = Modifier.weight(1f)) {
+                            CategoriaCard(
+                                titulo = gestionPlanificacionCards[2].titulo,
+                                descripcion = gestionPlanificacionCards[2].descripcion,
+                                icono = gestionPlanificacionCards[2].icono,
+                                color = gestionPlanificacionCards[2].color,
+                                iconTint = gestionPlanificacionCards[2].iconTint,
+                                border = true,
+                                onClick = gestionPlanificacionCards[2].onClick
+                            )
+                        }
+                        // Cuarto elemento - 50% del ancho
+                        Box(modifier = Modifier.weight(1f)) {
+                            CategoriaCard(
+                                titulo = gestionPlanificacionCards[3].titulo,
+                                descripcion = gestionPlanificacionCards[3].descripcion,
+                                icono = gestionPlanificacionCards[3].icono,
+                                color = gestionPlanificacionCards[3].color,
+                                iconTint = gestionPlanificacionCards[3].iconTint,
+                                border = true,
+                                onClick = gestionPlanificacionCards[3].onClick
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Alumnos Pendientes ---
+        if (uiState.alumnosPendientes.isNotEmpty() && !hoyEsFestivo) {
+             item { SeccionTitulo("Alumnos con Registro Pendiente Hoy") }
+             uiState.alumnosPendientes.forEach { alumno ->
+                 item {
+                     AlumnoPendienteCard(
+                         alumno = alumno,
+                         onClick = {
+                             try {
+                                 navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.id))
+                                 Timber.d("Navegando a Detalle de Alumno: ${alumno.nombre}")
+                             } catch (e: Exception) {
+                                 Timber.e(e, "Error al navegar a Detalle de Alumno: ${alumno.nombre}")
+                             }
+                         }
+                     )
+                     Spacer(modifier = Modifier.height(8.dp))
+                 }
+             }
+         }
+    }
+}
+
+/**
+ * Composable para mostrar la cabecera de una sección en el dashboard.
+ *
+ * @param titulo Título de la sección.
+ * @param color Color principal para el título y el divisor.
+ */
+@Composable
+private fun SeccionTitulo(titulo: String) {
+    Column(modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) {
         Text(
-                text = "Actividades",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = ProfesorColor,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-            HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
-        }
-        items(actividadesCards.size) { index ->
-            val card = actividadesCards[index]
-            CategoriaCard(
-                titulo = card.titulo,
-                descripcion = card.descripcion,
-                icono = card.icono,
-                color = ProfesorColor,
-                iconTint = card.iconTint,
-                border = true,
-                onClick = card.onClick,
-                modifier = Modifier.padding(4.dp)
+            text = titulo,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = ProfesorColor
+        )
+        HorizontalDivider(thickness = 1.dp, color = ProfesorColor.copy(alpha = 0.3f))
+    }
+}
+
+/**
+ * Tarjeta de bienvenida personalizada para el profesor.
+ *
+ * Muestra un saludo, la fecha, información de la clase y un indicador si es día festivo.
+ *
+ * @param nombreProfesor Nombre del profesor (puede ser null si aún no ha cargado).
+ * @param infoClase Información de la clase (ej: "Infantil 2B - 15 alumnos") (puede ser null).
+ * @param esFestivo Booleano que indica si hoy es festivo.
+ */
+@Composable
+private fun BienvenidaProfesorCard(
+    nombreProfesor: String?,
+    infoClase: String?,
+    esFestivo: Boolean
+) {
+    val dateFormatter = remember {
+        DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", Locale("es", "ES"))
+    }
+    val fechaHoy = LocalDate.now().format(dateFormatter).replaceFirstChar { it.uppercase() }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = ProfesorColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Hola, ${nombreProfesor ?: "Profesor/a"}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = fechaHoy,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+                if (!infoClase.isNullOrBlank()) {
+                    Text(
+                        text = infoClase,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
+            }
+            if (esFestivo) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.Festival,
+                        contentDescription = "Día Festivo",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Text(
+                        text = "Festivo",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                 Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(36.dp)
                 )
             }
-            
-        // Divider y sección de alumnos pendientes
-        item(span = { GridItemSpan(2) }) {
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "Alumnos Pendientes",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = ProfesorColor,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-            HorizontalDivider(thickness = 2.dp, color = ProfesorColor.copy(alpha = 0.2f))
-        }
-        item(span = { GridItemSpan(2) }) {
-            AlumnosPendientesResumen(alumnosPendientes)
-        }
-
-        // Espaciador final
-        item(span = { GridItemSpan(2) }) {
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
 /**
- * Elemento de estadística simple
+ * Composable que muestra un resumen de los alumnos pendientes de registro diario.
+ *
+ * Aparece solo si hay alumnos pendientes y ofrece un botón para ir a la sección correspondiente.
+ *
+ * @param alumno Alumno pendiente.
+ * @param onClick Lambda que se ejecuta al pulsar el botón "Ver".
  */
 @Composable
-fun EstadisticaItem(
-    valor: String,
-    titulo: String,
-    color: Color,
+private fun AlumnoPendienteCard(
+    alumno: Alumno,
     onClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
-        Text(
-            text = valor,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        
-        Text(
-            text = titulo,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-fun AlumnosPendientesResumen(
-    alumnosPendientes: List<Alumno>
-) {
-    if (alumnosPendientes.isNotEmpty()) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            shape = RoundedCornerShape(12.dp)
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 Icon(
-                    imageVector = Icons.Default.Warning,
+                    imageVector = Icons.Default.Info,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.onErrorContainer
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Alumnos sin registro hoy: ${alumnosPendientes.size}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.error
+                    text = "${alumno.nombre} sin registro hoy",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(end = 8.dp)
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                Button(
-                    onClick = { /* Navegar a la lista de pendientes */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Ver")
-                }
+            }
+            Button(
+                onClick = onClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text("Registrar", style = MaterialTheme.typography.labelMedium)
             }
         }
     }
 }
 
+// --- Preview ---
+
+@Preview(showBackground = true, name = "Dashboard Profesor - Día Normal")
 @Composable
-fun GuardarRegistroButton(
-    isLoading: Boolean,
-    onClick: () -> Unit
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = !isLoading
-    ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(20.dp)
+fun ProfesorDashboardPreview() {
+    UmeEguneroTheme {
+        val previewState = ProfesorDashboardUiState(
+            profesorNombre = "Ainhoa Martinez",
+            claseInfo = "Infantil 2B - 15 alumnos",
+            alumnosPendientes = List(3) { Alumno(id = "$it", nombre = "Alumno $it") },
+            esFestivoHoy = false
+        )
+        Box(modifier = Modifier.padding(8.dp)) {
+             ProfesorDashboardContent(
+                paddingValues = PaddingValues(),
+                uiState = previewState,
+                viewModel = hiltViewModel(),
+                navController = rememberNavController()
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Guardando...")
-        } else {
-            Icon(Icons.Default.Save, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Guardar registro")
         }
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Dashboard Profesor - Día Festivo", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun ProfesorDashboardPreview() {
-    UmeEguneroTheme {
-        ProfesorDashboardScreen(
-            navController = rememberNavController()
-        )
-    }
-}
-
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun ProfesorDashboardDarkPreview() {
+fun ProfesorDashboardFestivoDarkPreview() {
     UmeEguneroTheme(darkTheme = true) {
-        ProfesorDashboardScreen(
-            navController = rememberNavController()
+         val previewStateFestivo = ProfesorDashboardUiState(
+            profesorNombre = "Ainhoa Martinez",
+            claseInfo = "Infantil 2B - 15 alumnos",
+            alumnosPendientes = emptyList(),
+            esFestivoHoy = true
         )
+        Box(modifier = Modifier.padding(8.dp)) {
+            ProfesorDashboardContent(
+                paddingValues = PaddingValues(),
+                uiState = previewStateFestivo,
+                viewModel = hiltViewModel(),
+                navController = rememberNavController()
+            )
+        }
     }
 }

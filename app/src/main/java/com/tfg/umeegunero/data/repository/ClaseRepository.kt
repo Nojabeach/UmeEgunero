@@ -69,6 +69,21 @@ interface ClaseRepository {
      * Obtiene los profesores asignados a una clase
      */
     suspend fun getProfesoresByClaseId(claseId: String): Result<List<String>>
+    
+    /**
+     * Asigna un profesor principal a una clase
+     * @param claseId ID de la clase
+     * @param profesorId ID del profesor a asignar
+     * @return Resultado de la operación
+     */
+    suspend fun asignarProfesor(claseId: String, profesorId: String): Result<Unit>
+    
+    /**
+     * Desasigna el profesor principal de una clase
+     * @param claseId ID de la clase
+     * @return Resultado de la operación
+     */
+    suspend fun desasignarProfesor(claseId: String): Result<Unit>
 }
 
 /**
@@ -333,6 +348,51 @@ class ClaseRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener profesores de clase")
             return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Asigna un profesor principal a una clase
+     * @param claseId ID de la clase
+     * @param profesorId ID del profesor a asignar
+     * @return Resultado de la operación
+     */
+    override suspend fun asignarProfesor(claseId: String, profesorId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Asignando profesor principal $profesorId a clase $claseId")
+            
+            // Actualizar el campo profesorId en la clase
+            clasesCollection.document(claseId)
+                .update("profesorId", profesorId)
+                .await()
+            
+            Timber.d("Profesor $profesorId asignado correctamente a clase $claseId")
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al asignar profesor principal a clase")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Desasigna el profesor principal de una clase
+     * @param claseId ID de la clase
+     * @return Resultado de la operación
+     */
+    override suspend fun desasignarProfesor(claseId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Eliminando profesor principal de clase $claseId")
+            
+            // Establecer el campo profesorId a null o cadena vacía
+            clasesCollection.document(claseId)
+                .update("profesorId", null)
+                .await()
+            
+            Timber.d("Profesor principal eliminado correctamente de clase $claseId")
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar profesor principal de clase")
+            Result.Error(e)
         }
     }
 }

@@ -12,6 +12,7 @@ import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.util.UsuarioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -58,7 +59,8 @@ class VincularProfesorClaseViewModel @Inject constructor(
     private val claseRepository: ClaseRepository,
     private val centroRepository: CentroRepository,
     private val cursoRepository: CursoRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val alumnoRepository: AlumnoRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(VincularProfesorClaseUiState())
@@ -585,96 +587,159 @@ class VincularProfesorClaseViewModel @Inject constructor(
     }
     
     /**
-     * Asigna un profesor a una clase
+     * Método para asignar un profesor a una clase.
+     * Esta implementación actualiza:
+     * 1. La clase (añadiendo el profesorId)
+     * 2. El profesor (añadiendo la clase a su lista)
+     * 3. Todos los alumnos de esa clase (actualizando su profesorId)
      */
     fun asignarProfesorAClase() {
-        val profesor = _uiState.value.profesorSeleccionado
-        val clase = _uiState.value.claseSeleccionada
-        
-        if (profesor == null || clase == null) {
-            _uiState.update { 
-                it.copy(error = "Selecciona un profesor y una clase") 
-            }
-            return
-        }
+        val profesorId = _uiState.value.profesorSeleccionado?.documentId ?: return
+        val claseId = _uiState.value.claseSeleccionada?.id ?: return
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            when (val result = claseRepository.asignarProfesorAClase(profesor.documentId, clase.id)) {
-                is Result.Success -> {
-                    // Actualizamos la lista de clases asignadas
-                    seleccionarProfesor(profesor)
-                    
-                    _uiState.update { 
-                        it.copy(
-                            mensaje = "Profesor asignado correctamente",
-                            showSuccessMessage = true,
-                            isLoading = false,
-                            showAsignarClasesDialog = false
-                        ) 
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                // 1. Asignar el profesor a la clase
+                claseRepository.asignarProfesor(claseId, profesorId)
+                
+                // 2. Actualizar el estado local
+                val profesorClases = _uiState.value.clasesAsignadas.toMutableMap()
+                if (profesorClases.containsKey(profesorId)) {
+                    val clases = profesorClases[profesorId]?.toMutableMap() ?: mutableMapOf()
+                    _uiState.value.claseSeleccionada?.let { clase ->
+                        clases[clase] = true
                     }
+                    profesorClases[profesorId] = clases
                 }
-                is Result.Error -> {
-                    Timber.e(result.exception, "Error al asignar profesor a clase")
-                    _uiState.update { 
-                        it.copy(
-                            error = "Error al asignar profesor: ${result.exception?.message}",
-                            isLoading = false
-                        )
-                    }
+                
+                // 3. Actualizar todos los alumnos de esta clase con el profesor asignado
+                actualizarAlumnosDeClaseConProfesor(claseId, profesorId)
+                
+                // 4. Mostrar mensaje de éxito
+                _uiState.update {
+                    it.copy(
+                        clasesAsignadas = profesorClases,
+                        isLoading = false,
+                        showAsignarClasesDialog = false,
+                        showSuccessMessage = true,
+                        mensaje = "Profesor asignado correctamente a la clase"
+                    )
                 }
-                is Result.Loading -> {
-                    // Manejar estado de carga si es necesario
+            } catch (e: Exception) {
+                Timber.e(e, "Error al asignar profesor a clase")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al asignar profesor: ${e.message}",
+                        showAsignarClasesDialog = false
+                    )
                 }
             }
         }
     }
     
     /**
-     * Desasigna un profesor de una clase
+     * Método para desasignar un profesor de una clase.
+     * Esta implementación actualiza:
+     * 1. La clase (eliminando el profesorId)
+     * 2. El profesor (eliminando la clase de su lista)
+     * 3. Todos los alumnos de esa clase (eliminando su profesorId)
      */
     fun desasignarProfesorDeClase() {
-        val profesor = _uiState.value.profesorSeleccionado
-        val clase = _uiState.value.claseSeleccionada
-        
-        if (profesor == null || clase == null) {
-            _uiState.update { 
-                it.copy(error = "Selecciona un profesor y una clase") 
-            }
-            return
-        }
+        val profesorId = _uiState.value.profesorSeleccionado?.documentId ?: return
+        val claseId = _uiState.value.claseSeleccionada?.id ?: return
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            when (val result = claseRepository.desasignarProfesorDeClase(profesor.documentId, clase.id)) {
-                is Result.Success -> {
-                    // Actualizamos la lista de clases asignadas
-                    seleccionarProfesor(profesor)
-                    
-                    _uiState.update { 
-                        it.copy(
-                            mensaje = "Profesor desasignado correctamente",
-                            showSuccessMessage = true,
-                            isLoading = false,
-                            showConfirmarDesasignacionDialog = false
-                        ) 
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                // 1. Desasignar el profesor de la clase
+                claseRepository.desasignarProfesor(claseId)
+                
+                // 2. Actualizar el estado local
+                val profesorClases = _uiState.value.clasesAsignadas.toMutableMap()
+                if (profesorClases.containsKey(profesorId)) {
+                    val clases = profesorClases[profesorId]?.toMutableMap() ?: mutableMapOf()
+                    _uiState.value.claseSeleccionada?.let { clase ->
+                        clases[clase] = false
                     }
+                    profesorClases[profesorId] = clases
                 }
-                is Result.Error -> {
-                    Timber.e(result.exception, "Error al desasignar profesor de clase")
-                    _uiState.update { 
-                        it.copy(
-                            error = "Error al desasignar profesor: ${result.exception?.message}",
-                            isLoading = false
-                        )
-                    }
+                
+                // 3. Actualizar todos los alumnos de esta clase para eliminar la referencia al profesor
+                eliminarProfesorDeAlumnosDeClase(claseId, profesorId)
+                
+                // 4. Mostrar mensaje de éxito
+                _uiState.update {
+                    it.copy(
+                        clasesAsignadas = profesorClases,
+                        isLoading = false,
+                        showConfirmarDesasignacionDialog = false,
+                        showSuccessMessage = true,
+                        mensaje = "Profesor desasignado correctamente de la clase"
+                    )
                 }
-                is Result.Loading -> {
-                    // Manejar estado de carga si es necesario
+            } catch (e: Exception) {
+                Timber.e(e, "Error al desasignar profesor de clase")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al desasignar profesor: ${e.message}",
+                        showConfirmarDesasignacionDialog = false
+                    )
                 }
             }
+        }
+    }
+    
+    /**
+     * Método privado para actualizar todos los alumnos de una clase con un profesor específico.
+     * @param claseId ID de la clase
+     * @param profesorId ID del profesor a asignar a todos los alumnos
+     */
+    private suspend fun actualizarAlumnosDeClaseConProfesor(claseId: String, profesorId: String) {
+        try {
+            // 1. Obtener todos los alumnos de esta clase
+            val alumnos = alumnoRepository.getAlumnosPorClase(claseId)
+            Timber.d("Actualizando ${alumnos.size} alumnos con profesor $profesorId")
+            
+            // 2. Para cada alumno, actualizar el profesorId
+            alumnos.forEach { alumno ->
+                Timber.d("Actualizando alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni}) con profesor $profesorId")
+                alumnoRepository.actualizarProfesor(alumno.dni, profesorId)
+            }
+            
+            Timber.d("Actualización de alumnos completada exitosamente")
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar alumnos con profesor")
+            throw e
+        }
+    }
+    
+    /**
+     * Método privado para eliminar la referencia a un profesor de todos los alumnos de una clase.
+     * @param claseId ID de la clase
+     * @param profesorId ID del profesor a eliminar (para verificación)
+     */
+    private suspend fun eliminarProfesorDeAlumnosDeClase(claseId: String, profesorId: String) {
+        try {
+            // 1. Obtener todos los alumnos de esta clase
+            val alumnos = alumnoRepository.getAlumnosPorClase(claseId)
+            Timber.d("Eliminando profesor $profesorId de ${alumnos.size} alumnos")
+            
+            // 2. Para cada alumno, eliminar el profesorId solo si coincide con el actual
+            alumnos.forEach { alumno ->
+                // Solo eliminamos si el profesor asignado es el que estamos desvinculando
+                if (alumno.profesorId == profesorId) {
+                    Timber.d("Eliminando profesor de alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni})")
+                    alumnoRepository.eliminarProfesor(alumno.dni)
+                }
+            }
+            
+            Timber.d("Eliminación de profesor de alumnos completada exitosamente")
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar profesor de alumnos")
+            throw e
         }
     }
     

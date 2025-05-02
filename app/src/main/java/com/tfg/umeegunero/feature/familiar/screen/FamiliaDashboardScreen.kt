@@ -89,13 +89,7 @@ data class SolicitudPendienteUI(
     val estado: EstadoSolicitud
 )
 
-/**
- * Clase que representa una estadística para mostrar en el dashboard
- */
-data class Estadistica(
-    val value: String,
-    val etiqueta: String
-)
+
 
 /**
  * Pantalla principal del dashboard para familiares

@@ -35,6 +35,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.Dp
 import com.tfg.umeegunero.ui.components.CategoriaCardData
+import androidx.compose.ui.graphics.graphicsLayer
 
 @Composable
 fun SectionHeader(
@@ -83,27 +84,31 @@ fun CategoriaCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     iconTint: Color? = null,
-    border: Boolean = false
+    border: Boolean = true,
+    enabled: Boolean = true
 ) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     
     val elevation by animateDpAsState(
-        targetValue = if (isPressed) 8.dp else 3.dp,
+        targetValue = if (isPressed && enabled) 8.dp else 3.dp,
         animationSpec = tween(durationMillis = 120), label = "elevacion"
     )
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
+        targetValue = if (isPressed && enabled) 0.97f else 1f,
         animationSpec = tween(durationMillis = 120), label = "escala"
     )
+    val alpha = if (enabled) 1f else 0.5f
     
     Card(
         modifier = modifier
             .width(160.dp)
             .height(120.dp)
             .scale(scale)
+            .graphicsLayer(alpha = alpha)
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null
             ) {
@@ -115,7 +120,7 @@ fun CategoriaCard(
         ),
         shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(elevation),
-        border = if (border) BorderStroke(1.dp, color.copy(alpha = 0.35f)) else null
+        border = if (border) BorderStroke(1.dp, color.copy(alpha = if(enabled) 0.35f else 0.15f)) else null
     ) {
         Column(
             modifier = Modifier
@@ -128,13 +133,13 @@ fun CategoriaCard(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(color.copy(alpha = 0.18f)),
+                    .background(color.copy(alpha = if(enabled) 0.18f else 0.10f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icono,
                     contentDescription = titulo,
-                    tint = iconTint ?: color,
+                    tint = (iconTint ?: color).copy(alpha = if(enabled) 1f else 0.6f),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -144,12 +149,13 @@ fun CategoriaCard(
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = LocalContentColor.current.copy(alpha = if(enabled) 1f else 0.38f)
             )
             Text(
                 text = descripcion,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if(enabled) 1f else 0.38f),
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis

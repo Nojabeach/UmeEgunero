@@ -212,7 +212,7 @@ fun CentroItem(
     onDelete: () -> Unit
 ) {
     // Crear la dirección completa para compartir
-    val direccionCompleta = "${centro.getDireccionCalle()}, ${centro.getDireccionNumero()}, ${centro.getDireccionCodigoPostal()}, ${centro.getDireccionCiudad()}"
+    val direccionCompleta = "${centro.obtenerDireccionCalle()}, ${centro.obtenerDireccionNumero()}, ${centro.obtenerDireccionCodigoPostal()}, ${centro.obtenerDireccionCiudad()}"
     
     val contactoCompleto = "${centro.obtenerTelefono()}\n${centro.obtenerEmail()}"
     

@@ -91,6 +91,28 @@ interface AlumnoRepository {
      * @return Lista de alumnos vinculados al familiar
      */
     suspend fun getAlumnosByFamiliarId(familiarId: String): Result<List<Alumno>>
+    
+    /**
+     * Obtiene todos los alumnos de una clase específica de forma directa
+     * @param claseId ID de la clase
+     * @return Lista de alumnos de la clase
+     */
+    suspend fun getAlumnosPorClase(claseId: String): List<Alumno>
+    
+    /**
+     * Actualiza el profesor asignado a un alumno
+     * @param alumnoDni DNI del alumno
+     * @param profesorId ID del profesor
+     * @return Resultado indicando éxito o error
+     */
+    suspend fun actualizarProfesor(alumnoDni: String, profesorId: String): Result<Unit>
+    
+    /**
+     * Elimina la referencia al profesor de un alumno
+     * @param alumnoDni DNI del alumno
+     * @return Resultado indicando éxito o error
+     */
+    suspend fun eliminarProfesor(alumnoDni: String): Result<Unit>
 }
 
 /**
@@ -373,6 +395,96 @@ class AlumnoRepositoryImpl @Inject constructor(
 
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener alumnos por familiar ID: $familiarId")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene todos los alumnos de una clase específica de forma directa
+     * @param claseId ID de la clase
+     * @return Lista de alumnos de la clase
+     */
+    override suspend fun getAlumnosPorClase(claseId: String): List<Alumno> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("aulaId", claseId)
+                .get()
+                .await()
+                
+            return@withContext query.toObjects(Alumno::class.java)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumnos por clase: $claseId")
+            return@withContext emptyList<Alumno>()
+        }
+    }
+    
+    /**
+     * Actualiza el profesor asignado a un alumno
+     * @param alumnoDni DNI del alumno
+     * @param profesorId ID del profesor
+     * @return Resultado indicando éxito o error
+     */
+    override suspend fun actualizarProfesor(alumnoDni: String, profesorId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Buscar primero el documento del alumno por su DNI
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("dni", alumnoDni)
+                .limit(1)
+                .get()
+                .await()
+                
+            if (query.isEmpty) {
+                Timber.w("No se encontró alumno con DNI: $alumnoDni")
+                return@withContext Result.Error(Exception("Alumno no encontrado"))
+            }
+            
+            // Actualizar el documento con el nuevo profesorId
+            val documentSnapshot = query.documents.first()
+            firestore.collection(COLLECTION_ALUMNOS)
+                .document(documentSnapshot.id)
+                .update("profesorId", profesorId)
+                .await()
+            
+            Timber.d("Profesor actualizado para alumno: $alumnoDni, nuevo profesor: $profesorId")
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar profesor para alumno: $alumnoDni")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Elimina la referencia al profesor de un alumno
+     * @param alumnoDni DNI del alumno
+     * @return Resultado indicando éxito o error
+     */
+    override suspend fun eliminarProfesor(alumnoDni: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Buscar primero el documento del alumno por su DNI
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("dni", alumnoDni)
+                .limit(1)
+                .get()
+                .await()
+                
+            if (query.isEmpty) {
+                Timber.w("No se encontró alumno con DNI: $alumnoDni")
+                return@withContext Result.Error(Exception("Alumno no encontrado"))
+            }
+            
+            // Eliminar el campo profesorId del documento
+            val documentSnapshot = query.documents.first()
+            
+            // Firestore permite actualizar a null para eliminar campos
+            firestore.collection(COLLECTION_ALUMNOS)
+                .document(documentSnapshot.id)
+                .update("profesorId", null)
+                .await()
+            
+            Timber.d("Profesor eliminado para alumno: $alumnoDni")
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar profesor para alumno: $alumnoDni")
             return@withContext Result.Error(e)
         }
     }

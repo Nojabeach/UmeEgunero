@@ -78,23 +78,49 @@ class ListAdministradoresCentroViewModel @Inject constructor(
      */
     fun eliminarAdminCentro(dni: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             
-            // Aquí implementaríamos la lógica real para eliminar en el backend
-            // Por ahora simulamos una eliminación local exitosa
-            
-            val nuevaLista = _uiState.value.adminsCentro.filter { it.dni != dni }
-            
-            _uiState.update { 
-                it.copy(
-                    adminsCentro = nuevaLista,
-                    adminsCentroFiltrados = if (it.filtrosAplicados) {
-                        aplicarFiltrosInterno(nuevaLista, it.filtroNombre, it.filtroCentro)
-                    } else {
-                        nuevaLista
-                    },
-                    isLoading = false
-                )
+            try {
+                when (val result = usuarioRepository.borrarUsuarioByDni(dni)) {
+                    is Result.Success -> {
+                        // Actualización local de la lista después de eliminar
+                        val nuevaLista = _uiState.value.adminsCentro.filter { it.dni != dni }
+                        
+                        _uiState.update { 
+                            it.copy(
+                                adminsCentro = nuevaLista,
+                                adminsCentroFiltrados = if (it.filtrosAplicados) {
+                                    aplicarFiltrosInterno(nuevaLista, it.filtroNombre, it.filtroCentro)
+                                } else {
+                                    nuevaLista
+                                },
+                                isLoading = false
+                            )
+                        }
+                        
+                        Timber.d("Administrador de centro eliminado correctamente: $dni")
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                error = "Error al eliminar administrador: ${result.exception?.message}",
+                                isLoading = false
+                            ) 
+                        }
+                        Timber.e(result.exception, "Error al eliminar administrador de centro $dni")
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        error = "Error inesperado al eliminar administrador: ${e.message}",
+                        isLoading = false
+                    ) 
+                }
+                Timber.e(e, "Error inesperado al eliminar administrador de centro $dni")
             }
         }
     }

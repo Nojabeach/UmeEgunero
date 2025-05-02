@@ -16,6 +16,7 @@ import com.google.firebase.firestore.DocumentId
  * Relaciones principales:
  * - Una clase pertenece a un único curso ([cursoId])
  * - Una clase está asociada a un único centro educativo ([centroId])
+ * - Una clase puede tener asignado un profesor principal ([profesorId])
  * - Una clase puede tener asignado un profesor titular opcional ([profesorTitularId])
  *   y puede tener varios profesores auxiliares
  * - Una clase agrupa a múltiples alumnos ([alumnosIds])
@@ -28,6 +29,7 @@ import com.google.firebase.firestore.DocumentId
  * @property cursoId Identificador del curso académico al que pertenece esta clase
  * @property centroId Identificador del centro educativo al que pertenece
  * @property nombre Nombre distintivo de la clase (ej. "A", "B", "Mañana", "Tarde")
+ * @property profesorId Identificador del profesor principal asignado a la clase (usado en la nueva implementación)
  * @property profesorTitularId Identificador del profesor principal responsable de la clase (opcional)
  * @property profesoresAuxiliaresIds Lista de identificadores de profesores de apoyo asignados
  * @property alumnosIds Lista de identificadores de alumnos matriculados en esta clase
@@ -46,6 +48,7 @@ data class Clase(
     val cursoId: String = "",
     val centroId: String = "",
     val nombre: String = "", // Por ejemplo: "A", "B", "Mañana", "Tarde"
+    val profesorId: String = "", // Profesor principal (usado en la nueva implementación)
     val profesorTitularId: String = "",
     val profesoresAuxiliaresIds: List<String> = emptyList(),
     val alumnosIds: List<String> = emptyList(),

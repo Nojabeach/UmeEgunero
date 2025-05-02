@@ -33,6 +33,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import android.util.Log
 import com.tfg.umeegunero.data.service.RemoteConfigService
+import com.google.firebase.firestore.FieldValue
 
 /**
  * Repositorio para gestionar usuarios y operaciones relacionadas
@@ -1005,7 +1006,11 @@ open class UsuarioRepository @Inject constructor(
     }
 
     /**
-     * Borra un usuario por su DNI, eliminándolo tanto de Firestore como de Firebase Authentication
+     * Borra un usuario por su DNI, eliminándolo tanto de Firestore como de Firebase Authentication.
+     * También elimina todas las relaciones asociadas según el tipo de usuario.
+     * 
+     * @param dni DNI del usuario a eliminar
+     * @return Result<Unit> indicando éxito o fracaso de la operación
      */
     suspend fun borrarUsuarioByDni(dni: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -1016,37 +1021,147 @@ open class UsuarioRepository @Inject constructor(
                 return@withContext Result.Error(Exception("No se encontró el usuario con DNI: $dni"))
             }
             
-            // 2. Obtener el email del usuario para buscar en Firebase Auth
+            // 2. Obtener el usuario completo para poder procesar según sus perfiles
             val usuario = usuarioDoc.toObject(Usuario::class.java)
-            val email = usuario?.email ?: return@withContext Result.Error(Exception("El usuario no tiene email registrado"))
+                ?: return@withContext Result.Error(Exception("Error al convertir el documento a Usuario"))
             
-            // 3. Eliminar el documento de Firestore
-            usuariosCollection.document(dni).delete().await()
+            val email = usuario.email ?: return@withContext Result.Error(Exception("El usuario no tiene email registrado"))
             
-            // 4. Intentar eliminar el usuario de Firebase Authentication usando la Cloud Function
-            try {
-                val data = hashMapOf(
-                    "email" to email
-                )
-                
-                // Llamada a la Cloud Function
-                functions.getHttpsCallable("deleteUserByEmail")
-                    .call(data)
-                    .addOnSuccessListener { result -> 
-                        val resultData = result.data
-                        Timber.d("Usuario con email $email eliminado de Firebase Authentication: $resultData") 
+            // 3. Procesar cada tipo de perfil para eliminar relaciones
+            usuario.perfiles.forEach { perfil ->
+                when (perfil.tipo) {
+                    TipoUsuario.ADMIN_CENTRO -> {
+                        // Actualizar centros donde este usuario es administrador
+                        if (perfil.centroId.isNotBlank()) {
+                            try {
+                                val centroDoc = centrosCollection.document(perfil.centroId).get().await()
+                                if (centroDoc.exists()) {
+                                    // Eliminar el adminId de la lista de adminIds del centro
+                                    centrosCollection.document(perfil.centroId).update(
+                                        "adminIds", FieldValue.arrayRemove(dni)
+                                    ).await()
+                                    Timber.d("Eliminado adminId $dni del centro ${perfil.centroId}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al actualizar centro al eliminar admin: ${e.message}")
+                                // Continuamos con el proceso aunque falle este paso
+                            }
+                        }
                     }
-                    .addOnFailureListener { e ->
-                        Timber.e(e, "Error al eliminar usuario de Firebase Authentication: ${e.message}")
+                    TipoUsuario.PROFESOR -> {
+                        // Eliminar referencias en clases donde este profesor está asignado
+                        try {
+                            // Buscar clases donde este profesor es el principal
+                            val clasesQuery = clasesCollection.whereEqualTo("profesorId", dni).get().await()
+                            for (claseDoc in clasesQuery.documents) {
+                                claseDoc.reference.update("profesorId", "").await()
+                                Timber.d("Eliminada referencia del profesor $dni de la clase ${claseDoc.id}")
+                            }
+                            
+                            // Buscar clases donde este profesor está en la lista de profesores adicionales
+                            val clasesAdicionales = clasesCollection.whereArrayContains("profesoresIds", dni).get().await()
+                            for (claseDoc in clasesAdicionales.documents) {
+                                claseDoc.reference.update(
+                                    "profesoresIds", FieldValue.arrayRemove(dni)
+                                ).await()
+                                Timber.d("Eliminado profesorId $dni de la lista de profesores de la clase ${claseDoc.id}")
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al actualizar clases al eliminar profesor: ${e.message}")
+                        }
                     }
-                
-                return@withContext Result.Success(Unit)
-            } catch (authError: Exception) {
-                // Si falla la autenticación, al menos informamos que se eliminó de Firestore
-                Timber.e(authError, "Error al intentar eliminar usuario de Auth: ${authError.message}")
-                return@withContext Result.Success(Unit) // Consideramos éxito aunque falle en Auth
+                    TipoUsuario.FAMILIAR -> {
+                        // Eliminar vinculaciones con alumnos
+                        try {
+                            // Para cada alumno vinculado, eliminar la referencia al familiar
+                            perfil.alumnos.forEach { alumnoId ->
+                                val alumnoDoc = alumnosCollection.document(alumnoId).get().await()
+                                if (alumnoDoc.exists()) {
+                                    alumnoDoc.reference.update(
+                                        "familiaresIds", FieldValue.arrayRemove(dni)
+                                    ).await()
+                                    Timber.d("Eliminada vinculación del familiar $dni con el alumno $alumnoId")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al actualizar alumnos al eliminar familiar: ${e.message}")
+                        }
+                    }
+                    TipoUsuario.ALUMNO -> {
+                        // No necesario, ya que cuando eliminamos un alumno, se manejan las referencias desde AlumnoRepository
+                        // Pero lo incluimos aquí por completitud si el alumno está también como Usuario
+                        Timber.d("El usuario $dni tiene perfil de alumno, revisar si existe en la colección de alumnos")
+                    }
+                    else -> {
+                        // Otros tipos de usuario
+                        Timber.d("Eliminando usuario con perfil ${perfil.tipo}")
+                    }
+                }
             }
+            
+            // 4. Eliminar el documento del usuario de Firestore
+            usuariosCollection.document(dni).delete().await()
+            Timber.d("Documento del usuario $dni eliminado de Firestore")
+            
+            // 5. Eliminar mensajes relacionados con este usuario
+            try {
+                // Mensajes enviados por este usuario
+                val mensajesEnviados = mensajesCollection.whereEqualTo("emisorId", dni).get().await()
+                for (mensaje in mensajesEnviados.documents) {
+                    mensaje.reference.delete().await()
+                }
+                
+                // Mensajes recibidos por este usuario
+                val mensajesRecibidos = mensajesCollection.whereEqualTo("receptorId", dni).get().await()
+                for (mensaje in mensajesRecibidos.documents) {
+                    mensaje.reference.delete().await()
+                }
+                
+                Timber.d("Eliminados ${mensajesEnviados.size() + mensajesRecibidos.size()} mensajes relacionados con el usuario $dni")
+            } catch (e: Exception) {
+                Timber.e(e, "Error al eliminar mensajes del usuario: ${e.message}")
+            }
+            
+            // 6. Eliminar de Firebase Authentication usando Cloud Function o Firebase Admin SDK
+            try {
+                // Primero obtenemos el usuario actual de Firebase Auth
+                val currentUser = firebaseAuth.currentUser
+                val userEmail = currentUser?.email
+                
+                // Solo el admin puede eliminar otros usuarios, o un usuario puede eliminarse a sí mismo
+                if (userEmail == email) {
+                    // El usuario está eliminando su propia cuenta
+                    currentUser?.delete()?.await()
+                    firebaseAuth.signOut()
+                    Timber.d("Usuario ha eliminado su propia cuenta: $email")
+                } else {
+                    // Intentamos usar una Cloud Function para eliminar
+                    val data = hashMapOf(
+                        "email" to email
+                    )
+                    
+                    try {
+                        functions.getHttpsCallable("deleteUserByEmail")
+                            .call(data)
+                            .addOnSuccessListener { 
+                                Timber.d("Usuario con email $email eliminado de Firebase Authentication")
+                            }
+                            .addOnFailureListener { e ->
+                                Timber.e(e, "Error al eliminar usuario de Auth: ${e.message}")
+                            }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al llamar a la Cloud Function: ${e.message}")
+                        // Consideramos éxito aunque falle en Auth, ya que se eliminó de Firestore
+                    }
+                }
+            } catch (authError: Exception) {
+                Timber.e(authError, "Error al intentar eliminar usuario de Auth: ${authError.message}")
+                // Consideramos éxito aunque falle en Auth, ya que se eliminó de Firestore
+            }
+            
+            return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            Timber.e(e, "Error general al eliminar usuario: ${e.message}")
             return@withContext Result.Error(e)
         }
     }

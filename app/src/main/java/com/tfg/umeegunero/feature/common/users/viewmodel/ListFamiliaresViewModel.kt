@@ -110,32 +110,47 @@ class ListFamiliaresViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                // En un caso real, aquí llamaríamos al repositorio para eliminar
-                // Por ahora, hacemos una eliminación simulada para demostración
-                _uiState.update { currentState ->
-                    val familiaresActualizados = currentState.familiaresCompletos.filter { it.dni != familiarId }
-                    val familiaresFiltrados = if (currentState.soloActivos) {
-                        familiaresActualizados.filter { it.activo }
-                    } else {
-                        familiaresActualizados
+                when (val result = usuarioRepository.borrarUsuarioByDni(familiarId)) {
+                    is Result.Success -> {
+                        // Actualización local de la lista después de eliminar
+                        _uiState.update { currentState ->
+                            val familiaresActualizados = currentState.familiaresCompletos.filter { it.dni != familiarId }
+                            val familiaresFiltrados = if (currentState.soloActivos) {
+                                familiaresActualizados.filter { it.activo }
+                            } else {
+                                familiaresActualizados
+                            }
+                            
+                            currentState.copy(
+                                familiares = familiaresFiltrados,
+                                familiaresCompletos = familiaresActualizados,
+                                isLoading = false
+                            )
+                        }
+                        
+                        Timber.d("Familiar eliminado correctamente: $familiarId")
                     }
-                    
-                    currentState.copy(
-                        familiares = familiaresFiltrados,
-                        familiaresCompletos = familiaresActualizados,
-                        isLoading = false
-                    )
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                error = "Error al eliminar familiar: ${result.exception?.message}",
+                                isLoading = false
+                            ) 
+                        }
+                        Timber.e(result.exception, "Error al eliminar familiar $familiarId")
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
                 }
-                
-                Timber.d("Familiar eliminado: $familiarId")
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        error = "Error al eliminar familiar: ${e.message}",
+                        error = "Error inesperado al eliminar familiar: ${e.message}",
                         isLoading = false
                     ) 
                 }
-                Timber.e(e, "Error al eliminar familiar $familiarId")
+                Timber.e(e, "Error inesperado al eliminar familiar $familiarId")
             }
         }
     }

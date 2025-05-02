@@ -601,4 +601,18 @@ sealed class AppScreens(val route: String) {
 
     /** Pantalla de edición del perfil de usuario */
     object EditProfile : AppScreens("edit_profile")
+    
+    /** Registro diario del profesor para los alumnos */
+    object RegistroDiarioProfesor : AppScreens("registro_diario_profesor/{alumnoId}") {
+        fun createRoute(alumnoId: String) = "registro_diario_profesor/$alumnoId"
+    }
+    
+    /** Observaciones del profesor sobre los alumnos */
+    object ObservacionesProfesor : AppScreens("observaciones_profesor")
+    
+    /** Gestión de alumnos asignados al profesor */
+    object MisAlumnosProfesor : AppScreens("mis_alumnos_profesor")
+
+    /** Pantalla de vinculación de alumnos con familiares */
+    object VinculacionFamiliar : AppScreens("vinculacion_familiar")
 } 

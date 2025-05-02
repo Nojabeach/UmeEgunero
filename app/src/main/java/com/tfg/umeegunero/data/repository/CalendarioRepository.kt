@@ -108,4 +108,27 @@ class CalendarioRepository @Inject constructor(
         // En una implementación real, se obtendría de las propiedades del usuario
         return "centro_1"
     }
+
+    /**
+     * Verifica si una fecha específica es festiva
+     * @param fecha Fecha a comprobar
+     * @return Resultado que indica si es festivo o no
+     */
+    suspend fun esDiaFestivo(fecha: java.time.LocalDate): Result<Boolean> {
+        return try {
+            val startOfDay = fecha.atStartOfDay()
+            val endOfDay = fecha.atTime(23, 59, 59)
+            
+            val snapshot = eventosCollection
+                .whereGreaterThanOrEqualTo("fecha", startOfDay.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                .whereLessThanOrEqualTo("fecha", endOfDay.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                .whereEqualTo("tipo", TipoEvento.FESTIVO.toString())
+                .get()
+                .await()
+                
+            Result.Success(!snapshot.isEmpty)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
 } 

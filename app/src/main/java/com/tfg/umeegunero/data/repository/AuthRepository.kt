@@ -53,6 +53,15 @@ interface AuthRepository {
     suspend fun signOut(): Boolean
     
     /**
+     * Cierra la sesión del usuario actual.
+     * 
+     * Alias para signOut() por compatibilidad con código en español.
+     * 
+     * @return true si la sesión se cerró correctamente, false si ocurrió algún error
+     */
+    suspend fun cerrarSesion(): Boolean
+    
+    /**
      * Envía un correo de recuperación de contraseña al email proporcionado.
      * 
      * Este método facilita el proceso de restablecimiento de contraseña cuando
@@ -227,6 +236,15 @@ class AuthRepositoryImpl @Inject constructor(
             return@withContext false
         }
     }
+
+    /**
+     * Cierra la sesión del usuario actual.
+     * 
+     * Alias para signOut() por compatibilidad con código en español.
+     * 
+     * @return True si se ha cerrado la sesión correctamente, False si ha ocurrido un error
+     */
+    override suspend fun cerrarSesion(): Boolean = signOut()
 
     /**
      * Envía un correo de recuperación de contraseña al email proporcionado.
