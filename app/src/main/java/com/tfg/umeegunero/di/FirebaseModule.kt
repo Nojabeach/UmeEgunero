@@ -100,15 +100,6 @@ object FirebaseModule {
 
     @Provides
     @Singleton
-    fun provideCursoRepository(
-        // firestore: FirebaseFirestore // Ya no se inyecta aquí
-    ): CursoRepository {
-        // Llamar al constructor sin argumentos
-        return CursoRepository()
-    }
-
-    @Provides
-    @Singleton
     fun provideCentroRepository(
         firestore: FirebaseFirestore,
         auth: FirebaseAuth,

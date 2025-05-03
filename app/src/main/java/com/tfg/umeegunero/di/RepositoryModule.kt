@@ -7,7 +7,6 @@ import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.repository.ActividadPreescolarRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
-import com.tfg.umeegunero.data.repository.CursosRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
@@ -21,6 +20,7 @@ import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
+import com.tfg.umeegunero.data.repository.CursoRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -147,15 +147,12 @@ object RepositoryModule {
      * Proporciona una instancia del repositorio para cursos académicos.
      * Este repositorio maneja las operaciones con cursos de los centros educativos.
      *
-     * @param firestore Instancia de FirebaseFirestore
-     * @return Instancia de CursosRepository
+     * @return Instancia de CursoRepository
      */
     @Provides
     @Singleton
-    fun provideCursosRepository(
-        firestore: FirebaseFirestore
-    ): CursosRepository {
-        return CursosRepository(firestore)
+    fun provideCursoRepository(): CursoRepository {
+        return CursoRepository()
     }
     
     /**

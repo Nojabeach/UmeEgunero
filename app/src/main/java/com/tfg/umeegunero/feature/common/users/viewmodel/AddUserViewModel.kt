@@ -1011,7 +1011,9 @@ class AddUserViewModel @Inject constructor(
                             alergias = alumno.alergias.joinToString(", "),
                             medicacion = alumno.medicacion.joinToString(", "),
                             necesidadesEspeciales = alumno.necesidadesEspeciales,
-                            observaciones = alumno.observaciones
+                            observaciones = alumno.observaciones,
+                            // Para administradores de centro y profesores, bloquear el cambio de tipo
+                            isCentroBloqueado = false
                         )
                     }
                     
@@ -1025,12 +1027,38 @@ class AddUserViewModel @Inject constructor(
                     val usuario = resultadoUsuario.data as Usuario
                     
                     // Determinar el tipo de usuario y el centro según los perfiles
-                    var tipoUsuario = TipoUsuario.FAMILIAR
+                    var tipoUsuario = TipoUsuario.FAMILIAR // Valor por defecto
                     var centroId = ""
                     
                     if (usuario.perfiles.isNotEmpty()) {
-                        tipoUsuario = usuario.perfiles.first().tipo
-                        centroId = usuario.perfiles.first().centroId
+                        // Buscar el perfil específico según prioridad
+                        // Prioridad: ADMIN_CENTRO > PROFESOR > FAMILIAR > ADMIN_APP
+                        val perfilAdminCentro = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                        val perfilProfesor = usuario.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
+                        val perfilAdminApp = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_APP }
+                        val perfilFamiliar = usuario.perfiles.find { it.tipo == TipoUsuario.FAMILIAR }
+                        
+                        // Asignar tipo y centroId según la prioridad encontrada
+                        when {
+                            perfilAdminCentro != null -> {
+                                tipoUsuario = TipoUsuario.ADMIN_CENTRO
+                                centroId = perfilAdminCentro.centroId
+                                Timber.d("Usuario identificado como ADMIN_CENTRO para centro: $centroId")
+                            }
+                            perfilProfesor != null -> {
+                                tipoUsuario = TipoUsuario.PROFESOR
+                                centroId = perfilProfesor.centroId
+                                Timber.d("Usuario identificado como PROFESOR para centro: $centroId")
+                            }
+                            perfilAdminApp != null -> {
+                                tipoUsuario = TipoUsuario.ADMIN_APP
+                                Timber.d("Usuario identificado como ADMIN_APP")
+                            }
+                            perfilFamiliar != null -> {
+                                tipoUsuario = TipoUsuario.FAMILIAR
+                                Timber.d("Usuario identificado como FAMILIAR")
+                            }
+                        }
                         
                         // Cargar el centro si tiene uno asignado
                         if (centroId.isNotBlank()) {
@@ -1051,7 +1079,9 @@ class AddUserViewModel @Inject constructor(
                             email = usuario.email,
                             tipoUsuario = tipoUsuario,
                             isEditMode = true,
-                            isLoading = false
+                            isLoading = false,
+                            // Para administradores de centro y profesores, bloquear el cambio de tipo
+                            isCentroBloqueado = tipoUsuario == TipoUsuario.ADMIN_CENTRO || tipoUsuario == TipoUsuario.PROFESOR
                         )
                     }
                 } else {

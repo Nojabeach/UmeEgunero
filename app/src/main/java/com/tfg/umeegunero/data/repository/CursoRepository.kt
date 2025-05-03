@@ -115,21 +115,29 @@ class CursoRepository @Inject constructor() {
      */
     suspend fun obtenerClasesPorCurso(cursoId: String): Result<List<Clase>> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Obteniendo clases para el curso: $cursoId")
+            Timber.d("⭐⭐⭐ Obteniendo clases para el curso: $cursoId")
             val snapshot = firestore.collection("clases")
                 .whereEqualTo("cursoId", cursoId)
                 .get()
                 .await()
             
+            Timber.d("📄 Documentos encontrados: ${snapshot.documents.size}")
+            
             val clases = snapshot.documents.mapNotNull { doc ->
-                val clase = doc.toObject(Clase::class.java)
-                clase?.copy(id = doc.id)
+                try {
+                    val clase = doc.toObject(Clase::class.java)
+                    Timber.d("📝 Documento: id=${doc.id}, data=${doc.data}")
+                    clase?.copy(id = doc.id)
+                } catch (e: Exception) {
+                    Timber.e(e, "🔴 Error mapeando clase desde documento ${doc.id}")
+                    null
+                }
             }
             
-            Timber.d("Obtenidas ${clases.size} clases para el curso $cursoId")
+            Timber.d("✅ Obtenidas ${clases.size} clases para el curso $cursoId")
             return@withContext Result.Success(clases)
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener clases para el curso $cursoId")
+            Timber.e(e, "❌ Error al obtener clases para el curso $cursoId")
             return@withContext Result.Error(e)
         }
     }

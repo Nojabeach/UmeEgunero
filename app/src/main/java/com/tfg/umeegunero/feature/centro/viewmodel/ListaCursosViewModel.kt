@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Centro
-import com.tfg.umeegunero.data.repository.CursosRepository
+import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -63,7 +63,7 @@ data class ListaCursosUiState(
  * 4. Actualización del estado UI
  * 
  * @constructor Crea una instancia del ViewModel con las dependencias necesarias
- * @param cursosRepository Repositorio para acceder a los datos de cursos
+ * @param cursoRepository Repositorio para acceder a los datos de cursos
  * @param centroRepository Repositorio para acceder a los datos de centros
  * 
  * @see ListaCursosUiState
@@ -71,7 +71,7 @@ data class ListaCursosUiState(
  */
 @HiltViewModel
 class ListaCursosViewModel @Inject constructor(
-    private val cursosRepository: CursosRepository,
+    private val cursoRepository: CursoRepository,
     private val centroRepository: CentroRepository
 ) : ViewModel() {
 
@@ -117,8 +117,8 @@ class ListaCursosViewModel @Inject constructor(
                     _uiState.update { it.copy(cursos = emptyList(), isLoading = false) }
                     return@launch
                 }
-                val cursos = cursosRepository.getCursosByCentro(idCentro)
-                _uiState.update { it.copy(cursos = cursos, isLoading = false) }
+                val cursosResult = cursoRepository.obtenerCursosPorCentro(idCentro)
+                _uiState.update { it.copy(cursos = cursosResult, isLoading = false) }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -157,7 +157,7 @@ class ListaCursosViewModel @Inject constructor(
                     edadMaxima = edadMaxima,
                     centroId = centroId
                 )
-                cursosRepository.crearCurso(nuevoCurso)
+                cursoRepository.agregarCurso(nuevoCurso)
                 cargarCursos(centroId)
             } catch (e: Exception) {
                 _uiState.update { 
@@ -198,7 +198,7 @@ class ListaCursosViewModel @Inject constructor(
                     edadMaxima = edadMaxima,
                     centroId = centroId
                 )
-                cursosRepository.actualizarCurso(cursoActualizado)
+                cursoRepository.modificarCurso(cursoActualizado)
                 cargarCursos(centroId)
             } catch (e: Exception) {
                 _uiState.update { 
@@ -223,7 +223,7 @@ class ListaCursosViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, error = "Selecciona un centro antes de eliminar un curso") }
                     return@launch
                 }
-                cursosRepository.eliminarCurso(id)
+                cursoRepository.borrarCurso(id)
                 cargarCursos(centroId)
             } catch (e: Exception) {
                 _uiState.update { 

@@ -280,18 +280,53 @@ fun GestorAcademicoScreen(
                                     elevation = CardDefaults.cardElevation(4.dp),
                                     onClick = { onNavigate("detalle_clase/${clase.id}") }
                                 ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp)
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(text = clase.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                            Text(text = "ID: ${clase.id}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            Text(text = "Aula: ${clase.aula}", style = MaterialTheme.typography.bodySmall)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(text = clase.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                Text(text = "ID: ${clase.id}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text(text = "Aula: ${clase.aula}", style = MaterialTheme.typography.bodySmall)
+                                            }
+                                            IconButton(onClick = { expanded = true }) {
+                                                Icon(Icons.Default.MoreVert, contentDescription = "Más opciones")
+                                            }
                                         }
-                                        IconButton(onClick = { expanded = true }) {
-                                            Icon(Icons.Default.MoreVert, contentDescription = "Más opciones")
+                                        
+                                        // Agregar botones para vincular alumnos y profesor
+                                        if (perfilUsuario == TipoUsuario.ADMIN_CENTRO || perfilUsuario == TipoUsuario.ADMIN_APP) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = { 
+                                                        onNavigate("vincular_alumnos_clase/${clase.id}?cursoId=${selectedCurso?.id ?: cursoId}")
+                                                    },
+                                                    modifier = Modifier.padding(end = 8.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Agregar Alumnos")
+                                                }
+                                                
+                                                OutlinedButton(
+                                                    onClick = { 
+                                                        onNavigate("vincular_profesor_clase/${clase.id}?cursoId=${selectedCurso?.id ?: cursoId}")
+                                                    }
+                                                ) {
+                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Vincular Profesor")
+                                                }
+                                            }
                                         }
+                                        
                                         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                                             DropdownMenuItem(
                                                 text = { Text("Editar") },

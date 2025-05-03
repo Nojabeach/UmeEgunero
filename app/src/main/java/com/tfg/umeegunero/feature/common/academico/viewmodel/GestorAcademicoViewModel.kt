@@ -115,24 +115,32 @@ class GestorAcademicoViewModel @Inject constructor(
     private fun observarClases(cursoId: String) {
         _uiState.update { it.copy(isLoadingClases = true, error = null) }
         
+        // Comprobación de seguridad - Asegurarse de que estamos utilizando el servicio correcto para obtener las clases
+        Timber.d("🔍🔍 INICIANDO observación de clases para el curso ID: $cursoId")
+        Timber.d("📊 Estado actual: clases=${_uiState.value.clases.size}, isLoadingClases=${_uiState.value.isLoadingClases}")
+        
         claseRepository.obtenerClasesPorCursoFlow(cursoId)
             .onEach { result ->
                 when (result) {
                     is Result.Success -> {
-                        Timber.d("Clases actualizadas para curso $cursoId: ${result.data.size}")
+                        Timber.d("✅✅ SUCCESS: Clases actualizadas para curso $cursoId: ${result.data.size}")
+                        result.data.forEach { clase ->
+                            Timber.d("📝 Clase encontrada: id=${clase.id}, nombre=${clase.nombre}, aula=${clase.aula}")
+                        }
                         _uiState.update { it.copy(clases = result.data, isLoadingClases = false) }
                     }
                     is Result.Error -> {
-                        Timber.e(result.exception, "Error al observar clases del curso $cursoId")
+                        Timber.e(result.exception, "❌❌ ERROR: Error al observar clases del curso $cursoId")
                         _uiState.update { it.copy(error = result.exception?.message ?: "Error al cargar clases", isLoadingClases = false) }
                     }
                     is Result.Loading -> {
+                         Timber.d("⏳ LOADING: Cargando clases para curso $cursoId")
                          _uiState.update { it.copy(isLoadingClases = true) }
                     }
                 }
             }
             .catch { e -> 
-                Timber.e(e, "Excepción en el Flow de clases del curso $cursoId")
+                Timber.e(e, "❌❌❌ CATCH: Excepción en el Flow de clases del curso $cursoId")
                 _uiState.update { it.copy(error = e.message ?: "Error inesperado", isLoadingClases = false) }
             }
             .launchIn(viewModelScope)

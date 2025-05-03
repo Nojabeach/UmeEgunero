@@ -11,6 +11,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.lang.Exception
+import com.google.firebase.firestore.FirebaseFirestore
 
 /**
  * Test unitario para el repositorio de autenticación.
@@ -25,6 +26,8 @@ class AuthRepositoryTest {
     // Mocks
     private lateinit var firebaseAuth: FirebaseAuth
     private lateinit var usuarioRepository: UsuarioRepository
+    private lateinit var comunicadoRepository: ComunicadoRepository
+    private lateinit var firestore: FirebaseFirestore
     private lateinit var firebaseUser: FirebaseUser
     
     // Repositorio a probar
@@ -35,13 +38,15 @@ class AuthRepositoryTest {
         // Inicializar mocks
         firebaseAuth = mockk(relaxed = true)
         usuarioRepository = mockk(relaxed = true)
+        comunicadoRepository = mockk(relaxed = true)
+        firestore = mockk(relaxed = true)
         firebaseUser = mockk(relaxed = true)
         
         // Configurar comportamiento de los mocks
         every { firebaseUser.email } returns "test@example.com"
         
         // Inicializar repositorio
-        authRepository = AuthRepositoryImpl(firebaseAuth, usuarioRepository)
+        authRepository = AuthRepositoryImpl(firebaseAuth, usuarioRepository, comunicadoRepository, firestore)
     }
     
     @Test
@@ -113,7 +118,9 @@ class AuthRepositoryTest {
     fun `sendPasswordResetEmail retorna éxito cuando se envía correctamente`() = runBlocking {
         // Given: Firebase enviará email correctamente
         val resetEmailTask = mockk<com.google.android.gms.tasks.Task<Void>> {
-            every { await() } returns mockk()
+            every { isComplete } returns true
+            every { isSuccessful } returns true
+            every { exception } returns null
         }
         every { firebaseAuth.sendPasswordResetEmail(any()) } returns resetEmailTask
         
