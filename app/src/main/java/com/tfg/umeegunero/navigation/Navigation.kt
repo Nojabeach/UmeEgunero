@@ -327,13 +327,15 @@ fun Navigation(
             val tipoUsuarioStr = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_TIPO_USUARIO)
             val centroId = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_CENTRO_ID)
             val centroBloqueado = backStackEntry.arguments?.getBoolean(AppScreens.AddUser.ARG_CENTRO_BLOQUEADO) ?: false
+            val dniUsuario = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_DNI_USUARIO)
             
             AddUserScreen(
                 navController = navController,
                 isAdminApp = isAdminApp,
                 tipoPreseleccionado = tipoUsuarioStr,
                 centroIdInicial = centroId,
-                centroBloqueadoInicial = centroBloqueado
+                centroBloqueadoInicial = centroBloqueado,
+                dniUsuario = dniUsuario
             )
         }
         

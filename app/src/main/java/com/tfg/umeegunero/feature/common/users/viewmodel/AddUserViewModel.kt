@@ -69,7 +69,11 @@ data class AddUserUiState(
     val initialCentroId: String? = null,
     val isCentroBloqueado: Boolean = false,
     val firstInvalidField: AddUserFormField? = null, // Para scroll al error
-    val validationAttemptFailed: Boolean = false // Trigger para scroll al error
+    val validationAttemptFailed: Boolean = false, // Trigger para scroll al error
+    val alergias: String = "",
+    val medicacion: String = "",
+    val necesidadesEspeciales: String = "",
+    val observaciones: String = ""
 ) {
     // Determina si el formulario es válido según el tipo de usuario
     val isFormValid: Boolean
@@ -576,26 +580,41 @@ class AddUserViewModel @Inject constructor(
                          _uiState.update { it.copy(isLoading = false, error = "Faltan datos académicos (centro, curso o clase) para guardar el alumno.") }
                          return@launch
                     }
+                    
+                    // Convertir listas de alergias y medicación desde strings separados por comas
+                    val alergiasList = currentState.alergias.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    val medicacionList = currentState.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
-                    // Crear objeto Alumno (asumiendo que existe una clase Alumno)
-                    // Mapear los IDs y nombres de curso/clase desde los objetos seleccionados
+                    // Crear objeto Alumno
                     val alumno = Alumno(
                         dni = currentState.dni,
                         nombre = currentState.nombre,
                         apellidos = currentState.apellidos,
-                        fechaNacimiento = currentState.fechaNacimiento, // Asegurar formato correcto si es necesario
-                        telefono = currentState.telefono, // Opcional para Alumno?
+                        fechaNacimiento = currentState.fechaNacimiento,
+                        telefono = currentState.telefono,
+                        email = currentState.email,
                         centroId = centroId,
-                        curso = currentState.cursoSeleccionado.nombre, // cursoSeleccionado no es nulo aquí
-                        clase = currentState.claseSeleccionada.nombre, // claseSeleccionada no es nulo aquí
-                        aulaId = currentState.claseSeleccionada.id, // claseSeleccionada e id no son nulos aquí
+                        curso = currentState.cursoSeleccionado.nombre,
+                        clase = currentState.claseSeleccionada.nombre,
+                        claseId = claseId,
+                        aulaId = currentState.claseSeleccionada.aula,
+                        alergias = alergiasList,
+                        medicacion = medicacionList,
+                        necesidadesEspeciales = currentState.necesidadesEspeciales,
+                        observaciones = currentState.observaciones,
                         activo = true
-                        // otros campos relevantes inicializados a vacío o por defecto
                     )
                     
-                    // Llamar al método que guarda en ambas colecciones: alumnos y usuarios
-                    // val saveResult = usuarioRepository.guardarAlumno(alumno) // Llamada anterior
-                    val saveResult = usuarioRepository.registrarAlumno(alumno)
+                    // Determinar si es edición o creación nueva
+                    val saveResult = if (currentState.isEditMode) {
+                        // Actualizar alumno existente
+                        Timber.d("Actualizando alumno existente con DNI: ${currentState.dni}")
+                        usuarioRepository.guardarAlumno(alumno)
+                    } else {
+                        // Crear nuevo alumno
+                        Timber.d("Registrando nuevo alumno con DNI: ${currentState.dni}")
+                        usuarioRepository.registrarAlumno(alumno)
+                    }
 
                     when (saveResult) {
                         is Result.Success -> {
@@ -925,5 +944,162 @@ class AddUserViewModel @Inject constructor(
     // --- Feedback de Éxito ---
     fun dismissSuccessDialog() {
         _uiState.update { it.copy(showSuccessDialog = false) }
+    }
+
+    /**
+     * Carga los datos de un usuario existente a partir de su DNI para edición
+     * Esta función se llama cuando se accede al formulario en modo edición
+     * 
+     * @param dni DNI del usuario a editar
+     */
+    fun cargarUsuarioPorDni(dni: String) {
+        viewModelScope.launch {
+            _uiState.update { state -> state.copy(isLoading = true) }
+            
+            try {
+                // Si estamos editando un alumno, primero buscamos en la colección alumnos
+                val resultadoAlumno = usuarioRepository.getAlumnoPorDni(dni)
+                
+                if (resultadoAlumno is Result.Success<*>) {
+                    val alumno = resultadoAlumno.data as Alumno
+                    
+                    // Buscar el curso y la clase para este alumno
+                    val cursosResult = cursoRepository.obtenerCursosPorCentro(alumno.centroId)
+                    if (cursosResult is Result.Success<*>) {
+                        val cursos = cursosResult.data as List<Curso>
+                        _uiState.update { state -> state.copy(cursosDisponibles = cursos) }
+                        
+                        // Seleccionar curso si está disponible
+                        val cursoSeleccionado = cursos.find { curso -> curso.id == alumno.curso }
+                        if (cursoSeleccionado != null) {
+                            _uiState.update { state -> state.copy(cursoSeleccionado = cursoSeleccionado) }
+                            
+                            // Cargar clases del curso
+                            val clasesResult = cursoRepository.obtenerClasesPorCurso(cursoSeleccionado.id)
+                            if (clasesResult is Result.Success<*>) {
+                                val clases = clasesResult.data as List<Clase>
+                                _uiState.update { state -> state.copy(clasesDisponibles = clases) }
+                                
+                                // Seleccionar clase si está disponible
+                                val claseSeleccionada = clases.find { clase -> clase.id == alumno.claseId }
+                                if (claseSeleccionada != null) {
+                                    _uiState.update { state -> state.copy(claseSeleccionada = claseSeleccionada) }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Buscar el centro para este alumno
+                    val centroResult = centroRepository.getCentroById(alumno.centroId)
+                    if (centroResult is Result.Success<*>) {
+                        _uiState.update { state -> state.copy(centroSeleccionado = centroResult.data as Centro) }
+                    }
+                    
+                    // Actualizar todos los campos del formulario con los datos del alumno y usuario
+                    _uiState.update { state ->
+                        state.copy(
+                            dni = alumno.dni,
+                            nombre = alumno.nombre,
+                            apellidos = alumno.apellidos,
+                            telefono = alumno.telefono,
+                            email = alumno.email,
+                            fechaNacimiento = alumno.fechaNacimiento,
+                            tipoUsuario = TipoUsuario.ALUMNO,
+                            isEditMode = true,
+                            isLoading = false,
+                            // Información médica
+                            alergias = alumno.alergias.joinToString(", "),
+                            medicacion = alumno.medicacion.joinToString(", "),
+                            necesidadesEspeciales = alumno.necesidadesEspeciales,
+                            observaciones = alumno.observaciones
+                        )
+                    }
+                    
+                    return@launch
+                }
+                
+                // Si no es un alumno, intentamos cargar un usuario general
+                val resultadoUsuario = usuarioRepository.getUsuarioPorDni(dni)
+                
+                if (resultadoUsuario is Result.Success<*>) {
+                    val usuario = resultadoUsuario.data as Usuario
+                    
+                    // Determinar el tipo de usuario y el centro según los perfiles
+                    var tipoUsuario = TipoUsuario.FAMILIAR
+                    var centroId = ""
+                    
+                    if (usuario.perfiles.isNotEmpty()) {
+                        tipoUsuario = usuario.perfiles.first().tipo
+                        centroId = usuario.perfiles.first().centroId
+                        
+                        // Cargar el centro si tiene uno asignado
+                        if (centroId.isNotBlank()) {
+                            val centroResult = centroRepository.getCentroById(centroId)
+                            if (centroResult is Result.Success<*>) {
+                                _uiState.update { state -> state.copy(centroSeleccionado = centroResult.data as Centro) }
+                            }
+                        }
+                    }
+                    
+                    // Actualizar el estado con los datos del usuario
+                    _uiState.update { state ->
+                        state.copy(
+                            dni = usuario.dni,
+                            nombre = usuario.nombre,
+                            apellidos = usuario.apellidos,
+                            telefono = usuario.telefono,
+                            email = usuario.email,
+                            tipoUsuario = tipoUsuario,
+                            isEditMode = true,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    // No se encontró el usuario
+                    _uiState.update { state -> 
+                        state.copy(
+                            error = "No se encontró el usuario con DNI: $dni",
+                            isLoading = false
+                        ) 
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar usuario para edición")
+                _uiState.update { state -> 
+                    state.copy(
+                        error = "Error al cargar datos: ${e.message}",
+                        isLoading = false
+                    ) 
+                }
+            }
+        }
+    }
+
+    /**
+     * Actualiza el texto de las alergias del alumno
+     */
+    fun updateAlergias(alergias: String) {
+        _uiState.update { it.copy(alergias = alergias) }
+    }
+    
+    /**
+     * Actualiza el texto de la medicación del alumno
+     */
+    fun updateMedicacion(medicacion: String) {
+        _uiState.update { it.copy(medicacion = medicacion) }
+    }
+    
+    /**
+     * Actualiza el texto de las necesidades especiales del alumno
+     */
+    fun updateNecesidadesEspeciales(necesidadesEspeciales: String) {
+        _uiState.update { it.copy(necesidadesEspeciales = necesidadesEspeciales) }
+    }
+    
+    /**
+     * Actualiza el texto de las observaciones generales del alumno
+     */
+    fun updateObservaciones(observaciones: String) {
+        _uiState.update { it.copy(observaciones = observaciones) }
     }
 }

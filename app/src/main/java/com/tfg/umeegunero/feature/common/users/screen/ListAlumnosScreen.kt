@@ -168,7 +168,13 @@ fun ListAlumnosScreen(
                             navController.navigate(AppScreens.StudentDetail.createRoute(alumno.dni))
                         },
                         onEditClick = {
-                            scope.launch { snackbarHostState.showSnackbar("Edición pendiente de implementar") }
+                            navController.navigate(AppScreens.AddUser.createRoute(
+                                isAdminApp = false, 
+                                tipoUsuario = TipoUsuario.ALUMNO.toString(),
+                                centroId = centroId,
+                                centroBloqueado = true,
+                                dniUsuario = alumno.dni
+                            ))
                         },
                         onDeleteClick = {
                             selectedAlumno = alumno

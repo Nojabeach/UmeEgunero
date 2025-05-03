@@ -1088,9 +1088,14 @@ open class UsuarioRepository @Inject constructor(
                         }
                     }
                     TipoUsuario.ALUMNO -> {
-                        // No necesario, ya que cuando eliminamos un alumno, se manejan las referencias desde AlumnoRepository
-                        // Pero lo incluimos aquí por completitud si el alumno está también como Usuario
-                        Timber.d("El usuario $dni tiene perfil de alumno, revisar si existe en la colección de alumnos")
+                        // Cuando es un alumno, también eliminar de la colección de alumnos
+                        try {
+                            alumnosCollection.document(dni).delete().await()
+                            Timber.d("Alumno eliminado de la colección de alumnos: $dni")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al eliminar alumno de la colección de alumnos: ${e.message}")
+                            // Continuamos con el proceso aunque falle este paso específico
+                        }
                     }
                     else -> {
                         // Otros tipos de usuario

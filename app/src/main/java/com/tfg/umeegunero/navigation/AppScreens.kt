@@ -96,24 +96,28 @@ sealed class AppScreens(val route: String) {
      * @param tipoUsuario Tipo de usuario (opcional): centro, profesor, familiar
      * @param centroId ID del centro (opcional, para preselección y bloqueo)
      * @param centroBloqueado Indica si el selector de centro debe estar bloqueado (opcional)
+     * @param dniUsuario DNI del usuario a editar (opcional, si se proporciona se abrirá en modo edición)
      */
-    object AddUser : AppScreens("add_user/{isAdminApp}?tipo={tipoUsuario}&centroId={centroId}&centroBloqueado={centroBloqueado}") {
+    object AddUser : AppScreens("add_user/{isAdminApp}?tipo={tipoUsuario}&centroId={centroId}&centroBloqueado={centroBloqueado}&dni={dniUsuario}") {
         const val ARG_IS_ADMIN_APP = "isAdminApp"
         const val ARG_TIPO_USUARIO = "tipoUsuario"
         const val ARG_CENTRO_ID = "centroId"
         const val ARG_CENTRO_BLOQUEADO = "centroBloqueado"
+        const val ARG_DNI_USUARIO = "dniUsuario"
 
         fun createRoute(
             isAdminApp: Boolean,
             tipoUsuario: String? = null,
             centroId: String? = null,
-            centroBloqueado: Boolean? = null
+            centroBloqueado: Boolean? = null,
+            dniUsuario: String? = null
         ): String {
             var route = "add_user/$isAdminApp"
             val params = mutableListOf<String>()
             tipoUsuario?.let { params.add("tipo=$it") }
             centroId?.let { params.add("centroId=$it") }
             centroBloqueado?.let { params.add("centroBloqueado=$it") }
+            dniUsuario?.let { params.add("dni=$it") }
             if (params.isNotEmpty()) {
                 route += "?" + params.joinToString("&")
             }
@@ -124,7 +128,8 @@ sealed class AppScreens(val route: String) {
             navArgument(ARG_IS_ADMIN_APP) { type = NavType.BoolType },
             navArgument(ARG_TIPO_USUARIO) { type = NavType.StringType; nullable = true },
             navArgument(ARG_CENTRO_ID) { type = NavType.StringType; nullable = true },
-            navArgument(ARG_CENTRO_BLOQUEADO) { type = NavType.BoolType; defaultValue = false }
+            navArgument(ARG_CENTRO_BLOQUEADO) { type = NavType.BoolType; defaultValue = false },
+            navArgument(ARG_DNI_USUARIO) { type = NavType.StringType; nullable = true }
         )
     }
     

@@ -281,7 +281,8 @@ fun AddUserScreen(
     isAdminApp: Boolean,
     tipoPreseleccionado: String?,
     centroIdInicial: String?,
-    centroBloqueadoInicial: Boolean
+    centroBloqueadoInicial: Boolean,
+    dniUsuario: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -293,6 +294,11 @@ fun AddUserScreen(
             tipoUsuarioStr = tipoPreseleccionado,
             isAdminAppFlag = isAdminApp
         )
+        
+        // Si se proporciona el dniUsuario, cargar los datos del usuario para edición
+        if (!dniUsuario.isNullOrBlank()) {
+            viewModel.cargarUsuarioPorDni(dniUsuario)
+        }
     }
 
     // Pasar la función onCursoSelected del viewModel directamente
