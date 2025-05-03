@@ -236,45 +236,17 @@ fun ProfesorDashboardContent(
     val accionesDiariasCards = listOf(
         CategoriaCardData(
             titulo = "Registro Diario",
-            descripcion = "Anota comidas, siestas, pañales, etc.",
+            descripcion = "Registra asistencia, comidas, siestas y otras actividades",
             icono = Icons.AutoMirrored.Filled.ListAlt,
             color = ProfesorColor,
             onClick = { 
                 try {
-                    // Usando la ruta definitiva en lugar de la pantalla Dummy
-                    navController.navigate(AppScreens.RegistroDiarioProfesor.route)
+                    // Navegamos a la nueva pantalla de listado previo
+                    navController.navigate(AppScreens.ListadoPreRegistroDiario.createRoute())
                     // Registrar en el log
-                    Timber.d("Navegando a Registro Diario")
+                    Timber.d("Navegando a Listado Pre-Registro Diario")
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Registro Diario")
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Asistencia",
-            descripcion = "Marca quién ha venido hoy",
-            icono = Icons.Default.CheckCircleOutline,
-            color = ProfesorColor,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.AsistenciaProfesor.route)
-                    Timber.d("Navegando a Control de Asistencia")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Control de Asistencia")
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Observaciones",
-            descripcion = "Anota incidencias o logros",
-            icono = Icons.Default.EditNote,
-            color = ProfesorColor,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.ObservacionesProfesor.route)
-                    Timber.d("Navegando a Observaciones")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Observaciones")
+                    Timber.e(e, "Error al navegar a Listado Pre-Registro Diario")
                 }
             }
         )
@@ -325,20 +297,6 @@ fun ProfesorDashboardContent(
             }
         ),
         CategoriaCardData(
-            titulo = "Actividades",
-            descripcion = "Planifica y revisa actividades",
-            icono = Icons.Default.LocalActivity,
-            color = ProfesorColor,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.ActividadesPreescolarProfesor.route)
-                    Timber.d("Navegando a Actividades")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Actividades")
-                }
-            }
-        ),
-        CategoriaCardData(
             titulo = "Calendario",
             descripcion = "Eventos escolares y festivos",
             icono = Icons.Default.CalendarMonth,
@@ -349,20 +307,6 @@ fun ProfesorDashboardContent(
                     Timber.d("Navegando a Calendario")
                 } catch (e: Exception) {
                     Timber.e(e, "Error al navegar a Calendario")
-                }
-            }
-        ),
-        CategoriaCardData(
-            titulo = "Evaluación",
-            descripcion = "Registro de evaluaciones formales",
-            icono = Icons.Default.Grading,
-            color = ProfesorColor,
-            onClick = { 
-                try {
-                    navController.navigate(AppScreens.Evaluacion.route)
-                    Timber.d("Navegando a Evaluación")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Evaluación")
                 }
             }
         )
@@ -392,67 +336,18 @@ fun ProfesorDashboardContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Primera fila (2 elementos)
-                if (accionesDiariasCards.size >= 2) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Primer elemento - 50% del ancho
-                        Box(modifier = Modifier.weight(1f)) {
-                            CategoriaCard(
-                                titulo = accionesDiariasCards[0].titulo,
-                                descripcion = accionesDiariasCards[0].descripcion,
-                                icono = accionesDiariasCards[0].icono,
-                                color = accionesDiariasCards[0].color,
-                                iconTint = accionesDiariasCards[0].iconTint,
-                                border = true,
-                                enabled = !hoyEsFestivo,
-                                onClick = accionesDiariasCards[0].onClick
-                            )
-                        }
-                        // Segundo elemento - 50% del ancho
-                        Box(modifier = Modifier.weight(1f)) {
-                            CategoriaCard(
-                                titulo = accionesDiariasCards[1].titulo,
-                                descripcion = accionesDiariasCards[1].descripcion,
-                                icono = accionesDiariasCards[1].icono,
-                                color = accionesDiariasCards[1].color,
-                                iconTint = accionesDiariasCards[1].iconTint,
-                                border = true,
-                                enabled = !hoyEsFestivo,
-                                onClick = accionesDiariasCards[1].onClick
-                            )
-                        }
-                    }
-                }
-                
-                // Elemento adicional si hay 3 (centrado)
-                if (accionesDiariasCards.size >= 3) {
-                    // Usando ancho completo para el tercer elemento
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Espaciador a la izquierda (25%)
-                        Spacer(modifier = Modifier.weight(0.25f))
-                        // Tercer elemento (50%)
-                        Box(modifier = Modifier.weight(0.5f)) {
-                            CategoriaCard(
-                                titulo = accionesDiariasCards[2].titulo,
-                                descripcion = accionesDiariasCards[2].descripcion,
-                                icono = accionesDiariasCards[2].icono,
-                                color = accionesDiariasCards[2].color,
-                                iconTint = accionesDiariasCards[2].iconTint,
-                                border = true,
-                                enabled = !hoyEsFestivo,
-                                onClick = accionesDiariasCards[2].onClick
-                            )
-                        }
-                        // Espaciador a la derecha (25%)
-                        Spacer(modifier = Modifier.weight(0.25f))
-                    }
-                }
+                // Mostrar una única card para registro diario con altura aumentada
+                CategoriaCard(
+                    titulo = accionesDiariasCards[0].titulo,
+                    descripcion = accionesDiariasCards[0].descripcion,
+                    icono = accionesDiariasCards[0].icono,
+                    color = accionesDiariasCards[0].color,
+                    iconTint = accionesDiariasCards[0].iconTint,
+                    border = true,
+                    enabled = !hoyEsFestivo,
+                    onClick = accionesDiariasCards[0].onClick,
+                    modifier = Modifier.heightIn(min = 100.dp)
+                )
             }
         }
 
@@ -492,69 +387,34 @@ fun ProfesorDashboardContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Primera fila (2 elementos)
-                if (gestionPlanificacionCards.size >= 2) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Primer elemento - 50% del ancho
-                        Box(modifier = Modifier.weight(1f)) {
-                            CategoriaCard(
-                                titulo = gestionPlanificacionCards[0].titulo,
-                                descripcion = gestionPlanificacionCards[0].descripcion,
-                                icono = gestionPlanificacionCards[0].icono,
-                                color = gestionPlanificacionCards[0].color,
-                                iconTint = gestionPlanificacionCards[0].iconTint,
-                                border = true,
-                                onClick = gestionPlanificacionCards[0].onClick
-                            )
-                        }
-                        // Segundo elemento - 50% del ancho
-                        Box(modifier = Modifier.weight(1f)) {
-                            CategoriaCard(
-                                titulo = gestionPlanificacionCards[1].titulo,
-                                descripcion = gestionPlanificacionCards[1].descripcion,
-                                icono = gestionPlanificacionCards[1].icono,
-                                color = gestionPlanificacionCards[1].color,
-                                iconTint = gestionPlanificacionCards[1].iconTint,
-                                border = true,
-                                onClick = gestionPlanificacionCards[1].onClick
-                            )
-                        }
+                // Ahora solo hay 2 cards, mostrarlas en una fila
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Primera card - 50% del ancho
+                    Box(modifier = Modifier.weight(1f)) {
+                        CategoriaCard(
+                            titulo = gestionPlanificacionCards[0].titulo,
+                            descripcion = gestionPlanificacionCards[0].descripcion,
+                            icono = gestionPlanificacionCards[0].icono,
+                            color = gestionPlanificacionCards[0].color,
+                            iconTint = gestionPlanificacionCards[0].iconTint,
+                            border = true,
+                            onClick = gestionPlanificacionCards[0].onClick
+                        )
                     }
-                }
-                
-                // Segunda fila (2 elementos más si existen)
-                if (gestionPlanificacionCards.size >= 4) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Tercer elemento - 50% del ancho
-                        Box(modifier = Modifier.weight(1f)) {
-                            CategoriaCard(
-                                titulo = gestionPlanificacionCards[2].titulo,
-                                descripcion = gestionPlanificacionCards[2].descripcion,
-                                icono = gestionPlanificacionCards[2].icono,
-                                color = gestionPlanificacionCards[2].color,
-                                iconTint = gestionPlanificacionCards[2].iconTint,
-                                border = true,
-                                onClick = gestionPlanificacionCards[2].onClick
-                            )
-                        }
-                        // Cuarto elemento - 50% del ancho
-                        Box(modifier = Modifier.weight(1f)) {
-                            CategoriaCard(
-                                titulo = gestionPlanificacionCards[3].titulo,
-                                descripcion = gestionPlanificacionCards[3].descripcion,
-                                icono = gestionPlanificacionCards[3].icono,
-                                color = gestionPlanificacionCards[3].color,
-                                iconTint = gestionPlanificacionCards[3].iconTint,
-                                border = true,
-                                onClick = gestionPlanificacionCards[3].onClick
-                            )
-                        }
+                    // Segunda card - 50% del ancho
+                    Box(modifier = Modifier.weight(1f)) {
+                        CategoriaCard(
+                            titulo = gestionPlanificacionCards[1].titulo,
+                            descripcion = gestionPlanificacionCards[1].descripcion,
+                            icono = gestionPlanificacionCards[1].icono,
+                            color = gestionPlanificacionCards[1].color,
+                            iconTint = gestionPlanificacionCards[1].iconTint,
+                            border = true,
+                            onClick = gestionPlanificacionCards[1].onClick
+                        )
                     }
                 }
             }

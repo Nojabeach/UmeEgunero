@@ -880,21 +880,28 @@ fun Navigation(
             )
         }
 
-        // Registro diario del profesor para un alumno
+        // PANTALLAS DE REGISTRO DIARIO
+
+        // Pantalla de listado previo al registro diario (selección de alumnos)
+        composable(route = AppScreens.ListadoPreRegistroDiario.route) {
+            com.tfg.umeegunero.feature.profesor.registros.screen.ListadoPreRegistroDiarioScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de registro diario del profesor (nueva versión con soporte para múltiples alumnos)
         composable(
             route = AppScreens.RegistroDiarioProfesor.route,
-            arguments = listOf(
-                navArgument("alumnoId") { type = NavType.StringType }
-            )
+            arguments = AppScreens.RegistroDiarioProfesor.arguments
         ) { backStackEntry ->
-            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            val alumnosIds = backStackEntry.arguments?.getString("alumnosIds") ?: ""
+            val fecha = backStackEntry.arguments?.getString("fecha")
+            
             com.tfg.umeegunero.feature.profesor.registros.screen.HiltRegistroDiarioScreen(
-                alumnoId = alumnoId,
-                alumnoNombre = "", // Se cargará en el ViewModel
-                claseId = "", // Se cargará en el ViewModel
-                claseNombre = "", // Se cargará en el ViewModel
-                profesorId = "", // Se obtendrá del usuario autenticado
-                onNavigateBack = { navController.popBackStack() }
+                alumnosIds = alumnosIds,
+                fecha = fecha,
+                navController = navController
             )
         }
 
@@ -917,6 +924,21 @@ fun Navigation(
         composable(route = AppScreens.VinculacionFamiliar.route) {
             // Redirigir a la implementación real sin complicaciones
             navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
+        }
+
+        // Mis alumnos para el profesor
+        composable(route = AppScreens.MisAlumnosProfesor.route) {
+            com.tfg.umeegunero.feature.profesor.screen.MisAlumnosProfesorScreen(
+                navController = navController
+            )
+        }
+
+        // Pantalla de Calendario para profesor
+        composable(route = AppScreens.ProfesorCalendario.route) {
+            com.tfg.umeegunero.feature.profesor.screen.CalendarioProfesorScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
         }
     }
 } 

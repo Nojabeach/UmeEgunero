@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +76,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavController
+import java.time.LocalDate
+import java.time.ZoneId
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import com.tfg.umeegunero.feature.profesor.registros.viewmodel.RegistroDiarioUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -583,26 +592,43 @@ fun SuccessDialog(
 
 @Composable
 fun HiltRegistroDiarioScreen(
-    viewModel: RegistroDiarioViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
-    alumnoId: String,
-    alumnoNombre: String,
-    claseId: String,
-    claseNombre: String,
-    profesorId: String
+    alumnosIds: String,
+    fecha: String? = null,
+    navController: NavController,
+    viewModel: RegistroDiarioViewModel = hiltViewModel()
 ) {
-    // Cargamos los datos al montar la pantalla
-    viewModel.cargarRegistroDiario(
-        alumnoId = alumnoId,
-        claseId = claseId, 
-        profesorId = profesorId
-    )
+    // Parse alumnosIds
+    val listaAlumnosIds = alumnosIds.split(",")
+    val fechaSeleccionada = fecha?.let {
+        try {
+            LocalDate.parse(it)
+        } catch (e: Exception) {
+            LocalDate.now()
+        }
+    }
+    
+    LaunchedEffect(alumnosIds) {
+        if (listaAlumnosIds.isNotEmpty()) {
+            // TODO: Por ahora solo trabajamos con el primer alumno
+            // En futuras versiones se podría implementar un sistema de pestañas o selección
+            // para gestionar múltiples alumnos a la vez
+            val alumnoId = listaAlumnosIds.first()
+            viewModel.cargarRegistroDiario(
+                alumnoId = alumnoId,
+                claseId = "", // Se cargará en el ViewModel
+                profesorId = "", // Se obtendrá del usuario autenticado
+                fecha = fechaSeleccionada?.let { Date.from(it.atStartOfDay(ZoneId.systemDefault()).toInstant()) } ?: Date()
+            )
+        }
+    }
+    
+    val uiState by viewModel.uiState.collectAsState()
     
     RegistroDiarioScreen(
         viewModel = viewModel,
-        onNavigateBack = onNavigateBack,
-        alumnoNombre = alumnoNombre,
-        claseNombre = claseNombre
+        onNavigateBack = { navController.popBackStack() },
+        alumnoNombre = uiState.alumnoNombre ?: "",
+        claseNombre = uiState.claseNombre ?: ""
     )
 }
 
@@ -610,8 +636,41 @@ fun HiltRegistroDiarioScreen(
 @Composable
 fun RegistroDiarioScreenPreview() {
     UmeEguneroTheme {
+        // Usamos PreviewParameterProvider para la preview
+        val previewState = RegistroDiarioUiState(
+            isLoading = false,
+            alumnoNombre = "Juan Pérez",
+            claseNombre = "Infantil 3 años A",
+            primerPlato = EstadoComida.COMPLETO,
+            segundoPlato = EstadoComida.PARCIAL,
+            postre = EstadoComida.COMPLETO,
+            merienda = EstadoComida.NO_SERVIDO
+        )
+        
+        val fakeViewModel = object : ViewModel() {
+            private val _uiState = MutableStateFlow(previewState)
+            val uiState: StateFlow<RegistroDiarioUiState> = _uiState.asStateFlow()
+            
+            fun actualizarEstadoComida(tipo: String, estado: EstadoComida) {}
+            fun actualizarObservacionesComida(texto: String) {}
+            fun toggleSiesta(haceSiesta: Boolean) {}
+            fun establecerHoraInicioSiesta(hora: String) {}
+            fun establecerHoraFinSiesta(hora: String) {}
+            fun actualizarObservacionesSiesta(texto: String) {}
+            fun toggleCaca(haHechoCaca: Boolean) {}
+            fun incrementarCacas() {}
+            fun decrementarCacas() {}
+            fun actualizarObservacionesCaca(texto: String) {}
+            fun toggleMaterial(tipo: String, necesita: Boolean) {}
+            fun actualizarOtroMaterial(texto: String) {}
+            fun actualizarObservacionesGenerales(texto: String) {}
+            fun guardarRegistro(profesorId: String) {}
+            fun ocultarDialogoExito() {}
+            fun limpiarError() {}
+        }
+        
         RegistroDiarioScreen(
-            viewModel = hiltViewModel(),
+            viewModel = fakeViewModel as RegistroDiarioViewModel,
             onNavigateBack = {},
             alumnoNombre = "Juan Pérez",
             claseNombre = "Infantil 3 años A"

@@ -3,11 +3,20 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.Familiar
+import com.tfg.umeegunero.data.repository.AlumnoRepository
+import com.tfg.umeegunero.data.repository.CalendarioRepository
+import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.data.repository.ProfesorRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -16,20 +25,25 @@ import javax.inject.Inject
 data class MisAlumnosUiState(
     val isLoading: Boolean = false,
     val alumnos: List<Alumno> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val clase: String = ""
 )
 
 /**
  * ViewModel para la pantalla "Mis Alumnos" del profesor.
  *
- * TODO: Implementar la carga de la lista de alumnos asignados al profesor
- *       desde el repositorio correspondiente.
- *
- * @author Maitane Ibáñez (2º DAM)
+ * Gestiona la carga y filtrado de alumnos asignados al profesor.
+ * Proporciona acceso a la información detallada de cada alumno,
+ * incluyendo sus vinculaciones familiares.
  */
 @HiltViewModel
 class MisAlumnosProfesorViewModel @Inject constructor(
-    // TODO: Inyectar UsuarioRepository u otro repositorio necesario
+    private val usuarioRepository: UsuarioRepository,
+    private val profesorRepository: ProfesorRepository,
+    private val alumnoRepository: AlumnoRepository,
+    private val claseRepository: ClaseRepository,
+    private val calendarioRepository: CalendarioRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MisAlumnosUiState())
@@ -39,15 +53,81 @@ class MisAlumnosProfesorViewModel @Inject constructor(
         cargarAlumnos()
     }
 
+    /**
+     * Carga la lista de alumnos asignados al profesor actual
+     */
     private fun cargarAlumnos() {
         viewModelScope.launch {
-            _uiState.value = MisAlumnosUiState(isLoading = true)
-            // TODO: Llamar al repositorio para obtener la lista de alumnos
-            // val result = usuarioRepository.getAlumnosDelProfesorActual(...)
-            // Actualizar _uiState con el resultado (Success o Error)
-             _uiState.value = MisAlumnosUiState(isLoading = false, alumnos = emptyList()) // Placeholder
+            try {
+                _uiState.value = MisAlumnosUiState(isLoading = true)
+                
+                // Obtener ID del usuario actual
+                val usuario = authRepository.getCurrentUser()
+                if (usuario == null) {
+                    _uiState.value = MisAlumnosUiState(
+                        isLoading = false,
+                        error = "No se pudo obtener el usuario actual"
+                    )
+                    return@launch
+                }
+                
+                // Obtener datos del profesor
+                val profesor = profesorRepository.getProfesorPorUsuarioId(usuario.dni)
+                if (profesor == null) {
+                    _uiState.value = MisAlumnosUiState(
+                        isLoading = false,
+                        error = "No se encontró información del profesor"
+                    )
+                    return@launch
+                }
+                
+                // Obtener clases asignadas al profesor
+                val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
+                if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
+                    _uiState.value = MisAlumnosUiState(
+                        isLoading = false,
+                        error = "No hay clases asignadas a este profesor"
+                    )
+                    return@launch
+                }
+                
+                // Lista para almacenar todos los alumnos
+                val todosLosAlumnos = mutableListOf<Alumno>()
+                var nombreClase = ""
+                
+                // Para cada clase, obtener sus alumnos
+                for (clase in clasesResult.data) {
+                    val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
+                    if (alumnosResult is Result.Success) {
+                        todosLosAlumnos.addAll(alumnosResult.data)
+                    }
+                    
+                    // Guardamos el nombre de la primera clase (para simplificar)
+                    if (nombreClase.isEmpty()) {
+                        nombreClase = clase.nombre
+                    }
+                }
+                
+                _uiState.value = MisAlumnosUiState(
+                    isLoading = false,
+                    alumnos = todosLosAlumnos.distinctBy { it.id },
+                    clase = nombreClase
+                )
+                
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar alumnos")
+                _uiState.value = MisAlumnosUiState(
+                    isLoading = false,
+                    error = "Error al cargar alumnos: ${e.message}"
+                )
+            }
         }
     }
-
-    // TODO: Añadir funciones si se necesita filtrar o buscar alumnos
+    
+    /**
+     * Refresca la lista de alumnos
+     */
+    fun refrescarAlumnos() {
+        cargarAlumnos()
+    }
 } 

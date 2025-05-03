@@ -35,6 +35,7 @@ import com.google.firebase.firestore.DocumentId
  * @property observacionesMedicas Observaciones relevantes sobre la salud del alumno.
  * @property observaciones Observaciones generales sobre el comportamiento o situación del alumno.
  * @property familiares Lista de objetos [Familiar] con información de contactos familiares.
+ * @property presente Indica si el alumno está presente/asistió en una fecha determinada.
  *
  * @see Familiar
  */
@@ -50,6 +51,7 @@ data class Alumno(
     val aulaId: String = "",
     val curso: String = "",
     val clase: String = "",
+    val claseId: String = "",
     val profesorId: String = "",
     val profesorIds: List<String> = emptyList(),
     val familiarIds: List<String> = emptyList(),
@@ -59,7 +61,8 @@ data class Alumno(
     val medicacion: List<String> = emptyList(),
     val observacionesMedicas: String = "",
     val observaciones: String = "",
-    val familiares: List<Familiar> = emptyList()
+    val familiares: List<Familiar> = emptyList(),
+    val presente: Boolean = false
 )
 
 /**

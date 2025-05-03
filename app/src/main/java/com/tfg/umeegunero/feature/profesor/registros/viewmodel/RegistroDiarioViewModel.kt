@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.repository.AlumnoRepository
+import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,13 +54,17 @@ data class RegistroDiarioUiState(
     // UI de la pantalla
     val alumnoId: String = "",
     val claseId: String = "",
+    val alumnoNombre: String? = null,
+    val claseNombre: String? = null,
     val fechaSeleccionada: Date = Date(),
     val showSuccessDialog: Boolean = false
 )
 
 @HiltViewModel
 class RegistroDiarioViewModel @Inject constructor(
-    private val registroDiarioRepository: RegistroDiarioRepository
+    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val alumnoRepository: AlumnoRepository,
+    private val claseRepository: ClaseRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(RegistroDiarioUiState())
@@ -71,50 +77,81 @@ class RegistroDiarioViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, error = null, alumnoId = alumnoId, claseId = claseId) }
         
         viewModelScope.launch {
-            val result = registroDiarioRepository.obtenerOCrearRegistroDiario(
-                alumnoId = alumnoId,
-                claseId = claseId,
-                profesorId = profesorId,
-                fecha = fecha
-            )
-            
-            when(result) {
-                is Result.Success -> {
-                    val registro = result.data
-                    _uiState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                            registro = registro,
-                            primerPlato = registro.primerPlato,
-                            segundoPlato = registro.segundoPlato,
-                            postre = registro.postre,
-                            merienda = registro.merienda,
-                            observacionesComida = registro.observacionesComida,
-                            haSiestaSiNo = registro.haSiestaSiNo,
-                            horaInicioSiesta = registro.horaInicioSiesta?.toDate()?.let { 
-                                SimpleDateFormat("HH:mm", Locale.getDefault()).format(it) 
-                            } ?: "",
-                            horaFinSiesta = registro.horaFinSiesta?.toDate()?.let { 
-                                SimpleDateFormat("HH:mm", Locale.getDefault()).format(it) 
-                            } ?: "",
-                            observacionesSiesta = registro.observacionesSiesta,
-                            haHechoCaca = registro.haHechoCaca,
-                            numeroCacas = registro.numeroCacas,
-                            observacionesCaca = registro.observacionesCaca,
-                            necesitaPanales = registro.necesitaPanales,
-                            necesitaToallitas = registro.necesitaToallitas,
-                            necesitaRopaCambio = registro.necesitaRopaCambio,
-                            otroMaterialNecesario = registro.otroMaterialNecesario,
-                            observacionesGenerales = registro.observacionesGenerales
-                        )
+            try {
+                // Cargar información del alumno
+                val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
+                if (alumnoResult is Result.Success) {
+                    val alumno = alumnoResult.data
+                    _uiState.update { it.copy(alumnoNombre = "${alumno.nombre} ${alumno.apellidos}") }
+                }
+                
+                // Cargar información de la clase
+                val claseIdAUsar = if (claseId.isNotEmpty()) claseId else {
+                    // Si no se proporciona claseId, intentamos obtenerla del alumno
+                    val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
+                    if (alumnoResult is Result.Success) {
+                        alumnoResult.data.claseId
+                    } else {
+                        ""
                     }
                 }
-                is Result.Error -> {
-                    _uiState.update { it.copy(isLoading = false, error = result.exception?.message) }
+                
+                if (claseIdAUsar.isNotEmpty()) {
+                    val claseResult = claseRepository.getClaseById(claseIdAUsar)
+                    if (claseResult is Result.Success) {
+                        val clase = claseResult.data
+                        _uiState.update { it.copy(claseNombre = clase.nombre, claseId = claseIdAUsar) }
+                    }
                 }
-                is Result.Loading -> {
-                    _uiState.update { it.copy(isLoading = true) }
+                
+                // Obtener o crear el registro diario
+                val result = registroDiarioRepository.obtenerOCrearRegistroDiario(
+                    alumnoId = alumnoId,
+                    claseId = _uiState.value.claseId,
+                    profesorId = profesorId,
+                    fecha = fecha
+                )
+                
+                when(result) {
+                    is Result.Success -> {
+                        val registro = result.data
+                        _uiState.update { state ->
+                            state.copy(
+                                isLoading = false,
+                                registro = registro,
+                                primerPlato = registro.primerPlato,
+                                segundoPlato = registro.segundoPlato,
+                                postre = registro.postre,
+                                merienda = registro.merienda,
+                                observacionesComida = registro.observacionesComida,
+                                haSiestaSiNo = registro.haSiestaSiNo,
+                                horaInicioSiesta = registro.horaInicioSiesta?.toDate()?.let { 
+                                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(it) 
+                                } ?: "",
+                                horaFinSiesta = registro.horaFinSiesta?.toDate()?.let { 
+                                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(it) 
+                                } ?: "",
+                                observacionesSiesta = registro.observacionesSiesta,
+                                haHechoCaca = registro.haHechoCaca,
+                                numeroCacas = registro.numeroCacas,
+                                observacionesCaca = registro.observacionesCaca,
+                                necesitaPanales = registro.necesitaPanales,
+                                necesitaToallitas = registro.necesitaToallitas,
+                                necesitaRopaCambio = registro.necesitaRopaCambio,
+                                otroMaterialNecesario = registro.otroMaterialNecesario,
+                                observacionesGenerales = registro.observacionesGenerales
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(isLoading = false, error = result.exception?.message) }
+                    }
+                    is Result.Loading -> {
+                        _uiState.update { it.copy(isLoading = true) }
+                    }
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = "Error al cargar registro: ${e.message}") }
             }
         }
     }

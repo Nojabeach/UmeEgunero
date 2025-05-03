@@ -608,12 +608,27 @@ sealed class AppScreens(val route: String) {
     object EditProfile : AppScreens("edit_profile")
     
     /** Registro diario del profesor para los alumnos */
-    object RegistroDiarioProfesor : AppScreens("registro_diario_profesor/{alumnoId}") {
+    object RegistroDiarioProfesor : AppScreens("registro_diario_profesor/{alumnosIds}?fecha={fecha}") {
         fun createRoute(alumnoId: String) = "registro_diario_profesor/$alumnoId"
+        
+        fun createRouteWithParams(alumnosIds: String, fecha: String? = null): String {
+            return if (fecha != null) {
+                "registro_diario_profesor/$alumnosIds?fecha=$fecha"
+            } else {
+                "registro_diario_profesor/$alumnosIds"
+            }
+        }
+        
+        val arguments = listOf(
+            navArgument("alumnosIds") { type = NavType.StringType },
+            navArgument("fecha") { type = NavType.StringType; nullable = true }
+        )
     }
     
-    /** Observaciones del profesor sobre los alumnos */
-    object ObservacionesProfesor : AppScreens("observaciones_profesor")
+    /** Listado previo al registro diario del profesor */
+    object ListadoPreRegistroDiario : AppScreens("listado_pre_registro_diario") {
+        fun createRoute() = "listado_pre_registro_diario"
+    }
     
     /** Gestión de alumnos asignados al profesor */
     object MisAlumnosProfesor : AppScreens("mis_alumnos_profesor")
