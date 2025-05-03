@@ -149,7 +149,7 @@ fun ListAdministradoresCentroScreen(
                             navController.navigate(AppScreens.UserDetail.createRoute(admin.dni))
                         },
                         onEditClick = {
-                            navController.navigate(AppScreens.EditUser.createRoute(admin.dni))
+                            navController.navigate(AppScreens.EditUser.createRoute(admin.dni, "ADMIN_CENTRO"))
                         },
                         onDeleteClick = {
                             selectedAdmin = admin

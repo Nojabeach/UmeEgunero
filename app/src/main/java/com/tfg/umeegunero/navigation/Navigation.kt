@@ -688,43 +688,20 @@ fun Navigation(
         // Pantalla para editar usuario
         composable(
             route = AppScreens.EditUser.route,
-            arguments = listOf(
-                navArgument("dni") { type = NavType.StringType }
-            )
+            arguments = AppScreens.EditUser.arguments
         ) { backStackEntry ->
             val dni = backStackEntry.arguments?.getString("dni") ?: ""
-            val viewModel: com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel = hiltViewModel()
+            val tipoUsuarioStr = backStackEntry.arguments?.getString("tipoUsuario")
             
-            com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
-                uiState = viewModel.uiState.collectAsState().value,
-                onUpdateDni = viewModel::updateDni,
-                onUpdateEmail = viewModel::updateEmail,
-                onUpdatePassword = viewModel::updatePassword,
-                onUpdateConfirmPassword = viewModel::updateConfirmPassword,
-                onUpdateNombre = viewModel::updateNombre,
-                onUpdateApellidos = viewModel::updateApellidos,
-                onUpdateTelefono = viewModel::updateTelefono,
-                onUpdateTipoUsuario = viewModel::updateTipoUsuario,
-                onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
-                onCursoSelectedAlumno = viewModel::onCursoSelected,
-                onUpdateClaseSeleccionada = viewModel::updateClaseSeleccionada,
-                onUpdateFechaNacimiento = viewModel::updateFechaNacimiento,
-                onSaveUser = viewModel::saveUser,
-                onClearError = viewModel::clearError,
-                onNavigateBack = { navController.popBackStack() },
-                onAttemptSaveAndFocusError = viewModel::attemptSaveAndFocusError,
-                onClearValidationAttemptTrigger = viewModel::clearValidationAttemptTrigger,
-                onDismissSuccessDialog = viewModel::dismissSuccessDialog,
-                viewModelRef = viewModel
+            AddUserScreen(
+                navController = navController,
+                viewModel = hiltViewModel(),
+                isAdminApp = false,
+                tipoPreseleccionado = tipoUsuarioStr,
+                centroIdInicial = null,
+                centroBloqueadoInicial = tipoUsuarioStr == "ADMIN_CENTRO",
+                dniUsuario = dni
             )
-            
-            // Cargar los datos del usuario para edición
-            LaunchedEffect(dni) {
-                if (dni.isNotBlank()) {
-                    // Temporalmente comentado hasta implementar la función
-                    //viewModel.loadUserForEdit(dni)
-                }
-            }
         }
 
         // Pantalla de detalle de usuario

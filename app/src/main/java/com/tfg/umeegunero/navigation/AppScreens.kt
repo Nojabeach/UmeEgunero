@@ -136,9 +136,25 @@ sealed class AppScreens(val route: String) {
     /**
      * Formulario para editar un usuario existente
      * @param dni Identificador único del usuario (DNI)
+     * @param tipoUsuario Tipo de usuario que se está editando (opcional)
      */
-    object EditUser : AppScreens("edit_user/{dni}") {
-        fun createRoute(dni: String) = "edit_user/$dni"
+    object EditUser : AppScreens("edit_user/{dni}?tipoUsuario={tipoUsuario}") {
+        fun createRoute(dni: String, tipoUsuario: String? = null): String {
+            return if (tipoUsuario != null) {
+                "edit_user/$dni?tipoUsuario=$tipoUsuario"
+            } else {
+                "edit_user/$dni"
+            }
+        }
+        
+        val arguments = listOf(
+            navArgument("dni") { type = NavType.StringType },
+            navArgument("tipoUsuario") { 
+                type = NavType.StringType 
+                nullable = true
+                defaultValue = null
+            }
+        )
     }
     
     /** Pantalla de configuración del sistema de correo electrónico */
