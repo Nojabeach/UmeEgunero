@@ -75,6 +75,16 @@ fun Navigation(
     startDestination: String = AppScreens.Welcome.route,
     onCloseApp: () -> Unit = {}
 ) {
+    // Interceptor para registrar navegación en Logcat
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntryFlow.collect { backStackEntry ->
+            val route = backStackEntry.destination.route ?: "desconocida"
+            val screenName = route.split("?")[0].split("/")[0]
+            // Usar un tag específico y nivel ERROR para asegurar visibilidad
+            timber.log.Timber.tag("NAVEGACION_UME").e("📱 PANTALLA ACTUAL: $screenName (ruta: $route)")
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,

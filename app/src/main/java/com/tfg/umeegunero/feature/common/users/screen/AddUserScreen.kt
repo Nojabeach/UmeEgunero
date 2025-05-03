@@ -284,6 +284,9 @@ fun AddUserScreen(
     centroBloqueadoInicial: Boolean,
     dniUsuario: String? = null
 ) {
+    // Registrar actividad de pantalla
+    com.tfg.umeegunero.util.LogPantallas("CrearEditarUsuario", "DNI: ${dniUsuario ?: "nuevo usuario"}")
+
     val uiState by viewModel.uiState.collectAsState()
 
     // Inicializar el ViewModel con los parámetros de navegación una sola vez
