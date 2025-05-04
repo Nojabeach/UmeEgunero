@@ -140,15 +140,18 @@ class AddUserViewModel @Inject constructor(
      * Esta función debe llamarse una sola vez desde el Composable.
      */
     fun initialize(
-        centroId: String?,
-        bloqueado: Boolean,
-        tipoUsuarioStr: String?,
-        isAdminAppFlag: Boolean
+        centroId: String?, // ID del centro pasado como argumento (puede ser null)
+        bloqueado: Boolean, // Indicador de bloqueo pasado como argumento
+        tipoUsuarioStr: String?, // Tipo de usuario pasado como argumento
+        isAdminAppFlag: Boolean // Indica si el usuario actual es Admin App
     ) {
-        // Solo inicializar una vez (evitar llamadas múltiples desde LaunchedEffect)
-        if (_uiState.value.initialCentroId != null) return
+        // Solo inicializar una vez
+        if (_uiState.value.initialCentroId != null && !_uiState.value.isLoading) return // Evitar reinicialización si ya está cargado
 
-        // Convertir string a enum TipoUsuario
+        Timber.d(">>> Iniciando AddUserViewModel.initialize <<<")
+        Timber.d("Params: centroId=$centroId, bloqueado=$bloqueado, tipoUsuarioStr=$tipoUsuarioStr, isAdminAppFlag=$isAdminAppFlag")
+
+        // 1. Determinar TipoUsuario
         val tipoUsuario = tipoUsuarioStr?.let { tipo ->
             when (tipo.uppercase()) {
                 "ADMIN", "ADMIN_APP" -> TipoUsuario.ADMIN_APP
@@ -159,95 +162,104 @@ class AddUserViewModel @Inject constructor(
                 else -> TipoUsuario.FAMILIAR
             }
         } ?: TipoUsuario.FAMILIAR
-        
-        // Determinar si el tipo de usuario debe estar bloqueado
-        // - Al editar un Admin Centro
-        // - Al crear/editar un profesor desde perfil Admin Centro
-        val bloquearTipoUsuario = tipoUsuarioStr?.uppercase() == "ADMIN_CENTRO" || 
-                                  (tipoUsuarioStr?.uppercase() == "PROFESOR" && !isAdminAppFlag)
-        
-        // Determinar si el centro debe estar bloqueado
-        // - Si viene bloqueado explícitamente por parámetro
-        // - Si es Admin de Centro (siempre bloqueado)
-        // - Si es Profesor creado por Admin de Centro (no por Admin App)
-        val isCentroBloqueado = bloqueado || 
-                                tipoUsuario == TipoUsuario.ADMIN_CENTRO || 
-                                (tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag)
-        
-        Timber.d("Inicializando AddUserViewModel - Tipo: $tipoUsuario, Centro bloqueado: $isCentroBloqueado, Tipo bloqueado: $bloquearTipoUsuario, Admin app: $isAdminAppFlag")
-        
-        // Si estamos creando un profesor desde el perfil de admin centro y no se proporcionó un centroId,
-        // debemos obtener automáticamente el centroId del administrador de centro logueado
-        if (centroId == null && tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag) {
-            Timber.d("Creando profesor desde perfil admin centro. Se intentará obtener automáticamente el centroId")
-            viewModelScope.launch {
-                try {
-                    // Actualizar estado inicial primero (excepto centroId que se obtendrá después)
-                    _uiState.update {
-                        it.copy(
-                            isCentroBloqueado = isCentroBloqueado,
-                            tipoUsuario = tipoUsuario,
-                            isAdminApp = isAdminAppFlag,
-                            isTipoUsuarioBloqueado = bloquearTipoUsuario,
-                            isLoading = true
-                        )
-                    }
-                    
-                    // Obtener el centroId y seleccionar el centro directamente
-                    val centroIdAdmin = obtenerCentroIdAdminActual()
-                    if (!centroIdAdmin.isNullOrEmpty()) {
-                        Timber.d("Se obtuvo el centroId del admin actual: $centroIdAdmin")
-                        // Actualizar solo el initialCentroId ya que el resto ya se actualizó
-                        _uiState.update {
-                            it.copy(
-                                initialCentroId = centroIdAdmin,
-                                isLoading = false
-                            )
-                        }
-                        // No llamamos a loadCentrosAndSelectInitial() porque obtenerCentroIdAdminActual ya seleccionó el centro
-                    } else {
-                        Timber.w("No se pudo obtener el centroId del admin actual")
-                        inicializacionNormal(centroId, isCentroBloqueado, tipoUsuario, isAdminAppFlag, bloquearTipoUsuario)
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al obtener el centroId del admin actual")
-                    inicializacionNormal(centroId, isCentroBloqueado, tipoUsuario, isAdminAppFlag, bloquearTipoUsuario)
-                }
-            }
-        } else {
-            // Inicialización normal para otros casos
-            inicializacionNormal(centroId, isCentroBloqueado, tipoUsuario, isAdminAppFlag, bloquearTipoUsuario)
-        }
-    }
-    
-    /**
-     * Método auxiliar para realizar la inicialización normal
-     */
-    private fun inicializacionNormal(
-        centroId: String?,
-        isCentroBloqueado: Boolean,
-        tipoUsuario: TipoUsuario,
-        isAdminAppFlag: Boolean,
-        bloquearTipoUsuario: Boolean
-    ) {
-        // Actualizar estado con los parámetros iniciales
+        Timber.d("Tipo Usuario Determinado: $tipoUsuario")
+
+        // 2. Determinar si el tipo de usuario debe estar bloqueado
+        val bloquearTipoUsuario = tipoUsuario == TipoUsuario.ADMIN_CENTRO || // Siempre bloqueado al editar Admin Centro
+                                  (tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag) || // Bloqueado si Admin Centro crea Profesor
+                                  tipoUsuario == TipoUsuario.ALUMNO // Bloqueado si se preselecciona Alumno
+
+        Timber.d("Bloquear Tipo Usuario Determinado: $bloquearTipoUsuario")
+
+        // 3. Determinar si el centro debe estar bloqueado
+        // Prioridad: Argumento 'bloqueado' > Lógica interna (AdminCentro, Profesor creado por AdminCentro)
+        val isCentroBloqueado = bloqueado || // Si el argumento lo fuerza
+                                tipoUsuario == TipoUsuario.ADMIN_CENTRO || // Si es Admin Centro
+                                (tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag) // Si Admin Centro crea Profesor
+        Timber.d("Centro Bloqueado Determinado: $isCentroBloqueado")
+
+        // 4. Actualizar estado inicial con tipos y bloqueos
         _uiState.update {
             it.copy(
-                initialCentroId = centroId,
-                isCentroBloqueado = isCentroBloqueado,
                 tipoUsuario = tipoUsuario,
                 isAdminApp = isAdminAppFlag,
-                isTipoUsuarioBloqueado = bloquearTipoUsuario
+                isTipoUsuarioBloqueado = bloquearTipoUsuario,
+                isCentroBloqueado = isCentroBloqueado,
+                isLoading = true // Indicar carga
             )
         }
-        
-        // Cargar centros (con o sin preselección)
-        if (centroId != null) {
-            Timber.d("Cargando centros con preselección del centro: $centroId")
-            loadCentrosAndSelectInitial()
-        } else {
-            Timber.d("Cargando todos los centros sin preselección")
-            loadCentros()
+        Timber.d("Estado UI actualizado (pre-carga centro): tipo=$tipoUsuario, centroBloq=$isCentroBloqueado, tipoBloq=$bloquearTipoUsuario")
+
+        // 5. Decidir cómo cargar/seleccionar el centro
+        viewModelScope.launch {
+            try {
+                if (isCentroBloqueado) {
+                    // --- CASO CENTRO BLOQUEADO ---
+                    Timber.d("Centro bloqueado. Priorizando centroId de argumento si existe: '$centroId'")
+                    
+                    if (!centroId.isNullOrBlank()) {
+                        // Usar el centroId proporcionado en los argumentos
+                        Timber.d("Usando centroId del argumento: $centroId")
+                        _uiState.update {
+                            it.copy(
+                                initialCentroId = centroId,
+                                centroId = centroId
+                                // isLoading sigue true hasta que loadCentrosAndSelectInitial termine
+                            )
+                        }
+                        loadCentrosAndSelectInitial() // Carga la lista y selecciona este centroId
+                    } else {
+                        // Si no vino centroId en los argumentos, intentar obtenerlo del admin actual como fallback
+                        Timber.w("centroId del argumento es nulo/blanco. Intentando obtener centro del admin actual.")
+                        val centroIdAdmin = obtenerCentroIdAdminActual() // Esta función ya actualiza el UI state
+                        
+                        if (!centroIdAdmin.isNullOrEmpty()) {
+                            Timber.d("✅ Centro del admin obtenido vía fallback y UI State actualizado.")
+                            // No hacer nada más, obtenerCentroIdAdminActual ya hizo el trabajo
+                        } else {
+                            Timber.e("❌ Fallback falló. No se pudo obtener centro ni por argumento ni por admin actual.")
+                            _uiState.update { it.copy(isLoading = false, error = "No se pudo determinar el centro educativo.") }
+                            // Opcionalmente, cargar lista vacía de centros
+                            // loadCentros()
+                        }
+                    }
+                } else {
+                    // --- CASO CENTRO NO BLOQUEADO ---
+                    Timber.d("Centro no bloqueado. Usando centroId de argumento si existe: $centroId")
+                    // Actualizar initialCentroId y centroId con el valor del argumento (puede ser null)
+                     _uiState.update {
+                        it.copy(
+                            initialCentroId = centroId,
+                            centroId = centroId ?: ""
+                            // isLoading sigue true hasta que se carguen los centros
+                        )
+                    }
+
+                    if (centroId != null) {
+                        // Si se pasó un centroId, cargar la lista e intentar seleccionarlo
+                        Timber.d("Llamando a loadCentrosAndSelectInitial con centroId: $centroId")
+                        loadCentrosAndSelectInitial()
+                    } else {
+                        // Si no se pasó centroId y no está bloqueado, solo cargar la lista
+                        Timber.d("Llamando a loadCentros (sin preselección)")
+                        loadCentros()
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "❌ Error general en initialize durante la carga del centro: ${e.message}")
+                _uiState.update {
+                    it.copy(
+                        error = "Error al inicializar: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            } finally {
+                 // Asegurarse de que isLoading se desactive si no lo hizo antes
+                 if (_uiState.value.isLoading) {
+                     _uiState.update { it.copy(isLoading = false) }
+                     Timber.d("Finalizando initialize (asegurando isLoading=false)")
+                 }
+            }
         }
     }
     
@@ -360,35 +372,91 @@ class AddUserViewModel @Inject constructor(
     private fun loadCentrosAndSelectInitial() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            when (val result = centroRepository.getActiveCentros()) {
-                is Result.Success -> {
-                    val centros = result.data
-                    val centroInicial = centros.find { it.id == _uiState.value.initialCentroId }
-                    _uiState.update {
-                        it.copy(
-                            centrosDisponibles = centros,
-                            isLoading = false,
-                            centroSeleccionado = centroInicial // Intentar preseleccionar
-                        )
+            
+            try {
+                when (val result = centroRepository.getActiveCentros()) {
+                    is Result.Success -> {
+                        val centros = result.data
+                        
+                        // Buscar el centro por ID y asegurarse de encontrarlo
+                        val centroInicial = centros.find { it.id == _uiState.value.initialCentroId }
+                        
+                        if (centroInicial != null) {
+                            Timber.d("✅ Centro inicial encontrado: ${centroInicial.nombre} (${centroInicial.id})")
+                            
+                            // Actualizar estado con el centro seleccionado explícitamente
+                            _uiState.update {
+                                it.copy(
+                                    centrosDisponibles = centros,
+                                    centroSeleccionado = centroInicial,
+                                    centroId = centroInicial.id, // Asegurarse de que centroId también se actualice
+                                    isLoading = false
+                                )
+                            }
+                            
+                            // Verificar que el centro está correctamente seleccionado en el estado
+                            if (_uiState.value.centroSeleccionado?.id == centroInicial.id) {
+                                Timber.d("✅ Centro seleccionado correctamente en UI State: ${centroInicial.nombre}")
+                            } else {
+                                Timber.w("⚠️ Problema al seleccionar centro: estado actual=${_uiState.value.centroSeleccionado?.nombre ?: "ninguno"}")
+                            }
+                            
+                            // Si se seleccionó un centro, cargar sus cursos si es necesario (ej. para Alumno)
+                            if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
+                                loadCursos(centroInicial.id)
+                            }
+                        } else {
+                            // Si no encontramos el centro por ID pero tenemos la lista de centros,
+                            // comprobar si hay un centroId en el estado actual que podamos usar
+                            val currentCentroId = _uiState.value.centroId
+                            if (currentCentroId.isNotEmpty()) {
+                                val centroActual = centros.find { it.id == currentCentroId }
+                                if (centroActual != null) {
+                                    Timber.d("✅ Usando centroId actual: ${centroActual.nombre} (${centroActual.id})")
+                                    _uiState.update {
+                                        it.copy(
+                                            centrosDisponibles = centros,
+                                            centroSeleccionado = centroActual,
+                                            isLoading = false
+                                        )
+                                    }
+                                    
+                                    // Si es un alumno, cargar los cursos para este centro
+                                    if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
+                                        loadCursos(centroActual.id)
+                                    }
+                                    return@launch
+                                }
+                            }
+                            
+                            Timber.w("⚠️ No se encontró el centro con ID: ${_uiState.value.initialCentroId} entre los ${centros.size} centros disponibles")
+                            _uiState.update {
+                                it.copy(
+                                    centrosDisponibles = centros,
+                                    isLoading = false
+                                )
+                            }
+                        }
                     }
-                    Timber.d("Centros cargados: ${centros.size}. Centro inicial encontrado: ${centroInicial != null}")
-                    // Si se seleccionó un centro, cargar sus cursos si es necesario (ej. para Alumno)
-                    centroInicial?.let { centro ->
-                         if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
-                             loadCursos(centro.id)
-                         }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                error = "Error al cargar los centros: ${result.exception?.message}",
+                                isLoading = false
+                            )
+                        }
+                        Timber.e(result.exception, "Error al cargar centros")
                     }
+                    is Result.Loading -> {} // Ya en isLoading = true
                 }
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            error = "Error al cargar los centros: ${result.exception?.message}",
-                            isLoading = false
-                        )
-                    }
-                    Timber.e(result.exception, "Error al cargar centros")
+            } catch (e: Exception) {
+                Timber.e(e, "❌ Error inesperado en loadCentrosAndSelectInitial: ${e.message}")
+                _uiState.update {
+                    it.copy(
+                        error = "Error al cargar centros: ${e.message}",
+                        isLoading = false
+                    )
                 }
-                is Result.Loading -> {} // Ya en isLoading = true
             }
         }
     }

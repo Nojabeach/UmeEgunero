@@ -35,6 +35,7 @@ import com.tfg.umeegunero.feature.common.users.viewmodel.ListProfesoresViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * Pantalla que muestra el listado de profesores del sistema
@@ -44,10 +45,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun ListProfesoresScreen(
     navController: NavController,
+    centroId: String,
     viewModel: ListProfesoresViewModel = hiltViewModel()
 ) {
     // Registrar actividad de pantalla
-    com.tfg.umeegunero.util.LogPantallas("ListaProfesores", "")
+    com.tfg.umeegunero.util.LogPantallas("ListaProfesores", "centroId=$centroId")
     
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -56,10 +58,17 @@ fun ListProfesoresScreen(
     var showFilterDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
-    LaunchedEffect(Unit) {
-        viewModel.cargarProfesores()
-        // Obtener el centroId del usuario actual (administrador de centro)
-        viewModel.obtenerCentroIdUsuarioActual()
+    // Cargar profesores usando el centroId recibido
+    LaunchedEffect(centroId) { // Lanzar efecto cuando centroId cambie (o al inicio)
+        if (centroId.isNotBlank()) {
+            viewModel.cargarProfesores(centroId)
+        } else {
+            // Manejar caso de centroId inválido si es necesario (aunque ahora debería ser obligatorio)
+            Timber.e("ListProfesoresScreen recibió un centroId vacío.")
+            // Podrías mostrar un error o navegar hacia atrás
+            // navController.popBackStack()
+        }
+        // La llamada a obtenerCentroIdUsuarioActual ya no es necesaria
     }
     
     // Mostrar errores como Snackbar
@@ -103,20 +112,35 @@ fun ListProfesoresScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
+            // Usar directamente el centroId recibido como argumento
+            val centroIdDisponible = centroId.isNotBlank()
             ExtendedFloatingActionButton(
                 onClick = { 
-                    // Usar el centroId del administrador actual para la navegación
-                    navController.navigate(AppScreens.AddUser.createRoute(
-                        isAdminApp = false, 
-                        tipoUsuario = TipoUsuario.PROFESOR.toString(),
-                        centroId = uiState.centroId,  // Pasar el ID del centro
-                        centroBloqueado = true       // Bloquear selección de centro
-                    ))
+                    if (centroIdDisponible) {
+                        // Usar el centroId recibido para la navegación
+                        navController.navigate(AppScreens.AddUser.createRoute(
+                            isAdminApp = false, 
+                            tipoUsuario = TipoUsuario.PROFESOR.toString(),
+                            centroId = centroId,  // Pasar el ID del centro recibido
+                            centroBloqueado = true       // Bloquear selección de centro
+                        ))
+                    } else {
+                        // Mostrar mensaje si no se puede añadir por falta de centroId
+                        // Este caso es menos probable ahora que centroId es un argumento requerido
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "No se puede añadir profesor: ID de centro no disponible.",
+                                duration = SnackbarDuration.Long
+                            )
+                        }
+                    }
                 },
                 icon = { Icon(Icons.Default.Add, "Añadir") },
                 text = { Text("Nuevo Profesor") },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                containerColor = if (centroIdDisponible) MaterialTheme.colorScheme.primaryContainer 
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f), // Color atenuado si está deshabilitado (visualmente)
+                contentColor = if (centroIdDisponible) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
     ) { paddingValues ->
@@ -135,16 +159,25 @@ fun ListProfesoresScreen(
             }
             
             // Mensaje cuando no hay profesores
+            // El onClick aquí también debe usar el centroId del argumento
             if (!uiState.isLoading && uiState.profesores.isEmpty()) {
                 EmptyProfesoresList(
                     onAddClicked = {
-                        // Usar el centroId del administrador actual para la navegación
-                        navController.navigate(AppScreens.AddUser.createRoute(
-                            isAdminApp = false, 
-                            tipoUsuario = TipoUsuario.PROFESOR.toString(),
-                            centroId = uiState.centroId,  // Pasar el ID del centro
-                            centroBloqueado = true       // Bloquear selección de centro
-                        ))
+                        if (centroId.isNotBlank()) {
+                             navController.navigate(AppScreens.AddUser.createRoute(
+                                isAdminApp = false, 
+                                tipoUsuario = TipoUsuario.PROFESOR.toString(),
+                                centroId = centroId,
+                                centroBloqueado = true
+                            ))
+                        } else {
+                             scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "No se puede añadir profesor: ID de centro no disponible.",
+                                    duration = SnackbarDuration.Long
+                                )
+                            }
+                        }
                     }
                 )
             }
@@ -423,6 +456,6 @@ private fun FilterDialog(
 @Composable
 fun ListProfesoresScreenPreview() {
     UmeEguneroTheme {
-        ListProfesoresScreen(navController = rememberNavController())
+        ListProfesoresScreen(navController = rememberNavController(), centroId = "")
     }
 } 

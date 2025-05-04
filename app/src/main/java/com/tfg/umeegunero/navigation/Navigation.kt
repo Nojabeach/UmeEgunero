@@ -657,9 +657,16 @@ fun Navigation(
             )
         }
         
-        composable(route = AppScreens.ProfesorList.route) {
+        composable(
+            route = AppScreens.ProfesorList.route,
+            arguments = AppScreens.ProfesorList.arguments
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString(AppScreens.ProfesorList.ARG_CENTRO_ID)
+            requireNotNull(centroId) { "El ID del centro es obligatorio para la lista de profesores." }
+            
             com.tfg.umeegunero.feature.common.users.screen.ListProfesoresScreen(
                 navController = navController,
+                centroId = centroId,
                 viewModel = hiltViewModel()
             )
         }
@@ -735,6 +742,22 @@ fun Navigation(
         }
 
         // Pantalla para vincular profesor a una clase
+        composable(
+            route = AppScreens.VincularProfesorClase.route,
+            arguments = listOf(
+                navArgument("centroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            
+            // Navegar a la pantalla de vincular profesor a clase
+            com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
+                centroId = centroId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // También mantenemos la ruta antigua para compatibilidad con navegaciones desde otras partes
         composable(
             route = "vincular_profesor_clase/{claseId}?cursoId={cursoId}",
             arguments = listOf(

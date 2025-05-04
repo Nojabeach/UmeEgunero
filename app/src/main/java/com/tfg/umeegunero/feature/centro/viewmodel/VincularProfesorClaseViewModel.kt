@@ -219,8 +219,9 @@ class VincularProfesorClaseViewModel @Inject constructor(
     
     /**
      * Obtiene un centro por su ID
+     * Método expuesto para que la pantalla pueda inicializar con un centroId
      */
-    private suspend fun obtenerCentroPorId(centroId: String): Centro? {
+    suspend fun obtenerCentroPorId(centroId: String): Centro? {
         return try {
             when (val result = centroRepository.getCentroById(centroId)) {
                 is Result.Success -> {
@@ -547,7 +548,17 @@ class VincularProfesorClaseViewModel @Inject constructor(
                     // Crear un mapa donde cada clase del curso tiene un valor booleano
                     // que indica si está asignada al profesor o no
                     val clasesMap = clasesDelCurso.associateWith { clase ->
-                        clasesAsignadasAlProfesor.any { it.id == clase.id }
+                        // Una clase está asignada si existe en la lista de clases del profesor
+                        val asignada = clasesAsignadasAlProfesor.any { it.id == clase.id }
+                        
+                        // Registros detallados para depuración
+                        if (asignada) {
+                            Timber.d("Clase '${clase.nombre}' (${clase.id}) ASIGNADA a profesor ${profesor.nombre}")
+                        } else {
+                            Timber.d("Clase '${clase.nombre}' (${clase.id}) NO asignada a profesor ${profesor.nombre}")
+                        }
+                        
+                        asignada
                     }
                     
                     Timber.d("Profesor ${profesor.nombre}: ${clasesMap.count { it.value }} clases asignadas de ${clasesMap.size} disponibles")
@@ -596,27 +607,34 @@ class VincularProfesorClaseViewModel @Inject constructor(
     fun asignarProfesorAClase() {
         val profesorId = _uiState.value.profesorSeleccionado?.documentId ?: return
         val claseId = _uiState.value.claseSeleccionada?.id ?: return
+        val clase = _uiState.value.claseSeleccionada ?: return
+        
+        Timber.d("Iniciando asignación del profesor $profesorId a la clase ${clase.nombre} ($claseId)")
         
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 // 1. Asignar el profesor a la clase
+                Timber.d("Asignando profesor a clase en repositorio...")
                 claseRepository.asignarProfesor(claseId, profesorId)
                 
                 // 2. Actualizar el estado local
+                Timber.d("Actualizando estado local...")
                 val profesorClases = _uiState.value.clasesAsignadas.toMutableMap()
-                if (profesorClases.containsKey(profesorId)) {
-                    val clases = profesorClases[profesorId]?.toMutableMap() ?: mutableMapOf()
-                    _uiState.value.claseSeleccionada?.let { clase ->
-                        clases[clase] = true
-                    }
-                    profesorClases[profesorId] = clases
-                }
+                val clases = profesorClases[profesorId]?.toMutableMap() ?: mutableMapOf()
+                
+                // Marcar esta clase como asignada (true)
+                clases[clase] = true
+                profesorClases[profesorId] = clases
+                
+                Timber.d("Estado actualizado: clase ${clase.nombre} marcada como asignada para profesor $profesorId")
                 
                 // 3. Actualizar todos los alumnos de esta clase con el profesor asignado
+                Timber.d("Actualizando alumnos de la clase...")
                 actualizarAlumnosDeClaseConProfesor(claseId, profesorId)
                 
                 // 4. Mostrar mensaje de éxito
+                Timber.d("Asignación completada exitosamente")
                 _uiState.update {
                     it.copy(
                         clasesAsignadas = profesorClases,
@@ -649,27 +667,34 @@ class VincularProfesorClaseViewModel @Inject constructor(
     fun desasignarProfesorDeClase() {
         val profesorId = _uiState.value.profesorSeleccionado?.documentId ?: return
         val claseId = _uiState.value.claseSeleccionada?.id ?: return
+        val clase = _uiState.value.claseSeleccionada ?: return
+        
+        Timber.d("Iniciando desasignación del profesor $profesorId de la clase ${clase.nombre} ($claseId)")
         
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 // 1. Desasignar el profesor de la clase
+                Timber.d("Desasignando profesor de clase en repositorio...")
                 claseRepository.desasignarProfesor(claseId)
                 
                 // 2. Actualizar el estado local
+                Timber.d("Actualizando estado local...")
                 val profesorClases = _uiState.value.clasesAsignadas.toMutableMap()
-                if (profesorClases.containsKey(profesorId)) {
-                    val clases = profesorClases[profesorId]?.toMutableMap() ?: mutableMapOf()
-                    _uiState.value.claseSeleccionada?.let { clase ->
-                        clases[clase] = false
-                    }
-                    profesorClases[profesorId] = clases
-                }
+                val clases = profesorClases[profesorId]?.toMutableMap() ?: mutableMapOf()
+                
+                // Marcar esta clase como no asignada (false)
+                clases[clase] = false
+                profesorClases[profesorId] = clases
+                
+                Timber.d("Estado actualizado: clase ${clase.nombre} marcada como NO asignada para profesor $profesorId")
                 
                 // 3. Actualizar todos los alumnos de esta clase para eliminar la referencia al profesor
+                Timber.d("Actualizando alumnos de la clase...")
                 eliminarProfesorDeAlumnosDeClase(claseId, profesorId)
                 
                 // 4. Mostrar mensaje de éxito
+                Timber.d("Desasignación completada exitosamente")
                 _uiState.update {
                     it.copy(
                         clasesAsignadas = profesorClases,
@@ -748,7 +773,10 @@ class VincularProfesorClaseViewModel @Inject constructor(
      */
     fun isProfesorAsignadoAClase(profesorId: String, claseId: String): Boolean {
         val clasesAsignadas = _uiState.value.clasesAsignadas[profesorId] ?: emptyMap()
-        return clasesAsignadas.any { (clase, _) -> clase.id == claseId }
+        // Buscar en el mapa de clases asignadas la clase con el ID específico y verificar si el valor es true
+        return clasesAsignadas.entries.any { (clase, asignada) -> 
+            clase.id == claseId && asignada 
+        }
     }
     
     /**
@@ -861,5 +889,12 @@ class VincularProfesorClaseViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+    
+    /**
+     * Muestra un mensaje de error
+     */
+    fun mostrarError(mensaje: String) {
+        _uiState.update { it.copy(error = mensaje) }
     }
 } 

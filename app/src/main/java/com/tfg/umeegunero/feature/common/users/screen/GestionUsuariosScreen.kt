@@ -23,6 +23,7 @@ import com.tfg.umeegunero.feature.common.users.viewmodel.GestionUsuariosViewMode
 import com.tfg.umeegunero.feature.common.users.viewmodel.GestionUsuariosUiState
 import androidx.navigation.NavController
 import timber.log.Timber
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla central para la gestión de usuarios del sistema
@@ -49,6 +50,11 @@ fun GestionUsuariosScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentUser by viewModel.usuarioActual.collectAsState()
+    val centroIdAdmin by viewModel.centroIdAdmin.collectAsState()
+    
+    // Añadir snackbarHostState y scope
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     // Determinar si es admin de aplicación basándose en los perfiles del usuario actual
     // Si el usuario tiene el perfil de ADMIN_APP, se muestra la interfaz para administradores de aplicación
@@ -94,6 +100,7 @@ fun GestionUsuariosScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { onNavigateToAddUser(esAdminApp) },
@@ -178,7 +185,19 @@ fun GestionUsuariosScreen(
                                 icon = Icons.Default.School,
                                 onClick = { 
                                     // Opción 1: Navegar a la lista de profesores
-                                    handleNavigateToUserList(AppScreens.ProfesorList.route)
+                                    // Asegurarse de que centroIdAdmin no esté vacío antes de navegar
+                                    if (centroIdAdmin.isNotBlank()) {
+                                        handleNavigateToUserList(AppScreens.ProfesorList.createRoute(centroIdAdmin))
+                                    } else {
+                                        // Mostrar error si no se puede navegar (Admin Centro sin centroId)
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                message = "Error: No se pudo determinar el centro para ver profesores.",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
+                                        Timber.e("Error al navegar a ProfesorList desde GestionUsuarios: centroIdAdmin está vacío.")
+                                    }
                                     
                                     // Opción alternativa si preferimos navegar directamente a añadir profesor:
                                     // navController.navigate(AppScreens.AddUser.createRoute(

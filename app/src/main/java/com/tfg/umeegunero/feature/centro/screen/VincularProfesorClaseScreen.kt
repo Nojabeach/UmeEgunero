@@ -53,17 +53,27 @@ import androidx.compose.material3.HorizontalDivider
 fun VincularProfesorClaseScreen(
     onBack: () -> Unit,
     claseId: String? = null,
+    centroId: String? = null,
     viewModel: VincularProfesorClaseViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // Inicializar con claseId si está disponible
-    LaunchedEffect(claseId) {
+    // Inicializar con claseId o centroId si está disponible
+    LaunchedEffect(claseId, centroId) {
         if (!claseId.isNullOrEmpty()) {
-            // Aquí cargaríamos la clase específica y los datos necesarios
+            // Inicializar con clase específica
             viewModel.inicializarConClase(claseId)
+        } else if (!centroId.isNullOrEmpty()) {
+            // Si no hay claseId, pero hay centroId, inicializar con centro
+            val centro = viewModel.obtenerCentroPorId(centroId)
+            if (centro != null) {
+                viewModel.seleccionarCentro(centro)
+            } else {
+                // Mostrar error si no se puede obtener el centro
+                viewModel.mostrarError("No se pudo obtener la información del centro.")
+            }
         }
     }
     
@@ -219,9 +229,18 @@ fun VincularProfesorClaseScreen(
                                     val profesorId = uiState.profesorSeleccionado?.documentId ?: ""
                                     val claseId = clase.id
                                     
-                                    if (viewModel.isProfesorAsignadoAClase(profesorId, claseId)) {
+                                    // Añadir registros de depuración
+                                    Timber.d("Clase seleccionada: ${clase.nombre} (ID: $claseId)")
+                                    Timber.d("Profesor seleccionado: ID: $profesorId")
+                                    
+                                    val asignada = viewModel.isProfesorAsignadoAClase(profesorId, claseId)
+                                    Timber.d("¿Está el profesor asignado a esta clase? $asignada")
+                                    
+                                    if (asignada) {
+                                        Timber.d("Mostrando diálogo de desasignación")
                                         viewModel.mostrarDialogoConfirmarDesasignacion(true)
                                     } else {
+                                        Timber.d("Mostrando diálogo de asignación")
                                         viewModel.mostrarDialogoAsignarClases(true)
                                     }
                                 },

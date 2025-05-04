@@ -23,8 +23,8 @@ data class ListProfesoresUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val soloActivos: Boolean = true,
-    val profesoresCompletos: List<Usuario> = emptyList(), // Lista completa sin filtros
-    val centroId: String = "" // ID del centro del administrador actual
+    val profesoresCompletos: List<Usuario> = emptyList() // Lista completa sin filtros
+    // centroId ya no es necesario aquí, se pasa como argumento
 )
 
 /**
@@ -39,14 +39,23 @@ class ListProfesoresViewModel @Inject constructor(
     val uiState: StateFlow<ListProfesoresUiState> = _uiState.asStateFlow()
 
     /**
-     * Carga la lista de profesores desde el repositorio
+     * Carga la lista de profesores desde el repositorio para un centro específico
+     * @param centroId El ID del centro cuyos profesores se cargarán
      */
-    fun cargarProfesores() {
+    fun cargarProfesores(centroId: String) {
+        if (centroId.isBlank()) {
+            Timber.e("Error: Se intentó cargar profesores con centroId vacío.")
+            _uiState.update { it.copy(error = "ID de centro inválido.", isLoading = false) }
+            return
+        }
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
+            Timber.d("Iniciando carga de profesores para centro: $centroId")
             
             try {
-                when (val result = usuarioRepository.getUsersByType(TipoUsuario.PROFESOR)) {
+                // Usar el método específico del repositorio
+                when (val result = usuarioRepository.getProfesoresByCentro(centroId)) {
                     is Result.Success -> {
                         val profesores = result.data
                         _uiState.update { 
@@ -56,16 +65,16 @@ class ListProfesoresViewModel @Inject constructor(
                                 isLoading = false
                             ) 
                         }
-                        Timber.d("Profesores cargados: ${profesores.size}")
+                        Timber.d("Profesores cargados para centro $centroId: ${profesores.size}")
                     }
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
-                                error = "Error al cargar profesores: ${result.exception?.message}",
+                                error = "Error al cargar profesores del centro: ${result.exception?.message}",
                                 isLoading = false
                             ) 
                         }
-                        Timber.e(result.exception, "Error al cargar profesores")
+                        Timber.e(result.exception, "Error al cargar profesores para centro $centroId")
                     }
                     is Result.Loading -> {
                         // Este estado lo manejamos al inicio
@@ -78,7 +87,7 @@ class ListProfesoresViewModel @Inject constructor(
                         isLoading = false
                     ) 
                 }
-                Timber.e(e, "Error inesperado al cargar profesores")
+                Timber.e(e, "Error inesperado al cargar profesores para centro $centroId")
             }
         }
     }
@@ -163,9 +172,8 @@ class ListProfesoresViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
-    /**
-     * Obtiene el ID del centro del usuario actualmente autenticado (administrador de centro)
-     */
+    // La función obtenerCentroIdUsuarioActual ya no es necesaria aquí
+    /*
     fun obtenerCentroIdUsuarioActual() {
         viewModelScope.launch {
             try {
@@ -191,4 +199,5 @@ class ListProfesoresViewModel @Inject constructor(
             }
         }
     }
+    */
 } 

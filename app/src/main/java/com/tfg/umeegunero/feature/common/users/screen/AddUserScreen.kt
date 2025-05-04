@@ -67,6 +67,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -663,6 +664,8 @@ fun AddUserScreen(
                                         Text(
                                             text = if (uiState.tipoUsuario == TipoUsuario.PROFESOR && !uiState.isEditMode)
                                                 "Tipo de usuario preseleccionado como profesor"
+                                            else if (uiState.tipoUsuario == TipoUsuario.ALUMNO && !uiState.isEditMode)
+                                                "Tipo de usuario preseleccionado como alumno"
                                             else
                                                 "No se permite cambiar el tipo de usuario en modo edición",
                                             style = MaterialTheme.typography.bodySmall,
@@ -1372,24 +1375,49 @@ fun CentroDropdown(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = centroSeleccionado,
+            value = centroSeleccionado.ifEmpty { "Seleccionar centro educativo" },
             onValueChange = {},
             readOnly = true,
             label = { Text("Centro Educativo") },
-            placeholder = { Text("Seleccionar centro educativo") },
             trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                if (enabled) {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Centro bloqueado",
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
+                }
             },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Business,
-                    contentDescription = null
+                    contentDescription = null,
+                    tint = if (!enabled) 
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    else 
+                        MaterialTheme.colorScheme.primary
                 )
             },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            colors = if (!enabled) {
+                OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledLeadingIconColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    disabledTrailingIconColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    disabledLabelColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                )
+            } else {
+                ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+            },
             enabled = !isLoading && enabled,
             isError = error != null,
-            supportingText = error?.let { { Text(text = it) } },
+            supportingText = if (!enabled && centroSeleccionado.isNotEmpty()) {
+                { Text("Centro educativo bloqueado", color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)) }
+            } else {
+                error?.let { { Text(text = it) } }
+            },
             modifier = Modifier
                 .menuAnchor()
                 .fillMaxWidth()

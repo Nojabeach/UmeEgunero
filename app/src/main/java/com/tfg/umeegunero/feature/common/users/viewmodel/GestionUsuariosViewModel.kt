@@ -24,6 +24,9 @@ class GestionUsuariosViewModel @Inject constructor(
     private val _usuarioActual = MutableStateFlow<Usuario?>(null)
     val usuarioActual: StateFlow<Usuario?> = _usuarioActual
 
+    private val _centroIdAdmin = MutableStateFlow<String>("")
+    val centroIdAdmin: StateFlow<String> = _centroIdAdmin
+
     private val _editandoPerfil = MutableStateFlow(false)
     val editandoPerfil: StateFlow<Boolean> = _editandoPerfil
 
@@ -36,12 +39,22 @@ class GestionUsuariosViewModel @Inject constructor(
             usuarioRepository.getUsuarioActual().collect { result ->
                 when (result) {
                     is Result.Success -> {
-                        _usuarioActual.value = result.data
+                        val usuario = result.data
+                        _usuarioActual.value = usuario
                         _uiState.value = GestionUsuariosUiState.Success
+                        
+                        if (usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_CENTRO } == true) {
+                            val centroId = usuario.perfiles.firstOrNull { it.tipo == TipoUsuario.ADMIN_CENTRO }?.centroId ?: ""
+                            _centroIdAdmin.value = centroId
+                            Timber.d("Usuario Admin Centro cargado. Centro ID: $centroId")
+                        } else {
+                            _centroIdAdmin.value = ""
+                        }
                     }
                     is Result.Error -> {
                         Timber.e(result.exception, "Error al cargar usuario actual")
                         _uiState.value = GestionUsuariosUiState.Error(result.exception?.message ?: "Error desconocido")
+                        _centroIdAdmin.value = ""
                     }
                     is Result.Loading -> {
                         _uiState.value = GestionUsuariosUiState.Loading

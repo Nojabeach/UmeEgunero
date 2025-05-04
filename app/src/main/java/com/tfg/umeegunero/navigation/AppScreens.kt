@@ -172,7 +172,14 @@ sealed class AppScreens(val route: String) {
     object Clases : AppScreens("admin_dashboard/clases")
     
     /** Lista de profesores dentro del dashboard de administración */
-    object ProfesorList : AppScreens("admin_dashboard/profesores")
+    object ProfesorList : AppScreens("admin_dashboard/profesores/{centroId}") {
+        const val ARG_CENTRO_ID = "centroId"
+        fun createRoute(centroId: String) = "admin_dashboard/profesores/$centroId"
+
+        val arguments = listOf(
+            navArgument(ARG_CENTRO_ID) { type = NavType.StringType }
+        )
+    }
     
     /** Lista de alumnos dentro del dashboard de administración */
     object AlumnoList : AppScreens("alumnos/{centroId}") {
@@ -597,7 +604,9 @@ sealed class AppScreens(val route: String) {
     object CrearUsuarioRapido : AppScreens("gestion_centro/crear_usuario")
 
     /** Pantalla para vincular profesores a clases */
-    object VincularProfesorClase : AppScreens("vincular_profesor_clase")
+    object VincularProfesorClase : AppScreens("vincular_profesor_clase/{centroId}") {
+        fun createRoute(centroId: String) = "vincular_profesor_clase/$centroId"
+    }
     
     /** Pantalla de configuración de seguridad */
     object Seguridad : AppScreens("seguridad")

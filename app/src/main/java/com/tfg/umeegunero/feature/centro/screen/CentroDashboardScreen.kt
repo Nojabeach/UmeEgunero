@@ -191,7 +191,19 @@ fun CentroDashboardScreen(
         }
     }
 
-    fun onNavigateToGestionProfesores() = navController.navigate(AppScreens.ProfesorList.route)
+    fun onNavigateToGestionProfesores() = try {
+        if (centroId.isNotBlank()) {
+             navController.navigate(AppScreens.ProfesorList.createRoute(centroId))
+        } else {
+             scope.launch {
+                snackbarHostState.showSnackbar("No se pudo obtener el ID del centro para ver profesores.")
+            }
+        }
+    } catch (e: Exception) {
+         scope.launch {
+            snackbarHostState.showSnackbar("Error al navegar a la gestión de profesores: ${e.message}")
+        }
+    }
     fun onNavigateToAddAlumno() = try {
         if (centroId.isNotBlank()) {
             navController.navigate(AppScreens.AlumnoList.createRoute(centroId))
@@ -205,7 +217,19 @@ fun CentroDashboardScreen(
             snackbarHostState.showSnackbar("Error al navegar a lista de alumnos: ${e.message}")
         }
     }
-    fun onNavigateToVincularProfesorClase() = navController.navigate(AppScreens.VincularProfesorClase.route)
+    fun onNavigateToVincularProfesorClase() = try {
+        if (centroId.isNotBlank()) {
+            navController.navigate(AppScreens.VincularProfesorClase.createRoute(centroId))
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("No se pudo obtener el ID del centro para vincular profesores a clases.")
+            }
+        }
+    } catch (e: Exception) {
+        scope.launch {
+            snackbarHostState.showSnackbar("Error al navegar a vinculación de profesores y clases: ${e.message}")
+        }
+    }
     fun onNavigateToVinculacionFamiliar() = navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
     fun onNavigateToCalendario() = navController.navigate(AppScreens.Calendario.route)
     fun onNavigateToNotificaciones() = navController.navigate(AppScreens.Notificaciones.route)
