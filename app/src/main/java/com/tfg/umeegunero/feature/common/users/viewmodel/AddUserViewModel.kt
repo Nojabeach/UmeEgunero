@@ -174,7 +174,7 @@ class AddUserViewModel @Inject constructor(
         // 3. Determinar si el centro debe estar bloqueado
         // Prioridad: Argumento 'bloqueado' > Lógica interna (AdminCentro, Profesor creado por AdminCentro)
         val isCentroBloqueado = bloqueado || // Si el argumento lo fuerza
-                                tipoUsuario == TipoUsuario.ADMIN_CENTRO || // Si es Admin Centro
+                                (tipoUsuario == TipoUsuario.ADMIN_CENTRO && !isAdminAppFlag) || // Si es Admin Centro creado por otro Admin Centro
                                 (tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag) // Si Admin Centro crea Profesor
         Timber.d("Centro Bloqueado Determinado: $isCentroBloqueado")
 

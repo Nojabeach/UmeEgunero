@@ -93,7 +93,7 @@ fun ListAdministradoresCentroScreen(
             ExtendedFloatingActionButton(
                 onClick = { 
                     navController.navigate(AppScreens.AddUser.createRoute(
-                        isAdminApp = false, 
+                        isAdminApp = true, 
                         tipoUsuario = TipoUsuario.ADMIN_CENTRO.toString()
                     ))
                 },
@@ -123,7 +123,7 @@ fun ListAdministradoresCentroScreen(
                 EmptyAdminsCentroList(
                     onAddClicked = {
                         navController.navigate(AppScreens.AddUser.createRoute(
-                            isAdminApp = false, 
+                            isAdminApp = true, 
                             tipoUsuario = TipoUsuario.ADMIN_CENTRO.toString()
                         ))
                     }

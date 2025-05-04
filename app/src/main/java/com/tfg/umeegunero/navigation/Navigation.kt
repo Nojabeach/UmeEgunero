@@ -344,7 +344,7 @@ fun Navigation(
                 isAdminApp = isAdminApp,
                 tipoPreseleccionado = tipoUsuarioStr,
                 centroIdInicial = centroId,
-                centroBloqueadoInicial = centroBloqueado,
+                centroBloqueadoInicial = false,
                 dniUsuario = dniUsuario
             )
         }
@@ -706,7 +706,7 @@ fun Navigation(
                 isAdminApp = false,
                 tipoPreseleccionado = tipoUsuarioStr,
                 centroIdInicial = null,
-                centroBloqueadoInicial = tipoUsuarioStr == "ADMIN_CENTRO",
+                centroBloqueadoInicial = false,
                 dniUsuario = dni
             )
         }

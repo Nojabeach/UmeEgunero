@@ -190,6 +190,9 @@ import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import androidx.compose.animation.core.LinearEasing
 import timber.log.Timber
+import android.net.Uri
+import android.content.Intent
+import android.widget.Toast
 
 /**
  * Función de extensión para calcular la luminosidad de un color.
@@ -737,7 +740,7 @@ fun RegistroUiState.calculateOverallProgress(): Float {
      // Paso 3 (Centro/Alumnos)
      if (form.centroId.isNotBlank()) camposCompletados++
      // Opcional: añadir al progreso si al menos un DNI válido es introducido
-     // if (form.alumnosDni.any { it.isNotBlank() && validateDni(it) }) camposCompletados++
+     if (form.alumnosDni.any { it.isNotBlank() && validateDni(it) }) camposCompletados++
 
 
      return if (totalCamposObligatorios > 0) {
@@ -824,7 +827,10 @@ fun Step1Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
          leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                                 trailingIcon = {
                                     Row {
-                                        IconButton(onClick = { showPasswordRequirements = !showPasswordRequirements }) {
+                                        IconButton(onClick = { 
+                                            showPasswordRequirements = !showPasswordRequirements 
+                                            Timber.d("Toggle showPasswordRequirements: $showPasswordRequirements")
+                                        }) {
                      Icon(Icons.Default.Info, "Requisitos")
                                         }
                                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -841,8 +847,42 @@ fun Step1Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
          isError = uiState.passwordError != null,
          supportingText = uiState.passwordError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
      )
-     // Indicador fortaleza y requisitos (si se quieren mantener)
-     // ... (LinearProgressIndicator y AnimatedVisibility con PasswordRequirementsCard)
+
+    // Añadir visualización de requisitos de contraseña cuando se hace clic en el icono de información
+    AnimatedVisibility(
+        visible = showPasswordRequirements,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+    ) {
+        LaunchedEffect(Unit) {
+            Timber.d("✅ AnimatedVisibility: Tarjeta de requisitos mostrada")
+        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+                .clickable { showPasswordRequirements = false },
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                PasswordRequirementsCard(password = uiState.form.password)
+                
+                IconButton(
+                    onClick = { showPasswordRequirements = false },
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cerrar",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+    }
 
     // Confirmar Contraseña
     OutlinedTextField(
@@ -953,7 +993,7 @@ fun Step2Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
          keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
          error = uiState.direccionError,
-         placeholder = "28001",
+         placeholder = "48001",
          supportingText = { 
              if (uiState.isLoadingDireccion) {
                  Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1006,34 +1046,43 @@ fun Step2Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
                  )
              }
              
-             // Mapa estático
-             Card(
+             // Reemplazar el mapa estático por un botón que abra Google Maps
+             val context = LocalContext.current
+             Button(
+                 onClick = {
+                     try {
+                         val uri = Uri.parse("geo:${uiState.coordenadasLatitud},${uiState.coordenadasLongitud}?q=${uiState.coordenadasLatitud},${uiState.coordenadasLongitud}")
+                         val mapIntent = Intent(Intent.ACTION_VIEW, uri)
+                         mapIntent.setPackage("com.google.android.apps.maps")
+                         
+                         // Verificar si Google Maps está instalado
+                         if (mapIntent.resolveActivity(context.packageManager) != null) {
+                             context.startActivity(mapIntent)
+                         } else {
+                             // Si Google Maps no está instalado, abrir en el navegador
+                             val browserUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${uiState.coordenadasLatitud},${uiState.coordenadasLongitud}")
+                             val browserIntent = Intent(Intent.ACTION_VIEW, browserUri)
+                             context.startActivity(browserIntent)
+                         }
+                     } catch (e: Exception) {
+                         Timber.e(e, "Error al abrir Google Maps")
+                         Toast.makeText(context, "No se pudo abrir el mapa", Toast.LENGTH_SHORT).show()
+                     }
+                 },
                  modifier = Modifier
                      .fillMaxWidth()
-                     .height(150.dp)
                      .padding(vertical = 8.dp),
-                 colors = CardDefaults.cardColors(
-                     containerColor = MaterialTheme.colorScheme.surfaceVariant
+                 colors = ButtonDefaults.buttonColors(
+                     containerColor = MaterialTheme.colorScheme.primary
                  )
              ) {
-                 Box(
-                     modifier = Modifier.fillMaxSize(),
-                     contentAlignment = Alignment.Center
-                 ) {
-                     if (uiState.mapaUrl != null) {
-                         // Cargar imagen desde URL usando AsyncImage (recomendado por Coil)
-                         AsyncImage(
-                             model = uiState.mapaUrl,
-                             contentDescription = "Mapa de ${uiState.form.direccion.ciudad}, ${uiState.form.direccion.provincia}",
-                             modifier = Modifier.fillMaxSize(),
-                             contentScale = ContentScale.Crop,
-                             error = painterResource(id = com.google.android.material.R.drawable.mtrl_ic_error),
-                             placeholder = painterResource(id = com.google.android.material.R.drawable.material_ic_calendar_black_24dp)
-                         )
-                     } else {
-                         Text("Mapa de la ubicación (${uiState.form.direccion.ciudad}, ${uiState.form.direccion.provincia})")
-                     }
-                 }
+                 Icon(
+                     imageVector = Icons.Default.Map,
+                     contentDescription = "Ver en Google Maps",
+                     modifier = Modifier.size(20.dp)
+                 )
+                 Spacer(modifier = Modifier.width(8.dp))
+                 Text("Ver ubicación en Google Maps")
              }
          }
      }
@@ -1126,92 +1175,91 @@ fun Step3Content(uiState: RegistroUiState, viewModel: RegistroViewModel, focusMa
          Text("Debes seleccionar un centro", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
      }
 
+     Spacer(modifier = Modifier.height(16.dp))
 
-    Spacer(modifier = Modifier.height(16.dp))
-
-    // Sección para DNIs de alumnos (movida aquí desde el Card principal)
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                            ) {
-                                Text(
-                text = "DNIs de Alumnos Vinculados", // Título más descriptivo
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Text(
-                text = "Introduce el DNI de cada alumno que deseas vincular. El centro verificará esta información.",
+     // Sección para DNIs de alumnos (movida aquí desde el Card principal)
+     Card(
+         modifier = Modifier
+             .fillMaxWidth()
+             .padding(vertical = 8.dp),
+         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+     ) {
+         Column(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .padding(16.dp)
+         ) {
+             Text(
+                 text = "DNIs de Alumnos Vinculados", // Título más descriptivo
+                 style = MaterialTheme.typography.titleMedium,
+                 modifier = Modifier.padding(bottom = 8.dp)
+             )
+             Text(
+                 text = "Introduce el DNI de cada alumno que deseas vincular. El centro verificará esta información.",
                  style = MaterialTheme.typography.bodySmall,
                  modifier = Modifier.padding(bottom = 12.dp)
              )
 
-            if (uiState.form.alumnosDni.isEmpty()) {
-                Text(
-                    "Aún no has añadido ningún DNI.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            } else {
-                                uiState.form.alumnosDni.forEachIndexed { index, dni ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        OutlinedTextField(
-                                            value = dni,
+             if (uiState.form.alumnosDni.isEmpty()) {
+                 Text(
+                     "Aún no has añadido ningún DNI.",
+                     style = MaterialTheme.typography.bodyMedium,
+                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                     modifier = Modifier.padding(bottom = 8.dp)
+                 )
+             } else {
+                 uiState.form.alumnosDni.forEachIndexed { index, dni ->
+                     Row(
+                         modifier = Modifier
+                             .fillMaxWidth()
+                             .padding(vertical = 4.dp),
+                         verticalAlignment = Alignment.CenterVertically
+                     ) {
+                         OutlinedTextField(
+                             value = dni,
                              // Usar onValueChange directamente para actualizar alumno específico
-                                            onValueChange = { viewModel.updateAlumnoDni(index, it) },
-                            label = { Text("DNI Alumno ${index + 1}") },
-                                            modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = if (index == uiState.form.alumnosDni.lastIndex) ImeAction.Done else ImeAction.Next),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                                onDone = { focusManager.clearFocus() }
-                            ),
+                             onValueChange = { viewModel.updateAlumnoDni(index, it) },
+                             label = { Text("DNI Alumno ${index + 1}") },
+                             modifier = Modifier.weight(1f),
+                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = if (index == uiState.form.alumnosDni.lastIndex) ImeAction.Done else ImeAction.Next),
+                             keyboardActions = KeyboardActions(
+                                 onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                                 onDone = { focusManager.clearFocus() }
+                             ),
                              singleLine = true,
-                                            isError = dni.isNotBlank() && !validateDni(dni),
-                                            supportingText = {
-                                                if (dni.isNotBlank() && !validateDni(dni)) {
-                                                    Text(
-                                        "Formato DNI inválido", // Mensaje más corto
-                                                        color = MaterialTheme.colorScheme.error
-                                                    )
-                                                }
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                    Icons.Default.Badge, // O usar otro icono como ChildCare
-                                                    contentDescription = "DNI del alumno"
-                                                )
-                                            }
-                                        )
+                             isError = dni.isNotBlank() && !validateDni(dni),
+                             supportingText = {
+                                 if (dni.isNotBlank() && !validateDni(dni)) {
+                                     Text(
+                                         "Formato DNI inválido", // Mensaje más corto
+                                         color = MaterialTheme.colorScheme.error
+                                     )
+                                 }
+                             },
+                             leadingIcon = {
+                                 Icon(
+                                     Icons.Default.Badge, // O usar otro icono como ChildCare
+                                     contentDescription = "DNI del alumno"
+                                 )
+                             }
+                         )
 
-                                        IconButton(
-                                            onClick = { viewModel.removeAlumnoDni(index) },
-                                            modifier = Modifier.padding(start = 8.dp)
-                                        ) {
-                                            Icon(
+                         IconButton(
+                             onClick = { viewModel.removeAlumnoDni(index) },
+                             modifier = Modifier.padding(start = 8.dp)
+                         ) {
+                             Icon(
                                  imageVector = Icons.Filled.Delete,
                                  contentDescription = "Eliminar DNI",
                                  tint = MaterialTheme.colorScheme.error
                              )
                          }
-                    }
+                     }
                  }
-            }
+             }
 
              // Mostrar error si no se ha añadido ningún alumno y es obligatorio
-             val showErrorAlMenosUno = !uiState.form.alumnosDni.any { it.isBlank() } && uiState.currentStep == 3
+             val showErrorAlMenosUno = !uiState.form.alumnosDni.any { it.isNotBlank() } && uiState.currentStep == 3
              if (showErrorAlMenosUno) {
                  Text(
                      "Debes añadir el DNI de al menos un alumno.",
@@ -1219,23 +1267,24 @@ fun Step3Content(uiState: RegistroUiState, viewModel: RegistroViewModel, focusMa
                      style = MaterialTheme.typography.bodySmall,
                      modifier = Modifier.padding(top = 4.dp)
                  )
-                                }
+             }
 
-                                Button(
-                                    onClick = { viewModel.addAlumnoDni() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                    .padding(top = 16.dp) // Más espacio antes del botón
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Añadir DNI"
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                Text("Añadir DNI de Alumno")
-            }
-        }
-    }
+             // Botón para añadir DNIs
+             Button(
+                 onClick = { viewModel.addAlumnoDni() },
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .padding(top = 16.dp) // Más espacio antes del botón
+             ) {
+                 Icon(
+                     imageVector = Icons.Default.Add,
+                     contentDescription = "Añadir DNI"
+                 )
+                 Spacer(modifier = Modifier.width(8.dp))
+                 Text("Añadir DNI de Alumno")
+             }
+         }
+     }
 }
 
 /**
@@ -1376,46 +1425,42 @@ private fun CamposFaltantesDialog(
  */
 @Composable
 private fun PasswordRequirementsCard(password: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+    Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Requisitos de contraseña:",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            PasswordRequirementItem(
-                text = "Al menos 6 caracteres",
-                isMet = password.length >= 6,
-                icon = Icons.Default.TextFields
-            )
-            
-            PasswordRequirementItem(
-                text = "Al menos una letra",
-                isMet = password.any { it.isLetter() },
-                icon = Icons.Default.TextFormat
-            )
-            
-            PasswordRequirementItem(
-                text = "Al menos un número",
-                isMet = password.any { it.isDigit() },
-                icon = Icons.Default.Tag
-            )
-            
-            PasswordRequirementItem(
-                text = "Al menos un carácter especial",
-                isMet = password.any { !it.isLetterOrDigit() },
-                icon = Icons.Default.Lock
-            )
-        }
+        Text(
+            text = "Requisitos de contraseña:",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        PasswordRequirementItem(
+            text = "Al menos 6 caracteres",
+            isMet = password.length >= 6,
+            icon = Icons.Default.TextFields
+        )
+        
+        PasswordRequirementItem(
+            text = "Al menos una letra",
+            isMet = password.any { it.isLetter() },
+            icon = Icons.Default.TextFormat
+        )
+        
+        PasswordRequirementItem(
+            text = "Al menos un número",
+            isMet = password.any { it.isDigit() },
+            icon = Icons.Default.Tag
+        )
+        
+        PasswordRequirementItem(
+            text = "Al menos un carácter especial",
+            isMet = password.any { !it.isLetterOrDigit() },
+            icon = Icons.Default.Lock
+        )
     }
 }
 
@@ -1433,7 +1478,16 @@ private fun PasswordRequirementItem(
     icon: ImageVector
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = if (isMet) 
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                else
+                    Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1442,19 +1496,20 @@ private fun PasswordRequirementItem(
             tint = if (isMet) 
                 MaterialTheme.colorScheme.primary 
             else 
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.size(20.dp)
+                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+            modifier = Modifier.size(24.dp)
         )
         
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isMet) 
-                MaterialTheme.colorScheme.onSurface 
+                MaterialTheme.colorScheme.primary 
             else 
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+            fontWeight = if (isMet) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
