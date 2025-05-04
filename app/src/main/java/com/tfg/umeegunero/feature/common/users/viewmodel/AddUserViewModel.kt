@@ -574,6 +574,10 @@ class AddUserViewModel @Inject constructor(
         val error = when {
             password.isBlank() -> "La contraseña es obligatoria"
             password.length < 6 -> "La contraseña debe tener al menos 6 caracteres"
+            !password.any { it.isLetter() } -> "La contraseña debe incluir al menos una letra"
+            !password.any { it.isDigit() } -> "La contraseña debe incluir al menos un número"
+            !password.any { !it.isLetterOrDigit() } -> "La contraseña debe incluir al menos un carácter especial"
+            !validatePassword(password) -> "La contraseña no cumple los requisitos mínimos"
             else -> null
         }
         
@@ -1084,7 +1088,11 @@ class AddUserViewModel @Inject constructor(
 
     // Validaciones auxiliares
     private fun isDniValid(dni: String): Boolean {
-        return dni.length == 9 && dni.substring(0, 8).all { it.isDigit() }
+        val dniPattern = Regex("^\\d{8}[A-HJ-NP-TV-Z]$")
+        if (!dniPattern.matches(dni.uppercase())) return false
+        val letras = "TRWAGMYFPDXBNJZSQVHLCKE"
+        val numero = dni.substring(0, 8).toIntOrNull() ?: return false
+        return dni.uppercase()[8] == letras[numero % 23]
     }
 
     private fun isEmailValid(email: String): Boolean {
@@ -1394,5 +1402,20 @@ class AddUserViewModel @Inject constructor(
      */
     fun updateObservaciones(observaciones: String) {
         _uiState.update { it.copy(observaciones = observaciones) }
+    }
+
+    /**
+     * Función de validación de contraseña
+     * Comprueba que la contraseña cumpla con los requisitos de seguridad:
+     * - Al menos 6 caracteres
+     * - Al menos una letra
+     * - Al menos un dígito
+     * - Al menos un carácter especial
+     */
+    private fun validatePassword(password: String): Boolean {
+        return password.length >= 6 && 
+               password.any { it.isLetter() } && 
+               password.any { it.isDigit() } &&
+               password.any { !it.isLetterOrDigit() } // Validar al menos un carácter especial
     }
 }

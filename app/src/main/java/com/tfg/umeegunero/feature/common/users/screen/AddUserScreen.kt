@@ -139,6 +139,14 @@ import androidx.compose.material3.MenuDefaults
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.TextFormat
+import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * ViewModel de muestra para el preview
@@ -960,55 +968,102 @@ fun AddUserScreen(
                                 )
 
                                 // Contraseña
-                                OutlinedTextField(
-                                    value = uiState.password,
-                                    onValueChange = onUpdatePassword,
-                                    label = { Text("Contraseña") },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = null,
-                                            tint = if (uiState.passwordError != null)
-                                                MaterialTheme.colorScheme.error
-                                            else
-                                                MaterialTheme.colorScheme.primary
-                                        )
-                                    },
-                                    trailingIcon = {
-                                        IconButton(onClick = { showPassword = !showPassword }) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    var showPasswordRequirements by remember { mutableStateOf(false) }
+
+                                    OutlinedTextField(
+                                        value = uiState.password,
+                                        onValueChange = onUpdatePassword,
+                                        label = { Text("Contraseña") },
+                                        leadingIcon = {
                                             Icon(
-                                                imageVector = if (showPassword) 
-                                                    Icons.Default.VisibilityOff 
-                                                else 
-                                                    Icons.Default.Visibility,
-                                                contentDescription = if (showPassword)
-                                                    "Ocultar contraseña"
+                                                imageVector = Icons.Default.Lock,
+                                                contentDescription = null,
+                                                tint = if (uiState.passwordError != null)
+                                                    MaterialTheme.colorScheme.error
                                                 else
-                                                    "Mostrar contraseña"
+                                                    MaterialTheme.colorScheme.primary
                                             )
+                                        },
+                                        trailingIcon = {
+                                            Row {
+                                                IconButton(onClick = { showPasswordRequirements = !showPasswordRequirements }) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Info,
+                                                        contentDescription = "Requisitos",
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                                IconButton(onClick = { showPassword = !showPassword }) {
+                                                    Icon(
+                                                        imageVector = if (showPassword) 
+                                                            Icons.Default.VisibilityOff 
+                                                        else 
+                                                            Icons.Default.Visibility,
+                                                        contentDescription = if (showPassword)
+                                                            "Ocultar contraseña"
+                                                        else
+                                                            "Mostrar contraseña"
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        visualTransformation = if (showPassword) 
+                                            VisualTransformation.None 
+                                        else 
+                                            PasswordVisualTransformation(),
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Password,
+                                            imeAction = ImeAction.Next
+                                        ),
+                                        keyboardActions = KeyboardActions(
+                                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                        ),
+                                        isError = uiState.passwordError != null,
+                                        supportingText = {
+                                            if (uiState.passwordError != null) {
+                                                Text(text = uiState.passwordError)
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .focusRequester(passwordFocusRequester),
+                                        shape = RoundedCornerShape(8.dp),
+                                        singleLine = true
+                                    )
+                                    
+                                    AnimatedVisibility(
+                                        visible = showPasswordRequirements,
+                                        enter = fadeIn() + expandVertically(),
+                                        exit = fadeOut() + shrinkVertically()
+                                    ) {
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp)
+                                                .clickable { showPasswordRequirements = false },
+                                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                                            )
+                                        ) {
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                PasswordRequirementsCard(password = uiState.password)
+                                                
+                                                IconButton(
+                                                    onClick = { showPasswordRequirements = false },
+                                                    modifier = Modifier.align(Alignment.TopEnd)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Close,
+                                                        contentDescription = "Cerrar",
+                                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                                    )
+                                                }
+                                            }
                                         }
-                                    },
-                                    visualTransformation = if (showPassword) 
-                                        VisualTransformation.None 
-                                    else 
-                                        PasswordVisualTransformation(),
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Password,
-                                        imeAction = ImeAction.Next
-                                    ),
-                                    keyboardActions = KeyboardActions(
-                                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                                    ),
-                                    isError = uiState.passwordError != null,
-                                    supportingText = {
-                                        if (uiState.passwordError != null) {
-                                            Text(text = uiState.passwordError)
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
-                                    shape = RoundedCornerShape(8.dp),
-                                    singleLine = true
-                                )
+                                    }
+                                }
 
                                 // Confirmar contraseña
                                 OutlinedTextField(
@@ -1905,5 +1960,98 @@ class PhoneNumberVisualTransformation : VisualTransformation {
         }
 
         return TransformedText(AnnotatedString(formattedNumber), offsetMapping)
+    }
+}
+
+/**
+ * Componente que muestra los requisitos de contraseña
+ */
+@Composable
+private fun PasswordRequirementsCard(
+    password: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Requisitos de contraseña:",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        PasswordRequirementItem(
+            text = "Al menos 6 caracteres",
+            isMet = password.length >= 6,
+            icon = Icons.Default.TextFields
+        )
+        
+        PasswordRequirementItem(
+            text = "Al menos una letra",
+            isMet = password.any { it.isLetter() },
+            icon = Icons.Default.TextFormat
+        )
+        
+        PasswordRequirementItem(
+            text = "Al menos un número",
+            isMet = password.any { it.isDigit() },
+            icon = Icons.Default.Tag
+        )
+        
+        PasswordRequirementItem(
+            text = "Al menos un carácter especial",
+            isMet = password.any { !it.isLetterOrDigit() },
+            icon = Icons.Default.Lock
+        )
+    }
+}
+
+/**
+ * Ítem individual que muestra un requisito de contraseña
+ */
+@Composable
+private fun PasswordRequirementItem(
+    text: String,
+    isMet: Boolean,
+    icon: ImageVector
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = if (isMet) 
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                else
+                    Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isMet) Icons.Default.CheckCircle else icon,
+            contentDescription = null,
+            tint = if (isMet) 
+                MaterialTheme.colorScheme.primary 
+            else 
+                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+            modifier = Modifier.size(24.dp)
+        )
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isMet) 
+                MaterialTheme.colorScheme.primary 
+            else 
+                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+            fontWeight = if (isMet) FontWeight.Bold else FontWeight.Normal
+        )
     }
 }
