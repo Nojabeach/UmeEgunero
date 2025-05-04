@@ -18,6 +18,10 @@ import com.google.firebase.Timestamp
  * @property centroId ID del centro educativo
  * @property fechaSolicitud Fecha en que se realizó la solicitud
  * @property estado Estado actual de la solicitud (Pendiente, Aprobada, Rechazada)
+ * @property adminId ID del administrador que procesó la solicitud
+ * @property nombreAdmin Nombre del administrador que procesó la solicitud
+ * @property fechaProcesamiento Fecha en que se procesó la solicitud
+ * @property observaciones Observaciones adicionales sobre la solicitud
  */
 data class SolicitudVinculacion(
     val id: String = "",
@@ -29,5 +33,9 @@ data class SolicitudVinculacion(
     val tipoRelacion: String = "",
     val centroId: String = "",
     val fechaSolicitud: Timestamp = Timestamp.now(),
-    val estado: EstadoSolicitud = EstadoSolicitud.PENDIENTE
+    val estado: EstadoSolicitud = EstadoSolicitud.PENDIENTE,
+    val adminId: String = "",
+    val nombreAdmin: String = "",
+    val fechaProcesamiento: Timestamp? = null,
+    val observaciones: String = ""
 ) 

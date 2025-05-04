@@ -87,10 +87,30 @@ class AppNotificationManager @Inject constructor(
                 enableVibration(false)
             }
             
+            // Canal para notificaciones de solicitudes de vinculación
+            val solicitudesChannel = NotificationChannel(
+                CHANNEL_ID_SOLICITUDES,
+                CHANNEL_NAME_SOLICITUDES,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificaciones de solicitudes de vinculación familiar-alumno"
+                enableLights(true)
+                lightColor = Color.RED
+                enableVibration(true)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+            }
+            
             // Crear los canales
             notificationManager.createNotificationChannel(tareasChannel)
             notificationManager.createNotificationChannel(generalChannel)
             notificationManager.createNotificationChannel(syncChannel)
+            notificationManager.createNotificationChannel(solicitudesChannel)
             
             Timber.d("Canales de notificación creados")
         }
@@ -173,5 +193,7 @@ class AppNotificationManager @Inject constructor(
         const val CHANNEL_NAME_GENERAL = "Notificaciones Generales"
         const val CHANNEL_ID_SYNC = "sync_service_channel"
         const val CHANNEL_NAME_SYNC = "Sincronización"
+        const val CHANNEL_ID_SOLICITUDES = "channel_solicitudes_vinculacion"
+        const val CHANNEL_NAME_SOLICITUDES = "Solicitudes de Vinculación"
     }
 } 

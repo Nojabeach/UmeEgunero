@@ -49,6 +49,9 @@ object AppColors {
     val Pink80 = Color(0xFFEFB8C8)
     val PurpleGrey40 = Color(0xFF625b71)
     val Pink40 = Color(0xFF7D5260)
+    
+    // Color faltante
+    val Purple200 = Color(0xFFBB86FC)
 
     val White = Color.White
     val Black = Color.Black

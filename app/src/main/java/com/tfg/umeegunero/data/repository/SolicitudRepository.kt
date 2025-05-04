@@ -1,6 +1,8 @@
 package com.tfg.umeegunero.data.repository
 
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.tfg.umeegunero.data.model.EstadoSolicitud
 import com.tfg.umeegunero.data.model.SolicitudVinculacion
 import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.tasks.await
@@ -75,13 +77,36 @@ class SolicitudRepository @Inject constructor(
         return try {
             val snapshot = firestore.collection(COLLECTION_SOLICITUDES)
                 .whereEqualTo("centroId", centroId)
-                .whereEqualTo("estado", "PENDIENTE")
+                .whereEqualTo("estado", EstadoSolicitud.PENDIENTE.name)
                 .get()
                 .await()
             
             val solicitudes = snapshot.documents.mapNotNull { doc ->
                 doc.toObject(SolicitudVinculacion::class.java)
             }
+            
+            Result.Success(solicitudes)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene el historial completo de solicitudes de vinculación para un centro
+     * 
+     * @param centroId ID del centro educativo
+     * @return Lista de solicitudes procesadas o error
+     */
+    suspend fun getHistorialSolicitudesByCentroId(centroId: String): Result<List<SolicitudVinculacion>> {
+        return try {
+            val snapshot = firestore.collection(COLLECTION_SOLICITUDES)
+                .whereEqualTo("centroId", centroId)
+                .get()
+                .await()
+            
+            val solicitudes = snapshot.documents.mapNotNull { doc ->
+                doc.toObject(SolicitudVinculacion::class.java)
+            }.sortedByDescending { it.fechaSolicitud }
             
             Result.Success(solicitudes)
         } catch (e: Exception) {
@@ -101,6 +126,46 @@ class SolicitudRepository @Inject constructor(
             firestore.collection(COLLECTION_SOLICITUDES)
                 .document(solicitudId)
                 .update("estado", nuevoEstado)
+                .await()
+            
+            Result.Success(true)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Actualiza el estado de una solicitud de vinculación incluyendo el administrador que la procesó
+     * 
+     * @param solicitudId ID de la solicitud
+     * @param nuevoEstado Nuevo estado de la solicitud
+     * @param adminId ID del administrador que procesa la solicitud
+     * @param nombreAdmin Nombre del administrador que procesa la solicitud
+     * @param observaciones Observaciones adicionales sobre la solicitud (opcional)
+     * @return Resultado de la operación
+     */
+    suspend fun procesarSolicitud(
+        solicitudId: String, 
+        nuevoEstado: EstadoSolicitud,
+        adminId: String,
+        nombreAdmin: String,
+        observaciones: String = ""
+    ): Result<Boolean> {
+        return try {
+            val actualizaciones = mutableMapOf<String, Any>(
+                "estado" to nuevoEstado.name,
+                "adminId" to adminId,
+                "nombreAdmin" to nombreAdmin,
+                "fechaProcesamiento" to Timestamp.now()
+            )
+            
+            if (observaciones.isNotEmpty()) {
+                actualizaciones["observaciones"] = observaciones
+            }
+            
+            firestore.collection(COLLECTION_SOLICITUDES)
+                .document(solicitudId)
+                .update(actualizaciones)
                 .await()
             
             Result.Success(true)

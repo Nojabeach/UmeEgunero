@@ -63,6 +63,7 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
                     "tarea" -> procesarNotificacionTarea(data)
                     "evento" -> procesarNotificacionEvento(data)
                     "chat" -> procesarNotificacionChat(data)
+                    "solicitud_vinculacion" -> procesarNotificacionSolicitudVinculacion(data)
                     else -> procesarNotificacionGeneral(data)
                 }
             }
@@ -123,6 +124,26 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
     }
     
     /**
+     * Procesa notificaciones de solicitudes de vinculación familiar-alumno
+     */
+    private fun procesarNotificacionSolicitudVinculacion(data: Map<String, String>) {
+        val titulo = data["titulo"] ?: "Nueva solicitud de vinculación"
+        val mensaje = data["mensaje"] ?: "Has recibido una nueva solicitud de vinculación familiar-alumno"
+        val channelId = AppNotificationManager.CHANNEL_ID_SOLICITUDES
+        val notificationId = data["solicitudId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+        
+        mostrarNotificacion(titulo, mensaje, channelId, notificationId)
+        
+        // Enviar broadcast para actualizar la UI si la app está abierta
+        sendBroadcast(Intent(ACTION_NUEVA_SOLICITUD_VINCULACION).apply {
+            putExtra("solicitudId", data["solicitudId"])
+            putExtra("familiarId", data["familiarId"])
+            putExtra("alumnoDni", data["alumnoDni"])
+            putExtra("centroId", data["centroId"])
+        })
+    }
+    
+    /**
      * Procesa notificaciones generales
      */
     private fun procesarNotificacionGeneral(data: Map<String, String>) {
@@ -156,5 +177,6 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
     
     companion object {
         const val ACTION_NUEVO_MENSAJE_CHAT = "com.tfg.umeegunero.NUEVO_MENSAJE_CHAT"
+        const val ACTION_NUEVA_SOLICITUD_VINCULACION = "com.tfg.umeegunero.NUEVA_SOLICITUD_VINCULACION"
     }
 } 

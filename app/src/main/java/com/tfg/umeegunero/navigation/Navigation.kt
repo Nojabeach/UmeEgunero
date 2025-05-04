@@ -782,6 +782,13 @@ fun Navigation(
             )
         }
 
+        // Pantalla de historial de solicitudes de vinculación
+        composable(route = AppScreens.HistorialSolicitudes.route) {
+            com.tfg.umeegunero.feature.centro.screen.HistorialSolicitudesScreen(
+                navController = navController
+            )
+        }
+
         // Nueva navegación para gestor académico
         composable(
             route = "gestor_academico/{modo}?centroId={centroId}&cursoId={cursoId}&selectorCentroBloqueado={selectorCentroBloqueado}&selectorCursoBloqueado={selectorCursoBloqueado}&perfilUsuario={perfilUsuario}",

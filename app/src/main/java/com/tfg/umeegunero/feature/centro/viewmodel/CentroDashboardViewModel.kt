@@ -399,8 +399,15 @@ class CentroDashboardViewModel @Inject constructor(
      * @param aprobar true para aprobar, false para rechazar
      * @param enviarEmail true para enviar email de confirmación
      * @param emailFamiliar email del familiar para enviar la confirmación
+     * @param observaciones Observaciones adicionales sobre la decisión (opcional)
      */
-    fun procesarSolicitud(solicitudId: String, aprobar: Boolean, enviarEmail: Boolean = true, emailFamiliar: String? = null) {
+    fun procesarSolicitud(
+        solicitudId: String, 
+        aprobar: Boolean, 
+        enviarEmail: Boolean = true, 
+        emailFamiliar: String? = null,
+        observaciones: String = ""
+    ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             var errorProceso: String? = null // Variable para guardar error y continuar si es posible
@@ -408,7 +415,19 @@ class CentroDashboardViewModel @Inject constructor(
 
             try {
                 val nuevoEstado = if (aprobar) EstadoSolicitud.APROBADA else EstadoSolicitud.RECHAZADA
-                val result = solicitudRepository.actualizarEstadoSolicitud(solicitudId, nuevoEstado.name)
+                
+                // Obtener información del administrador actual
+                val adminId = _uiState.value.currentUser?.dni ?: ""
+                val nombreAdmin = _uiState.value.currentUser?.nombre ?: "Administrador"
+                
+                // Usar el nuevo método para procesar la solicitud
+                val result = solicitudRepository.procesarSolicitud(
+                    solicitudId = solicitudId,
+                    nuevoEstado = nuevoEstado,
+                    adminId = adminId,
+                    nombreAdmin = nombreAdmin,
+                    observaciones = observaciones
+                )
 
                 if (result is Result.Success) {
                     val solicitud = _solicitudesPendientes.value.find { it.id == solicitudId }
@@ -600,12 +619,26 @@ class CentroDashboardViewModel @Inject constructor(
                     errorProceso = "Error al procesar solicitud: ${result.exception?.message}"
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error inesperado al procesar solicitud")
-                errorProceso = e.message ?: "Error inesperado al procesar solicitud"
-            } finally {
-                 _uiState.update { it.copy(isLoading = false, error = errorProceso) }
-                 // Emitir evento para lanzar el email si se prepararon los datos
-                 emailData?.let { _lanzarEmailIntentEvent.emit(it) }
+                Timber.e(e, "Error al procesar solicitud")
+                errorProceso = "Error inesperado: ${e.message}"
+            }
+            
+            // Actualizar estado de la UI
+            _uiState.update { 
+                it.copy(
+                    isLoading = false,
+                    error = errorProceso
+                )
+            }
+            
+            // Lanzar intent de email si se preparó
+            emailData?.let { data ->
+                try {
+                    _lanzarEmailIntentEvent.emit(data)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al lanzar intent de email")
+                    _emailStatus.value = "Error al preparar el email"
+                }
             }
         }
     }

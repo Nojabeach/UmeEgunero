@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -491,6 +492,18 @@ fun CentroDashboardScreen(
                                     iconTint = AppColors.Pink80,
                                     border = true,
                                     onClick = { mostrarDialogoSolicitudes = true },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Historial de Solicitudes",
+                                    descripcion = "Ver el historial completo de solicitudes procesadas",
+                                    icono = Icons.Default.History,
+                                    color = CentroColor,
+                                    iconTint = AppColors.Purple200,
+                                    border = true,
+                                    onClick = { navController.navigate(AppScreens.HistorialSolicitudes.route) },
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
