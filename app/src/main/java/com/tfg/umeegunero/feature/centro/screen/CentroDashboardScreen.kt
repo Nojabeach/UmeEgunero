@@ -501,7 +501,7 @@ fun CentroDashboardScreen(
                                     descripcion = "Ver el historial completo de solicitudes procesadas",
                                     icono = Icons.Default.History,
                                     color = CentroColor,
-                                    iconTint = AppColors.Purple200,
+                                    iconTint = AppColors.PurplePrimary,
                                     border = true,
                                     onClick = { navController.navigate(AppScreens.HistorialSolicitudes.route) },
                                     modifier = Modifier.padding(4.dp)

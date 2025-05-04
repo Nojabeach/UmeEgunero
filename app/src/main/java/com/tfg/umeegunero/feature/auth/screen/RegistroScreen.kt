@@ -317,7 +317,8 @@ private fun isFormValid(uiState: RegistroUiState): Boolean {
 private fun validatePassword(password: String): Boolean {
     return password.length >= 6 &&
            password.any { it.isLetter() } &&
-           password.any { it.isDigit() }
+           password.any { it.isDigit() } &&
+           password.any { !it.isLetterOrDigit() } // Validar al menos un carácter especial
 }
 
 /**

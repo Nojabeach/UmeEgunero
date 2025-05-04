@@ -21,8 +21,14 @@ import javax.inject.Inject
 import java.util.regex.Pattern
 import android.util.Log
 import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.SolicitudRepository
 import retrofit2.HttpException
 import java.io.IOException
+import com.google.firebase.Timestamp
+import com.tfg.umeegunero.data.model.SolicitudVinculacion
+import com.tfg.umeegunero.data.model.EstadoSolicitud
+import timber.log.Timber
+import com.tfg.umeegunero.data.service.EmailNotificationService
 
 /**
  * Estado UI para la pantalla de registro
@@ -77,7 +83,9 @@ data class RegistroUiState(
 class RegistroViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val usuarioRepository: UsuarioRepository,
+    private val solicitudRepository: SolicitudRepository,
     private val nominatimApiService: NominatimApiService,
+    private val emailNotificationService: EmailNotificationService,
     private val debugUtils: DebugUtils
 ) : ViewModel() {
 
@@ -310,28 +318,26 @@ class RegistroViewModel @Inject constructor(
      */
     fun addAlumnoDni() {
         _uiState.update { currentState ->
-            val currentAlumnos = currentState.form.alumnosDni.toMutableList()
-            currentAlumnos.add("")
-            val newForm = currentState.form.copy(alumnosDni = currentAlumnos)
-            // Revalidar si al menos un DNI es requerido
-            validateAlumnosDniList(newForm, currentState.copy(form = newForm))
+            val newList = currentState.form.alumnosDni.toMutableList().apply { add("") }
+            currentState.copy(form = currentState.form.copy(alumnosDni = newList))
         }
     }
 
     /**
      * Actualiza el DNI de un alumno específico y valida la lista.
      */
-    fun updateAlumnoDni(index: Int, dni: String) {
+    fun updateAlumnoDni(index: Int, value: String) {
         _uiState.update { currentState ->
-            val currentAlumnos = currentState.form.alumnosDni.toMutableList()
-            if (index in currentAlumnos.indices) {
-                currentAlumnos[index] = dni
-                val newForm = currentState.form.copy(alumnosDni = currentAlumnos)
-                 // Revalidar la lista completa (p.ej., si se requiere al menos uno)
-                 validateAlumnosDniList(newForm, currentState.copy(form = newForm))
-            } else {
-                currentState // No hacer cambios si el índice es inválido
-            }
+            val newList = currentState.form.alumnosDni.toMutableList()
+            if (index >= 0 && index < newList.size) {
+                newList[index] = value
+                // Validar DNI específico aquí si se desea feedback inmediato
+                 val dniError = if (value.isNotBlank() && !validateDni(value)) "Formato DNI inválido" else null
+                 // Podrías guardar errores por índice si necesitas mostrarlos individualmente
+                 currentState.copy(form = currentState.form.copy(alumnosDni = newList))
+             } else {
+                 currentState // No hacer nada si el índice es inválido
+             }
         }
     }
 
@@ -340,15 +346,11 @@ class RegistroViewModel @Inject constructor(
      */
     fun removeAlumnoDni(index: Int) {
         _uiState.update { currentState ->
-            val currentAlumnos = currentState.form.alumnosDni.toMutableList()
-            if (index in currentAlumnos.indices) {
-                currentAlumnos.removeAt(index)
-                val newForm = currentState.form.copy(alumnosDni = currentAlumnos)
-                 // Revalidar la lista completa
-                 validateAlumnosDniList(newForm, currentState.copy(form = newForm))
-            } else {
-                 currentState
+            val newList = currentState.form.alumnosDni.toMutableList()
+            if (index >= 0 && index < newList.size) {
+                newList.removeAt(index)
             }
+            currentState.copy(form = currentState.form.copy(alumnosDni = newList))
         }
     }
 
@@ -393,59 +395,120 @@ class RegistroViewModel @Inject constructor(
     }
 
     /**
-     * Intenta registrar al usuario con los datos del formulario.
-     * Llamado desde la UI después de validar el último paso.
+     * Registra al usuario en Firebase Auth y guarda sus datos en Firestore.
+     * Además, crea las solicitudes de vinculación para cada alumno introducido.
      */
     fun registrarUsuario() {
+        if (!isFormValid()) {
+            _uiState.update { it.copy(error = "Por favor, completa todos los campos requeridos.") }
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true, error = null) }
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, success = false) }
+            val form = _uiState.value.form
+            val resultRegistro = usuarioRepository.registrarUsuarioCompleto(
+                email = form.email,
+                password = form.password,
+                dni = form.dni,
+                nombre = form.nombre,
+                apellidos = form.apellidos,
+                telefono = form.telefono,
+                tipoUsuario = com.tfg.umeegunero.data.model.TipoUsuario.FAMILIAR, // Tipo fijo para registro familiar
+                subtipo = form.subtipo.name, // Usar el subtipo seleccionado
+                direccion = form.direccion,
+                centroId = form.centroId, // Pasar centroId para perfil
+                perfilesAdicionales = emptyList() // Sin perfiles adicionales en registro familiar inicial
+            )
 
-            val formToRegister = _uiState.value.form
-
-            try {
-                // Llamar al método de registro del UsuarioRepository
-                when (val result = usuarioRepository.registrarUsuario(formToRegister)) { 
-                    is Result.Success -> { 
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                success = true
-                            )
-                        }
-                        // Registrar éxito en log
-                        Log.i("RegistroViewModel", "Usuario registrado exitosamente: ${formToRegister.email}")
+            when (resultRegistro) {
+                is Result.Success<Usuario> -> {
+                    // Usuario creado con éxito, ahora crear solicitudes de vinculación
+                    val familiarId = form.dni // Usar DNI del familiar como ID
+                    val nombreFamiliarCompleto = "${form.nombre} ${form.apellidos}"
+                    val tipoRelacionSeleccionado = form.subtipo.name
+                    val centroIdSeleccionado = form.centroId
+                    var todasSolicitudesCreadas = true
+                    
+                    // Filtrar DNIs de alumnos válidos y no vacíos
+                    val alumnosDniValidos = form.alumnosDni.filter { it.isNotBlank() && validateDni(it) }
+                    
+                    if (alumnosDniValidos.isEmpty()) {
+                         Timber.w("Registro de usuario exitoso, pero no se encontraron DNIs de alumnos válidos para crear solicitudes.")
+                         // Considerar si esto es un error o un caso válido
+                         // >>> ENVÍO DE EMAIL DE BIENVENIDA <<<
+                         viewModelScope.launch {
+                             val emailEnviado = emailNotificationService.sendWelcomeEmail(form.email, form.nombre)
+                             if (emailEnviado) {
+                                 Timber.i("Email de bienvenida enviado a ${form.email}")
+                             } else {
+                                 Timber.e("Error al enviar email de bienvenida a ${form.email}")
+                             }
+                         }
+                         _uiState.update { it.copy(isLoading = false, success = true) } // Marcar éxito aunque no haya solicitudes
+                         return@launch
                     }
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = result.exception?.message ?: "Error desconocido durante el registro.",
-                                success = false
-                            )
+                    
+                    alumnosDniValidos.forEach { alumnoDni ->
+                        val solicitud = SolicitudVinculacion(
+                            // id se genera automáticamente en el repositorio
+                            familiarId = familiarId,
+                            alumnoId = alumnoDni, // Usar DNI del alumno como ID por ahora
+                            alumnoDni = alumnoDni,
+                            alumnoNombre = "", // TODO: Intentar obtener nombre del alumno si es posible?
+                            nombreFamiliar = nombreFamiliarCompleto,
+                            tipoRelacion = tipoRelacionSeleccionado,
+                            centroId = centroIdSeleccionado,
+                            fechaSolicitud = Timestamp.now(),
+                            estado = EstadoSolicitud.PENDIENTE,
+                            // Campos de admin y procesamiento vacíos inicialmente
+                            adminId = "",
+                            nombreAdmin = "",
+                            fechaProcesamiento = null,
+                            observaciones = ""
+                        )
+                        
+                        when (val resultSolicitud = solicitudRepository.crearSolicitudVinculacion(solicitud)) {
+                            is Result.Success -> {
+                                Timber.d("Solicitud de vinculación creada para alumno $alumnoDni")
+                            }
+                            is Result.Error -> {
+                                Timber.e(resultSolicitud.exception, "Error al crear solicitud para alumno $alumnoDni")
+                                todasSolicitudesCreadas = false
+                                // No actualizamos el error principal aquí para no sobrescribir éxito de registro
+                            }
+                            else -> {} // Ignorar Loading
                         }
-                        // Registrar error en log
-                        Log.e("RegistroViewModel", "Error en registro", result.exception)
                     }
-                    else -> {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = "Estado de registro no reconocido.",
-                                success = false
-                            )
+                    
+                    // >>> ENVÍO DE EMAIL DE BIENVENIDA <<<
+                    viewModelScope.launch {
+                        val emailEnviado = emailNotificationService.sendWelcomeEmail(form.email, form.nombre)
+                        if (emailEnviado) {
+                            Timber.i("Email de bienvenida enviado a ${form.email}")
+                        } else {
+                            Timber.e("Error al enviar email de bienvenida a ${form.email}")
+                            // Considerar añadir un mensaje no bloqueante en la UI si falla?
                         }
+                    }
+                    
+                    if (!todasSolicitudesCreadas) {
+                         // Podríamos añadir un mensaje no bloqueante indicando que alguna solicitud falló
+                         Timber.w("Registro de usuario exitoso, pero falló la creación de una o más solicitudes de vinculación.")
+                    }
+                    
+                    _uiState.update { it.copy(isLoading = false, success = true) }
+                }
+                is Result.Error -> {
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false, 
+                            error = "Error en el registro: ${resultRegistro.exception?.message ?: "Desconocido"}"
+                        )
                     }
                 }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false, 
-                        error = "Error en el registro: ${e.message ?: "Desconocido"}",
-                        success = false
-                    )
-                }
-                // Registrar excepción en log
-                Log.e("RegistroViewModel", "Excepción en el registro", e)
+                else -> { /* Ignorar Loading */ }
             }
         }
     }
@@ -464,11 +527,34 @@ class RegistroViewModel @Inject constructor(
     }
 
     private fun validatePassword(password: String): Boolean {
-        return password.length >= 6 && password.any { it.isLetter() } && password.any { it.isDigit() }
+        return password.length >= 6 && 
+               password.any { it.isLetter() } && 
+               password.any { it.isDigit() } &&
+               password.any { !it.isLetterOrDigit() } // Validar al menos un carácter especial
     }
 
      private fun isPhoneValid(phone: String): Boolean {
          // Implementar validación de formato de teléfono si es necesario
          return phone.all { it.isDigit() } && phone.length >= 9 // Ejemplo básico
      }
+
+    // --- Función de validación general del formulario (ajustada) ---
+    private fun isFormValid(): Boolean {
+        val s = _uiState.value
+        return s.form.email.isNotBlank() && s.emailError == null &&
+               s.form.dni.isNotBlank() && s.dniError == null &&
+               s.form.nombre.isNotBlank() && s.nombreError == null &&
+               s.form.apellidos.isNotBlank() && s.apellidosError == null &&
+               s.form.telefono.isNotBlank() && s.telefonoError == null &&
+               s.form.password.isNotBlank() && s.passwordError == null && validatePassword(s.form.password) &&
+               s.form.confirmPassword.isNotBlank() && s.confirmPasswordError == null && s.form.password == s.form.confirmPassword &&
+               s.form.direccion.calle.isNotBlank() &&
+               s.form.direccion.numero.isNotBlank() &&
+               s.form.direccion.codigoPostal.isNotBlank() &&
+               s.form.direccion.ciudad.isNotBlank() &&
+               s.form.direccion.provincia.isNotBlank() &&
+               s.form.centroId.isNotBlank() &&
+               s.form.alumnosDni.any { it.isNotBlank() } && // Al menos un DNI
+               s.form.alumnosDni.filter { it.isNotBlank() }.all { validateDni(it) } // Todos los no vacíos son válidos
+    }
 }

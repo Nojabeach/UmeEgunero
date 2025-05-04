@@ -1987,4 +1987,131 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Registra un usuario completo con todos sus datos y perfiles
+     * Este método combina la creación del usuario en Firebase Auth y Firestore
+     * en una operación atómica.
+     * 
+     * @param email Email del usuario
+     * @param password Contraseña del usuario
+     * @param dni DNI del usuario que servirá como ID único
+     * @param nombre Nombre del usuario
+     * @param apellidos Apellidos del usuario
+     * @param telefono Teléfono del usuario
+     * @param tipoUsuario Tipo principal del usuario (FAMILIAR, PROFESOR, ADMIN, etc)
+     * @param subtipo Subtipo del usuario (si aplica, por ejemplo tipo de familiar)
+     * @param direccion Dirección completa del usuario
+     * @param centroId ID del centro educativo asociado (si aplica)
+     * @param perfilesAdicionales Lista de perfiles adicionales (si tiene varios roles)
+     * @return Result que contiene el usuario creado o un error
+     */
+    suspend fun registrarUsuarioCompleto(
+        email: String,
+        password: String,
+        dni: String,
+        nombre: String,
+        apellidos: String,
+        telefono: String,
+        tipoUsuario: TipoUsuario,
+        subtipo: String,
+        direccion: Direccion,
+        centroId: String,
+        perfilesAdicionales: List<Perfil> = emptyList()
+    ): Result<Usuario> = withContext(Dispatchers.IO) {
+        try {
+            // 1. Verificar que el DNI no existe ya en Firestore
+            val existingUser = usuariosCollection.document(dni).get().await()
+            if (existingUser.exists()) {
+                return@withContext Result.Error(Exception("Ya existe un usuario con este DNI"))
+            }
+
+            // 2. Crear usuario en Firebase Auth
+            val authResult = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+            val firebaseUid = authResult.user?.uid ?: throw Exception("Error al crear usuario en Firebase Auth")
+
+            // 3. Crear perfil principal
+            val subtipoFamiliar = if (tipoUsuario == TipoUsuario.FAMILIAR) {
+                try {
+                    SubtipoFamiliar.valueOf(subtipo)
+                } catch (e: IllegalArgumentException) {
+                    SubtipoFamiliar.OTRO // Valor por defecto si no se puede convertir
+                }
+            } else null
+            
+            val perfilPrincipal = Perfil(
+                tipo = tipoUsuario,
+                subtipo = subtipoFamiliar,
+                centroId = centroId,
+                verificado = false,
+                alumnos = emptyList() // Se manejan por separado para familias
+            )
+
+            // 4. Combinar con perfiles adicionales
+            val todosPerfiles = listOf(perfilPrincipal) + perfilesAdicionales
+
+            // 5. Crear usuario en Firestore
+            val usuario = Usuario(
+                dni = dni,
+                email = email,
+                nombre = nombre,
+                apellidos = apellidos,
+                telefono = telefono,
+                fechaRegistro = Timestamp.now(),
+                perfiles = todosPerfiles,
+                direccion = direccion,
+                firebaseUid = firebaseUid // Guardar UID de Firebase para referencias futuras
+            )
+
+            // 6. Guardar el usuario en Firestore usando el DNI como ID del documento
+            usuariosCollection.document(dni).set(usuario).await()
+
+            // 7. Registrar la actividad
+            val registro = registrarActividad(
+                tipo = "REGISTRO",
+                descripcion = "Registro de nuevo usuario: $nombre $apellidos ($dni)",
+                usuarioId = dni
+            )
+
+            Timber.d("Usuario registrado correctamente: $dni")
+            return@withContext Result.Success(usuario)
+        } catch (e: FirebaseAuthException) {
+            Timber.e(e, "Error de autenticación durante registro: ${e.message}")
+            return@withContext Result.Error(Exception("Error de autenticación: ${e.message}"))
+        } catch (e: Exception) {
+            Timber.e(e, "Error general durante registro: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Registra una actividad en el sistema para fines de auditoría
+     * 
+     * @param tipo Tipo de actividad (ej: REGISTRO, LOGIN, etc)
+     * @param descripcion Descripción detallada de la actividad
+     * @param usuarioId ID del usuario que realizó la actividad (DNI)
+     * @return ID del registro de actividad creado
+     */
+    private suspend fun registrarActividad(
+        tipo: String,
+        descripcion: String,
+        usuarioId: String
+    ): String {
+        try {
+            val registro = hashMapOf(
+                "tipo" to tipo,
+                "descripcion" to descripcion,
+                "usuarioId" to usuarioId,
+                "timestamp" to Timestamp.now(),
+                "ip" to "",  // Se podría obtener si fuera necesario
+                "plataforma" to "Android"
+            )
+            
+            val docRef = registrosCollection.add(registro).await()
+            return docRef.id
+        } catch (e: Exception) {
+            Timber.e(e, "Error al registrar actividad: $tipo - $descripcion")
+            return ""
+        }
+    }
 }

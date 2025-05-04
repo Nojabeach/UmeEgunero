@@ -1,56 +1,22 @@
 package com.tfg.umeegunero.feature.centro.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonSearch
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -58,9 +24,14 @@ import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.EstadoSolicitud
 import com.tfg.umeegunero.data.model.SolicitudVinculacion
 import com.tfg.umeegunero.feature.centro.viewmodel.HistorialSolicitudesViewModel
+import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
+
+// Colores de estado (pueden ir al Theme o AppColors si se usan en más sitios)
+private val colorAprobada = Color(0xFF4CAF50)
+private val colorRechazada = Color(0xFFF44336)
+private val colorPendiente = Color(0xFFFFC107)
 
 /**
  * Pantalla que muestra el historial de solicitudes de vinculación
@@ -94,7 +65,7 @@ fun HistorialSolicitudesScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
@@ -111,59 +82,53 @@ fun HistorialSolicitudesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp) // Padding horizontal general
         ) {
             if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Cargando historial de solicitudes...")
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator() // M3 Progress Indicator
                 }
             } else if (uiState.error != null) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = uiState.error ?: "Error desconocido",
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
             } else {
-                // Filtros para el estado
-                FiltrosEstado(
+                // Filtros con Chips
+                FiltrosEstadoChips(
                     estadoSeleccionado = filtroEstado,
-                    onFiltroSeleccionado = { filtroEstado = it }
+                    onFiltroSeleccionado = { filtroEstado = it },
+                    modifier = Modifier.padding(vertical = 16.dp) // Añadir padding vertical a los filtros
                 )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Lista de solicitudes
+
                 if (uiState.solicitudes.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No hay solicitudes en el historial",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                    Box(Modifier.fillMaxSize().padding(top = 32.dp), contentAlignment = Alignment.TopCenter) {
+                        Text("No hay solicitudes en el historial", style = MaterialTheme.typography.bodyLarge)
                     }
                 } else {
-                    val solicitudesFiltradas = if (filtroEstado != null) {
-                        uiState.solicitudes.filter { it.estado == filtroEstado }
-                    } else {
-                        uiState.solicitudes
+                    val solicitudesFiltradas = remember(uiState.solicitudes, filtroEstado) {
+                        if (filtroEstado != null) {
+                            uiState.solicitudes.filter { it.estado == filtroEstado }
+                        } else {
+                            uiState.solicitudes
+                        }
                     }
                     
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(solicitudesFiltradas) { solicitud ->
-                            SolicitudHistorialItem(solicitud = solicitud)
+                    if (solicitudesFiltradas.isEmpty()) {
+                         Box(Modifier.fillMaxSize().padding(top = 32.dp), contentAlignment = Alignment.TopCenter) {
+                            Text("No hay solicitudes con el filtro seleccionado", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(16.dp), // Más espacio entre items
+                            contentPadding = PaddingValues(bottom = 16.dp) // Padding inferior para el último item
+                        ) {
+                            items(solicitudesFiltradas, key = { it.id }) { solicitud ->
+                                SolicitudHistorialItem(solicitud = solicitud)
+                            }
                         }
                     }
                 }
@@ -175,88 +140,63 @@ fun HistorialSolicitudesScreen(
 /**
  * Componente que muestra los filtros de estado para el historial
  */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun FiltrosEstado(
+fun FiltrosEstadoChips(
     estadoSeleccionado: EstadoSolicitud?,
-    onFiltroSeleccionado: (EstadoSolicitud?) -> Unit
+    onFiltroSeleccionado: (EstadoSolicitud?) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Filtrar por estado:",
-                style = MaterialTheme.typography.titleMedium
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                FiltroEstadoItem(
-                    estado = null,
-                    seleccionado = estadoSeleccionado == null,
-                    onClick = { onFiltroSeleccionado(null) },
-                    label = "Todos"
-                )
-                
-                FiltroEstadoItem(
-                    estado = EstadoSolicitud.APROBADA,
-                    seleccionado = estadoSeleccionado == EstadoSolicitud.APROBADA,
-                    onClick = { onFiltroSeleccionado(EstadoSolicitud.APROBADA) },
-                    label = "Aprobadas"
-                )
-                
-                FiltroEstadoItem(
-                    estado = EstadoSolicitud.RECHAZADA,
-                    seleccionado = estadoSeleccionado == EstadoSolicitud.RECHAZADA,
-                    onClick = { onFiltroSeleccionado(EstadoSolicitud.RECHAZADA) },
-                    label = "Rechazadas"
-                )
-                
-                FiltroEstadoItem(
-                    estado = EstadoSolicitud.PENDIENTE,
-                    seleccionado = estadoSeleccionado == EstadoSolicitud.PENDIENTE,
-                    onClick = { onFiltroSeleccionado(EstadoSolicitud.PENDIENTE) },
-                    label = "Pendientes"
-                )
-            }
-        }
+    val estados = listOf(null, EstadoSolicitud.APROBADA, EstadoSolicitud.RECHAZADA, EstadoSolicitud.PENDIENTE)
+    
+    Column(modifier = modifier) {
+         Text(
+             text = "Filtrar por estado:",
+             style = MaterialTheme.typography.titleSmall,
+             modifier = Modifier.padding(bottom = 8.dp)
+         )
+        // Usar FlowRow para que los chips se ajusten si no caben en una línea
+        FlowRow(
+             modifier = Modifier.fillMaxWidth(),
+             horizontalArrangement = Arrangement.spacedBy(8.dp),
+             // verticalArrangement = Arrangement.spacedBy(4.dp) // Si se necesitan varias líneas
+         ) {
+             estados.forEach { estado ->
+                 val selected = estadoSeleccionado == estado
+                 FilterChip(
+                     selected = selected,
+                     onClick = { onFiltroSeleccionado(estado) },
+                     label = { Text(getLabelForEstado(estado)) },
+                     leadingIcon = if (selected) {
+                         { Icon(imageVector = Icons.Filled.Done, contentDescription = "Seleccionado") }
+                     } else null,
+                     colors = FilterChipDefaults.filterChipColors(
+                         selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                         selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                         selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
+                     )
+                 )
+             }
+         }
     }
 }
 
-/**
- * Item de filtro de estado
- */
-@Composable
-fun FiltroEstadoItem(
-    estado: EstadoSolicitud?,
-    seleccionado: Boolean,
-    onClick: () -> Unit,
-    label: String
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(end = 4.dp)
-    ) {
-        RadioButton(
-            selected = seleccionado,
-            onClick = onClick
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(start = 4.dp)
-        )
+// Helper para obtener texto del filtro
+private fun getLabelForEstado(estado: EstadoSolicitud?): String {
+    return when (estado) {
+        null -> "Todos"
+        EstadoSolicitud.APROBADA -> "Aprobadas"
+        EstadoSolicitud.RECHAZADA -> "Rechazadas"
+        EstadoSolicitud.PENDIENTE -> "Pendientes"
     }
+}
+
+// Formateador de fecha (reutilizable)
+private val dateFormatSimple: SimpleDateFormat by lazy {
+    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+}
+private val dateFormatCompleto: SimpleDateFormat by lazy {
+    SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
 }
 
 /**
@@ -264,14 +204,25 @@ fun FiltroEstadoItem(
  */
 @Composable
 fun SolicitudHistorialItem(solicitud: SolicitudVinculacion) {
+    
+    val fechaSolicitudFormatted = remember(solicitud.fechaSolicitud) {
+        dateFormatSimple.format(solicitud.fechaSolicitud.toDate())
+    }
+    val fechaProcesamientoFormatted = remember(solicitud.fechaProcesamiento) {
+        solicitud.fechaProcesamiento?.toDate()?.let { dateFormatCompleto.format(it) }
+    }
+    
+    val statusColor = when (solicitud.estado) {
+        EstadoSolicitud.APROBADA -> colorAprobada
+        EstadoSolicitud.RECHAZADA -> colorRechazada
+        EstadoSolicitud.PENDIENTE -> colorPendiente
+    }
+    
     OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), // Borde sutil
         colors = CardDefaults.outlinedCardColors(
-            containerColor = when (solicitud.estado) {
-                EstadoSolicitud.APROBADA -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                else -> MaterialTheme.colorScheme.surface
-            }
+            containerColor = MaterialTheme.colorScheme.surface // Color base
         )
     ) {
         Column(
@@ -279,129 +230,81 @@ fun SolicitudHistorialItem(solicitud: SolicitudVinculacion) {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Encabezado con estado
+            // Fila superior: Estado y Fecha Solicitud
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Estado con icono
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(
-                                when (solicitud.estado) {
-                                    EstadoSolicitud.APROBADA -> Color(0xFF4CAF50)
-                                    EstadoSolicitud.RECHAZADA -> Color(0xFFF44336)
-                                    EstadoSolicitud.PENDIENTE -> Color(0xFFFFC107)
-                                }
-                            )
+                    Icon(
+                        imageVector = when (solicitud.estado) {
+                            EstadoSolicitud.APROBADA -> Icons.Filled.CheckCircle
+                            EstadoSolicitud.RECHAZADA -> Icons.Filled.Cancel // O Error icon
+                            EstadoSolicitud.PENDIENTE -> Icons.Filled.HourglassEmpty // O Schedule icon
+                        },
+                        contentDescription = "Estado: ${solicitud.estado.name}",
+                        tint = statusColor,
+                        modifier = Modifier.size(20.dp)
                     )
-                    
+                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = when (solicitud.estado) {
-                            EstadoSolicitud.APROBADA -> "APROBADA"
-                            EstadoSolicitud.RECHAZADA -> "RECHAZADA"
-                            EstadoSolicitud.PENDIENTE -> "PENDIENTE"
-                        },
-                        style = MaterialTheme.typography.titleMedium,
+                        text = solicitud.estado.name,
+                        style = MaterialTheme.typography.labelLarge, // Label para estado
                         fontWeight = FontWeight.Bold,
-                        color = when (solicitud.estado) {
-                            EstadoSolicitud.APROBADA -> Color(0xFF4CAF50)
-                            EstadoSolicitud.RECHAZADA -> Color(0xFFF44336)
-                            EstadoSolicitud.PENDIENTE -> Color(0xFFFFC107)
-                        },
-                        modifier = Modifier.padding(start = 8.dp)
+                        color = statusColor
                     )
                 }
                 
                 // Fecha de solicitud
-                InfoItem(
-                    icon = Icons.Default.CalendarMonth,
-                    text = solicitud.fechaSolicitud.toDate().let {
-                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)
-                    },
-                    showIcon = false
+                Text(
+                    text = fechaSolicitudFormatted,
+                    style = MaterialTheme.typography.bodySmall, // Más pequeño
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            Divider(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-            )
-            
-            // Información del familiar y alumno
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    InfoItem(
-                        icon = Icons.Default.Person,
-                        text = solicitud.nombreFamiliar.ifEmpty { "Familiar: ${solicitud.familiarId}" }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    InfoItem(
-                        icon = Icons.Default.School,
-                        text = solicitud.alumnoNombre.ifEmpty { "Alumno: ${solicitud.alumnoDni}" }
-                    )
-                }
-                
-                // Tipo de relación si existe
-                if (solicitud.tipoRelacion.isNotEmpty()) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Text(
-                            text = solicitud.tipoRelacion,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider() // Separador M3
+            Spacer(Modifier.height(16.dp))
+
+            // Detalles: Familiar y Alumno
+            InfoSection(icon = Icons.Filled.Person, title = "Familiar") {
+                Text("Nombre: ${solicitud.nombreFamiliar}", style = MaterialTheme.typography.bodyMedium)
+                Text("Relación: ${solicitud.tipoRelacion}", style = MaterialTheme.typography.bodyMedium)
             }
             
-            // Mostrar quién procesó la solicitud si no está pendiente
-            if (solicitud.estado != EstadoSolicitud.PENDIENTE && solicitud.adminId.isNotEmpty()) {
-                Divider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                )
-                
-                Column {
-                    InfoItem(
-                        icon = Icons.Default.PersonSearch,
-                        text = "Procesada por: ${solicitud.nombreAdmin.ifEmpty { solicitud.adminId }}"
+            Spacer(Modifier.height(12.dp)) // Espacio entre secciones
+
+            InfoSection(icon = Icons.Filled.Face, title = "Alumno") { // Usar Face para alumno
+                Text("Nombre: ${solicitud.alumnoNombre}", style = MaterialTheme.typography.bodyMedium)
+                Text("DNI: ${solicitud.alumnoDni}", style = MaterialTheme.typography.bodyMedium)
+            }
+
+            // Detalles: Procesamiento (si existe)
+            if (solicitud.adminId.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(16.dp))
+
+                InfoSection(icon = Icons.Filled.AdminPanelSettings, title = "Procesamiento") { // Icono admin
+                    Text(
+                        "Admin: ${solicitud.nombreAdmin.ifEmpty { solicitud.adminId }}", 
+                        style = MaterialTheme.typography.bodyMedium
                     )
-                    
-                    // Fecha de procesamiento
-                    solicitud.fechaProcesamiento?.let { timestamp ->
-                        val fecha = timestamp.toDate()
-                        Spacer(modifier = Modifier.height(4.dp))
+                    fechaProcesamientoFormatted?.let {
                         Text(
-                            text = "Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(fecha)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 32.dp)
+                            "Fecha: $it", 
+                            style = MaterialTheme.typography.bodySmall, 
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    
-                    // Observaciones
                     if (solicitud.observaciones.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Observaciones: ${solicitud.observaciones}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(start = 32.dp),
+                         Spacer(Modifier.height(4.dp))
+                         Text(
+                            "Observaciones: ${solicitud.observaciones}", 
+                            style = MaterialTheme.typography.bodySmall, 
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -411,33 +314,30 @@ fun SolicitudHistorialItem(solicitud: SolicitudVinculacion) {
     }
 }
 
-/**
- * Componente que muestra un ítem de información con ícono
- */
+// --- Componente reutilizable para secciones de información ---
 @Composable
-fun InfoItem(
+fun InfoSection(
     icon: ImageVector,
-    text: String,
-    showIcon: Boolean = true
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (showIcon) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-        }
-        
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            overflow = TextOverflow.Ellipsis,
-            maxLines = 1
+    Row(verticalAlignment = Alignment.Top) { // Alinear al top para que el icono quede bien
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary, // Usar color primario para icono de sección
+            modifier = Modifier.size(24.dp).padding(top = 2.dp) // Ajuste vertical icono
         )
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall, // Título pequeño para sección
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            // Contenido específico de la sección
+            content()
+        }
     }
 } 

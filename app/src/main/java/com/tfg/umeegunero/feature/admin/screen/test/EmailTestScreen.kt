@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,22 +31,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.feature.admin.viewmodel.test.PruebaEmailViewModel
 import com.tfg.umeegunero.feature.admin.viewmodel.test.TipoPlantilla
-import android.util.Log
+import com.tfg.umeegunero.data.service.EmailNotificationService
+import com.tfg.umeegunero.data.service.TipoPlantilla as ServiceTipoPlantilla
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class ScriptResponse(
-    val status: String,
-    val message: String
-)
+import javax.inject.Inject
 
 /**
  * Pantalla de pruebas para el envío de emails en la aplicación UmeEgunero.
@@ -56,6 +46,7 @@ data class ScriptResponse(
  *
  * @param onClose Callback que se ejecuta cuando el usuario quiere cerrar la pantalla
  * @param viewModel ViewModel que gestiona la lógica de la pantalla
+ * @param emailService Service que gestiona la lógica de envío de emails
  *
  * @see PruebaEmailViewModel
  * @see PlantillaEmail
@@ -73,54 +64,30 @@ fun EmailTestScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    val httpClient = remember {
-        HttpClient(CIO) {
-            install(ContentNegotiation) {
-                json()
-            }
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            httpClient.close()
-            Log.d("EmailTestScreen", "Ktor HttpClient cerrado")
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
-                    Text(
-                        "Pruebas de Email",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+                title = { Text("Prueba de Emails") },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver atrás",
-                            tint = Color.White
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = AdminColor,
-                    titleContentColor = Color.White
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
                 )
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Sección de configuración
@@ -309,65 +276,30 @@ fun EmailTestScreen(
                             )
                         }
 
-                        // Botón de envío - Lógica modificada
+                        // Botón de envío
                         Button(
                             onClick = {
                                 if (uiState.emailValido && uiState.plantillaSeleccionada != TipoPlantilla.NINGUNA) {
-                                    // Lanzar coroutine para llamada de red
                                     scope.launch {
-                                        // --- Definir URL y parámetros ---
-                                        val scriptUrlBase = "https://script.google.com/macros/s/AKfycbxvSugtN4a3LReAIYuZd6A2MIno8UkMGHleqIXsZg7vcGVGxTYMUP9efPbrkEbsxj6DLA/exec" // ¡TU URL!
                                         val destinatario = uiState.destinatario
-                                        val nombre = uiState.nombrePrueba.ifBlank { "Usuario/a" }
-                                        val tipoPlantilla = uiState.plantillaSeleccionada.name // "BIENVENIDA", etc.
-                                        val asunto = "UmeEgunero: ${uiState.plantillaSeleccionada.name.lowercase().replaceFirstChar { it.titlecase() }} para ${nombre}" // Asunto más descriptivo
+                                        val nombre = uiState.nombrePrueba
+                                        val plantilla = uiState.plantillaSeleccionada
 
-                                        // --- Construir URL con parámetros ---
-                                        val urlConParams = try {
-                                            Uri.parse(scriptUrlBase)
-                                                .buildUpon()
-                                                .appendQueryParameter("destinatario", destinatario)
-                                                .appendQueryParameter("asunto", asunto)
-                                                .appendQueryParameter("nombre", nombre)
-                                                .appendQueryParameter("tipoPlantilla", tipoPlantilla)
-                                                // Futuro: Añadir token de seguridad aquí
-                                                // .appendQueryParameter("token", "TU_TOKEN_SECRETO")
-                                                .build()
-                                                .toString()
-                                        } catch (e: Exception) {
-                                            Log.e("EmailTestScreen", "Error construyendo URL", e)
-                                            snackbarHostState.showSnackbar("Error interno al preparar el envío.")
-                                            return@launch // Salir de la coroutine
-                                        }
-
-
-                                        Log.d("EmailTestScreen", "Llamando a Apps Script: $urlConParams")
                                         var snackbarMsg = "Enviando email..."
-                                        snackbarHostState.showSnackbar(snackbarMsg) // Mensaje inicial
+                                        snackbarHostState.showSnackbar(snackbarMsg)
 
-                                        try {
-                                            // --- Realizar llamada HTTP en hilo IO ---
-                                            val response: ScriptResponse = withContext(Dispatchers.IO) {
-                                                 Log.d("EmailTestScreen", "Iniciando llamada GET en ${Thread.currentThread().name}")
-                                                 httpClient.get(urlConParams).body() // Ktor analiza el JSON a ScriptResponse
-                                            }
+                                        val enviado = viewModel.enviarEmail(
+                                            destinatario = destinatario,
+                                            nombre = nombre,
+                                            tipoPlantilla = plantilla
+                                        )
 
-                                            Log.i("EmailTestScreen", "Respuesta del script: Status=${response.status}, Message=${response.message}")
-
-                                            // --- Mostrar resultado ---
-                                            if (response.status == "OK") {
-                                                snackbarMsg = "¡Email enviado correctamente!"
-                                            } else {
-                                                // Usar mensaje de error del script si está disponible
-                                                snackbarMsg = "Error del script: ${response.message}"
-                                            }
-
-                                        } catch (e: Exception) {
-                                            Log.e("EmailTestScreen", "Error en llamada a Apps Script", e)
-                                            snackbarMsg = "Error de red al enviar: ${e.message?.take(100) ?: "Desconocido"}"
-                                        } finally {
-                                            snackbarHostState.showSnackbar(snackbarMsg) // Mostrar mensaje final
+                                        snackbarMsg = if (enviado) {
+                                            "¡Email enviado correctamente!"
+                                        } else {
+                                            "Error al enviar el email."
                                         }
+                                        snackbarHostState.showSnackbar(snackbarMsg)
                                     }
                                 } else {
                                      scope.launch {
@@ -376,7 +308,7 @@ fun EmailTestScreen(
                                      }
                                 }
                             },
-                            enabled = uiState.emailValido && uiState.plantillaSeleccionada != TipoPlantilla.NINGUNA, // Habilitar solo si hay email y plantilla
+                            enabled = uiState.emailValido && uiState.plantillaSeleccionada != TipoPlantilla.NINGUNA,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 16.dp),
@@ -384,9 +316,9 @@ fun EmailTestScreen(
                                 containerColor = AdminColor
                             )
                         ) {
-                            Icon(Icons.Default.Send, contentDescription = null)
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Enviar Email (vía Script)") // Texto del botón actualizado
+                            Text("Enviar Email")
                         }
                     }
                 }
@@ -399,6 +331,8 @@ fun EmailTestScreen(
 @Composable
 fun EmailTestScreenPreview() {
     UmeEguneroTheme {
+        // En un preview no podemos usar viewModels reales que requieren Hilt
+        // Simplemente mostramos la estructura de la pantalla
         EmailTestScreen(
             onClose = {}
         )

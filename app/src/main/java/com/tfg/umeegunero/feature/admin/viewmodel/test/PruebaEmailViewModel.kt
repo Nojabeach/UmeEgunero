@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.util.Patterns
 import com.tfg.umeegunero.data.model.PlantillaEmail
+import com.tfg.umeegunero.data.service.EmailNotificationService
 import timber.log.Timber
 
 /**
@@ -30,7 +31,9 @@ import timber.log.Timber
  * @version 1.0
  */
 @HiltViewModel
-class PruebaEmailViewModel @Inject constructor() : ViewModel() {
+class PruebaEmailViewModel @Inject constructor(
+    private val emailService: EmailNotificationService
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PruebaEmailUiState())
     val uiState: StateFlow<PruebaEmailUiState> = _uiState.asStateFlow()
@@ -103,6 +106,26 @@ class PruebaEmailViewModel @Inject constructor() : ViewModel() {
             TipoPlantilla.RECORDATORIO -> PlantillaEmail.obtenerPlantillaRecordatorio(nombre)
             TipoPlantilla.NINGUNA -> ""
         }
+    }
+
+    /**
+     * Envía un email utilizando el servicio.
+     *
+     * @param destinatario El email del destinatario
+     * @param nombre El nombre del destinatario
+     * @param tipoPlantilla El tipo de plantilla a utilizar
+     * @return true si el email se envió correctamente, false en caso contrario
+     */
+    suspend fun enviarEmail(destinatario: String, nombre: String, tipoPlantilla: TipoPlantilla): Boolean {
+        val plantillaServicio = when (tipoPlantilla) {
+            TipoPlantilla.APROBACION -> com.tfg.umeegunero.data.service.TipoPlantilla.APROBACION
+            TipoPlantilla.RECHAZO -> com.tfg.umeegunero.data.service.TipoPlantilla.RECHAZO
+            TipoPlantilla.BIENVENIDA -> com.tfg.umeegunero.data.service.TipoPlantilla.BIENVENIDA
+            TipoPlantilla.RECORDATORIO -> com.tfg.umeegunero.data.service.TipoPlantilla.RECORDATORIO
+            TipoPlantilla.NINGUNA -> com.tfg.umeegunero.data.service.TipoPlantilla.NINGUNA
+        }
+        
+        return emailService.sendEmail(destinatario, nombre, plantillaServicio)
     }
 }
 
