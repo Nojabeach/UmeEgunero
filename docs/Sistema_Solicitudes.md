@@ -4,7 +4,6 @@
 
 El sistema de solicitudes de UmeEgunero es un componente fundamental que gestiona el proceso de vinculación entre familiares y alumnos. Esta funcionalidad es clave para garantizar la privacidad y seguridad de la información de los menores, implementando un flujo de aprobación controlado por los administradores del centro educativo.
 
-<div align="center">
 ```mermaid
 flowchart TD
     A[Familiar introduce código] --> B[Validar código]
@@ -26,7 +25,6 @@ flowchart TD
     style H fill:#bfb,stroke:#333,stroke-width:2px
     style M fill:#ffb,stroke:#333,stroke-width:2px
 ```
-</div>
 
 ## Flujo de Solicitudes
 
@@ -69,7 +67,6 @@ Al procesar la solicitud:
 
 UmeEgunero utiliza dos métodos complementarios para gestionar el proceso de solicitudes, combinando las ventajas de Firebase Cloud Messaging (FCM) para notificaciones en tiempo real y Google Apps Script para comunicaciones asíncronas vía correo electrónico.
 
-<div align="center">
 ```mermaid
 graph TB
     subgraph "UmeEgunero App"
@@ -108,7 +105,6 @@ graph TB
     style G fill:#EA4335,stroke:#990000,stroke-width:2px
     style H fill:#34A853,stroke:#006600,stroke-width:2px
 ```
-</div>
 
 ### Método 1: Firebase Cloud Messaging (FCM)
 
@@ -340,7 +336,6 @@ class EmailService @Inject constructor() {
 
 ## Flujo Completo del Proceso
 
-<div align="center">
 ```mermaid
 sequenceDiagram
     participant Familiar
@@ -387,7 +382,6 @@ sequenceDiagram
     
     note over Familiar,Admin: Proceso Completado
 ```
-</div>
 
 ### Creación de una Solicitud
 
@@ -651,3 +645,9 @@ El sistema de solicitudes de UmeEgunero representa un ejemplo claro de arquitect
 2. **Google Apps Script** ofrece un complemento flexible para comunicaciones formales a través de correo electrónico, asegurando que ninguna solicitud se pierda y proporcionando un canal de respaldo oficial.
 
 Esta combinación de tecnologías garantiza un proceso de vinculación seguro, trazable y eficiente, manteniendo en todo momento la privacidad y seguridad de la información de los alumnos, un aspecto crítico en aplicaciones educativas que manejan datos de menores. 
+
+---
+
+*Documento actualizado por:* Equipo de Desarrollo UmeEgunero  
+*Fecha:* Mayo 2025  
+*Versión:* 1.0 

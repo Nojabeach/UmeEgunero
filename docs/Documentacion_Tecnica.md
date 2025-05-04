@@ -4,6 +4,8 @@
 
 UmeEgunero es una aplicación Android desarrollada con Kotlin que sigue una arquitectura MVVM (Model-View-ViewModel) con principios de Clean Architecture. La aplicación utiliza Jetpack Compose para la interfaz de usuario y Firebase como backend principal.
 
+<div align="center">
+
 ```mermaid
 graph TD
     subgraph "Arquitectura MVVM + Clean Architecture"
@@ -44,6 +46,8 @@ graph TD
     style FB fill:#fbb,stroke:#333,stroke-width:1px
     style Local fill:#fbb,stroke:#333,stroke-width:1px
 ```
+
+</div>
 
 ## Estructura del Proyecto
 
@@ -215,6 +219,8 @@ interface AlumnoRepository {
 }
 ```
 
+<div align="center">
+
 ```mermaid
 flowchart TB
     UI[UI / ViewModel]
@@ -241,6 +247,8 @@ flowchart TB
     style Remote fill:#fbb,stroke:#333,stroke-width:1px
     style Local fill:#bfb,stroke:#333,stroke-width:1px
 ```
+
+</div>
 
 ## Inyección de Dependencias
 
@@ -312,6 +320,8 @@ sealed class NavigationRoutes(val route: String) {
 }
 ```
 
+<div align="center">
+
 ```mermaid
 flowchart TD
     Start[Login] --> Auth{Autenticado?}
@@ -341,6 +351,8 @@ flowchart TD
     style DashboardFam fill:#bfb,stroke:#333,stroke-width:1px
 ```
 
+</div>
+
 ## Sincronización y Modo Offline
 
 La aplicación implementa un sistema de sincronización que permite el trabajo offline, usando Room para almacenamiento local y servicios de sincronización.
@@ -365,6 +377,8 @@ abstract class AppDatabase : RoomDatabase() {
     // Otros DAOs...
 }
 ```
+
+<div align="center">
 
 ```mermaid
 graph TD
@@ -404,6 +418,8 @@ graph TD
     style ConnectivityManager fill:#ff9,stroke:#333,stroke-width:1px
     style SyncWorker fill:#ff9,stroke:#333,stroke-width:1px
 ```
+
+</div>
 
 ## Paginación y LazyLists
 
@@ -460,6 +476,8 @@ class PreferenciasRepository @Inject constructor(
 
 UmeEgunero implementa múltiples capas de seguridad para proteger los datos sensibles y garantizar un acceso adecuado a las funcionalidades:
 
+<div align="center">
+
 ```mermaid
 graph TD
     User([Usuario]) --> Auth[Autenticación]
@@ -502,6 +520,8 @@ graph TD
     style EndCrypto fill:#f99,stroke:#333,stroke-width:1px
 ```
 
+</div>
+
 - **Firebase Auth** y reglas de Firestore para autenticación y autorización.
 - **Protección de datos sensibles**: Uso de HTTPS, roles y reglas de acceso.
 - **No se ha encontrado uso de EncryptedSharedPreferences ni MasterKey en el código actual.**
@@ -529,6 +549,8 @@ class LoginScreenTest {
 ## Patrones de Diseño
 
 UmeEgunero implementa diversos patrones de diseño para garantizar la mantenibilidad y escalabilidad del código:
+
+<div align="center">
 
 ```mermaid
 graph TD
@@ -563,6 +585,8 @@ graph TD
     style Singleton fill:#ff9,stroke:#333,stroke-width:1px
     style Strategy fill:#9ff,stroke:#333,stroke-width:1px
 ```
+
+</div>
 
 - **Repository Pattern**: Abstracción de acceso a datos.
 - **Factory Pattern**: Creación de ViewModels y objetos complejos.

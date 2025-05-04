@@ -4,7 +4,6 @@
 
 El sistema de notificaciones de UmeEgunero proporciona un mecanismo centralizado, confiable y adaptado a cada perfil de usuario para mantener informados a todos los participantes del entorno educativo. Este sistema abarca desde notificaciones en tiempo real hasta comunicaciones programadas, y utiliza Firebase Cloud Messaging (FCM) como infraestructura principal.
 
-<div align="center">
 ```mermaid
 flowchart TD
     subgraph "Plataforma UmeEgunero"
@@ -49,7 +48,6 @@ flowchart TD
     style P2 fill:#34A853,stroke:#006600,stroke-width:2px
     style P3 fill:#34A853,stroke:#006600,stroke-width:2px
 ```
-</div>
 
 ## Arquitectura del Sistema de Notificaciones
 
@@ -126,7 +124,6 @@ El sistema sigue un flujo de trabajo bien definido:
 
 ## Tipos de Notificaciones por Perfil de Usuario
 
-<div align="center">
 ```mermaid
 flowchart LR
     subgraph "Origen"
@@ -169,7 +166,6 @@ flowchart LR
     style D2 fill:#A5D6A7,stroke:#2E7D32,stroke-width:2px
     style D3 fill:#FFE082,stroke:#FFC107,stroke-width:2px
 ```
-</div>
 
 ### Perfil: Administrador del Centro
 
@@ -428,3 +424,9 @@ Para desarrolladores que necesiten depurar el sistema de notificaciones:
        Log.d("TEST_NOTIFICACION", "Resultado: $success - $message") 
    }
    ``` 
+
+---
+
+*Documento actualizado por:* Equipo de Desarrollo UmeEgunero  
+*Fecha:* Mayo 2025  
+*Versión:* 1.0 

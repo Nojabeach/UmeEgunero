@@ -28,6 +28,7 @@ UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Gr
 - **UI Moderna**: Interfaz fluida desarrollada íntegramente con Jetpack Compose
 - **Navegación Intuitiva**: Experiencia de usuario adaptada a cada perfil
 - **Diseño Responsive**: Adaptación óptima a diferentes tamaños de pantalla
+- **Feedback Háptico**: Retroalimentación táctil para mejorar la interactividad y confirmar acciones importantes
 
 ### 📝 Comunicación Integrada
 - **Sistema de Mensajería**: Comunicación directa entre profesores y familiares
@@ -45,7 +46,6 @@ UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Gr
 - **Firebase Cloud Messaging**: Implementación optimizada para entrega confiable y en tiempo real
 - **Deeplinks Inteligentes**: Navegación directa a secciones específicas al interactuar con notificaciones
 
-<div align="center">
 ```mermaid
 flowchart TD
     A[Firebase Cloud Messaging] --> B[UmeEguneroMessagingService]
@@ -67,15 +67,14 @@ flowchart TD
     style J fill:#4285F4,stroke:#0066cc,stroke-width:2px
     style K fill:#FBBC05,stroke:#cc9900,stroke-width:2px
 ```
-</div>
 
 ### 🔄 Sistema de Solicitudes y Vinculaciones
 - **Proceso Seguro**: Flujo controlado para vincular familiares con alumnos
 - **Sistema Dual**: Implementación híbrida con Firebase Cloud Messaging y Google Apps Script
 - **Aprobación Administrativa**: Verificación por administradores del centro
 - **Trazabilidad Completa**: Registro detallado de cada etapa del proceso
+- **Interacción Mejorada**: Diálogos de confirmación con feedback háptico para acciones críticas
 
-<div align="center">
 ```mermaid
 sequenceDiagram
     participant Familiar
@@ -90,12 +89,11 @@ sequenceDiagram
     App->>Firestore: Actualizar estado
     Firestore-->>Familiar: Notificar resultado
 ```
-</div>
 
 ### 🛡️ Arquitectura Híbrida para Operaciones Administrativas
 - **Google Apps Script para Administración de Usuarios**: Implementación de microservicios serverless para operaciones críticas
 - **Eliminación Segura de Usuarios**: Sistema robusto para eliminación completa de perfiles sin costos adicionales
-- **Backend Ligero**: Solución innovadora que evita dependencias de servicios premium como Firebase Functions
+- **Backend Ligero**: Solución innovadora que evita dependencias de servicios premium
 
 ## 🛠️ Arquitectura y Tecnologías
 
@@ -108,7 +106,7 @@ UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en des
 
 ### Stack Tecnológico
 - **Kotlin**: Lenguaje principal con utilización de características avanzadas (Coroutines, Flow, Extensions)
-- **Jetpack Compose**: Framework declarativo para construcción de UI moderna
+- **Jetpack Compose**: Framework declarativo para construcción de UI moderna con componentes interactivos y feedback háptico
 - **Firebase Suite**: 
   - Firestore: Base de datos NoSQL en tiempo real
   - Firebase Authentication: Gestión de usuarios y autenticación
@@ -117,7 +115,7 @@ UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en des
 - **Google Apps Script**: 
   - Utilizado como backend simple para el envío fiable de correos electrónicos HTML, superando limitaciones de Intents
   - Implementación de endpoints para gestión administrativa de usuarios en Firebase Authentication
-  - Solución gratuita y eficiente para operaciones administrativas que normalmente requerirían Firebase Functions (plan de pago)
+  - Solución gratuita y eficiente para operaciones administrativas
 - **Inyección de Dependencias**: Hilt para gestión eficiente de dependencias
 - **Navegación**: Jetpack Navigation Compose para rutas y transiciones
 - **Asincronía**: Coroutines y Flow para operaciones no bloqueantes
@@ -176,10 +174,11 @@ app/
    - Descargar el archivo `google-services.json` y colocarlo en la carpeta `/app`
    - Habilitar los servicios necesarios (Authentication, Firestore, Storage, Cloud Messaging)
 
-3. **Configurar Google Apps Script (opcional para correos electrónicos)**
+3. **Configurar Google Apps Script**
    - Crear un nuevo proyecto en [Google Apps Script](https://script.google.com/)
-   - Implementar el endpoint para procesamiento de correos
-   - Configurar la URL en la aplicación
+   - Implementar el endpoint para procesamiento de correos y gestión de usuarios
+   - La URL del servicio es: https://script.google.com/macros/s/AKfycbze3MmQnykWCV_ymsZgnICiC1wFIZG37-8Pr66ZbJS9X87LiL10wC3JJYVu1MVzsjxP/exec
+   - Configurar esta URL en la aplicación
 
 4. **Compilar y ejecutar**
    - Abrir el proyecto en Android Studio
@@ -195,8 +194,8 @@ UmeEgunero incluye documentación completa disponible en el directorio `/docs`:
 - **[Manual de Usuario](docs/Manual_Usuario.md)**: Guía de uso para cada perfil de usuario
 - **[Sistema de Notificaciones](docs/Sistema_Notificaciones.md)**: Arquitectura y funcionamiento del sistema de notificaciones
 - **[Sistema de Solicitudes](docs/Sistema_Solicitudes.md)**: Implementación del proceso de vinculación familiar-alumno
-- **[Google Apps Script para Firebase Auth](docs/Google_Apps_Script_Firebase_Auth.md)**: Implementación de microservicios serverless como alternativa a Firebase Functions
-- **[Guía de Despliegue](docs/Guia_Despliegue.md)**: Instrucciones para configuración y puesta en producción
+- **[Google Apps Script para Firebase Auth](docs/Google_Apps_Script_Firebase_Auth.md)**: Implementación de microservicios serverless
+- **[Testing Aplicación](docs/Testing_Aplicacion.md)**: Estructura y metodología de pruebas
 
 ## 🧪 Testing
 

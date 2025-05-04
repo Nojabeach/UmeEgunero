@@ -531,4 +531,4 @@ Todas las pantallas siguen las directrices de Material 3 y buenas prácticas de 
 
 ---
 
-## Versión del manual: 3.0.1 (actualizado a la versión 5.0.0 de la aplicación - Mayo 2025) 
+## Versión del manual: 1.3.0 (actualizado a la versión 1.0.0 de la aplicación - Mayo 2025) 
