@@ -40,6 +40,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.ui.components.DefaultTopAppBar
+import com.tfg.umeegunero.navigation.AppScreens
 
 enum class ModoVisualizacion { CURSOS, CLASES }
 
@@ -306,7 +307,13 @@ fun GestorAcademicoScreen(
                                             ) {
                                                 OutlinedButton(
                                                     onClick = { 
-                                                        onNavigate("vincular_alumnos_clase/${clase.id}?cursoId=${selectedCurso?.id ?: cursoId}")
+                                                        // Usar la ruta de AddUser directamente con los parámetros adecuados
+                                                        onNavigate(AppScreens.AddUser.createRoute(
+                                                            isAdminApp = false,
+                                                            tipoUsuario = "ALUMNO",
+                                                            centroId = selectedCentro?.id,
+                                                            centroBloqueado = true
+                                                        ))
                                                     },
                                                     modifier = Modifier.padding(end = 8.dp)
                                                 ) {

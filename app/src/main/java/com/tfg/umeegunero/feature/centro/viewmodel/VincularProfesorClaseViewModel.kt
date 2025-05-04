@@ -783,4 +783,83 @@ class VincularProfesorClaseViewModel @Inject constructor(
     fun limpiarError() {
         _uiState.update { it.copy(error = null) }
     }
+    
+    /**
+     * Inicializa el ViewModel con una clase específica.
+     * Este método se utiliza cuando se navega directamente a la vinculación de un profesor
+     * a una clase específica desde la pantalla de detalle de clase.
+     * 
+     * @param claseId ID de la clase para inicializar
+     */
+    fun inicializarConClase(claseId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            try {
+                // Primero obtenemos la información de la clase
+                when (val result = claseRepository.getClaseById(claseId)) {
+                    is Result.Success -> {
+                        val clase = result.data
+                        
+                        // Obtenemos el ID del curso y del centro
+                        val cursoId = clase.cursoId
+                        
+                        // Cargamos el curso
+                        val cursoResult = cursoRepository.getCursoById(cursoId)
+                        if (cursoResult is Result.Success) {
+                            val curso = cursoResult.data
+                            val centroId = curso.centroId
+                            
+                            // Actualizamos el estado con el centro seleccionado
+                            if (centroId.isNotEmpty()) {
+                                // Cargamos el centro
+                                val centroResult = centroRepository.getCentroById(centroId)
+                                if (centroResult is Result.Success) {
+                                    val centro = centroResult.data
+                                    _uiState.update { it.copy(
+                                        centroId = centroId,
+                                        centroSeleccionado = centro
+                                    )}
+                                }
+                                
+                                // Cargamos los cursos del centro
+                                cargarCursos(centroId)
+                                
+                                // Cargamos los profesores del centro
+                                cargarProfesores(centroId)
+                                
+                                // Actualizamos el curso seleccionado
+                                _uiState.update { it.copy(
+                                    cursoSeleccionado = curso
+                                )}
+                                
+                                // Cargamos las clases del curso
+                                cargarClasesPorCurso(cursoId)
+                                
+                                // Seleccionamos la clase específica
+                                _uiState.update { it.copy(
+                                    claseSeleccionada = clase
+                                )}
+                            }
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = "Error al cargar la clase: ${result.exception?.message ?: "Error desconocido"}",
+                            isLoading = false
+                        )}
+                    }
+                    else -> {} // No hacemos nada en caso de Result.Loading
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = "Error inesperado: ${e.message ?: "Error desconocido"}",
+                    isLoading = false
+                )}
+                timber.log.Timber.e(e, "Error al inicializar con clase específica")
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
 } 

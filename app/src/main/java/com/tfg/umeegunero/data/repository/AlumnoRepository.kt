@@ -113,6 +113,13 @@ interface AlumnoRepository {
      * @return Resultado indicando éxito o error
      */
     suspend fun eliminarProfesor(alumnoDni: String): Result<Unit>
+
+    /**
+     * Obtiene un alumno por su DNI
+     * @param dni DNI del alumno a buscar
+     * @return Resultado con el alumno encontrado o error
+     */
+    suspend fun getAlumnoPorDni(dni: String): Result<Alumno>
 }
 
 /**
@@ -485,6 +492,38 @@ class AlumnoRepositoryImpl @Inject constructor(
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error al eliminar profesor para alumno: $alumnoDni")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene un alumno por su DNI
+     * @param dni DNI del alumno a buscar
+     * @return Resultado con el alumno encontrado o error
+     */
+    override suspend fun getAlumnoPorDni(dni: String): Result<Alumno> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("dni", dni)
+                .limit(1)
+                .get()
+                .await()
+                
+            if (query.isEmpty) {
+                Timber.w("No se encontró alumno con DNI: $dni")
+                return@withContext Result.Error(Exception("Alumno no encontrado"))
+            }
+            
+            val alumno = query.documents.first().toObject(Alumno::class.java)
+            if (alumno != null) {
+                Timber.d("Alumno encontrado por DNI: $dni - ${alumno.nombre} ${alumno.apellidos}")
+                return@withContext Result.Success(alumno)
+            } else {
+                Timber.w("Error al convertir documento a Alumno para DNI: $dni")
+                return@withContext Result.Error(Exception("Error al convertir documento a Alumno"))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar alumno por DNI: $dni")
             return@withContext Result.Error(e)
         }
     }

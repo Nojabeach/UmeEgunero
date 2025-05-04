@@ -609,14 +609,24 @@ fun AddUserScreen(
                                             .fillMaxWidth()
                                             .selectable(
                                                 selected = (uiState.tipoUsuario == tipo),
-                                                onClick = { onUpdateTipoUsuario(tipo) }
+                                                onClick = { 
+                                                    if (!uiState.isTipoUsuarioBloqueado) {
+                                                        onUpdateTipoUsuario(tipo) 
+                                                    }
+                                                },
+                                                enabled = !uiState.isTipoUsuarioBloqueado
                                             )
                                             .padding(vertical = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         RadioButton(
                                             selected = (uiState.tipoUsuario == tipo),
-                                            onClick = { onUpdateTipoUsuario(tipo) }
+                                            onClick = { 
+                                                if (!uiState.isTipoUsuarioBloqueado) {
+                                                    onUpdateTipoUsuario(tipo) 
+                                                }
+                                            },
+                                            enabled = !uiState.isTipoUsuarioBloqueado
                                         )
 
                                         Text(
@@ -629,7 +639,34 @@ fun AddUserScreen(
                                                 else -> "Otro"
                                             },
                                             style = MaterialTheme.typography.bodyLarge,
-                                            modifier = Modifier.padding(start = 8.dp)
+                                            modifier = Modifier.padding(start = 8.dp),
+                                            color = if (uiState.isTipoUsuarioBloqueado && uiState.tipoUsuario != tipo) 
+                                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) 
+                                                else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                                
+                                // Mensaje informativo cuando el tipo está bloqueado
+                                if (uiState.isTipoUsuarioBloqueado) {
+                                    Row(
+                                        modifier = Modifier.padding(top = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = if (uiState.tipoUsuario == TipoUsuario.PROFESOR && !uiState.isEditMode)
+                                                "Tipo de usuario preseleccionado como profesor"
+                                            else
+                                                "No se permite cambiar el tipo de usuario en modo edición",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                     }
                                 }
@@ -1338,7 +1375,8 @@ fun CentroDropdown(
             value = centroSeleccionado,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Centro") },
+            label = { Text("Centro Educativo") },
+            placeholder = { Text("Seleccionar centro educativo") },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },

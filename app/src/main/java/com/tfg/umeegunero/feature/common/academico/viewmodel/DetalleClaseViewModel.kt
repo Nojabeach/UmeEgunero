@@ -123,26 +123,60 @@ class DetalleClaseViewModel @Inject constructor(
      * @param alumnosIds Lista de IDs de alumnos a cargar
      */
     private suspend fun cargarAlumnos(alumnosIds: List<String>) {
-        if (alumnosIds.isEmpty()) return
+        if (alumnosIds.isEmpty()) {
+            Timber.d("No hay IDs de alumnos para cargar")
+            return
+        }
+        
+        Timber.d("Intentando cargar ${alumnosIds.size} alumnos con IDs: $alumnosIds")
         
         try {
             val alumnos = mutableListOf<Alumno>()
             
+            // Primero intentamos cargar los alumnos por DNI (que es el ID guardado en alumnosIds)
             for (alumnoId in alumnosIds) {
-                when (val result = alumnoRepository.getAlumnoById(alumnoId)) {
-                    is Result.Success -> {
-                        alumnos.add(result.data)
+                Timber.d("Cargando alumno con ID/DNI: $alumnoId")
+                
+                try {
+                    // Intentar primero obtener por DNI desde el repositorio
+                    val resultPorDNI = alumnoRepository.getAlumnoPorDni(alumnoId)
+                    
+                    if (resultPorDNI is Result.Success && resultPorDNI.data != null) {
+                        Timber.d("Alumno encontrado por DNI: ${resultPorDNI.data.nombre} ${resultPorDNI.data.apellidos}")
+                        alumnos.add(resultPorDNI.data)
+                    } else {
+                        // Si no se encuentra por DNI, intentar por ID
+                        val result = alumnoRepository.getAlumnoById(alumnoId)
+                        
+                        if (result is Result.Success) {
+                            Timber.d("Alumno encontrado por ID: ${result.data.nombre} ${result.data.apellidos}")
+                            alumnos.add(result.data)
+                        } else if (result is Result.Error) {
+                            Timber.e(result.exception, "Error al cargar alumno con ID $alumnoId")
+                        }
                     }
-                    is Result.Error -> {
-                        Timber.e(result.exception, "Error al cargar alumno $alumnoId")
-                    }
-                    is Result.Loading -> { /* No action needed */ }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al intentar cargar el alumno $alumnoId")
                 }
             }
             
+            // Si no se cargaron alumnos por el método normal, intentar cargar por claseId
+            if (alumnos.isEmpty() && claseId.isNotEmpty()) {
+                Timber.d("No se encontraron alumnos por ID/DNI. Intentando cargar por claseId: $claseId")
+                val resultPorClase = alumnoRepository.getAlumnosByClaseId(claseId)
+                
+                if (resultPorClase is Result.Success && resultPorClase.data.isNotEmpty()) {
+                    Timber.d("Alumnos encontrados por claseId: ${resultPorClase.data.size}")
+                    alumnos.addAll(resultPorClase.data)
+                } else if (resultPorClase is Result.Error) {
+                    Timber.e(resultPorClase.exception, "Error al cargar alumnos por claseId $claseId")
+                }
+            }
+            
+            Timber.d("Total de alumnos cargados: ${alumnos.size}")
             _uiState.update { it.copy(alumnos = alumnos) }
         } catch (e: Exception) {
-            Timber.e(e, "Error al cargar los alumnos")
+            Timber.e(e, "Error general al cargar los alumnos")
         }
     }
 

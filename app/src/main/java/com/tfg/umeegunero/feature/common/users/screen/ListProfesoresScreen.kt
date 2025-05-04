@@ -46,27 +46,33 @@ fun ListProfesoresScreen(
     navController: NavController,
     viewModel: ListProfesoresViewModel = hiltViewModel()
 ) {
+    // Registrar actividad de pantalla
+    com.tfg.umeegunero.util.LogPantallas("ListaProfesores", "")
+    
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var showFilterDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var selectedProfesor by remember { mutableStateOf<Usuario?>(null) }
+    var showFilterDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     
     LaunchedEffect(Unit) {
         viewModel.cargarProfesores()
+        // Obtener el centroId del usuario actual (administrador de centro)
+        viewModel.obtenerCentroIdUsuarioActual()
     }
     
-    // Manejo de errores
+    // Mostrar errores como Snackbar
     LaunchedEffect(uiState.error) {
-        uiState.error?.let { mensaje ->
-            scope.launch {
-                snackbarHostState.showSnackbar(mensaje)
-                viewModel.clearError()
-            }
+        if (uiState.error != null) {
+            snackbarHostState.showSnackbar(
+                message = uiState.error!!,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearError()
         }
     }
-
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -99,9 +105,12 @@ fun ListProfesoresScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { 
+                    // Usar el centroId del administrador actual para la navegación
                     navController.navigate(AppScreens.AddUser.createRoute(
                         isAdminApp = false, 
-                        tipoUsuario = TipoUsuario.PROFESOR.toString()
+                        tipoUsuario = TipoUsuario.PROFESOR.toString(),
+                        centroId = uiState.centroId,  // Pasar el ID del centro
+                        centroBloqueado = true       // Bloquear selección de centro
                     ))
                 },
                 icon = { Icon(Icons.Default.Add, "Añadir") },
@@ -129,9 +138,12 @@ fun ListProfesoresScreen(
             if (!uiState.isLoading && uiState.profesores.isEmpty()) {
                 EmptyProfesoresList(
                     onAddClicked = {
+                        // Usar el centroId del administrador actual para la navegación
                         navController.navigate(AppScreens.AddUser.createRoute(
                             isAdminApp = false, 
-                            tipoUsuario = TipoUsuario.PROFESOR.toString()
+                            tipoUsuario = TipoUsuario.PROFESOR.toString(),
+                            centroId = uiState.centroId,  // Pasar el ID del centro
+                            centroBloqueado = true       // Bloquear selección de centro
                         ))
                     }
                 )

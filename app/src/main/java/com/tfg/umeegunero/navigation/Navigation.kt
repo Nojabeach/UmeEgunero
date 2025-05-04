@@ -734,13 +734,25 @@ fun Navigation(
             )
         }
 
-        // Pantallas de vinculación
-        composable(route = AppScreens.VincularProfesorClase.route) {
+        // Pantalla para vincular profesor a una clase
+        composable(
+            route = "vincular_profesor_clase/{claseId}?cursoId={cursoId}",
+            arguments = listOf(
+                navArgument("claseId") { type = NavType.StringType },
+                navArgument("cursoId") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) { backStackEntry ->
+            val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
+            val cursoId = backStackEntry.arguments?.getString("cursoId")
+            
+            // Navegar a la pantalla de vincular profesor a clase
             com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
+                claseId = claseId,
                 onBack = { navController.popBackStack() }
             )
         }
 
+        // Pantalla para vincular alumnos a familiares
         composable(route = AppScreens.VincularAlumnoFamiliar.route) {
             com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
                 navController = navController

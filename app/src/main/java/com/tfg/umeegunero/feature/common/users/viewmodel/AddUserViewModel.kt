@@ -68,6 +68,7 @@ data class AddUserUiState(
     val isEditMode: Boolean = false,
     val initialCentroId: String? = null,
     val isCentroBloqueado: Boolean = false,
+    val isTipoUsuarioBloqueado: Boolean = false, // Nueva bandera para bloquear el tipo de usuario
     val firstInvalidField: AddUserFormField? = null, // Para scroll al error
     val validationAttemptFailed: Boolean = false, // Trigger para scroll al error
     val alergias: String = "",
@@ -126,7 +127,9 @@ data class AddUserUiState(
 class AddUserViewModel @Inject constructor(
     private val centroRepository: CentroRepository,
     private val cursoRepository: CursoRepository,
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val firebaseAuth: FirebaseAuth,
+    private val firebaseFirestore: FirebaseFirestore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddUserUiState())
@@ -143,47 +146,177 @@ class AddUserViewModel @Inject constructor(
         isAdminAppFlag: Boolean
     ) {
         // Solo inicializar una vez (evitar llamadas múltiples desde LaunchedEffect)
-        if (_uiState.value.initialCentroId == null && centroId != null) {
-            val tipoUsuario = tipoUsuarioStr?.let { tipo ->
-                when (tipo.lowercase()) {
-                    "admin" -> TipoUsuario.ADMIN_APP
-                    "centro" -> TipoUsuario.ADMIN_CENTRO
-                    "profesor" -> TipoUsuario.PROFESOR
-                    "familiar" -> TipoUsuario.FAMILIAR
-                    "alumno" -> TipoUsuario.ALUMNO
-                    else -> TipoUsuario.FAMILIAR // Default o manejar error
-                }
-            } ?: TipoUsuario.FAMILIAR // Default si no viene
+        if (_uiState.value.initialCentroId != null) return
 
-            _uiState.update {
-                it.copy(
-                    initialCentroId = centroId,
-                    isCentroBloqueado = bloqueado,
-                    tipoUsuario = tipoUsuario,
-                    isAdminApp = isAdminAppFlag
-                )
+        // Convertir string a enum TipoUsuario
+        val tipoUsuario = tipoUsuarioStr?.let { tipo ->
+            when (tipo.uppercase()) {
+                "ADMIN", "ADMIN_APP" -> TipoUsuario.ADMIN_APP
+                "CENTRO", "ADMIN_CENTRO" -> TipoUsuario.ADMIN_CENTRO
+                "PROFESOR" -> TipoUsuario.PROFESOR
+                "FAMILIAR" -> TipoUsuario.FAMILIAR
+                "ALUMNO" -> TipoUsuario.ALUMNO
+                else -> TipoUsuario.FAMILIAR
             }
-            // Cargar centros y luego intentar preseleccionar
-            loadCentrosAndSelectInitial()
-        } else if (_uiState.value.initialCentroId == null) {
-             // Si no viene centroId, inicializar igualmente tipo y admin flag
-             val tipoUsuario = tipoUsuarioStr?.let { tipo ->
-                when (tipo.lowercase()) {
-                    "admin" -> TipoUsuario.ADMIN_APP
-                    "centro" -> TipoUsuario.ADMIN_CENTRO
-                    "profesor" -> TipoUsuario.PROFESOR
-                    "familiar" -> TipoUsuario.FAMILIAR
-                    "alumno" -> TipoUsuario.ALUMNO
-                    else -> TipoUsuario.FAMILIAR // Default o manejar error
+        } ?: TipoUsuario.FAMILIAR
+        
+        // Determinar si el tipo de usuario debe estar bloqueado
+        // - Al editar un Admin Centro
+        // - Al crear/editar un profesor desde perfil Admin Centro
+        val bloquearTipoUsuario = tipoUsuarioStr?.uppercase() == "ADMIN_CENTRO" || 
+                                  (tipoUsuarioStr?.uppercase() == "PROFESOR" && !isAdminAppFlag)
+        
+        // Determinar si el centro debe estar bloqueado
+        // - Si viene bloqueado explícitamente por parámetro
+        // - Si es Admin de Centro (siempre bloqueado)
+        // - Si es Profesor creado por Admin de Centro (no por Admin App)
+        val isCentroBloqueado = bloqueado || 
+                                tipoUsuario == TipoUsuario.ADMIN_CENTRO || 
+                                (tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag)
+        
+        Timber.d("Inicializando AddUserViewModel - Tipo: $tipoUsuario, Centro bloqueado: $isCentroBloqueado, Tipo bloqueado: $bloquearTipoUsuario, Admin app: $isAdminAppFlag")
+        
+        // Si estamos creando un profesor desde el perfil de admin centro y no se proporcionó un centroId,
+        // debemos obtener automáticamente el centroId del administrador de centro logueado
+        if (centroId == null && tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag) {
+            Timber.d("Creando profesor desde perfil admin centro. Se intentará obtener automáticamente el centroId")
+            viewModelScope.launch {
+                try {
+                    // Actualizar estado inicial primero (excepto centroId que se obtendrá después)
+                    _uiState.update {
+                        it.copy(
+                            isCentroBloqueado = isCentroBloqueado,
+                            tipoUsuario = tipoUsuario,
+                            isAdminApp = isAdminAppFlag,
+                            isTipoUsuarioBloqueado = bloquearTipoUsuario,
+                            isLoading = true
+                        )
+                    }
+                    
+                    // Obtener el centroId y seleccionar el centro directamente
+                    val centroIdAdmin = obtenerCentroIdAdminActual()
+                    if (!centroIdAdmin.isNullOrEmpty()) {
+                        Timber.d("Se obtuvo el centroId del admin actual: $centroIdAdmin")
+                        // Actualizar solo el initialCentroId ya que el resto ya se actualizó
+                        _uiState.update {
+                            it.copy(
+                                initialCentroId = centroIdAdmin,
+                                isLoading = false
+                            )
+                        }
+                        // No llamamos a loadCentrosAndSelectInitial() porque obtenerCentroIdAdminActual ya seleccionó el centro
+                    } else {
+                        Timber.w("No se pudo obtener el centroId del admin actual")
+                        inicializacionNormal(centroId, isCentroBloqueado, tipoUsuario, isAdminAppFlag, bloquearTipoUsuario)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener el centroId del admin actual")
+                    inicializacionNormal(centroId, isCentroBloqueado, tipoUsuario, isAdminAppFlag, bloquearTipoUsuario)
                 }
-            } ?: TipoUsuario.FAMILIAR // Default si no viene
-             _uiState.update {
-                it.copy(
-                    tipoUsuario = tipoUsuario,
-                    isAdminApp = isAdminAppFlag
-                )
             }
-             loadCentros() // Cargar centros igualmente
+        } else {
+            // Inicialización normal para otros casos
+            inicializacionNormal(centroId, isCentroBloqueado, tipoUsuario, isAdminAppFlag, bloquearTipoUsuario)
+        }
+    }
+    
+    /**
+     * Método auxiliar para realizar la inicialización normal
+     */
+    private fun inicializacionNormal(
+        centroId: String?,
+        isCentroBloqueado: Boolean,
+        tipoUsuario: TipoUsuario,
+        isAdminAppFlag: Boolean,
+        bloquearTipoUsuario: Boolean
+    ) {
+        // Actualizar estado con los parámetros iniciales
+        _uiState.update {
+            it.copy(
+                initialCentroId = centroId,
+                isCentroBloqueado = isCentroBloqueado,
+                tipoUsuario = tipoUsuario,
+                isAdminApp = isAdminAppFlag,
+                isTipoUsuarioBloqueado = bloquearTipoUsuario
+            )
+        }
+        
+        // Cargar centros (con o sin preselección)
+        if (centroId != null) {
+            Timber.d("Cargando centros con preselección del centro: $centroId")
+            loadCentrosAndSelectInitial()
+        } else {
+            Timber.d("Cargando todos los centros sin preselección")
+            loadCentros()
+        }
+    }
+    
+    /**
+     * Obtiene el ID del centro del administrador actualmente autenticado
+     * y también carga y selecciona el centro correspondiente
+     */
+    private suspend fun obtenerCentroIdAdminActual(): String? {
+        try {
+            val currentUser = usuarioRepository.obtenerUsuarioActual() ?: return null
+            
+            // Buscar el perfil de tipo ADMIN_CENTRO
+            val perfilAdminCentro = currentUser.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+            val centroId = perfilAdminCentro?.centroId
+            
+            Timber.d("🔍 Buscando centro del administrador actual: ${currentUser.nombre} ${currentUser.apellidos}")
+            
+            if (!centroId.isNullOrEmpty()) {
+                Timber.d("✅ Centro ID encontrado en perfil: $centroId")
+                
+                // Cargar directamente el centro por ID para asegurar que se preseleccione
+                val centroResult = centroRepository.getCentroById(centroId)
+                if (centroResult is Result.Success && centroResult.data != null) {
+                    val centro = centroResult.data as Centro
+                    Timber.d("✅ Centro encontrado por ID: ${centro.nombre} (${centro.id})")
+                    
+                    // Cargar todos los centros para completar la lista disponible
+                    val centrosResult = centroRepository.getActiveCentros()
+                    if (centrosResult is Result.Success) {
+                        val centros = centrosResult.data
+                        
+                        Timber.d("📋 Total centros disponibles: ${centros.size}")
+                        Timber.d("🎯 Preseleccionando centro: ${centro.nombre}")
+                        
+                        // Actualizar el estado UI para mostrar el centro seleccionado
+                        _uiState.update {
+                            it.copy(
+                                centrosDisponibles = centros,
+                                centroSeleccionado = centro,
+                                centroId = centro.id,  // Asegurarse de que centroId esté actualizado también
+                                isLoading = false
+                            )
+                        }
+                        
+                        // Verificar que el centro está correctamente seleccionado
+                        if (_uiState.value.centroSeleccionado?.id == centro.id) {
+                            Timber.d("✅ Centro seleccionado correctamente: ${centro.nombre}")
+                        } else {
+                            Timber.w("⚠️ Posible problema al seleccionar centro: estado actual=${_uiState.value.centroSeleccionado?.nombre ?: "ninguno"}")
+                        }
+                        
+                        // Si estamos creando un alumno, cargar los cursos automáticamente
+                        if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
+                            loadCursos(centro.id)
+                        }
+                    } else {
+                        Timber.e("❌ Error al cargar lista de centros")
+                    }
+                } else {
+                    Timber.e("❌ No se pudo cargar el centro con ID: $centroId")
+                }
+            } else {
+                Timber.w("⚠️ No se encontró centroId en el perfil del administrador actual")
+            }
+            
+            return centroId
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error al obtener centro del administrador actual")
+            return null
         }
     }
 
@@ -453,6 +586,12 @@ class AddUserViewModel @Inject constructor(
 
     // Actualiza el tipo de usuario
     fun updateTipoUsuario(tipoUsuario: TipoUsuario) {
+        // Determinar si el centro debe bloquearse para este tipo de usuario
+        // Si ya estaba bloqueado, mantenerlo bloqueado
+        val debeBloquearCentro = _uiState.value.isCentroBloqueado || 
+                                tipoUsuario == TipoUsuario.ADMIN_CENTRO || 
+                                (tipoUsuario == TipoUsuario.PROFESOR && !_uiState.value.isAdminApp)
+        
         // Al cambiar tipo, resetear campos específicos y validaciones potencialmente irrelevantes
         _uiState.update {
             it.copy(
@@ -469,18 +608,25 @@ class AddUserViewModel @Inject constructor(
                 passwordError = if (tipoUsuario == TipoUsuario.ALUMNO) null else it.passwordError,
                 confirmPassword = if (tipoUsuario == TipoUsuario.ALUMNO) "" else it.confirmPassword,
                 confirmPasswordError = if (tipoUsuario == TipoUsuario.ALUMNO) null else it.confirmPasswordError,
-                 // Resetear selección de centro si no es relevante (ej. admin app, familiar)
-                centroSeleccionado = if (tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) null else it.centroSeleccionado,
-                cursosDisponibles = if (tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) emptyList() else it.cursosDisponibles,
-                clasesDisponibles = if (tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) emptyList() else it.clasesDisponibles,
+                 // Resetear selección de centro si no es relevante (ej. admin app, familiar) y no está bloqueado
+                centroSeleccionado = if ((tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) && !debeBloquearCentro) 
+                                    null else it.centroSeleccionado,
+                cursosDisponibles = if ((tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) && !debeBloquearCentro) 
+                                   emptyList() else it.cursosDisponibles,
+                clasesDisponibles = if ((tipoUsuario == TipoUsuario.ADMIN_APP || tipoUsuario == TipoUsuario.FAMILIAR) && !debeBloquearCentro) 
+                                   emptyList() else it.clasesDisponibles,
                 firstInvalidField = null, // Limpiar foco de error al cambiar tipo
-                validationAttemptFailed = false
+                validationAttemptFailed = false,
+                isCentroBloqueado = debeBloquearCentro
             )
         }
+        
+        Timber.d("Tipo de usuario actualizado a: $tipoUsuario, Centro bloqueado: ${_uiState.value.isCentroBloqueado}")
+        
         // Si el nuevo tipo requiere centro y no está bloqueado, cargar centros si no están ya cargados
-        if (!uiState.value.isCentroBloqueado &&
+        if (!_uiState.value.isCentroBloqueado &&
             (tipoUsuario == TipoUsuario.ADMIN_CENTRO || tipoUsuario == TipoUsuario.PROFESOR || tipoUsuario == TipoUsuario.ALUMNO) &&
-             uiState.value.centrosDisponibles.isEmpty()) {
+             _uiState.value.centrosDisponibles.isEmpty()) {
             loadCentros()
         }
     }
@@ -581,42 +727,9 @@ class AddUserViewModel @Inject constructor(
                          return@launch
                     }
                     
-                    // Convertir listas de alergias y medicación desde strings separados por comas
-                    val alergiasList = currentState.alergias.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                    val medicacionList = currentState.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-
-                    // Crear objeto Alumno
-                    val alumno = Alumno(
-                        dni = currentState.dni,
-                        nombre = currentState.nombre,
-                        apellidos = currentState.apellidos,
-                        fechaNacimiento = currentState.fechaNacimiento,
-                        telefono = currentState.telefono,
-                        email = currentState.email,
-                        centroId = centroId,
-                        curso = currentState.cursoSeleccionado.nombre,
-                        clase = currentState.claseSeleccionada.nombre,
-                        claseId = claseId,
-                        aulaId = currentState.claseSeleccionada.aula,
-                        alergias = alergiasList,
-                        medicacion = medicacionList,
-                        necesidadesEspeciales = currentState.necesidadesEspeciales,
-                        observaciones = currentState.observaciones,
-                        activo = true
-                    )
+                    val result = procesarGuardadoAlumno(currentState)
                     
-                    // Determinar si es edición o creación nueva
-                    val saveResult = if (currentState.isEditMode) {
-                        // Actualizar alumno existente
-                        Timber.d("Actualizando alumno existente con DNI: ${currentState.dni}")
-                        usuarioRepository.guardarAlumno(alumno)
-                    } else {
-                        // Crear nuevo alumno
-                        Timber.d("Registrando nuevo alumno con DNI: ${currentState.dni}")
-                        usuarioRepository.registrarAlumno(alumno)
-                    }
-
-                    when (saveResult) {
+                    when (result) {
                         is Result.Success -> {
                             _uiState.update { 
                                 it.copy(
@@ -631,10 +744,10 @@ class AddUserViewModel @Inject constructor(
                             _uiState.update { 
                                 it.copy(
                                     isLoading = false,
-                                    error = "Error al guardar alumno en Firestore: ${saveResult.exception?.message}"
+                                    error = "Error al guardar alumno en Firestore: ${result.exception?.message}"
                                 )
                             }
-                            Timber.e(saveResult.exception, "Error al guardar alumno en Firestore")
+                            Timber.e(result.exception, "Error al guardar alumno en Firestore")
                         }
                         else -> { /* Ignorar estado Loading */ }
                     }
@@ -757,6 +870,78 @@ class AddUserViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Procesa y guarda los datos de un alumno, realizando las validaciones
+     * y la asignación a la clase correspondiente.
+     *
+     * @param currentState Estado actual de la UI con los datos del alumno
+     * @return Result con el resultado de la operación
+     */
+    private suspend fun procesarGuardadoAlumno(currentState: AddUserUiState): Result<Any> {
+        try {
+            val centroId = currentState.centroSeleccionado?.id ?: ""
+            val claseId = currentState.claseSeleccionada?.id ?: ""
+            
+            // Convertir listas de alergias y medicación desde strings separados por comas
+            val alergiasList = currentState.alergias.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            val medicacionList = currentState.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+            // Crear objeto Alumno
+            val alumno = Alumno(
+                dni = currentState.dni,
+                nombre = currentState.nombre,
+                apellidos = currentState.apellidos,
+                fechaNacimiento = currentState.fechaNacimiento,
+                telefono = currentState.telefono,
+                email = currentState.email,
+                centroId = centroId,
+                curso = currentState.cursoSeleccionado?.nombre ?: "",
+                clase = currentState.claseSeleccionada?.nombre ?: "",
+                claseId = claseId,
+                aulaId = currentState.claseSeleccionada?.aula ?: "",
+                alergias = alergiasList,
+                medicacion = medicacionList,
+                necesidadesEspeciales = currentState.necesidadesEspeciales,
+                observaciones = currentState.observaciones,
+                activo = true
+            )
+            
+            // Determinar si es edición o creación nueva
+            val saveResult = if (currentState.isEditMode) {
+                // Actualizar alumno existente
+                Timber.d("Actualizando alumno existente con DNI: ${currentState.dni}")
+                usuarioRepository.guardarAlumno(alumno)
+            } else {
+                // Crear nuevo alumno
+                Timber.d("Registrando nuevo alumno con DNI: ${currentState.dni}")
+                usuarioRepository.registrarAlumno(alumno)
+            }
+            
+            // Actualizar la lista de alumnos de la clase si el guardado fue exitoso
+            if (saveResult is Result.Success) {
+                try {
+                    Timber.d("Actualizando la lista de alumnos de la clase $claseId con el alumno ${alumno.dni}")
+                    val asignacionResult = cursoRepository.asignarAlumnoAClase(alumno.dni, claseId)
+                    
+                    if (asignacionResult is Result.Error) {
+                        Timber.e(asignacionResult.exception, "Error al asignar alumno a clase: ${asignacionResult.exception?.message}")
+                        // Continuamos con el flujo normal, no bloqueamos por este error
+                    } else {
+                        Timber.d("Alumno asignado correctamente a la clase")
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al intentar asignar el alumno a la clase: ${e.message}")
+                    // Continuamos con el flujo normal, no bloqueamos por este error
+                }
+            }
+            
+            return saveResult
+        } catch (e: Exception) {
+            Timber.e(e, "Error en procesarGuardadoAlumno: ${e.message}")
+            return Result.Error(e)
+        }
+    }
+
     // Crea la lista de perfiles según el tipo de usuario
     private fun createPerfiles(): List<Perfil> {
         val perfiles = mutableListOf<Perfil>()
@@ -1069,21 +1254,31 @@ class AddUserViewModel @Inject constructor(
                         }
                     }
                     
+                    // Determinar si el centro debe estar bloqueado
+                    // - Siempre bloqueado para Admin Centro
+                    // - Bloqueado para Profesor si el usuario actual es Admin Centro (no es Admin App)
+                    val bloquearCentro = tipoUsuario == TipoUsuario.ADMIN_CENTRO || 
+                                        (tipoUsuario == TipoUsuario.PROFESOR && !_uiState.value.isAdminApp)
+                    
                     // Actualizar el estado con los datos del usuario
                     _uiState.update { state ->
                         state.copy(
                             dni = usuario.dni,
+                            email = usuario.email ?: "",
                             nombre = usuario.nombre,
                             apellidos = usuario.apellidos,
-                            telefono = usuario.telefono,
-                            email = usuario.email,
+                            telefono = usuario.telefono ?: "",
                             tipoUsuario = tipoUsuario,
                             isEditMode = true,
-                            isLoading = false,
-                            // Para administradores de centro y profesores, bloquear el cambio de tipo
-                            isCentroBloqueado = tipoUsuario == TipoUsuario.ADMIN_CENTRO || tipoUsuario == TipoUsuario.PROFESOR
+                            // Para administrador de centro, bloquear el tipo de usuario
+                            isTipoUsuarioBloqueado = tipoUsuario == TipoUsuario.ADMIN_CENTRO,
+                            isCentroBloqueado = bloquearCentro,
+                            isLoading = false
                         )
                     }
+                    
+                    Timber.d("Usuario cargado para edición: ${usuario.dni}, tipo: $tipoUsuario, centro bloqueado: $bloquearCentro")
+                    
                 } else {
                     // No se encontró el usuario
                     _uiState.update { state -> 

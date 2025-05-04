@@ -52,11 +52,20 @@ import androidx.compose.material3.HorizontalDivider
 @Composable
 fun VincularProfesorClaseScreen(
     onBack: () -> Unit,
+    claseId: String? = null,
     viewModel: VincularProfesorClaseViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    
+    // Inicializar con claseId si está disponible
+    LaunchedEffect(claseId) {
+        if (!claseId.isNullOrEmpty()) {
+            // Aquí cargaríamos la clase específica y los datos necesarios
+            viewModel.inicializarConClase(claseId)
+        }
+    }
     
     // Manejo de mensajes y errores
     LaunchedEffect(uiState.error) {

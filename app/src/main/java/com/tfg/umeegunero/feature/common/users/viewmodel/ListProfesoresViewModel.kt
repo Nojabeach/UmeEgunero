@@ -23,7 +23,8 @@ data class ListProfesoresUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val soloActivos: Boolean = true,
-    val profesoresCompletos: List<Usuario> = emptyList() // Lista completa sin filtros
+    val profesoresCompletos: List<Usuario> = emptyList(), // Lista completa sin filtros
+    val centroId: String = "" // ID del centro del administrador actual
 )
 
 /**
@@ -160,5 +161,34 @@ class ListProfesoresViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Obtiene el ID del centro del usuario actualmente autenticado (administrador de centro)
+     */
+    fun obtenerCentroIdUsuarioActual() {
+        viewModelScope.launch {
+            try {
+                // Obtener el usuario actual
+                val usuario = usuarioRepository.obtenerUsuarioActual()
+                
+                if (usuario != null) {
+                    // Buscar el perfil de tipo ADMIN_CENTRO para obtener el centroId
+                    val perfilAdminCentro = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                    val centroId = perfilAdminCentro?.centroId ?: ""
+                    
+                    if (centroId.isNotEmpty()) {
+                        Timber.d("Centro ID del administrador obtenido: $centroId")
+                        _uiState.update { it.copy(centroId = centroId) }
+                    } else {
+                        Timber.w("No se encontró centro ID para el administrador actual")
+                    }
+                } else {
+                    Timber.w("No se pudo obtener el usuario actual")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener el centro ID del administrador actual")
+            }
+        }
     }
 } 
