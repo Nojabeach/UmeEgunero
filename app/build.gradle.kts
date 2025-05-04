@@ -9,6 +9,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.23"
 }
 
+// Añadir esta configuración para que Gradle no rastree el estado de las tareas de Hilt
+tasks.withType<JavaCompile>().configureEach {
+    options.isFork = true
+    options.isIncremental = false
+}
+
 android {
     namespace = "com.tfg.umeegunero"
     compileSdk = 34
@@ -92,6 +98,7 @@ android {
             arg("room.schemaLocation", "$projectDir/schemas")
             arg("room.incremental", "false")
             arg("room.expandProjection", "true")
+            arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
         }
     }
 }
@@ -167,8 +174,8 @@ dependencies {
     kapt("androidx.room:room-compiler:$roomVersion")
 
     // Dagger Hilt
-    implementation("com.google.dagger:hilt-android:2.47")
-    kapt("com.google.dagger:hilt-android-compiler:2.47")
+    implementation("com.google.dagger:hilt-android:2.48")
+    kapt("com.google.dagger:hilt-android-compiler:2.48")
     
     // Anotación para Hilt Work Manager
     implementation("androidx.hilt:hilt-work:1.0.0")

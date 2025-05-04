@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -110,6 +111,7 @@ import kotlinx.coroutines.launch
  * @param onNavigateBack Callback que se ejecuta cuando el usuario pulsa el botón de retroceso
  * @param onLoginSuccess Callback que se ejecuta cuando la autenticación es exitosa
  * @param onForgotPassword Callback que se ejecuta cuando el usuario pulsa "Olvidé mi contraseña"
+ * @param onNecesitaPermisos Callback que se ejecuta cuando un familiar necesita configurar permisos de notificaciones
  * 
  * @author Maitane (Estudiante 2º DAM)
  * @version 3.0
@@ -121,7 +123,8 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
     onLoginSuccess: (TipoUsuario) -> Unit,
-    onForgotPassword: (String) -> Unit = {}
+    onForgotPassword: (String) -> Unit = {},
+    onNecesitaPermisos: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -187,6 +190,68 @@ fun LoginScreen(
             // Pasar el tipo de usuario a la función de navegación
             onLoginSuccess(userType)
         }
+    }
+    
+    // Detectar si necesita configurar permisos de notificaciones
+    LaunchedEffect(uiState.necesitaPermisoNotificaciones) {
+        if (uiState.necesitaPermisoNotificaciones) {
+            onNecesitaPermisos()
+        }
+    }
+
+    // Mostrar diálogo de solicitud pendiente
+    if (uiState.solicitudPendiente) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { 
+                Text(
+                    text = "Solicitud pendiente",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = { 
+                Column {
+                    Text(
+                        text = "Tienes una solicitud de vinculación pendiente de aprobar por el centro educativo.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No puedes acceder a la aplicación hasta que un administrador de centro apruebe tu solicitud.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Referencia de solicitud:",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = uiState.solicitudId,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { 
+                    // Cierra sesión y regresa a la pantalla anterior
+                    viewModel.resetState()
+                    onNavigateBack()
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            icon = { 
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        )
     }
 
     // Mostrar errores en Snackbar

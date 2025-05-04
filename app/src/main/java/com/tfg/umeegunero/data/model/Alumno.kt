@@ -36,6 +36,7 @@ import com.google.firebase.firestore.DocumentId
  * @property observaciones Observaciones generales sobre el comportamiento o situación del alumno.
  * @property familiares Lista de objetos [Familiar] con información de contactos familiares.
  * @property presente Indica si el alumno está presente/asistió en una fecha determinada.
+ * @property nombreCompleto Nombre completo del alumno (nombre + apellidos).
  *
  * @see Familiar
  */
@@ -63,7 +64,11 @@ data class Alumno(
     val observaciones: String = "",
     val familiares: List<Familiar> = emptyList(),
     val presente: Boolean = false
-)
+) {
+    // Propiedad computada para obtener el nombre completo
+    val nombreCompleto: String
+        get() = "$nombre $apellidos".trim()
+}
 
 /**
  * Modelo que representa la información básica de un familiar vinculado a un alumno.

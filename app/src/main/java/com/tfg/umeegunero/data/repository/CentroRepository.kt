@@ -169,6 +169,23 @@ class CentroRepository @Inject constructor(
     }
 
     /**
+     * Método alternativo para obtener un centro por ID
+     * Para mantener compatibilidad con el código existente
+     */
+    suspend fun obtenerCentroPorId(centroId: String): Centro? = withContext(Dispatchers.IO) {
+        try {
+            val result = getCentroById(centroId)
+            if (result is Result.Success) {
+                return@withContext result.data
+            }
+            return@withContext null
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener centro por ID")
+            return@withContext null
+        }
+    }
+
+    /**
      * Añade un nuevo centro educativo e invalida la caché relacionada
      */
     suspend fun addCentro(centro: Centro): Result<String> = withContext(Dispatchers.IO) {

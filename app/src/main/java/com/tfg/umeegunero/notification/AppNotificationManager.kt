@@ -51,7 +51,7 @@ class AppNotificationManager @Inject constructor(
                 CHANNEL_NAME_TAREAS,
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notificaciones relacionadas con tareas y entregas"
+                description = "Notificaciones relacionadas con tareas, registro diario y entregas"
                 enableLights(true)
                 lightColor = Color.BLUE
                 enableVibration(true)
@@ -70,7 +70,7 @@ class AppNotificationManager @Inject constructor(
                 CHANNEL_NAME_GENERAL,
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Notificaciones generales de la aplicación"
+                description = "Notificaciones generales y mensajes de chat"
                 enableLights(true)
                 lightColor = Color.GREEN
                 enableVibration(true)
@@ -106,11 +106,52 @@ class AppNotificationManager @Inject constructor(
                 )
             }
             
-            // Crear los canales
+            // Canal para notificaciones de incidencias
+            val incidenciasChannel = NotificationChannel(
+                CHANNEL_ID_INCIDENCIAS,
+                CHANNEL_NAME_INCIDENCIAS,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificaciones de incidencias importantes que requieren atención inmediata"
+                enableLights(true)
+                lightColor = Color.RED
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 500, 200, 500)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+            }
+            
+            // Canal para notificaciones de asistencia
+            val asistenciaChannel = NotificationChannel(
+                CHANNEL_ID_ASISTENCIA,
+                CHANNEL_NAME_ASISTENCIA,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificaciones sobre asistencia, retrasos y ausencias"
+                enableLights(true)
+                lightColor = Color.YELLOW
+                enableVibration(true)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+            }
+            
+            // Crear todos los canales
             notificationManager.createNotificationChannel(tareasChannel)
             notificationManager.createNotificationChannel(generalChannel)
             notificationManager.createNotificationChannel(syncChannel)
             notificationManager.createNotificationChannel(solicitudesChannel)
+            notificationManager.createNotificationChannel(incidenciasChannel)
+            notificationManager.createNotificationChannel(asistenciaChannel)
             
             Timber.d("Canales de notificación creados")
         }
@@ -138,22 +179,43 @@ class AppNotificationManager @Inject constructor(
      * @param message Mensaje/contenido de la notificación
      * @param channelId ID del canal de notificación
      * @param notificationId ID único para la notificación
+     * @param intent Intent personalizado para cuando se pulsa la notificación
      */
     fun showNotification(
         title: String,
         message: String,
         channelId: String = CHANNEL_ID_GENERAL,
-        notificationId: Int = System.currentTimeMillis().toInt()
+        notificationId: Int = System.currentTimeMillis().toInt(),
+        intent: Intent? = null
     ) {
         try {
-            // Crear intent para abrir la app al pulsar la notificación
-            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            val pendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+            // Crear intent para cuando se pulsa la notificación
+            val pendingIntent = if (intent != null) {
+                PendingIntent.getActivity(
+                    context,
+                    0,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            } else {
+                // Intent predeterminado para abrir la app
+                val defaultIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                PendingIntent.getActivity(
+                    context,
+                    0,
+                    defaultIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+            
+            // Elegir la prioridad según el canal
+            val priority = when(channelId) {
+                CHANNEL_ID_INCIDENCIAS -> NotificationCompat.PRIORITY_MAX
+                CHANNEL_ID_SOLICITUDES, CHANNEL_ID_TAREAS, CHANNEL_ID_ASISTENCIA -> NotificationCompat.PRIORITY_HIGH
+                CHANNEL_ID_GENERAL -> NotificationCompat.PRIORITY_DEFAULT
+                CHANNEL_ID_SYNC -> NotificationCompat.PRIORITY_LOW
+                else -> NotificationCompat.PRIORITY_DEFAULT
+            }
             
             // Construir la notificación
             val notification = NotificationCompat.Builder(context, channelId)
@@ -161,7 +223,7 @@ class AppNotificationManager @Inject constructor(
                 .setContentTitle(title)
                 .setContentText(message)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(priority)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .build()
@@ -188,12 +250,16 @@ class AppNotificationManager @Inject constructor(
     companion object {
         // Constantes para canales de notificación
         const val CHANNEL_ID_TAREAS = "channel_tareas"
-        const val CHANNEL_NAME_TAREAS = "Tareas y Deberes"
+        const val CHANNEL_NAME_TAREAS = "Tareas y Registro Diario"
         const val CHANNEL_ID_GENERAL = "channel_general"
         const val CHANNEL_NAME_GENERAL = "Notificaciones Generales"
         const val CHANNEL_ID_SYNC = "sync_service_channel"
         const val CHANNEL_NAME_SYNC = "Sincronización"
         const val CHANNEL_ID_SOLICITUDES = "channel_solicitudes_vinculacion"
         const val CHANNEL_NAME_SOLICITUDES = "Solicitudes de Vinculación"
+        const val CHANNEL_ID_INCIDENCIAS = "channel_incidencias"
+        const val CHANNEL_NAME_INCIDENCIAS = "Incidencias Importantes"
+        const val CHANNEL_ID_ASISTENCIA = "channel_asistencia"
+        const val CHANNEL_NAME_ASISTENCIA = "Asistencia y Ausencias"
     }
 } 

@@ -120,6 +120,13 @@ interface AlumnoRepository {
      * @return Resultado con el alumno encontrado o error
      */
     suspend fun getAlumnoPorDni(dni: String): Result<Alumno>
+
+    /**
+     * Obtiene todos los alumnos asignados a un profesor
+     * @param profesorId ID del profesor
+     * @return Lista de alumnos asignados al profesor
+     */
+    suspend fun getAlumnosForProfesor(profesorId: String): List<Alumno>
 }
 
 /**
@@ -525,6 +532,25 @@ class AlumnoRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al buscar alumno por DNI: $dni")
             return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene todos los alumnos asignados a un profesor
+     * @param profesorId ID del profesor
+     * @return Lista de alumnos asignados al profesor
+     */
+    override suspend fun getAlumnosForProfesor(profesorId: String): List<Alumno> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("profesorId", profesorId)
+                .get()
+                .await()
+
+            return@withContext query.toObjects(Alumno::class.java)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumnos para el profesor: $profesorId")
+            return@withContext emptyList()
         }
     }
 } 

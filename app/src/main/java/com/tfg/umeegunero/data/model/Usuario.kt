@@ -4,6 +4,15 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 
 /**
+ * Modelo que representa las preferencias de notificación de un usuario
+ */
+data class PreferenciasNotificacion(
+    val permisoPendiente: Boolean = false,
+    val notificacionesHabilitadas: Boolean = true,
+    val ultimaActualizacion: Long = 0
+)
+
+/**
  * Modelo principal que representa a un usuario en el sistema UmeEgunero.
  * 
  * Esta clase contiene toda la información personal y de gestión de los usuarios,
@@ -30,6 +39,8 @@ import com.google.firebase.firestore.DocumentId
  *                      Por defecto se establece igual al DNI.
  * @property avatarUrl URL del avatar del usuario (opcional).
  * @property firebaseUid UID único de Firebase Authentication asociado a este usuario.
+ * @property preferenciasNotificacion Configuración de notificaciones del usuario
+ * @property nombreAlumno Nombre del alumno asociado (utilizado en conversaciones)
  *
  * @see Perfil
  * @see Direccion
@@ -48,7 +59,9 @@ data class Usuario(
     val direccion: Direccion? = null,
     val preferencias: Preferencias = Preferencias(),
     var avatarUrl: String? = null,
-    val firebaseUid: String = ""
+    val firebaseUid: String = "",
+    val preferenciasNotificacion: PreferenciasNotificacion? = null,
+    val nombreAlumno: String? = null
 ) {
     @field:DocumentId
     var documentId: String = dni

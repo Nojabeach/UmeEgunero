@@ -5,8 +5,10 @@ import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.EstadoSolicitud
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.SolicitudRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +37,9 @@ import javax.inject.Inject
  * @property error Mensaje de error general (null si no hay error)
  * @property success Indica si el inicio de sesión fue exitoso
  * @property userType Tipo de usuario que ha iniciado sesión
+ * @property solicitudPendiente Indica si el familiar tiene una solicitud pendiente
+ * @property solicitudId ID de la solicitud pendiente (si existe)
+ * @property necesitaPermisoNotificaciones Indica si el familiar necesita configurar permisos
  * 
  * @author Estudiante 2º DAM
  */
@@ -46,7 +51,10 @@ data class LoginUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val success: Boolean = false,
-    val userType: TipoUsuario? = null
+    val userType: TipoUsuario? = null,
+    val solicitudPendiente: Boolean = false,
+    val solicitudId: String = "",
+    val necesitaPermisoNotificaciones: Boolean = false
 ) {
     /**
      * Propiedad calculada que indica si el botón de login debe estar habilitado.
@@ -96,6 +104,7 @@ data class LoginUiState(
  * - Tipo de usuario autenticado
  * 
  * @property usuarioRepository Repositorio para operaciones de autenticación
+ * @property solicitudRepository Repositorio para operaciones de solicitudes
  * @property sharedPreferences Preferencias para persistencia de credenciales
  * @property uiState Estado actual de la UI
  * 
@@ -105,6 +114,7 @@ data class LoginUiState(
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
+    private val solicitudRepository: SolicitudRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -358,6 +368,83 @@ class LoginViewModel @Inject constructor(
                             Timber.d("¿Tiene perfil $tipoUsuarioFirebase? $tienePerfil")
 
                             if (tienePerfil) {
+                                // Si es familiar, verificamos si tiene solicitudes pendientes
+                                if (tipoUsuarioFirebase == TipoUsuario.FAMILIAR) {
+                                    // Verificar si necesita aceptar permisos de notificación
+                                    val tienePermisoPendiente = usuario.preferenciasNotificacion?.permisoPendiente ?: false
+                                    
+                                    if (tienePermisoPendiente) {
+                                        // Si necesita configurar notificaciones, guardamos credenciales si es necesario
+                                        // pero redirigimos a la pantalla de permisos
+                                        if (rememberUser) {
+                                            saveUserCredentials(email)
+                                        } else {
+                                            clearSavedCredentials()
+                                        }
+                                        
+                                        _uiState.update {
+                                            it.copy(
+                                                isLoading = false,
+                                                necesitaPermisoNotificaciones = true,
+                                                success = false,
+                                                userType = userType
+                                            )
+                                        }
+                                        
+                                        Timber.d("Familiar necesita configurar permisos de notificación")
+                                        return@launch
+                                    }
+                                    
+                                    when (val solicitudResult = solicitudRepository.tieneSolicitudesPendientes(usuario.dni)) {
+                                        is Result.Success -> {
+                                            val tieneSolicitudesPendientes = solicitudResult.data
+                                            
+                                            if (tieneSolicitudesPendientes) {
+                                                // Obtener las solicitudes para mostrar el ID
+                                                val solicitudesResult = solicitudRepository.getSolicitudesByFamiliarId(usuario.dni)
+                                                var solicitudId = ""
+                                                
+                                                if (solicitudesResult is Result.Success) {
+                                                    // Buscar una solicitud pendiente
+                                                    val solicitudPendiente = solicitudesResult.data.find { 
+                                                        it.estado == EstadoSolicitud.PENDIENTE 
+                                                    }
+                                                    solicitudId = solicitudPendiente?.id ?: ""
+                                                }
+                                                
+                                                // Si el usuario seleccionó recordar usuario, guardamos el email
+                                                if (rememberUser) {
+                                                    saveUserCredentials(email)
+                                                } else {
+                                                    // Si no quiere recordar, borramos credenciales guardadas
+                                                    clearSavedCredentials()
+                                                }
+                                                
+                                                // Marcar que tiene solicitud pendiente para mostrar mensaje
+                                                _uiState.update {
+                                                    it.copy(
+                                                        isLoading = false,
+                                                        solicitudPendiente = true,
+                                                        solicitudId = solicitudId,
+                                                        userType = userType,
+                                                        success = false
+                                                    )
+                                                }
+                                                
+                                                Timber.d("Familiar con solicitud pendiente, ID: $solicitudId")
+                                                return@launch
+                                            }
+                                        }
+                                        is Result.Error -> {
+                                            Timber.e(solicitudResult.exception, "Error al verificar solicitudes pendientes")
+                                        }
+                                        is Result.Loading -> {
+                                            // En caso de que estemos cargando, aunque no debería ocurrir en este caso
+                                            Timber.d("Cargando información de solicitudes")
+                                        }
+                                    }
+                                }
+                                
                                 // Si el usuario seleccionó recordar usuario, guardamos el email
                                 if (rememberUser) {
                                     saveUserCredentials(email)

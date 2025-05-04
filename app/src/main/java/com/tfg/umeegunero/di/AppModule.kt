@@ -10,6 +10,11 @@ import com.tfg.umeegunero.data.local.database.AppDatabase
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
+import com.tfg.umeegunero.data.service.NotificationService
+import com.tfg.umeegunero.notification.AppNotificationManager
+import com.tfg.umeegunero.notification.NotificationHelper
+import com.tfg.umeegunero.data.service.EmailNotificationService
+import io.ktor.client.HttpClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -100,5 +105,31 @@ object AppModule {
         authRepository: AuthRepository
     ): ChatRepository {
         return ChatRepository(chatMensajeDao, conversacionDao, firestore, storage, authRepository)
+    }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object NotificationModule {
+    
+    @Provides
+    @Singleton
+    fun provideNotificationService(
+        @ApplicationContext context: Context,
+        firestore: FirebaseFirestore,
+        notificationManager: AppNotificationManager
+    ): NotificationService {
+        return NotificationService(context, firestore, notificationManager)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideNotificationHelper(
+        @ApplicationContext context: Context,
+        preferenciasRepository: PreferenciasRepository,
+        notificationService: NotificationService,
+        notificationManager: AppNotificationManager
+    ): NotificationHelper {
+        return NotificationHelper(context, preferenciasRepository, notificationService, notificationManager)
     }
 } 

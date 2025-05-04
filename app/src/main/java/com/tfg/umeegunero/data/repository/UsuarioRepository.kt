@@ -197,6 +197,26 @@ open class UsuarioRepository @Inject constructor(
     fun cerrarSesion() {
         firebaseAuth.signOut()
     }
+    
+    /**
+     * Obtiene la información del usuario actualmente autenticado
+     * @return El usuario actual o null si no hay sesión iniciada
+     */
+    suspend fun getCurrentUser(): Usuario? = withContext(Dispatchers.IO) {
+        try {
+            val currentUser = firebaseAuth.currentUser ?: return@withContext null
+            val email = currentUser.email ?: return@withContext null
+            
+            val userQuery = usuariosCollection.whereEqualTo("email", email).get().await()
+            if (!userQuery.isEmpty) {
+                return@withContext userQuery.documents.first().toObject(Usuario::class.java)
+            }
+            return@withContext null
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener el usuario actual")
+            return@withContext null
+        }
+    }
 
     /**
      * Obtiene el usuario actual autenticado
@@ -2112,6 +2132,62 @@ open class UsuarioRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al registrar actividad: $tipo - $descripcion")
             return ""
+        }
+    }
+
+    /**
+     * Elimina un usuario de Firestore y Firebase Authentication
+     */
+    suspend fun eliminarUsuario(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Buscar el usuario en Firestore por su email
+            val usuarioQuery = usuariosCollection.whereEqualTo("email", email).limit(1).get().await()
+            
+            if (usuarioQuery.isEmpty) {
+                return@withContext Result.Error(Exception("Usuario no encontrado con email: $email"))
+            }
+            
+            val usuarioDoc = usuarioQuery.documents.first()
+            val usuarioId = usuarioDoc.id
+            
+            // Eliminar el usuario de Firestore
+            usuariosCollection.document(usuarioId).delete().await()
+            
+            // Intentar eliminar de Firebase Authentication
+            try {
+                // Verificar si el usuario actual está eliminando su propia cuenta
+                val currentUser = firebaseAuth.currentUser
+                if (currentUser != null && currentUser.email == email) {
+                    // Si es el propio usuario, podemos eliminarlo directamente
+                    currentUser.delete().await()
+                    firebaseAuth.signOut()
+                    Timber.d("Usuario ha eliminado su propia cuenta: $email")
+                } else {
+                    // Para eliminar otros usuarios, necesitamos estar en un rol de administrador
+                    // Esta operación generalmente requiere autenticación administrativa
+                    Timber.w("No se puede eliminar directamente otro usuario de Firebase Auth desde el cliente")
+                    Timber.w("Se ha eliminado el usuario de Firestore, pero se mantiene en Authentication")
+                    
+                    // Alternativa: marcar al usuario como inactivo en Firestore para impedir acceso
+                    try {
+                        // Encuentra todas las referencias al usuario y márcarlas como inactivas
+                        usuariosCollection.document(usuarioId)
+                            .update("activo", false, "fechaBaja", Timestamp.now())
+                            .await()
+                        Timber.d("Usuario marcado como inactivo en Firestore")
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al marcar usuario como inactivo")
+                    }
+                }
+            } catch (authError: Exception) {
+                Timber.e(authError, "Error al intentar eliminar usuario de Auth: ${authError.message}")
+                // Consideramos éxito aunque falle en Auth, ya que se eliminó de Firestore
+            }
+            
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error general al eliminar usuario: ${e.message}")
+            return@withContext Result.Error(e)
         }
     }
 }

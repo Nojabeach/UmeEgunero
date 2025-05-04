@@ -52,5 +52,12 @@ enum class EstadoComida {
      * Utilizado en casos de alergias, dietas especiales, o cuando el alumno
      * trae su propia comida de casa.
      */
-    NO_APLICABLE
+    NO_APLICABLE,
+    
+    /**
+     * Indica que no se dispone de información sobre este plato.
+     * Utilizado como valor por defecto cuando aún no se ha registrado la información
+     * o cuando no se han enviado datos sobre este plato en particular.
+     */
+    SIN_DATOS
 } 

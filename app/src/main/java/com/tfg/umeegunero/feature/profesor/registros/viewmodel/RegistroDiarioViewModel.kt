@@ -3,12 +3,15 @@ package com.tfg.umeegunero.feature.profesor.registros.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.google.firebase.functions.ktx.functions
+import com.google.firebase.ktx.Firebase
 import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
+import com.tfg.umeegunero.data.service.NotificationService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +22,10 @@ import java.util.Date
 import java.text.SimpleDateFormat
 import java.util.Locale
 import javax.inject.Inject
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.HttpsCallableResult
+import com.google.firebase.functions.FirebaseFunctionsException
+import timber.log.Timber
 
 data class RegistroDiarioUiState(
     val isLoading: Boolean = false,
@@ -64,7 +71,8 @@ data class RegistroDiarioUiState(
 class RegistroDiarioViewModel @Inject constructor(
     private val registroDiarioRepository: RegistroDiarioRepository,
     private val alumnoRepository: AlumnoRepository,
-    private val claseRepository: ClaseRepository
+    private val claseRepository: ClaseRepository,
+    private val notificationService: NotificationService
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(RegistroDiarioUiState())
@@ -271,7 +279,8 @@ class RegistroDiarioViewModel @Inject constructor(
         // Prepara las fechas para la siesta
         val horaInicioSiesta = if (state.haSiestaSiNo && state.horaInicioSiesta.isNotEmpty()) {
             try {
-                Timestamp(Date()) // Aquí se debería convertir state.horaInicioSiesta a Date
+                val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+                Timestamp(formatoHora.parse(state.horaInicioSiesta) ?: Date())
             } catch (e: Exception) {
                 null
             }
@@ -279,21 +288,25 @@ class RegistroDiarioViewModel @Inject constructor(
         
         val horaFinSiesta = if (state.haSiestaSiNo && state.horaFinSiesta.isNotEmpty()) {
             try {
-                Timestamp(Date()) // Aquí se debería convertir state.horaFinSiesta a Date
+                val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+                Timestamp(formatoHora.parse(state.horaFinSiesta) ?: Date())
             } catch (e: Exception) {
                 null
             }
         } else null
         
-        // Crea el registro actualizado
-        val registroActualizado = state.registro.copy(
+        val registro = state.registro.copy(
+            alumnoId = state.alumnoId,
+            claseId = state.claseId,
+            profesorId = profesorId,
+            fecha = Timestamp(state.fechaSeleccionada),
             primerPlato = state.primerPlato,
             segundoPlato = state.segundoPlato,
             postre = state.postre,
             merienda = state.merienda,
             observacionesComida = state.observacionesComida,
             haSiestaSiNo = state.haSiestaSiNo,
-            horaInicioSiesta = horaInicioSiesta, 
+            horaInicioSiesta = horaInicioSiesta,
             horaFinSiesta = horaFinSiesta,
             observacionesSiesta = state.observacionesSiesta,
             haHechoCaca = state.haHechoCaca,
@@ -303,33 +316,89 @@ class RegistroDiarioViewModel @Inject constructor(
             necesitaToallitas = state.necesitaToallitas,
             necesitaRopaCambio = state.necesitaRopaCambio,
             otroMaterialNecesario = state.otroMaterialNecesario,
-            observacionesGenerales = state.observacionesGenerales,
-            ultimaModificacion = Timestamp.now(),
-            modificadoPor = profesorId
+            observacionesGenerales = state.observacionesGenerales
         )
         
-        _uiState.update { it.copy(isLoading = true, error = null) }
-        
         viewModelScope.launch {
-            val result = registroDiarioRepository.actualizarRegistroDiario(registroActualizado)
-            
-            when(result) {
-                is Result.Success -> {
-                    _uiState.update { 
-                        it.copy(
+            try {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+                
+                val result = registroDiarioRepository.actualizarRegistroDiario(registro)
+                
+                when (result) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(isLoading = false, success = true, showSuccessDialog = true) }
+                        
+                        // Enviar notificación a familiares solo si hay cambios importantes
+                        val cambiosImportantes = hayCambiosImportantes(registro)
+                        if (cambiosImportantes) {
+                            enviarNotificacionActualizacion(registro)
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
                             isLoading = false, 
-                            success = true, 
-                            registro = registroActualizado,
-                            showSuccessDialog = true
-                        ) 
+                            success = false, 
+                            error = result.exception?.message ?: "Error desconocido"
+                        ) }
+                    }
+                    is Result.Loading -> {
+                        // Ya estamos en estado de carga
                     }
                 }
-                is Result.Error -> {
-                    _uiState.update { it.copy(isLoading = false, error = result.exception?.message) }
-                }
-                is Result.Loading -> {
-                    _uiState.update { it.copy(isLoading = true) }
-                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    isLoading = false, 
+                    success = false, 
+                    error = "Error al guardar: ${e.message}"
+                ) }
+            }
+        }
+    }
+    
+    /**
+     * Determina si hay cambios importantes que merezcan una notificación
+     */
+    private fun hayCambiosImportantes(registro: RegistroActividad): Boolean {
+        // Consideramos cambios importantes:
+        // - Cambios en comidas (especialmente si no comió)
+        // - Cambios en el estado de ánimo
+        // - Cambios en actividades completadas
+        // - Adición de observaciones
+        
+        return (registro.primerPlato != EstadoComida.SIN_DATOS) ||
+               (registro.segundoPlato != EstadoComida.SIN_DATOS) ||
+               (registro.postre != EstadoComida.SIN_DATOS) ||
+               (registro.merienda != EstadoComida.SIN_DATOS) ||
+               registro.observacionesComida.isNotBlank() ||
+               registro.haSiestaSiNo ||
+               registro.haHechoCaca ||
+               registro.numeroCacas > 0 ||
+               registro.observacionesSiesta.isNotBlank() ||
+               registro.observacionesCaca.isNotBlank() ||
+               registro.observacionesGenerales.isNotBlank()
+    }
+    
+    /**
+     * Envía notificación a los familiares sobre la actualización del registro
+     */
+    private fun enviarNotificacionActualizacion(registro: RegistroActividad) {
+        viewModelScope.launch {
+            try {
+                val alumnoId = _uiState.value.alumnoId
+                val profesorId = registro.profesorId ?: ""
+                
+                // Usar el servicio de notificaciones en vez de Cloud Functions
+                notificationService.procesarActualizacionRegistroDiario(
+                    registroId = registro.id,
+                    alumnoId = alumnoId,
+                    profesorId = profesorId,
+                    cambiosImportantes = true
+                )
+                
+                Timber.d("Notificación de actualización de registro enviada para alumno $alumnoId")
+            } catch (e: Exception) {
+                Timber.e(e, "Error al enviar notificación de actualización de registro: ${e.message}")
             }
         }
     }

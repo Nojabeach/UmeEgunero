@@ -20,6 +20,7 @@ import com.tfg.umeegunero.util.DebugUtils
 import com.tfg.umeegunero.util.FirestoreCache
 import com.tfg.umeegunero.util.ErrorHandler
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.functions.FirebaseFunctions
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -61,6 +62,12 @@ object FirebaseModule {
         val service = RemoteConfigService()
         service.initialize(remoteConfig)
         return service
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseFunctions(): FirebaseFunctions {
+        return FirebaseFunctions.getInstance()
     }
 
     @Provides

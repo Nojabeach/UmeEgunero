@@ -14,6 +14,7 @@ import com.tfg.umeegunero.data.model.local.MensajeEntity
 import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.service.NotificationService
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.HttpsCallableResult
+import com.google.firebase.functions.FirebaseFunctionsException
 
 /**
  * Estado de la UI para la pantalla de chat
@@ -51,7 +55,8 @@ data class ChatUiState(
 class ChatViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val chatRepository: ChatRepository,
-    private val notificacionRepository: NotificacionRepository
+    private val notificacionRepository: NotificacionRepository,
+    private val notificationService: NotificationService
 ) : ViewModel() {
 
     private val TAG = "ChatViewModel"
@@ -292,7 +297,7 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * Envía una notificación al receptor del mensaje
+     * Envía notificación al receptor del mensaje
      */
     private suspend fun enviarNotificacion(receptorId: String, texto: String, alumnoId: String?) {
         try {
@@ -305,46 +310,33 @@ class ChatViewModel @Inject constructor(
             val titulo = if (alumnoId != null) {
                 val alumnoNombre = _uiState.value.alumnoId?.let { 
                     // Si tenemos el estado del alumno en el ViewModel, usar ese nombre
-                    "sobre ${participante?.nombre ?: "el alumno"}"
-                } ?: ""
-                "Nuevo mensaje de $remitente ${usuario.nombre} $alumnoNombre"
+                    participante?.nombreAlumno ?: "el alumno" 
+                } ?: "el alumno"
+                "Nuevo mensaje de $remitente ${usuario.nombre} sobre $alumnoNombre"
             } else {
                 "Nuevo mensaje de $remitente ${usuario.nombre}"
             }
             
-            // Crear una nueva notificación con los datos requeridos
-            val notificacion = com.tfg.umeegunero.data.model.Notificacion(
+            // Limitar la longitud del texto para la notificación
+            val mensajeCorto = if (texto.length > 100) texto.substring(0, 100) + "..." else texto
+            
+            // Usar el servicio de notificaciones local en vez de Cloud Functions
+            notificationService.enviarNotificacionChat(
+                receptorId = receptorId,
+                conversacionId = _uiState.value.conversacionId ?: "",
                 titulo = titulo,
-                mensaje = texto.take(100) + if (texto.length > 100) "..." else "",
-                usuarioDestinatarioId = receptorId,
-                leida = false,
-                fecha = Timestamp.now(),
-                tipo = TipoNotificacion.MENSAJE,
+                mensaje = mensajeCorto,
                 remitente = usuario.nombre,
                 remitenteId = usuario.dni,
-                accion = "chat/${_uiState.value.conversacionId}",
-                metadata = mapOf(
-                    "conversacionId" to _uiState.value.conversacionId,
-                    "alumnoId" to (alumnoId ?: "")
-                )
+                alumnoId = alumnoId ?: "",
+                onCompletion = { exito, mensaje ->
+                    if (!exito) {
+                        Timber.e("Error al enviar notificación de chat: $mensaje")
+                    }
+                }
             )
-            
-            // Enviar la notificación
-            val resultado = notificacionRepository.crearNotificacion(notificacion)
-            
-            when (resultado) {
-                is Result.Success<*> -> {
-                    Timber.d("Notificación enviada al usuario $receptorId: ${notificacion.titulo}")
-                }
-                is Result.Error -> {
-                    Timber.e("Error al enviar notificación: ${resultado.exception?.message}")
-                }
-                else -> {}
-            }
         } catch (e: Exception) {
-            // Error al enviar notificación no impide el envío del mensaje
-            _uiState.update { it.copy(error = "Error al enviar la notificación: ${e.message}") }
-            Timber.e("Error al enviar notificación: ${e.message}")
+            Timber.e(e, "Error al enviar notificación")
         }
     }
 

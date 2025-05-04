@@ -5,11 +5,11 @@
 [![Firebase](https://img.shields.io/badge/Firebase-31.5.0-orange.svg)](https://firebase.google.com/)
 [![Hilt](https://img.shields.io/badge/Hilt-2.48-red.svg)](https://dagger.dev/hilt/)
 
-UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Grado para el ciclo de Desarrollo de Aplicaciones Multiplataforma. Diseñada con tecnología punta, esta solución integral facilita la comunicación y gestión en centros educativos de educación infantil, conectando a administradores, profesores y familias en un entorno digital seguro y eficiente.
-
 <div align="center">
-  <img src="docs/images/app_logo.png" alt="UmeEgunero Logo" width="300">
+  <img src="docs/images/app_icon.png" alt="UmeEgunero Logo" width="200">
 </div>
+
+UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Grado para el ciclo de Desarrollo de Aplicaciones Multiplataforma. Diseñada con tecnología punta, esta solución integral facilita la comunicación y gestión en centros educativos de educación infantil, conectando a administradores, profesores y familias en un entorno digital seguro y eficiente.
 
 ## 🚀 Características Principales
 
@@ -38,6 +38,59 @@ UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Gr
 - **Desarrollo Infantil**: Monitorización del progreso educativo y evolutivo
 - **Actividades Preescolares**: Asignación y seguimiento de tareas adaptadas
 
+### 🔔 Sistema Avanzado de Notificaciones
+- **Notificaciones Contextuales**: Adaptadas a cada perfil de usuario (profesor, familiar, administrador)
+- **Canales Múltiples**: Diferentes canales según importancia (general, tareas, solicitudes, incidencias)
+- **Firebase Cloud Messaging**: Implementación optimizada para entrega confiable y en tiempo real
+- **Deeplinks Inteligentes**: Navegación directa a secciones específicas al interactuar con notificaciones
+
+<div align="center">
+```mermaid
+flowchart TD
+    A[Firebase Cloud Messaging] --> B[UmeEguneroMessagingService]
+    B --> C{Tipo de Notificación}
+    C -->|Chat| D[Canal General]
+    C -->|Registro| E[Canal Tareas] 
+    C -->|Solicitud| F[Canal Solicitudes]
+    C -->|Incidencia| G[Canal Incidencias]
+    
+    D & E & F & G --> H[Perfiles de Usuario]
+    
+    H --> I[Familiar]
+    H --> J[Profesor]
+    H --> K[Administrador]
+    
+    style A fill:#ff9900,stroke:#ff6600,stroke-width:2px
+    style C fill:#EA4335,stroke:#990000,stroke-width:2px
+    style I fill:#34A853,stroke:#006600,stroke-width:2px
+    style J fill:#4285F4,stroke:#0066cc,stroke-width:2px
+    style K fill:#FBBC05,stroke:#cc9900,stroke-width:2px
+```
+</div>
+
+### 🔄 Sistema de Solicitudes y Vinculaciones
+- **Proceso Seguro**: Flujo controlado para vincular familiares con alumnos
+- **Sistema Dual**: Implementación híbrida con Firebase Cloud Messaging y Google Apps Script
+- **Aprobación Administrativa**: Verificación por administradores del centro
+- **Trazabilidad Completa**: Registro detallado de cada etapa del proceso
+
+<div align="center">
+```mermaid
+sequenceDiagram
+    participant Familiar
+    participant App
+    participant Firestore
+    participant Admin
+    
+    Familiar->>App: Solicitar vinculación
+    App->>Firestore: Crear solicitud
+    Firestore-->>Admin: Notificar
+    Admin->>App: Aprobar/Rechazar
+    App->>Firestore: Actualizar estado
+    Firestore-->>Familiar: Notificar resultado
+```
+</div>
+
 ## 🛠️ Arquitectura y Tecnologías
 
 UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en desarrollo Android:
@@ -54,6 +107,7 @@ UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en des
   - Firestore: Base de datos NoSQL en tiempo real
   - Firebase Authentication: Gestión de usuarios y autenticación
   - Cloud Storage: Almacenamiento de archivos y documentos
+  - Firebase Cloud Messaging: Sistema de notificaciones push multiplataforma
 - **Google Apps Script**: Utilizado como backend simple para el envío fiable de correos electrónicos HTML, superando limitaciones de Intents.
 - **Inyección de Dependencias**: Hilt para gestión eficiente de dependencias
 - **Navegación**: Jetpack Navigation Compose para rutas y transiciones
@@ -83,10 +137,13 @@ app/
 │   │   │   │   ├── familiar/       # Funcionalidades para familiares
 │   │   │   │   └── profesor/       # Funcionalidades para profesores
 │   │   │   ├── navigation/         # Sistema de navegación
+│   │   │   ├── notification/       # Sistema de notificaciones
+│   │   │   │   ├── AppNotificationManager.kt  # Gestión de canales
+│   │   │   │   ├── NotificationHelper.kt     # Utilidades para notificaciones
+│   │   │   │   └── UmeEguneroMessagingService.kt  # Servicio FCM
 │   │   │   ├── ui/                 # Componentes UI reutilizables
 │   │   │   └── util/               # Utilidades y extensiones
 ```
-
 
 ## 📋 Requisitos Técnicos
 
@@ -95,6 +152,7 @@ app/
 - **JDK**: Java 17
 - **Firebase**: Proyecto configurado con google-services.json
 - **Dispositivo/Emulador**: Android 8.0 (API 26) o superior
+- **Permisos**: Acceso a notificaciones, Internet
 
 ## ⚙️ Configuración del Proyecto
 
@@ -107,9 +165,14 @@ app/
 2. **Configurar Firebase**
    - Crear proyecto en [Firebase Console](https://console.firebase.google.com/)
    - Descargar el archivo `google-services.json` y colocarlo en la carpeta `/app`
-   - Habilitar los servicios necesarios (Authentication, Firestore, Storage)
+   - Habilitar los servicios necesarios (Authentication, Firestore, Storage, Cloud Messaging)
 
-3. **Compilar y ejecutar**
+3. **Configurar Google Apps Script (opcional para correos electrónicos)**
+   - Crear un nuevo proyecto en [Google Apps Script](https://script.google.com/)
+   - Implementar el endpoint para procesamiento de correos
+   - Configurar la URL en la aplicación
+
+4. **Compilar y ejecutar**
    - Abrir el proyecto en Android Studio
    - Sincronizar con archivos Gradle
    - Ejecutar en dispositivo o emulador
@@ -121,6 +184,8 @@ UmeEgunero incluye documentación completa disponible en el directorio `/docs`:
 - **[Documentación Técnica](docs/Documentacion_Tecnica.md)**: Arquitectura del sistema, patrones de diseño y consideraciones técnicas
 - **[Estructura de Base de Datos](docs/Estructura_Base_Datos.md)**: Detalle de colecciones Firestore y relaciones entre entidades
 - **[Manual de Usuario](docs/Manual_Usuario.md)**: Guía de uso para cada perfil de usuario
+- **[Sistema de Notificaciones](docs/Sistema_Notificaciones.md)**: Arquitectura y funcionamiento del sistema de notificaciones
+- **[Sistema de Solicitudes](docs/Sistema_Solicitudes.md)**: Implementación del proceso de vinculación familiar-alumno
 - **[Guía de Despliegue](docs/Guia_Despliegue.md)**: Instrucciones para configuración y puesta en producción
 
 ## 🧪 Testing
