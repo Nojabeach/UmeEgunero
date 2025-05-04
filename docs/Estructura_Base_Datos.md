@@ -10,6 +10,40 @@ Este documento detalla la estructura de la base de datos utilizada en UmeEgunero
 
 UmeEgunero utiliza una estructura jerárquica de colecciones y documentos en Firestore, organizando los datos de la siguiente manera:
 
+```mermaid
+graph TD
+    Firestore[Firestore] --> Usuarios[usuarios]
+    Firestore --> Centros[centros]
+    Firestore --> Alumnos[alumnos]
+    Firestore --> Comunicados[comunicados]
+    Firestore --> Chats[chats]
+    Firestore --> Actividades[actividades]
+    
+    Usuarios --> UsuarioDoc["{uid}"]
+    UsuarioDoc --> Perfiles["perfiles (subcolección)"]
+    UsuarioDoc --> Notif["notificaciones (subcolección)"]
+    
+    Centros --> CentroDoc["{centroId}"]
+    CentroDoc --> Cursos["cursos (subcolección)"]
+    CentroDoc --> Clases["clases (subcolección)"]
+    CentroDoc --> Eventos["eventos (subcolección)"]
+    
+    Alumnos --> AlumnoDoc["{alumnoId}"]
+    AlumnoDoc --> Eval["evaluaciones (subcolección)"]
+    AlumnoDoc --> Asist["asistencias (subcolección)"]
+    
+    Chats --> ChatDoc["{chatId}"]
+    ChatDoc --> Mensajes["mensajes (subcolección)"]
+    
+    style Firestore fill:#f9f,stroke:#333,stroke-width:2px
+    style Usuarios fill:#bbf,stroke:#333,stroke-width:1px
+    style Centros fill:#bbf,stroke:#333,stroke-width:1px
+    style Alumnos fill:#bbf,stroke:#333,stroke-width:1px
+    style Comunicados fill:#bbf,stroke:#333,stroke-width:1px
+    style Chats fill:#bbf,stroke:#333,stroke-width:1px
+    style Actividades fill:#bbf,stroke:#333,stroke-width:1px
+```
+
 ```
 firestore/
 ├── usuarios/                    # Colección de usuarios
@@ -133,21 +167,35 @@ Almacena información de los alumnos.
   "claseId": "string",       // Referencia a la clase
   "centroId": "string",      // Referencia al centro
   "familiaresIds": ["string"], // Referencias a usuarios tipo FAMILIAR
-  "activo": "boolean"        // Estado del alumno
+  "activo": "boolean",       // Estado del alumno
+  "curso": "string",         // Curso al que pertenece
+  "clase": "string"          // Grupo/clase específico
 }
 ```
 
-**Subcolección**: `evaluaciones`
+**Subcolección**: `registrosDiarios`
 
 ```json
 {
-  "id": "string",            // ID único de la evaluación
-  "titulo": "string",        // Título de la evaluación
-  "descripcion": "string",   // Descripción
-  "fecha": "timestamp",      // Fecha de la evaluación
+  "id": "string",            // ID único del registro
+  "fecha": "timestamp",      // Fecha del registro
   "profesorId": "string",    // Referencia al profesor
-  "nota": "number",          // Calificación numérica
-  "comentarios": "string"    // Comentarios adicionales
+  "asistencia": "string",    // "PRESENTE", "AUSENTE", "RETRASO"
+  "comidas": {
+    "desayuno": "string",    // "COMPLETO", "PARCIAL", "NADA"
+    "comida": "string",      // "COMPLETO", "PARCIAL", "NADA"
+    "merienda": "string"     // "COMPLETO", "PARCIAL", "NADA"
+  },
+  "siesta": {
+    "duracion": "number",    // Minutos
+    "calidad": "string"      // "BUENA", "REGULAR", "MALA"
+  },
+  "estadoEmocional": "string", // "FELIZ", "NEUTRO", "TRISTE", "ENFADADO"
+  "comentarios": "string",     // Notas adicionales
+  "baño": [{
+    "hora": "timestamp",
+    "tipo": "string"         // "PAÑAL", "WC"
+  }]
 }
 ```
 
@@ -225,6 +273,22 @@ val alumnosRef = db.collection("alumnos")
 alumnosRef.get().addOnSuccessListener { ... }
 ```
 
+Obtener todos los registros diarios de un alumno en un rango de fechas:
+
+```kotlin
+val startDate = Timestamp(fechaInicio)
+val endDate = Timestamp(fechaFin)
+
+val registrosRef = db.collection("alumnos")
+    .document(alumnoId)
+    .collection("registrosDiarios")
+    .whereGreaterThanOrEqualTo("fecha", startDate)
+    .whereLessThanOrEqualTo("fecha", endDate)
+    .orderBy("fecha", Query.Direction.DESCENDING)
+
+registrosRef.get().addOnSuccessListener { ... }
+```
+
 ## Reglas de Seguridad Firestore (fragmento)
 
 ```js
@@ -246,6 +310,86 @@ service cloud.firestore {
 - Un centro tiene muchos cursos y clases.
 - Un alumno pertenece a una clase y puede estar vinculado a varios familiares.
 - Los comunicados pueden estar dirigidos a usuarios, clases o cursos.
+- Cada alumno puede tener múltiples registros diarios, tareas y actividades.
+
+```mermaid
+erDiagram
+    CENTRO ||--o{ CURSO : tiene
+    CENTRO ||--o{ CLASE : tiene
+    CURSO ||--o{ CLASE : contiene
+    USUARIO ||--o{ COMUNICADO : emite
+    CENTRO ||--o{ COMUNICADO : asocia
+    USUARIO }|--|{ CHAT : participa
+    USUARIO }|--o{ ALUMNO : administra
+    CLASE ||--o{ ALUMNO : agrupa
+    PROFESOR ||--o{ CLASE : enseña
+    ALUMNO }|--o{ FAMILIAR : vinculado
+    ALUMNO ||--o{ REGISTRO_DIARIO : tiene
+    ALUMNO ||--o{ TAREA : asignado
+    
+    CENTRO {
+        string id
+        string nombre
+        string codigo
+        object direccion
+        string telefono
+        string email
+        string adminId
+        string logo
+        boolean activo
+    }
+    
+    USUARIO {
+        string uid
+        string email
+        string dni
+        string nombre
+        string apellidos
+        string telefono
+        string fotoPerfil
+        string tipoUsuario
+        string centroId
+        timestamp fechaRegistro
+        boolean activo
+    }
+    
+    CLASE {
+        string id
+        string nombre
+        string cursoId
+        string tutorId
+        array profesoresIds
+        number capacidad
+        boolean activa
+    }
+    
+    ALUMNO {
+        string id
+        string dni
+        string nombre
+        string apellidos
+        timestamp fechaNacimiento
+        string foto
+        string claseId
+        string centroId
+        array familiaresIds
+        boolean activo
+        string curso
+        string clase
+    }
+    
+    REGISTRO_DIARIO {
+        string id
+        timestamp fecha
+        string profesorId
+        string asistencia
+        object comidas
+        object siesta
+        string estadoEmocional
+        string comentarios
+        array baño
+    }
+```
 
 ## Equivalente Relacional: Diagrama Entidad-Relación
 
@@ -272,12 +416,12 @@ A continuación se presenta la estructura de datos anterior adaptada a un modelo
    - Claves foráneas: CursoID -> Curso.ID, TutorID -> Usuario.ID
 
 5. **Alumno**
-   - Atributos: ID, DNI, Nombre, Apellidos, FechaNacimiento, Foto, ClaseID, CentroID, Estado
+   - Atributos: ID, DNI, Nombre, Apellidos, FechaNacimiento, Foto, ClaseID, CentroID, Estado, Curso, Clase
    - Clave primaria: ID
    - Claves foráneas: ClaseID -> Clase.ID, CentroID -> Centro.ID
 
-6. **Evaluación**
-   - Atributos: ID, AlumnoID, Título, Descripción, Fecha, ProfesorID, Nota, Comentarios
+6. **RegistroDiario**
+   - Atributos: ID, AlumnoID, Fecha, ProfesorID, Asistencia, Comidas, Siesta, EstadoEmocional, Comentarios
    - Clave primaria: ID
    - Claves foráneas: AlumnoID -> Alumno.ID, ProfesorID -> Usuario.ID
 
@@ -295,41 +439,57 @@ A continuación se presenta la estructura de datos anterior adaptada a un modelo
    - Clave primaria: ID
    - Claves foráneas: ChatID -> Chat.ID, EmisorID -> Usuario.ID
 
-### Entidades de Relación
+10. **Tarea**
+    - Atributos: ID, Título, Descripción, FechaAsignación, FechaVencimiento, ProfesorID, ClaseID
+    - Clave primaria: ID
+    - Claves foráneas: ProfesorID -> Usuario.ID, ClaseID -> Clase.ID
 
-1. **Profesor_Clase** (Relación N:M entre Usuario-Profesor y Clase)
-   - Atributos: ProfesorID, ClaseID
-   - Claves foráneas: ProfesorID -> Usuario.ID, ClaseID -> Clase.ID
+11. **EntregaTarea**
+    - Atributos: ID, TareaID, AlumnoID, FechaEntrega, Comentarios, Archivos
+    - Clave primaria: ID
+    - Claves foráneas: TareaID -> Tarea.ID, AlumnoID -> Alumno.ID
 
-2. **Familiar_Alumno** (Relación N:M entre Usuario-Familiar y Alumno)
-   - Atributos: FamiliarID, AlumnoID, Relación
-   - Claves foráneas: FamiliarID -> Usuario.ID, AlumnoID -> Alumno.ID
-
-3. **Comunicado_Destinatario** (Relación N:M entre Comunicado y Destinatarios)
-   - Atributos: ComunicadoID, TipoDestinatario, DestinatarioID
-   - Claves foráneas: ComunicadoID -> Comunicado.ID, DestinatarioID -> (Usuario.ID o Clase.ID)
-
-4. **Lectura_Comunicado** (Relación N:M entre Usuario y Comunicado)
-   - Atributos: ComunicadoID, UsuarioID, Fecha, Confirmado
-   - Claves foráneas: ComunicadoID -> Comunicado.ID, UsuarioID -> Usuario.ID
-
-5. **Participante_Chat** (Relación N:M entre Usuario y Chat)
-   - Atributos: ChatID, UsuarioID
-   - Claves foráneas: ChatID -> Chat.ID, UsuarioID -> Usuario.ID
-
-6. **Adjunto_Comunicado** (Relación 1:N entre Comunicado y Adjuntos)
-   - Atributos: ID, ComunicadoID, Nombre, URL
-   - Clave primaria: ID
-   - Clave foránea: ComunicadoID -> Comunicado.ID
-
-7. **Adjunto_Mensaje** (Relación 1:N entre Mensaje y Adjuntos)
-   - Atributos: ID, MensajeID, Nombre, URL, Tipo
-   - Clave primaria: ID
-   - Clave foránea: MensajeID -> Mensaje.ID
+12. **ActividadPreescolar**
+    - Atributos: ID, Título, Descripción, Tipo, Edad, Duración, Materiales, Objetivos
+    - Clave primaria: ID
 
 ## Adaptación al Modelo NoSQL de Firestore
 
 Aunque conceptualmente podemos representar los datos de UmeEgunero en un modelo relacional tradicional, la implementación en Firestore aprovecha características específicas de bases de datos NoSQL:
+
+```mermaid
+graph TD
+    subgraph "Modelo Relacional vs NoSQL"
+        RelModel[Modelo Relacional] --- NoSQLModel[Modelo NoSQL Firestore]
+    end
+    
+    subgraph "Técnicas de Adaptación"
+        Anidados[Documentos Anidados]
+        Desnorm[Desnormalización]
+        SubCol[Subcolecciones]
+        Refs[Referencias]
+        Arrays[Arrays de IDs]
+    end
+    
+    NoSQLModel --> Anidados & Desnorm & SubCol & Refs & Arrays
+    
+    subgraph "Ejemplos"
+        EjAnidado["Direccion en Centro\n(objeto anidado)"]
+        EjDesnorm["centroId duplicado en\nalumnos y profesores"]
+        EjSubCol["mensajes como subcolección\nde chats"]
+        EjRefs["claseId en alumno\n(referencia)"]
+        EjArrays["familiaresIds[]\nen alumno"]
+    end
+    
+    Anidados --> EjAnidado
+    Desnorm --> EjDesnorm
+    SubCol --> EjSubCol
+    Refs --> EjRefs
+    Arrays --> EjArrays
+    
+    style RelModel fill:#f9f,stroke:#333,stroke-width:2px
+    style NoSQLModel fill:#bbf,stroke:#333,stroke-width:2px
+```
 
 1. **Documentos Anidados**: Datos relacionados se incluyen directamente en el documento principal.
    - Ejemplo: La dirección del centro se incluye como objeto anidado.
@@ -372,6 +532,26 @@ El diagrama físico puede representar la estructura real de Firestore con:
 
 ### Ventajas del Modelo NoSQL para UmeEgunero
 
+```mermaid
+graph LR
+    subgraph "Ventajas NoSQL en UmeEgunero"
+        Escalabilidad[Escalabilidad Automática]
+        Flexibilidad[Flexibilidad de Esquema]
+        RealTime[Tiempo Real]
+        Jerarquia[Estructura Jerárquica]
+    end
+    
+    Escalabilidad --> Beneficio1[Soporte para múltiples centros y usuarios]
+    Flexibilidad --> Beneficio2[Evolución sin migraciones complejas]
+    RealTime --> Beneficio3[Actualizaciones instantáneas en UI]
+    Jerarquia --> Beneficio4[Alineación con datos educativos]
+    
+    style Escalabilidad fill:#9f9,stroke:#333,stroke-width:1px
+    style Flexibilidad fill:#9f9,stroke:#333,stroke-width:1px
+    style RealTime fill:#9f9,stroke:#333,stroke-width:1px
+    style Jerarquia fill:#9f9,stroke:#333,stroke-width:1px
+```
+
 1. **Escalabilidad**: Firestore escala automáticamente para manejar gran número de usuarios y centros.
 2. **Flexibilidad**: Facilita la evolución del esquema sin migraciones complejas.
 3. **Consultas en Tiempo Real**: Permite implementar actualizaciones en tiempo real en la UI.
@@ -379,7 +559,38 @@ El diagrama físico puede representar la estructura real de Firestore con:
 
 ### Desafíos y Soluciones
 
+```mermaid
+graph TD
+    subgraph "Desafíos del Modelo NoSQL"
+        ComplexQ[Consultas Complejas]
+        Integridad[Integridad Referencial]
+        Consistencia[Consistencia]
+        Duplicacion[Duplicación de Datos]
+    end
+    
+    ComplexQ --> Sol1["Índices Compuestos\noptimizados"]
+    Integridad --> Sol2["Integridad a nivel\nde aplicación"]
+    Consistencia --> Sol3["Operaciones en lote\n(batch)"]
+    Duplicacion --> Sol4["Lógica de sincronización\nen la aplicación"]
+    
+    style ComplexQ fill:#f99,stroke:#333,stroke-width:1px
+    style Integridad fill:#f99,stroke:#333,stroke-width:1px
+    style Consistencia fill:#f99,stroke:#333,stroke-width:1px
+    style Duplicacion fill:#f99,stroke:#333,stroke-width:1px
+    
+    style Sol1 fill:#9f9,stroke:#333,stroke-width:1px
+    style Sol2 fill:#9f9,stroke:#333,stroke-width:1px
+    style Sol3 fill:#9f9,stroke:#333,stroke-width:1px
+    style Sol4 fill:#9f9,stroke:#333,stroke-width:1px
+```
+
 1. **Consultas Complejas**: Se implementan índices compuestos para optimizar consultas frecuentes.
 2. **Integridad Referencial**: Se mantiene a nivel de aplicación mediante transacciones de Firestore.
 3. **Consistencia**: Se utilizan lotes (batch) para operaciones que afectan múltiples documentos.
 4. **Duplicación de Datos**: Se implementa lógica de sincronización para mantener consistencia. 
+
+---
+
+*Documento actualizado por:* Equipo de Desarrollo UmeEgunero  
+*Fecha:* Mayo 2025  
+*Versión:* 1.5.0 

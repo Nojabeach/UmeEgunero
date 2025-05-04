@@ -13,6 +13,13 @@ import kotlinx.coroutines.Dispatchers
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.Firebase
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 /**
  * Interfaz que define las operaciones relacionadas con la autenticación de usuarios.
@@ -139,6 +146,17 @@ interface AuthRepository {
      * @return ID del usuario actual o null si no hay usuario autenticado
      */
     suspend fun getCurrentUserId(): String?
+
+    /**
+     * Elimina un usuario de Firebase Authentication por su email.
+     * 
+     * Este método utiliza un servicio de Google Apps Script para eliminar un usuario
+     * de Firebase Authentication mediante su correo electrónico.
+     * 
+     * @param email Correo electrónico del usuario a eliminar
+     * @return Resultado encapsulado que indica éxito o error en la operación
+     */
+    suspend fun deleteUserByEmail(email: String): Result<Unit>
 }
 
 /**
@@ -445,5 +463,57 @@ class AuthRepositoryImpl @Inject constructor(
      */
     override suspend fun getCurrentUserId(): String? {
         return getCurrentUser()?.documentId
+    }
+
+    /**
+     * Elimina un usuario de Firebase Authentication por su email.
+     * 
+     * Este método utiliza un servicio de Google Apps Script para eliminar un usuario
+     * de Firebase Authentication mediante su correo electrónico.
+     * 
+     * @param email Correo electrónico del usuario a eliminar
+     * @return Resultado encapsulado que indica éxito o error en la operación
+     */
+    override suspend fun deleteUserByEmail(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // URL del servicio web de Google Apps Script desplegado
+            val serviceUrl = "https://script.google.com/macros/s/AKfycbze3MmQnykWCV_ymsZgnICiC1wFIZG37-8Pr66ZbJS9X87LiL10wC3JJYVu1MVzsjxP/exec"
+            
+            // Crear la solicitud HTTP
+            val client = OkHttpClient()
+            val json = JSONObject().apply {
+                put("action", "deleteUser")
+                put("email", email)
+                // No necesitamos apiKey si no se configuró en el script
+            }
+            
+            val requestBody = json.toString().toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url(serviceUrl)
+                .post(requestBody)
+                .build()
+                
+            // Ejecutar la solicitud
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string()
+            
+            if (response.isSuccessful && responseBody != null) {
+                val jsonResponse = JSONObject(responseBody)
+                if (jsonResponse.optBoolean("success", false)) {
+                    Timber.d("Usuario eliminado correctamente de Firebase Auth: $email")
+                    Result.Success(Unit)
+                } else {
+                    val errorMsg = jsonResponse.optString("error", "Error desconocido")
+                    Timber.e("Error al eliminar usuario de Firebase Auth: $errorMsg")
+                    Result.Error(Exception("Error al eliminar usuario: $errorMsg"))
+                }
+            } else {
+                Timber.e("Error en la comunicación con el servicio de Google Apps Script")
+                Result.Error(Exception("Error en la comunicación con el servicio: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar usuario de Firebase Auth")
+            Result.Error(e)
+        }
     }
 } 

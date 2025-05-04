@@ -2,6 +2,7 @@ package com.tfg.umeegunero.di
 
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
@@ -21,6 +22,8 @@ import com.tfg.umeegunero.util.FirestoreCache
 import com.tfg.umeegunero.util.ErrorHandler
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.functions.FirebaseFunctions
+import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.util.Result
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -77,6 +80,8 @@ object FirebaseModule {
         firestore: FirebaseFirestore,
         remoteConfigService: RemoteConfigService
     ): UsuarioRepository {
+        // Usado para evitar la dependencia circular
+        // Usaremos otros métodos de inyección en la clase UsuarioRepository
         return UsuarioRepository(firebaseAuth, firestore, remoteConfigService)
     }
 

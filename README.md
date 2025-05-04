@@ -4,6 +4,7 @@
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-1.5.4-green.svg)](https://developer.android.com/jetpack/compose)
 [![Firebase](https://img.shields.io/badge/Firebase-31.5.0-orange.svg)](https://firebase.google.com/)
 [![Hilt](https://img.shields.io/badge/Hilt-2.48-red.svg)](https://dagger.dev/hilt/)
+[![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-Enabled-4285F4.svg)](https://developers.google.com/apps-script)
 
 <div align="center">
   <img src="docs/images/app_icon.png" alt="UmeEgunero Logo" width="200">
@@ -91,6 +92,11 @@ sequenceDiagram
 ```
 </div>
 
+### 🛡️ Arquitectura Híbrida para Operaciones Administrativas
+- **Google Apps Script para Administración de Usuarios**: Implementación de microservicios serverless para operaciones críticas
+- **Eliminación Segura de Usuarios**: Sistema robusto para eliminación completa de perfiles sin costos adicionales
+- **Backend Ligero**: Solución innovadora que evita dependencias de servicios premium como Firebase Functions
+
 ## 🛠️ Arquitectura y Tecnologías
 
 UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en desarrollo Android:
@@ -108,12 +114,15 @@ UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en des
   - Firebase Authentication: Gestión de usuarios y autenticación
   - Cloud Storage: Almacenamiento de archivos y documentos
   - Firebase Cloud Messaging: Sistema de notificaciones push multiplataforma
-- **Google Apps Script**: Utilizado como backend simple para el envío fiable de correos electrónicos HTML, superando limitaciones de Intents.
+- **Google Apps Script**: 
+  - Utilizado como backend simple para el envío fiable de correos electrónicos HTML, superando limitaciones de Intents
+  - Implementación de endpoints para gestión administrativa de usuarios en Firebase Authentication
+  - Solución gratuita y eficiente para operaciones administrativas que normalmente requerirían Firebase Functions (plan de pago)
 - **Inyección de Dependencias**: Hilt para gestión eficiente de dependencias
 - **Navegación**: Jetpack Navigation Compose para rutas y transiciones
 - **Asincronía**: Coroutines y Flow para operaciones no bloqueantes
-- **Networking**: Ktor Client para realizar llamadas HTTP al backend (Google Apps Script).
-- **Serialización**: Kotlinx Serialization para parsear respuestas JSON.
+- **Networking**: OkHttp y Ktor Client para realizar llamadas HTTP a servicios externos
+- **Serialización**: Kotlinx Serialization y JSONObject para procesamiento de datos
 
 ## 📂 Estructura del Proyecto
 
@@ -186,6 +195,7 @@ UmeEgunero incluye documentación completa disponible en el directorio `/docs`:
 - **[Manual de Usuario](docs/Manual_Usuario.md)**: Guía de uso para cada perfil de usuario
 - **[Sistema de Notificaciones](docs/Sistema_Notificaciones.md)**: Arquitectura y funcionamiento del sistema de notificaciones
 - **[Sistema de Solicitudes](docs/Sistema_Solicitudes.md)**: Implementación del proceso de vinculación familiar-alumno
+- **[Google Apps Script para Firebase Auth](docs/Google_Apps_Script_Firebase_Auth.md)**: Implementación de microservicios serverless como alternativa a Firebase Functions
 - **[Guía de Despliegue](docs/Guia_Despliegue.md)**: Instrucciones para configuración y puesta en producción
 
 ## 🧪 Testing

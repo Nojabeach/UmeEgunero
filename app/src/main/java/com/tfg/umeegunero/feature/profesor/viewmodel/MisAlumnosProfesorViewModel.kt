@@ -81,38 +81,55 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // Obtener clases asignadas al profesor
-                val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
-                if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
-                    _uiState.value = MisAlumnosUiState(
-                        isLoading = false,
-                        error = "No hay clases asignadas a este profesor"
-                    )
-                    return@launch
-                }
-                
                 // Lista para almacenar todos los alumnos
                 val todosLosAlumnos = mutableListOf<Alumno>()
                 var nombreClase = ""
                 
-                // Para cada clase, obtener sus alumnos
-                for (clase in clasesResult.data) {
-                    val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
-                    if (alumnosResult is Result.Success) {
-                        todosLosAlumnos.addAll(alumnosResult.data)
+                // 1. Obtener alumnos donde este profesor es el asignado directamente
+                Timber.d("Buscando alumnos con profesor asignado: ${profesor.id}")
+                val alumnosDirectos = alumnoRepository.getAlumnosForProfesor(profesor.id)
+                todosLosAlumnos.addAll(alumnosDirectos)
+                Timber.d("Encontrados ${alumnosDirectos.size} alumnos asignados directamente")
+                
+                // 2. Obtener clases asignadas al profesor
+                val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
+                if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
+                    // Para cada clase, obtener sus alumnos
+                    for (clase in clasesResult.data) {
+                        // Guardamos el nombre de la primera clase (para simplificar)
+                        if (nombreClase.isEmpty()) {
+                            nombreClase = clase.nombre
+                        }
+                        
+                        val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
+                        if (alumnosResult is Result.Success) {
+                            todosLosAlumnos.addAll(alumnosResult.data)
+                            Timber.d("Añadidos ${alumnosResult.data.size} alumnos de la clase ${clase.nombre}")
+                        }
                     }
-                    
-                    // Guardamos el nombre de la primera clase (para simplificar)
-                    if (nombreClase.isEmpty()) {
-                        nombreClase = clase.nombre
-                    }
+                } else {
+                    Timber.d("No hay clases asignadas al profesor ${profesor.id}")
                 }
                 
-                _uiState.value = MisAlumnosUiState(
-                    isLoading = false,
-                    alumnos = todosLosAlumnos.distinctBy { it.id },
-                    clase = nombreClase
-                )
+                // Eliminar duplicados
+                val alumnosSinDuplicados = todosLosAlumnos.distinctBy { it.dni }
+                
+                // Si no hay alumnos, mostrar mensaje específico
+                if (alumnosSinDuplicados.isEmpty()) {
+                    _uiState.value = MisAlumnosUiState(
+                        isLoading = false,
+                        error = "No hay alumnos asignados a este profesor",
+                        alumnos = emptyList(),
+                        clase = nombreClase
+                    )
+                } else {
+                    _uiState.value = MisAlumnosUiState(
+                        isLoading = false,
+                        alumnos = alumnosSinDuplicados,
+                        clase = nombreClase
+                    )
+                    Timber.d("Cargados ${alumnosSinDuplicados.size} alumnos para el profesor")
+                }
                 
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar alumnos")

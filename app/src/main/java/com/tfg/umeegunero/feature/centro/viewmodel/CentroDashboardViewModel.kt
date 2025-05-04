@@ -643,14 +643,40 @@ class CentroDashboardViewModel @Inject constructor(
         }
     }
 
-    // Función auxiliar para la vinculación
+    /**
+     * Realiza la vinculación entre un familiar y un alumno cuando se aprueba una solicitud.
+     * 
+     * @param solicitud La solicitud de vinculación aprobada
+     */
     private suspend fun vincularFamiliarSiAprobado(solicitud: SolicitudVinculacion) {
         try {
-            // Implementar la lógica de vinculación aquí
-            // Por ahora solo registramos en el log
-            Timber.d("Vinculando familiar ${solicitud.nombreFamiliar} con alumno ${solicitud.alumnoNombre}")
+            // Validar que tenemos la información necesaria
+            if (solicitud.familiarId.isBlank() || solicitud.alumnoDni.isBlank()) {
+                Timber.w("No se puede vincular: datos insuficientes. FamiliarId: ${solicitud.familiarId}, AlumnoDni: ${solicitud.alumnoDni}")
+                return
+            }
+            
+            val nombreAlumnoMostrar = solicitud.alumnoNombre.ifBlank { "el alumno" }
+            Timber.d("Vinculando familiar ${solicitud.nombreFamiliar} con alumno $nombreAlumnoMostrar")
+            
+            // Realizar la vinculación utilizando el FamiliarRepository
+            val resultado = familiarRepository.vincularFamiliarAlumno(
+                familiarId = solicitud.familiarId,
+                alumnoId = solicitud.alumnoDni, // Usar alumnoDni como ID del alumno
+                parentesco = solicitud.tipoRelacion
+            )
+            
+            when (resultado) {
+                is Result.Success -> {
+                    Timber.d("✅ Vinculación exitosa entre familiar ${solicitud.nombreFamiliar} y alumno $nombreAlumnoMostrar")
+                }
+                is Result.Error -> {
+                    Timber.e(resultado.exception, "❌ Error al vincular familiar con alumno: ${resultado.exception?.message}")
+                }
+                else -> { /* Ignorar resultado Loading */ }
+            }
         } catch (e: Exception) {
-            Timber.e(e, "Error al vincular familiar")
+            Timber.e(e, "Error al vincular familiar: ${e.message}")
         }
     }
     

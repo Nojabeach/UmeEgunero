@@ -44,6 +44,10 @@ open class UsuarioRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val remoteConfigService: RemoteConfigService
 ) {
+    // Se inyectará después para evitar la dependencia circular
+    @set:Inject
+    internal lateinit var authRepository: AuthRepository
+    
     val usuariosCollection = firestore.collection("usuarios")
     val solicitudesCollection = firestore.collection("solicitudesRegistro")
     val centrosCollection = firestore.collection("centros")
@@ -63,7 +67,7 @@ open class UsuarioRepository @Inject constructor(
          */
         fun createMock(): UsuarioRepository {
             // Creamos un mock usando Mockito o implementamos una versión simple
-            return object : UsuarioRepository(
+            val repo = object : UsuarioRepository(
                 FirebaseAuth.getInstance(),
                 FirebaseFirestore.getInstance(),
                 RemoteConfigService()
@@ -81,6 +85,25 @@ open class UsuarioRepository @Inject constructor(
                     )
                 }
             }
+            
+            // Configuramos un mock para authRepository
+            repo.authRepository = object : AuthRepository {
+                override suspend fun getCurrentUser(): Usuario? = null
+                override suspend fun signOut(): Boolean = true
+                override suspend fun cerrarSesion(): Boolean = true
+                override suspend fun sendPasswordResetEmail(email: String): Result<Boolean> = Result.Success(true)
+                override suspend fun getFirebaseUser(): FirebaseUser? = null
+                override suspend fun marcarComunicadoComoLeido(comunicadoId: String): Result<Unit> = Result.Success(Unit)
+                override suspend fun confirmarLecturaComunicado(comunicadoId: String): Result<Unit> = Result.Success(Unit)
+                override suspend fun haLeidoComunicado(comunicadoId: String): Result<Boolean> = Result.Success(false)
+                override suspend fun haConfirmadoLecturaComunicado(comunicadoId: String): Result<Boolean> = Result.Success(false)
+                override suspend fun getUsuarioActual(): Usuario? = null
+                override suspend fun getCurrentCentroId(): String = ""
+                override suspend fun getCurrentUserId(): String? = null
+                override suspend fun deleteUserByEmail(email: String): Result<Unit> = Result.Success(Unit)
+            }
+            
+            return repo
         }
     }
 
@@ -1071,23 +1094,106 @@ open class UsuarioRepository @Inject constructor(
                     TipoUsuario.PROFESOR -> {
                         // Eliminar referencias en clases donde este profesor está asignado
                         try {
+                            // Buscar el documento del profesor en la colección 'profesores' por usuarioId
+                            var profesorId = ""
+                            val profesoresQuery = firestore.collection(COLLECTION_PROFESORES)
+                                .whereEqualTo("usuarioId", dni)
+                                .get()
+                                .await()
+                            
+                            // Si existe, eliminar el documento del profesor
+                            if (!profesoresQuery.isEmpty) {
+                                val profesorDoc = profesoresQuery.documents.first()
+                                profesorId = profesorDoc.id
+                                profesorDoc.reference.delete().await()
+                                Timber.d("Profesor eliminado de la colección profesores: $profesorId")
+                            }
+                            
                             // Buscar clases donde este profesor es el principal
                             val clasesQuery = clasesCollection.whereEqualTo("profesorId", dni).get().await()
                             for (claseDoc in clasesQuery.documents) {
+                                val claseId = claseDoc.id
                                 claseDoc.reference.update("profesorId", "").await()
-                                Timber.d("Eliminada referencia del profesor $dni de la clase ${claseDoc.id}")
+                                Timber.d("Eliminada referencia del profesor $dni de la clase $claseId")
+                                
+                                // También actualizamos los alumnos de esta clase para eliminar la referencia al profesor
+                                try {
+                                    val alumnos = alumnosCollection
+                                        .whereEqualTo("claseId", claseId)
+                                        .get()
+                                        .await()
+                                    
+                                    for (alumnoDoc in alumnos.documents) {
+                                        alumnoDoc.reference.update("profesorId", null).await()
+                                        Timber.d("Eliminada referencia del profesor en alumno ${alumnoDoc.id}")
+                                    }
+                                    
+                                    // También verificamos por aulaId (nueva estructura)
+                                    val alumnosAula = alumnosCollection
+                                        .whereEqualTo("aulaId", claseId)
+                                        .get()
+                                        .await()
+                                    
+                                    for (alumnoDoc in alumnosAula.documents) {
+                                        alumnoDoc.reference.update("profesorId", null).await()
+                                        Timber.d("Eliminada referencia del profesor en alumno ${alumnoDoc.id} (aulaId)")
+                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al actualizar alumnos de la clase $claseId: ${e.message}")
+                                }
                             }
                             
-                            // Buscar clases donde este profesor está en la lista de profesores adicionales
-                            val clasesAdicionales = clasesCollection.whereArrayContains("profesoresIds", dni).get().await()
-                            for (claseDoc in clasesAdicionales.documents) {
+                            // Buscar clases donde este profesor es el titular
+                            val clasesTitular = clasesCollection.whereEqualTo("profesorTitularId", dni).get().await()
+                            for (claseDoc in clasesTitular.documents) {
+                                claseDoc.reference.update("profesorTitularId", "").await()
+                                Timber.d("Eliminada referencia del profesor titular $dni de la clase ${claseDoc.id}")
+                            }
+                            
+                            // Buscar clases donde este profesor está en la lista de profesores auxiliares
+                            val clasesAuxiliares = clasesCollection.whereArrayContains("profesoresAuxiliaresIds", dni).get().await()
+                            for (claseDoc in clasesAuxiliares.documents) {
                                 claseDoc.reference.update(
-                                    "profesoresIds", FieldValue.arrayRemove(dni)
+                                    "profesoresAuxiliaresIds", FieldValue.arrayRemove(dni)
                                 ).await()
-                                Timber.d("Eliminado profesorId $dni de la lista de profesores de la clase ${claseDoc.id}")
+                                Timber.d("Eliminado profesorId $dni de la lista de profesores auxiliares de la clase ${claseDoc.id}")
+                            }
+                            
+                            // Si tenemos profesorId, también buscamos clases usando el ID del documento
+                            if (profesorId.isNotEmpty()) {
+                                // Buscar clases donde este profesor (por documento ID) es el principal
+                                val clasesProfId = clasesCollection.whereEqualTo("profesorId", profesorId).get().await()
+                                for (claseDoc in clasesProfId.documents) {
+                                    claseDoc.reference.update("profesorId", "").await()
+                                    Timber.d("Eliminada referencia del profesor (ID doc) $profesorId de la clase ${claseDoc.id}")
+                                }
+                                
+                                // Buscar clases donde este profesor es titular por ID
+                                val clasesTitularProfId = clasesCollection.whereEqualTo("profesorTitularId", profesorId).get().await()
+                                for (claseDoc in clasesTitularProfId.documents) {
+                                    claseDoc.reference.update("profesorTitularId", "").await()
+                                    Timber.d("Eliminada referencia del profesor titular (ID doc) $profesorId de la clase ${claseDoc.id}")
+                                }
+                                
+                                // Buscar clases donde este profesor está en la lista de auxiliares por ID
+                                val clasesAuxiliaresProfId = clasesCollection.whereArrayContains("profesoresAuxiliaresIds", profesorId).get().await()
+                                for (claseDoc in clasesAuxiliaresProfId.documents) {
+                                    claseDoc.reference.update(
+                                        "profesoresAuxiliaresIds", FieldValue.arrayRemove(profesorId)
+                                    ).await()
+                                    Timber.d("Eliminado profesorId (ID doc) $profesorId de la lista de profesores auxiliares de la clase ${claseDoc.id}")
+                                }
+                                
+                                // Buscar todos los alumnos asignados a este profesor y actualizar su profesorId
+                                val alumnosProfesor = alumnosCollection.whereEqualTo("profesorId", profesorId).get().await()
+                                for (alumnoDoc in alumnosProfesor.documents) {
+                                    alumnoDoc.reference.update("profesorId", null).await()
+                                    Timber.d("Eliminada referencia del profesor (ID doc) en alumno ${alumnoDoc.id}")
+                                }
                             }
                         } catch (e: Exception) {
-                            Timber.e(e, "Error al actualizar clases al eliminar profesor: ${e.message}")
+                            Timber.e(e, "Error al actualizar clases y alumnos al eliminar profesor: ${e.message}")
+                            // Continuamos con el proceso aunque falle este paso
                         }
                     }
                     TipoUsuario.FAMILIAR -> {
@@ -1147,36 +1253,18 @@ open class UsuarioRepository @Inject constructor(
                 Timber.e(e, "Error al eliminar mensajes del usuario: ${e.message}")
             }
             
-            // 6. Eliminar de Firebase Authentication usando Cloud Function o Firebase Admin SDK
+            // 6. Eliminar de Firebase Authentication usando el método del AuthRepository
             try {
-                // Primero obtenemos el usuario actual de Firebase Auth
-                val currentUser = firebaseAuth.currentUser
-                val userEmail = currentUser?.email
-                
-                // Solo el admin puede eliminar otros usuarios, o un usuario puede eliminarse a sí mismo
-                if (userEmail == email) {
-                    // El usuario está eliminando su propia cuenta
-                    currentUser?.delete()?.await()
-                    firebaseAuth.signOut()
-                    Timber.d("Usuario ha eliminado su propia cuenta: $email")
-                } else {
-                    // Intentamos usar una Cloud Function para eliminar
-                    val data = hashMapOf(
-                        "email" to email
-                    )
-                    
-                    try {
-                        functions.getHttpsCallable("deleteUserByEmail")
-                            .call(data)
-                            .addOnSuccessListener { 
-                                Timber.d("Usuario con email $email eliminado de Firebase Authentication")
-                            }
-                            .addOnFailureListener { e ->
-                                Timber.e(e, "Error al eliminar usuario de Auth: ${e.message}")
-                            }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al llamar a la Cloud Function: ${e.message}")
-                        // Consideramos éxito aunque falle en Auth, ya que se eliminó de Firestore
+                when (val authResult = authRepository.deleteUserByEmail(email)) {
+                    is Result.Success -> {
+                        Timber.d("Usuario con email $email eliminado de Firebase Authentication")
+                    }
+                    is Result.Error -> {
+                        // Registramos el error, pero no interrumpimos el flujo
+                        Timber.w(authResult.exception, "No se pudo eliminar el usuario de Firebase Auth: ${authResult.exception?.message}")
+                    }
+                    else -> {
+                        // No hacemos nada en otros casos
                     }
                 }
             } catch (authError: Exception) {

@@ -420,12 +420,71 @@ class AlumnoRepositoryImpl @Inject constructor(
      */
     override suspend fun getAlumnosPorClase(claseId: String): List<Alumno> = withContext(Dispatchers.IO) {
         try {
-            val query = firestore.collection(COLLECTION_ALUMNOS)
+            Timber.d("Buscando alumnos para la clase: $claseId")
+            
+            // 1. Buscar alumnos por aulaId (nueva estructura)
+            val queryAula = firestore.collection(COLLECTION_ALUMNOS)
                 .whereEqualTo("aulaId", claseId)
                 .get()
                 .await()
+
+            val alumnosAula = queryAula.toObjects(Alumno::class.java)
+            Timber.d("Encontrados ${alumnosAula.size} alumnos con aulaId=$claseId")
+            
+            // 2. Buscar alumnos por claseId (estructura anterior)
+            val queryClase = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("claseId", claseId)
+                .get()
+                .await()
                 
-            return@withContext query.toObjects(Alumno::class.java)
+            val alumnosClase = queryClase.toObjects(Alumno::class.java)
+            Timber.d("Encontrados ${alumnosClase.size} alumnos con claseId=$claseId")
+            
+            // 3. Obtener la clase para verificar los alumnos listados en alumnosIds
+            val alumnosDesdeClase = try {
+                val claseDoc = firestore.collection("clases").document(claseId).get().await()
+                if (claseDoc.exists()) {
+                    val alumnosIds = claseDoc.get("alumnosIds") as? List<String> ?: emptyList()
+                    Timber.d("La clase tiene ${alumnosIds.size} alumnos listados en alumnosIds")
+                    
+                    if (alumnosIds.isNotEmpty()) {
+                        // Obtener alumnos por sus IDs
+                        val alumnos = mutableListOf<Alumno>()
+                        for (id in alumnosIds) {
+                            try {
+                                val alumnoQuery = firestore.collection(COLLECTION_ALUMNOS)
+                                    .whereEqualTo("dni", id)
+                                    .limit(1)
+                                    .get()
+                                    .await()
+                                    
+                                if (!alumnoQuery.isEmpty) {
+                                    val alumno = alumnoQuery.documents.first().toObject(Alumno::class.java)
+                                    if (alumno != null) {
+                                        alumnos.add(alumno)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al obtener alumno con ID $id")
+                            }
+                        }
+                        alumnos
+                    } else {
+                        emptyList()
+                    }
+                } else {
+                    emptyList()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener alumnos desde la clase")
+                emptyList()
+            }
+
+            // Combinar resultados eliminando duplicados
+            val todosLosAlumnos = (alumnosAula + alumnosClase + alumnosDesdeClase).distinctBy { it.dni }
+            
+            Timber.d("Total de ${todosLosAlumnos.size} alumnos encontrados para la clase $claseId")
+            return@withContext todosLosAlumnos
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener alumnos por clase: $claseId")
             return@withContext emptyList<Alumno>()

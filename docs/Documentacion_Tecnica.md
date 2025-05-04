@@ -4,6 +4,47 @@
 
 UmeEgunero es una aplicación Android desarrollada con Kotlin que sigue una arquitectura MVVM (Model-View-ViewModel) con principios de Clean Architecture. La aplicación utiliza Jetpack Compose para la interfaz de usuario y Firebase como backend principal.
 
+```mermaid
+graph TD
+    subgraph "Arquitectura MVVM + Clean Architecture"
+        subgraph "Capa de Presentación"
+            View[View\nJetpack Compose]
+            ViewModel[ViewModel]
+            View <--> ViewModel
+        end
+        
+        subgraph "Capa de Dominio"
+            UseCase[Use Cases]
+            DModel[Domain Models]
+            ViewModel <--> UseCase
+            UseCase <--> DModel
+        end
+        
+        subgraph "Capa de Datos"
+            Repo[Repositories]
+            DS[Data Sources]
+            UseCase <--> Repo
+            Repo <--> DS
+        end
+        
+        subgraph "Fuentes de Datos"
+            FB[Firebase\nServicios]
+            Local[Almacenamiento\nLocal]
+            DS <--> FB
+            DS <--> Local
+        end
+    end
+    
+    style View fill:#bbf,stroke:#333,stroke-width:1px
+    style ViewModel fill:#bbf,stroke:#333,stroke-width:1px
+    style UseCase fill:#f9f,stroke:#333,stroke-width:1px
+    style DModel fill:#f9f,stroke:#333,stroke-width:1px
+    style Repo fill:#bfb,stroke:#333,stroke-width:1px
+    style DS fill:#bfb,stroke:#333,stroke-width:1px
+    style FB fill:#fbb,stroke:#333,stroke-width:1px
+    style Local fill:#fbb,stroke:#333,stroke-width:1px
+```
+
 ## Estructura del Proyecto
 
 ```
@@ -174,6 +215,33 @@ interface AlumnoRepository {
 }
 ```
 
+```mermaid
+flowchart TB
+    UI[UI / ViewModel]
+    Repo[Repository]
+    Remote[Firebase / API]
+    Local[Room / DataStore]
+    
+    UI <-->|Flow / StateFlow| Repo
+    Repo <-->|API Calls| Remote
+    Repo <-->|DAO / Preferences| Local
+    
+    subgraph "Flujo de Datos"
+        direction TB
+        A[UI solicita datos] --> B[Repository decide fuente]
+        B --> C1[Obtener de caché local]
+        B --> C2[Obtener de remoto]
+        C1 --> D[Entregar datos a UI]
+        C2 --> E[Actualizar caché]
+        E --> D
+    end
+    
+    style UI fill:#bbf,stroke:#333,stroke-width:1px
+    style Repo fill:#f9f,stroke:#333,stroke-width:1px
+    style Remote fill:#fbb,stroke:#333,stroke-width:1px
+    style Local fill:#bfb,stroke:#333,stroke-width:1px
+```
+
 ## Inyección de Dependencias
 
 Hilt se utiliza para la inyección de dependencias:
@@ -244,6 +312,35 @@ sealed class NavigationRoutes(val route: String) {
 }
 ```
 
+```mermaid
+flowchart TD
+    Start[Login] --> Auth{Autenticado?}
+    Auth -->|Sí| Perfil{Tipo Perfil}
+    Auth -->|No| Register[Registro]
+    
+    Register --> Auth
+    
+    Perfil -->|Admin| DashboardAdmin[Dashboard Admin]
+    Perfil -->|Profesor| DashboardProf[Dashboard Profesor]
+    Perfil -->|Familiar| DashboardFam[Dashboard Familiar]
+    
+    DashboardAdmin --> GestionCentros[Gestión Centros]
+    DashboardAdmin --> GestionUsuarios[Gestión Usuarios]
+    
+    DashboardProf --> MisClases[Mis Clases]
+    DashboardProf --> RegistroActividades[Registro Actividades]
+    
+    DashboardFam --> MisHijos[Mis Hijos]
+    DashboardFam --> ComunicacionesProfesor[Comunicaciones]
+    
+    style Start fill:#bbf,stroke:#333,stroke-width:1px
+    style Auth fill:#f9f,stroke:#333,stroke-width:1px
+    style Perfil fill:#f9f,stroke:#333,stroke-width:1px
+    style DashboardAdmin fill:#bfb,stroke:#333,stroke-width:1px
+    style DashboardProf fill:#bfb,stroke:#333,stroke-width:1px
+    style DashboardFam fill:#bfb,stroke:#333,stroke-width:1px
+```
+
 ## Sincronización y Modo Offline
 
 La aplicación implementa un sistema de sincronización que permite el trabajo offline, usando Room para almacenamiento local y servicios de sincronización.
@@ -267,6 +364,45 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun eventoDao(): EventoDao
     // Otros DAOs...
 }
+```
+
+```mermaid
+graph TD
+    subgraph "Arquitectura de Sincronización"
+        UI[UI / ViewModel]
+        
+        subgraph "Repositorio (Single Source of Truth)"
+            RepositorySSOT["Repository"]
+        end
+        
+        subgraph "Fuentes de Datos"
+            FirestoreDS["Firestore DataSource\n(Online)"]
+            RoomDS["Room DataSource\n(Offline)"]
+        end
+        
+        SyncService["Servicio de Sincronización"]
+        ConnectivityManager["Connectivity Manager"]
+        SyncWorker["WorkManager\n(Sincronización Periódica)"]
+    end
+    
+    UI <-->|StateFlow| RepositorySSOT
+    RepositorySSOT <-->|Datos Principales| RoomDS
+    RepositorySSOT <-->|Cuando esté online| FirestoreDS
+    
+    ConnectivityManager -->|Estado de Conexión| RepositorySSOT
+    ConnectivityManager -->|Trigger| SyncService
+    SyncService <-->|Sincroniza| FirestoreDS
+    SyncService <-->|Actualiza| RoomDS
+    
+    SyncWorker -->|Programada| SyncService
+    
+    style UI fill:#bbf,stroke:#333,stroke-width:1px
+    style RepositorySSOT fill:#f9f,stroke:#333,stroke-width:1px
+    style FirestoreDS fill:#fbb,stroke:#333,stroke-width:1px
+    style RoomDS fill:#bfb,stroke:#333,stroke-width:1px
+    style SyncService fill:#ff9,stroke:#333,stroke-width:1px
+    style ConnectivityManager fill:#ff9,stroke:#333,stroke-width:1px
+    style SyncWorker fill:#ff9,stroke:#333,stroke-width:1px
 ```
 
 ## Paginación y LazyLists
@@ -322,6 +458,50 @@ class PreferenciasRepository @Inject constructor(
 
 ## Seguridad
 
+UmeEgunero implementa múltiples capas de seguridad para proteger los datos sensibles y garantizar un acceso adecuado a las funcionalidades:
+
+```mermaid
+graph TD
+    User([Usuario]) --> Auth[Autenticación]
+    Auth --> Role[Control de Roles]
+    Role --> Data[Acceso a Datos]
+    
+    subgraph "Capas de Seguridad"
+        Auth
+        Role
+        Data
+        FBRules[Reglas Firestore]
+        EndCrypto[Cifrado Punto a Punto]
+        DataValid[Validación de Datos]
+        InputVal[Validación de Entradas]
+    end
+    
+    Data <--> FBRules
+    Chat[Chat] <--> EndCrypto
+    Data <--> DataValid
+    User --> InputVal --> Data
+    
+    subgraph "Implementaciones"
+        FireAuth[Firebase Authentication]
+        RBAC[Role-Based Access Control]
+        Validation[Input Validation Libraries]
+        SecRules[Security Rules]
+    end
+    
+    Auth --- FireAuth
+    Role --- RBAC
+    InputVal --- Validation
+    FBRules --- SecRules
+    
+    style Auth fill:#f99,stroke:#333,stroke-width:1px
+    style Role fill:#f99,stroke:#333,stroke-width:1px
+    style Data fill:#f99,stroke:#333,stroke-width:1px
+    style FBRules fill:#f99,stroke:#333,stroke-width:1px
+    style InputVal fill:#f99,stroke:#333,stroke-width:1px
+    style DataValid fill:#f99,stroke:#333,stroke-width:1px
+    style EndCrypto fill:#f99,stroke:#333,stroke-width:1px
+```
+
 - **Firebase Auth** y reglas de Firestore para autenticación y autorización.
 - **Protección de datos sensibles**: Uso de HTTPS, roles y reglas de acceso.
 - **No se ha encontrado uso de EncryptedSharedPreferences ni MasterKey en el código actual.**
@@ -347,6 +527,42 @@ class LoginScreenTest {
 - Internacionalización con `strings.xml` y soporte multilenguaje.
 
 ## Patrones de Diseño
+
+UmeEgunero implementa diversos patrones de diseño para garantizar la mantenibilidad y escalabilidad del código:
+
+```mermaid
+graph TD
+    subgraph "Patrones de Diseño en UmeEgunero"
+        Repository[Repository Pattern]
+        Factory[Factory Pattern]
+        Adapter[Adapter Pattern]
+        Observer[Observer Pattern]
+        Singleton[Singleton Pattern]
+        Strategy[Strategy Pattern]
+    end
+    
+    Repository -->|Acceso a datos| RepoImpl[UsuarioRepository\nAlumnoRepository]
+    Factory -->|Creación objetos| FactImpl[ViewModelFactory]
+    Adapter -->|Transformación datos| AdaptImpl[DataMappers]
+    Observer -->|Actualizaciones UI| ObsImpl[StateFlow\nFlow]
+    Singleton -->|Instancias únicas| SingImpl[RepositoryModule]
+    Strategy -->|Lógica condicional| StratImpl[AuthStrategy]
+    
+    subgraph "Relaciones entre Patrones"
+        Repository -.->|usa| Observer
+        Factory -.->|crea| Repository
+        Repository -.->|usa| Adapter
+        Factory -.->|usa| Singleton
+        Strategy -.->|ejecuta a través de| Repository
+    end
+    
+    style Repository fill:#bbf,stroke:#333,stroke-width:1px
+    style Factory fill:#fbf,stroke:#333,stroke-width:1px
+    style Adapter fill:#bfb,stroke:#333,stroke-width:1px
+    style Observer fill:#fbb,stroke:#333,stroke-width:1px
+    style Singleton fill:#ff9,stroke:#333,stroke-width:1px
+    style Strategy fill:#9ff,stroke:#333,stroke-width:1px
+```
 
 - **Repository Pattern**: Abstracción de acceso a datos.
 - **Factory Pattern**: Creación de ViewModels y objetos complejos.
@@ -475,3 +691,9 @@ Esta solución proporciona una forma robusta y gratuita (dentro de las cuotas) d
 Esta documentación técnica proporciona una visión general de la arquitectura y los principales componentes de UmeEgunero. La aplicación sigue las mejores prácticas de desarrollo para Android, utilizando tecnologías modernas y un enfoque arquitectónico que facilita la mantenibilidad y la escalabilidad.
 
 Para una información más detallada sobre clases específicas, consulte la documentación generada por Dokka en el directorio `build/dokka`.
+
+---
+
+*Documento actualizado por:* Equipo de Desarrollo UmeEgunero
+*Fecha:* Mayo 2025
+*Versión:* 2.0

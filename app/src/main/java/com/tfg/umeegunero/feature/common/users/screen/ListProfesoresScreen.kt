@@ -82,6 +82,17 @@ fun ListProfesoresScreen(
         }
     }
     
+    // Mostrar mensaje de éxito al eliminar profesor
+    LaunchedEffect(uiState.eliminacionExitosa) {
+        if (uiState.eliminacionExitosa) {
+            snackbarHostState.showSnackbar(
+                message = "Profesor eliminado correctamente",
+                duration = SnackbarDuration.Short
+            )
+            viewModel.resetEliminacionExitosa()
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -219,7 +230,20 @@ fun ListProfesoresScreen(
                     onDismissRequest = { showDeleteConfirmDialog = false },
                     title = { Text("Confirmar eliminación") },
                     text = { 
-                        Text("¿Estás seguro de que deseas eliminar al profesor ${selectedProfesor?.nombre} ${selectedProfesor?.apellidos}?") 
+                        Column {
+                            Text("¿Estás seguro de que deseas eliminar al profesor ${selectedProfesor?.nombre} ${selectedProfesor?.apellidos}?")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Esta acción eliminará al profesor de todas las clases asignadas y actualizará los alumnos vinculados.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "También se eliminará su cuenta de usuario del sistema, lo que impedirá su acceso a la aplicación.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     },
                     confirmButton = {
                         TextButton(
@@ -237,6 +261,13 @@ fun ListProfesoresScreen(
                         TextButton(onClick = { showDeleteConfirmDialog = false }) {
                             Text("Cancelar")
                         }
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Delete, 
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 )
             }

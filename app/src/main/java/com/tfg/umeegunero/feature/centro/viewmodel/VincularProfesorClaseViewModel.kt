@@ -724,19 +724,58 @@ class VincularProfesorClaseViewModel @Inject constructor(
      */
     private suspend fun actualizarAlumnosDeClaseConProfesor(claseId: String, profesorId: String) {
         try {
-            // 1. Obtener todos los alumnos de esta clase
-            val alumnos = alumnoRepository.getAlumnosPorClase(claseId)
-            Timber.d("Actualizando ${alumnos.size} alumnos con profesor $profesorId")
+            // 1. Obtener todos los alumnos de esta clase usando el método exhaustivo
+            val resultAlumnos = alumnoRepository.getAlumnosByClaseId(claseId)
             
-            // 2. Para cada alumno, actualizar el profesorId
-            alumnos.forEach { alumno ->
-                Timber.d("Actualizando alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni}) con profesor $profesorId")
-                alumnoRepository.actualizarProfesor(alumno.dni, profesorId)
+            if (resultAlumnos is Result.Success) {
+                val alumnos = resultAlumnos.data
+                
+                Timber.d("Actualizando ${alumnos.size} alumnos con profesor $profesorId")
+            
+                if (alumnos.isEmpty()) {
+                    Timber.w("No se encontraron alumnos para la clase $claseId")
+                    return
+                }
+                
+                // 2. Mantener registro de éxitos y fallos para informar
+                var alumnosActualizados = 0
+                var alumnosFallidos = 0
+                
+                // 3. Para cada alumno, actualizar el profesorId con verificación de éxito
+                alumnos.forEach { alumno ->
+                    Timber.d("Actualizando alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni}) con profesor $profesorId")
+                    
+                    val resultado = alumnoRepository.actualizarProfesor(alumno.dni, profesorId)
+                    
+                    if (resultado is Result.Success) {
+                        alumnosActualizados++
+                        Timber.d("Alumno ${alumno.dni} actualizado exitosamente con profesor $profesorId")
+                    } else if (resultado is Result.Error) {
+                        alumnosFallidos++
+                        Timber.e(resultado.exception, "Error al actualizar profesor para alumno ${alumno.dni}")
+                        
+                        // Reintento una vez más si falló la primera vez
+                        Timber.d("Reintentando actualización para alumno ${alumno.dni}")
+                        val reintentoResultado = alumnoRepository.actualizarProfesor(alumno.dni, profesorId)
+                        
+                        if (reintentoResultado is Result.Success) {
+                            alumnosActualizados++
+                            alumnosFallidos--
+                            Timber.d("Reintento exitoso para alumno ${alumno.dni}")
+                        }
+                    }
+                }
+                
+                Timber.d("Actualización de alumnos completada: $alumnosActualizados exitosos, $alumnosFallidos fallidos")
+                
+                if (alumnosFallidos > 0) {
+                    Timber.w("Atención: No se pudieron actualizar $alumnosFallidos alumnos con el profesor")
+                }
+            } else {
+                Timber.e("Error al obtener alumnos para la clase $claseId")
             }
-            
-            Timber.d("Actualización de alumnos completada exitosamente")
         } catch (e: Exception) {
-            Timber.e(e, "Error al actualizar alumnos con profesor")
+            Timber.e(e, "Error al actualizar alumnos con profesor: ${e.message}")
             throw e
         }
     }
@@ -748,22 +787,62 @@ class VincularProfesorClaseViewModel @Inject constructor(
      */
     private suspend fun eliminarProfesorDeAlumnosDeClase(claseId: String, profesorId: String) {
         try {
-            // 1. Obtener todos los alumnos de esta clase
-            val alumnos = alumnoRepository.getAlumnosPorClase(claseId)
-            Timber.d("Eliminando profesor $profesorId de ${alumnos.size} alumnos")
+            // 1. Obtener todos los alumnos de esta clase usando el método exhaustivo
+            val resultAlumnos = alumnoRepository.getAlumnosByClaseId(claseId)
             
-            // 2. Para cada alumno, eliminar el profesorId solo si coincide con el actual
-            alumnos.forEach { alumno ->
-                // Solo eliminamos si el profesor asignado es el que estamos desvinculando
-                if (alumno.profesorId == profesorId) {
-                    Timber.d("Eliminando profesor de alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni})")
-                    alumnoRepository.eliminarProfesor(alumno.dni)
+            if (resultAlumnos is Result.Success) {
+                val alumnos = resultAlumnos.data
+                
+                Timber.d("Eliminando profesor $profesorId de ${alumnos.size} alumnos")
+            
+                if (alumnos.isEmpty()) {
+                    Timber.w("No se encontraron alumnos para la clase $claseId")
+                    return
                 }
+                
+                // 2. Para cada alumno, eliminar el profesorId solo si coincide con el que estamos desvinculando
+                var alumnosActualizados = 0
+                var alumnosFallidos = 0
+                
+                alumnos.forEach { alumno ->
+                    // Solo eliminamos si el profesor asignado es el que estamos desvinculando
+                    if (alumno.profesorId == profesorId) {
+                        Timber.d("Eliminando profesor de alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni})")
+                        
+                        val resultado = alumnoRepository.eliminarProfesor(alumno.dni)
+                        
+                        if (resultado is Result.Success) {
+                            alumnosActualizados++
+                            Timber.d("Alumno ${alumno.dni} actualizado: profesor eliminado correctamente")
+                        } else if (resultado is Result.Error) {
+                            alumnosFallidos++
+                            Timber.e(resultado.exception, "Error al eliminar profesor para alumno ${alumno.dni}")
+                            
+                            // Reintento una vez más si falló la primera vez
+                            Timber.d("Reintentando eliminación para alumno ${alumno.dni}")
+                            val reintentoResultado = alumnoRepository.eliminarProfesor(alumno.dni)
+                            
+                            if (reintentoResultado is Result.Success) {
+                                alumnosActualizados++
+                                alumnosFallidos--
+                                Timber.d("Reintento exitoso para alumno ${alumno.dni}")
+                            }
+                        }
+                    } else {
+                        Timber.d("El alumno ${alumno.dni} no tiene asignado al profesor $profesorId (tiene: ${alumno.profesorId ?: "ninguno"})")
+                    }
+                }
+                
+                Timber.d("Eliminación de profesor completada: $alumnosActualizados exitosos, $alumnosFallidos fallidos")
+                
+                if (alumnosFallidos > 0) {
+                    Timber.w("Atención: No se pudo eliminar el profesor de $alumnosFallidos alumnos")
+                }
+            } else {
+                Timber.e("Error al obtener alumnos para la clase $claseId")
             }
-            
-            Timber.d("Eliminación de profesor de alumnos completada exitosamente")
         } catch (e: Exception) {
-            Timber.e(e, "Error al eliminar profesor de alumnos")
+            Timber.e(e, "Error al eliminar profesor de alumnos: ${e.message}")
             throw e
         }
     }
@@ -896,5 +975,42 @@ class VincularProfesorClaseViewModel @Inject constructor(
      */
     fun mostrarError(mensaje: String) {
         _uiState.update { it.copy(error = mensaje) }
+    }
+    
+    /**
+     * Actualiza manualmente el profesorId en todos los alumnos de una clase.
+     * Este método puede ser llamado desde la UI para corregir situaciones donde
+     * los alumnos no se actualizaron correctamente al vincular un profesor.
+     * 
+     * @param claseId ID de la clase
+     * @param profesorId ID del profesor a asignar
+     */
+    fun actualizarManualmenteAlumnosClase(claseId: String, profesorId: String) {
+        _uiState.update { it.copy(isLoading = true) }
+        
+        viewModelScope.launch {
+            try {
+                Timber.d("Iniciando actualización manual de alumnos para la clase $claseId con profesor $profesorId")
+                
+                // Usa el método privado que ya implementamos
+                actualizarAlumnosDeClaseConProfesor(claseId, profesorId)
+                
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false, 
+                        mensaje = "Alumnos actualizados correctamente",
+                        showSuccessMessage = true
+                    ) 
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error en actualización manual de alumnos: ${e.message}")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false, 
+                        error = "Error al actualizar alumnos: ${e.message}"
+                    ) 
+                }
+            }
+        }
     }
 } 

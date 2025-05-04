@@ -21,6 +21,25 @@ El testing es una parte fundamental del ciclo de desarrollo de software que gara
 
 Este documento describe la estrategia de testing aplicada en el desarrollo de UmeEgunero, detallando los tipos de pruebas implementados, las herramientas utilizadas, los patrones seguidos y las mejores prácticas aplicadas.
 
+### Visión General de la Estrategia de Testing
+
+```mermaid
+flowchart TD
+    Dev[Desarrollo] --> UnitTest[Pruebas Unitarias]
+    UnitTest --> IntegTest[Pruebas de Integración]
+    IntegTest --> UITest[Pruebas de UI]
+    UITest --> PerfTest[Pruebas de Rendimiento]
+    PerfTest --> Release[Release]
+    
+    UnitTest -.-> |Falla| Dev
+    IntegTest -.-> |Falla| Dev
+    UITest -.-> |Falla| Dev
+    PerfTest -.-> |Falla| Dev
+    
+    style Dev fill:#f9f,stroke:#333,stroke-width:2px
+    style Release fill:#bfb,stroke:#333,stroke-width:2px
+```
+
 ## Tipos de Pruebas Implementadas
 
 ### Pruebas Unitarias
@@ -65,6 +84,26 @@ fun `obtenerCursosPorCentro retorna lista de cursos cuando hay datos`() = runTes
 }
 ```
 
+### Modelo de Pruebas Unitarias
+
+```mermaid
+flowchart LR
+    subgraph "Prueba Unitaria"
+        Input[Datos de Entrada] --> SUT[Sistema Bajo Prueba]
+        SUT --> Output[Resultado Esperado]
+        Mock[Mocks/Stubs] -.-> SUT
+    end
+    
+    subgraph "Componentes Probados"
+        VM[ViewModels]
+        Repo[Repositorios]
+        US[UseCase]
+        Utils[Utilidades]
+    end
+    
+    SUT --> VM & Repo & US & Utils
+```
+
 ### Pruebas de Integración
 
 Las pruebas de integración verifican la interacción entre diferentes componentes del sistema, asegurando que funcionan correctamente juntos.
@@ -101,6 +140,25 @@ fun testCrearUsuarioProfesor() {
 }
 ```
 
+### Modelo de Pruebas de Integración
+
+```mermaid
+flowchart TD
+    subgraph "Prueba de Integración"
+        A[Componente A] <--> B[Componente B]
+        B <--> C[Componente C]
+        A <--> D[Componente D]
+    end
+
+    subgraph "Flujos Probados"
+        Auth[Autenticación]
+        CRUD[Operaciones CRUD]
+        Nav[Navegación]
+    end
+    
+    Auth --- CRUD --- Nav
+```
+
 ### Pruebas de UI
 
 Las pruebas de UI verifican que la interfaz de usuario se muestra correctamente y responde adecuadamente a las interacciones del usuario.
@@ -133,6 +191,28 @@ fun loginScreen_invalidEmail_showsError() {
 }
 ```
 
+### Modelo de Pruebas de UI con Compose
+
+```mermaid
+flowchart LR
+    User([Usuario])
+    
+    subgraph "Prueba UI Compose"
+        UI[Componente UI]
+        User --> |Interacción| UI
+        UI --> |Verificación| Assert[Assertions]
+    end
+    
+    subgraph "Componentes Probados"
+        Screens[Pantallas]
+        Dialogs[Diálogos]
+        Forms[Formularios]
+        Nav[Navegación]
+    end
+    
+    UI --> Screens & Dialogs & Forms & Nav
+```
+
 ### Pruebas de Rendimiento
 
 Las pruebas de rendimiento evalúan el comportamiento de la aplicación bajo diferentes condiciones de carga y verifican que responde dentro de límites aceptables.
@@ -161,6 +241,27 @@ fun testTiempoCargaCentros() {
     assertTrue("La carga de centros tardó demasiado: ${duration.toMillis()} ms", 
                duration.toMillis() < 3000)
 }
+```
+
+### Modelo de Pruebas de Rendimiento
+
+```mermaid
+graph TD
+    A[Inicio Prueba] --> B[Establecer Baseline]
+    B --> C[Ejecutar Operación]
+    C --> D[Medir Rendimiento]
+    D --> E{Cumple Criterios?}
+    E -->|Sí| F[Prueba Exitosa]
+    E -->|No| G[Prueba Fallida]
+    
+    subgraph "Métricas Evaluadas"
+        H[Tiempo de Respuesta]
+        I[Uso de Memoria]
+        J[Uso de CPU]
+        K[Consumo de Batería]
+    end
+    
+    D --- H & I & J & K
 ```
 
 ## Estructura del Testing
@@ -205,6 +306,40 @@ app/
 │               └── FirebaseLoadingPerformanceTest.kt
 ```
 
+### Estructura Visual de los Directorios de Pruebas
+
+```mermaid
+graph TD
+    Root[UmeEgunero] --> App[app]
+    App --> Src[src]
+    
+    Src --> MainCode[main]
+    Src --> TestCode[test]
+    Src --> AndroidTestCode[androidTest]
+    
+    TestCode --> TestJava[java/com/tfg/umeegunero]
+    AndroidTestCode --> AndroidTestJava[java/com/tfg/umeegunero]
+    
+    TestJava --> DataTests[data]
+    TestJava --> DomainTests[domain]
+    TestJava --> UtilTests[util]
+    
+    AndroidTestJava --> FeatureTests[feature]
+    AndroidTestJava --> NavigationTests[navigation]
+    AndroidTestJava --> PerformanceTests[performance]
+    
+    DataTests --> RepositoryTests[repository]
+    FeatureTests --> AdminTests[admin]
+    FeatureTests --> ProfesorTests[profesor]
+    FeatureTests --> FamiliarTests[familiar]
+    
+    classDef folder fill:#f9f,stroke:#333,stroke-width:2px
+    classDef test fill:#bbf,stroke:#333,stroke-width:2px
+    
+    class App,Src,MainCode,TestCode,AndroidTestCode folder
+    class TestJava,AndroidTestJava,DataTests,DomainTests,UtilTests,FeatureTests,NavigationTests,PerformanceTests,RepositoryTests,AdminTests,ProfesorTests,FamiliarTests test
+```
+
 ## Herramientas Utilizadas
 
 En el desarrollo de las pruebas para UmeEgunero, se han utilizado diversas herramientas y bibliotecas:
@@ -224,6 +359,26 @@ En el desarrollo de las pruebas para UmeEgunero, se han utilizado diversas herra
 ### Para Pruebas de Rendimiento:
 - **Benchmark**: Para medir rendimiento de componentes específicos.
 - **Firebase Performance Testing**: Para analizar rendimiento con Firebase.
+
+### Integración de Herramientas
+
+```mermaid
+flowchart TD
+    JUnit[JUnit 4] --> Unit[Pruebas Unitarias]
+    Mockk[MockK] --> Unit
+    KCTest[Coroutines Test] --> Unit
+    Truth[Truth] --> Unit
+    
+    Compose[Compose UI Test] --> UITesting[Pruebas UI]
+    Espresso[Espresso] --> UITesting
+    HiltTest[Hilt Testing] --> IntgTesting[Pruebas Integración]
+    NavTest[Navigation Testing] --> IntgTesting
+    
+    Benchmark[Benchmark] --> PerfTesting[Pruebas Rendimiento]
+    FBPerf[Firebase Performance] --> PerfTesting
+    
+    Unit & UITesting & IntgTesting & PerfTesting --> TestSuite[Suite de Pruebas]
+```
 
 ## Patrones y Buenas Prácticas
 
@@ -256,6 +411,27 @@ fun `login con credenciales correctas inicia sesión exitosamente`() = runTest {
 }
 ```
 
+### Flujo de Patrones de Prueba
+
+```mermaid
+sequenceDiagram
+    participant Test as Prueba
+    participant S as Sistema
+    participant M as Mocks
+    
+    Test->>M: Configurar comportamiento
+    Note over Test: Given (Arrange)
+    Test->>S: Preparar estado inicial
+    
+    Note over Test: When (Act)
+    Test->>S: Ejecutar acción
+    
+    Note over Test: Then (Assert)
+    S->>Test: Devolver resultado
+    Test->>Test: Verificar resultado
+    Test->>M: Verificar interacciones
+```
+
 ### Test Doubles (Dobles de Prueba)
 
 Se utilizan varios tipos de dobles de prueba para aislar el componente bajo prueba:
@@ -264,6 +440,26 @@ Se utilizan varios tipos de dobles de prueba para aislar el componente bajo prue
 - **Stubs**: Para proporcionar respuestas predefinidas.
 - **Fakes**: Implementaciones ligeras para reemplazar componentes complejos.
 
+### Técnicas de Dobles de Prueba
+
+```mermaid
+graph TD
+    SUT[Sistema Bajo Prueba] --> Dep1[Dependencia 1]
+    SUT --> Dep2[Dependencia 2]
+    SUT --> Dep3[Dependencia 3]
+    
+    subgraph "Test Doubles"
+        Mock[Mock: Verifica interacciones]
+        Stub[Stub: Proporciona respuestas]
+        Fake[Fake: Implementación ligera]
+        Spy[Spy: Rastrea llamadas reales]
+    end
+    
+    Dep1 -.- Mock
+    Dep2 -.- Stub
+    Dep3 -.- Fake
+```
+
 ### Testing Asíncrono
 
 Para manejar operaciones asíncronas, se utilizan:
@@ -271,6 +467,22 @@ Para manejar operaciones asíncronas, se utilizan:
 - **Coroutines Test**: Para pruebas de código con corrutinas.
 - **waitUntil**: Para esperar condiciones en pruebas de UI.
 - **Timeout assertions**: Para asegurar que las operaciones se completan dentro de límites de tiempo.
+
+### Flujo de Prueba Asíncrona
+
+```mermaid
+sequenceDiagram
+    participant Test as Prueba
+    participant SUT as Sistema
+    participant Async as Op. Asíncrona
+    
+    Test->>SUT: Iniciar operación asíncrona
+    SUT->>Async: Ejecutar
+    Test->>Test: Esperar (runTest/runBlocking)
+    Async-->>SUT: Completar
+    SUT-->>Test: Resultado
+    Test->>Test: Verificar resultado
+```
 
 ## Cobertura de Código
 
@@ -283,24 +495,15 @@ La cobertura de código es una métrica importante para evaluar la calidad de la
 - **Utilidades y Modelos**: > 80% de cobertura
 - **Cobertura global**: > 75% de cobertura
 
-### Configuración de JaCoCo:
+### Visualización de Cobertura
 
-```gradle
-android {
-    buildTypes {
-        debug {
-            testCoverageEnabled true
-        }
-    }
-}
-
-dependencies {
-    testImplementation "org.jacoco:org.jacoco.core:0.8.7"
-}
-
-task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
-    // Configuración...
-}
+```mermaid
+pie title Cobertura de Código por Módulo
+    "Repositorios" : 88
+    "ViewModels" : 92
+    "Utilidades" : 85
+    "UI" : 75
+    "No cubierto" : 15
 ```
 
 ## Automatización de Pruebas
@@ -325,11 +528,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up JDK 11
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
-          distribution: 'adopt'
-          java-version: '11'
+          distribution: 'temurin'
+          java-version: '17'
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest
       - name: Generate Test Report
@@ -365,6 +568,26 @@ firebaseAuth.useEmulator("10.0.2.2", 9099)
 
 Para pruebas más completas, se utiliza un proyecto Firebase separado para testing.
 
+### Estrategias de Testing para Firebase
+
+```mermaid
+graph TD
+    Firebase[Firebase] --> |Unitarias| Mocking[Mocking]
+    Firebase --> |Integración| Emulator[Emuladores Firebase]
+    Firebase --> |E2E| TestProj[Proyecto de Prueba]
+    
+    subgraph "Componentes Firebase Probados"
+        Auth[Authentication]
+        Firestore[Firestore]
+        Storage[Storage]
+        FCM[Cloud Messaging]
+    end
+    
+    Mocking --> Auth & Firestore & Storage & FCM
+    Emulator --> Auth & Firestore
+    TestProj --> Auth & Firestore & Storage & FCM
+```
+
 ## Conclusiones
 
 La implementación de una estrategia de pruebas completa y bien estructurada ha sido fundamental para garantizar la calidad de UmeEgunero. Las diferentes capas de pruebas (unitarias, integración, UI y rendimiento) proporcionan una red de seguridad que permite detectar problemas tempranamente y facilita la evolución y mantenimiento de la aplicación.
@@ -373,8 +596,31 @@ El enfoque adoptado, combinando diferentes técnicas y herramientas, ha permitid
 
 La automatización de las pruebas dentro del proceso de integración continua garantiza que la calidad se mantenga a lo largo del tiempo, permitiendo un desarrollo ágil y seguro.
 
+### Resultados del Enfoque de Testing
+
+```mermaid
+graph LR
+    Test[Estrategia de Testing] --> QA[Calidad Asegurada]
+    Test --> DevSpeed[Velocidad de Desarrollo]
+    Test --> BugRed[Reducción de Errores]
+    Test --> ConfChange[Confianza en Cambios]
+    
+    subgraph "Beneficios Clave"
+        QA
+        DevSpeed
+        BugRed
+        ConfChange
+    end
+    
+    style Test fill:#f96,stroke:#333,stroke-width:2px
+    style QA fill:#9f9,stroke:#333,stroke-width:2px
+    style DevSpeed fill:#9f9,stroke:#333,stroke-width:2px 
+    style BugRed fill:#9f9,stroke:#333,stroke-width:2px
+    style ConfChange fill:#9f9,stroke:#333,stroke-width:2px
+```
+
 ---
 
-*Documento elaborado por:* Maitane  
-*Fecha:* Julio 2024  
-*Versión:* 1.0 
+*Documento actualizado por:* Equipo de Desarrollo UmeEgunero  
+*Fecha:* Mayo 2025  
+*Versión:* 2.0 

@@ -93,55 +93,168 @@ Para mayor seguridad, puede activar la autenticación de dos factores:
 3. Active "Autenticación de dos factores".
 4. Siga las instrucciones para configurar la autenticación por SMS o aplicación autenticadora.
 
-## Perfiles de Usuario (actualizado)
+## Perfiles de Usuario
 
-UmeEgunero distingue entre diferentes perfiles, cada uno con funcionalidades y flujos adaptados a sus necesidades:
+UmeEgunero distingue entre diferentes perfiles, cada uno con funcionalidades y flujos adaptados a sus necesidades. A continuación se describen los perfiles disponibles y se incluyen diagramas de flujo que muestran las principales rutas de navegación y funcionalidades para cada tipo de usuario.
+
+### Visión General de Navegación
+
+El siguiente diagrama muestra la estructura general de navegación en la aplicación:
+
+```mermaid
+flowchart TD
+    Login[Login/Registro] --> Auth{Autenticación}
+    Auth -->|Admin App| AdminApp[Dashboard Admin App]
+    Auth -->|Admin Centro| AdminCentro[Dashboard Admin Centro]
+    Auth -->|Profesor| Profesor[Dashboard Profesor]
+    Auth -->|Familiar| Familiar[Dashboard Familiar]
+    
+    subgraph "Navegación Común"
+        NavComun[Menú Principal]
+        Perfil[Perfil Usuario]
+        Notif[Notificaciones]
+        Ajustes[Configuración]
+    end
+    
+    AdminApp & AdminCentro & Profesor & Familiar --- NavComun
+```
 
 ### Administrador de Aplicación
-- Acceso completo a la gestión global de la plataforma.
-- Alta/baja de centros y usuarios administradores de centro.
-- Auditoría y seguridad.
+
+El Administrador de Aplicación tiene acceso completo a la gestión global de la plataforma, incluyendo la creación y administración de centros educativos.
+
+```mermaid
+flowchart TD
+    AdminApp[Dashboard Admin App] --> GestCentros[Gestión de Centros]
+    AdminApp --> GestAdmins[Gestión de Administradores]
+    AdminApp --> Estadisticas[Estadísticas]
+    AdminApp --> Seguridad[Seguridad]
+    AdminApp --> Comunicados[Comunicados]
+    AdminApp --> Notificaciones[Notificaciones]
+    AdminApp --> Config[Configuración]
+    
+    GestCentros --> ListCentros[Lista de Centros]
+    GestCentros --> AddCentro[Añadir Centro]
+    GestCentros --> EditCentro[Editar Centro]
+    
+    GestAdmins --> ListAdmins[Lista de Administradores]
+    
+    Config --> EmailConfig[Configuración Email]
+    Config --> Tema[Tema]
+    
+    Estadisticas --> EstGlobal[Estadísticas Globales]
+    
+    Seguridad --> ConfigSeg[Configuración Seguridad]
+```
 
 ### Administrador de Centro
-- Gestión de profesores, familias y alumnos.
-- Creación y gestión de cursos, clases y eventos del centro.
-- Visualización de estadísticas globales y panel de bienestar.
-- Envío de comunicados y gestión de incidencias.
+
+El Administrador de Centro gestiona todos los aspectos relacionados con su centro educativo, incluyendo la administración de profesores, familias, alumnos y recursos académicos.
+
+```mermaid
+flowchart TD
+    AdminCentro[Dashboard Admin Centro] --> EstructuraAcad[Estructura Académica]
+    AdminCentro --> ComunidadEduc[Comunidad Educativa]
+    AdminCentro --> HerramientasAdmin[Herramientas Administrativas]
+    
+    EstructuraAcad --> Cursos[Cursos]
+    EstructuraAcad --> Clases[Clases]
+    EstructuraAcad --> Calendario[Calendario]
+    
+    ComunidadEduc --> Alumnos[Alumnos]
+    ComunidadEduc --> Profesores[Profesores]
+    ComunidadEduc --> VinculacionFam[Vinculación Familiar]
+    ComunidadEduc --> AsignacionProf[Asignación Profesores]
+    
+    HerramientasAdmin --> Notificaciones[Notificaciones]
+    HerramientasAdmin --> SolicitudesVinc[Solicitudes de Vinculación]
+    HerramientasAdmin --> HistorialSolic[Historial de Solicitudes]
+```
 
 ### Profesor
-- Registro y seguimiento emocional/social de alumnos (pantalla nueva).
-- Resumen diario/semanal de rutinas (pantalla nueva).
-- Comunicación directa con familias.
-- Gestión de asistencia, incidencias y actividades.
+
+El profesor gestiona el seguimiento de sus alumnos, registra actividades, gestiona evaluaciones y se comunica con las familias.
+
+```mermaid
+flowchart TD
+    Profesor[Dashboard Profesor] --> AccionesDiarias[Acciones Diarias]
+    Profesor --> ComunicacionCol[Comunicación y Colaboración]
+    Profesor --> GestionPlanif[Gestión y Planificación]
+    
+    AccionesDiarias --> RegistroDiario[Registro Diario]
+    AccionesDiarias --> Asistencia[Asistencia]
+    
+    ComunicacionCol --> ChatFamilias[Chat Familias]
+    ComunicacionCol --> Comunicados[Comunicados]
+    
+    GestionPlanif --> MisAlumnos[Mis Alumnos]
+    GestionPlanif --> Tareas[Tareas y Actividades]
+    GestionPlanif --> Calendario[Calendario]
+    GestionPlanif --> ActividadesPreescolar[Actividades Preescolar]
+    
+    MisAlumnos --> DetalleAlumno[Detalle de Alumno]
+    MisAlumnos --> Incidencias[Incidencias]
+    
+    DetalleAlumno --> RegistroEmoc[Registro Emocional]
+    DetalleAlumno --> HistorialAsist[Historial Asistencia]
+```
 
 ### Familiar
-- Visualización del bienestar y evolución del niño/a (pantalla nueva).
-- Solicitud de reuniones/tutorías (pantalla nueva).
-- Acceso a recursos familiares (pantalla nueva).
-- Consulta de asistencia, comunicados y chat con profesorado.
 
-## Nuevas Pantallas y Mejoras UX
+El familiar accede a la información de sus hijos, comunicaciones con profesores y participación en la comunidad educativa.
 
-Se han añadido nuevas pantallas orientadas a la etapa infantil (2-4 años):
-- Seguimiento emocional y social (profesor)
-- Resumen de rutinas (profesor)
-- Bienestar del niño/a (familia)
-- Solicitud de reunión (familia)
-- Centro de recursos familiares
-
-Todas las pantallas siguen las directrices de Material 3 y buenas prácticas de accesibilidad.
-
-## Accesibilidad y Usabilidad
-
-- Contraste de colores y fuentes adaptadas a infantil.
-- Botones grandes y navegación sencilla.
-- Compatibilidad con lectores de pantalla.
+```mermaid
+flowchart TD
+    Familiar[Dashboard Familiar] --> GestionHijos[Gestión de Hijos]
+    Familiar --> Comunicacion[Comunicación]
+    Familiar --> Seguimiento[Seguimiento Académico]
+    
+    GestionHijos --> SelectorHijos[Selector de Hijos]
+    GestionHijos --> SolicitudesPendientes[Solicitudes Pendientes]
+    GestionHijos --> NuevaSolicitud[Nueva Solicitud]
+    
+    Comunicacion --> MensajesProfe[Mensajes con Profesores]
+    Comunicacion --> ComunicadosFam[Comunicados]
+    
+    Seguimiento --> HistorialReg[Historial de Registros]
+    Seguimiento --> Calendario[Calendario]
+    Seguimiento --> Tareas[Tareas]
+    Seguimiento --> Actividades[Actividades]
+    
+    HistorialReg --> DetalleHistorial[Detalle Historial]
+    Tareas --> DetalleTarea[Detalle Tarea]
+    Tareas --> EntregaTarea[Entrega Tarea]
+```
 
 ## Módulos Principales
 
 ### Comunicaciones
 
 El sistema de comunicaciones de UmeEgunero permite el intercambio de información entre todos los usuarios de la plataforma.
+
+```mermaid
+flowchart TD
+    Comunicados[Módulo Comunicados] --> Crear[Crear Comunicado]
+    Comunicados --> Leer[Leer Comunicados]
+    Comunicados --> Gestionar[Gestionar Comunicados]
+    
+    Crear --> TipoCom{Tipo}
+    TipoCom --> |Informativo| Info[Informativo]
+    TipoCom --> |Circular| Circ[Circular]
+    TipoCom --> |Aviso Urgente| Urg[Urgente]
+    
+    Crear --> Destinatarios{Destinatarios}
+    Destinatarios --> |Todos| TodosCentro[Todo el Centro]
+    Destinatarios --> |Clases| ClasesEsp[Clases Específicas]
+    Destinatarios --> |Usuarios| UsuariosEsp[Usuarios Específicos]
+    
+    Leer --> NoLeidos[No Leídos]
+    Leer --> Importantes[Importantes]
+    Leer --> Todos[Todos]
+    
+    Gestionar --> Estadisticas[Estadísticas Lectura]
+    Gestionar --> Recordatorios[Enviar Recordatorios]
+```
 
 #### Para Administradores y Profesores
 
@@ -418,6 +531,4 @@ Todas las pantallas siguen las directrices de Material 3 y buenas prácticas de 
 
 ---
 
----
-
-## Versión del manual: 2.3.1 (actualizado a la versión 4.2.0 de la aplicación) 
+## Versión del manual: 3.0.1 (actualizado a la versión 5.0.0 de la aplicación - Mayo 2025) 

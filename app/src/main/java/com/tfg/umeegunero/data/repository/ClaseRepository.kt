@@ -227,6 +227,18 @@ class ClaseRepositoryImpl @Inject constructor(
     
     override suspend fun getClasesByProfesor(profesorId: String): Result<List<Clase>> {
         return try {
+            // Obtenemos clases donde el profesor es el profesor principal (nuevo campo)
+            val snapshotPrincipal = clasesCollection
+                .whereEqualTo("profesorId", profesorId)
+                .whereEqualTo("activo", true)
+                .get()
+                .await()
+            
+            val clasesPrincipal = snapshotPrincipal.documents.mapNotNull { doc ->
+                val clase = doc.toObject<Clase>()
+                clase?.copy(id = doc.id)
+            }
+            
             // Obtenemos clases donde el profesor es titular
             val snapshotTitular = clasesCollection
                 .whereEqualTo("profesorTitularId", profesorId)
@@ -252,7 +264,9 @@ class ClaseRepositoryImpl @Inject constructor(
             }
             
             // Combinamos los resultados, eliminando duplicados
-            val todasLasClases = (clasesTitular + clasesAuxiliar).distinctBy { it.id }
+            val todasLasClases = (clasesPrincipal + clasesTitular + clasesAuxiliar).distinctBy { it.id }
+            
+            Timber.d("Encontradas ${todasLasClases.size} clases para el profesor $profesorId")
             
             Result.Success(todasLasClases)
         } catch (e: Exception) {

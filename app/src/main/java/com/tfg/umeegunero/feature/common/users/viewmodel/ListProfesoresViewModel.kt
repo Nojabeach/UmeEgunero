@@ -6,6 +6,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.ProfesorRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,8 +24,8 @@ data class ListProfesoresUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val soloActivos: Boolean = true,
-    val profesoresCompletos: List<Usuario> = emptyList() // Lista completa sin filtros
-    // centroId ya no es necesario aquí, se pasa como argumento
+    val profesoresCompletos: List<Usuario> = emptyList(), // Lista completa sin filtros
+    val eliminacionExitosa: Boolean = false
 )
 
 /**
@@ -32,7 +33,8 @@ data class ListProfesoresUiState(
  */
 @HiltViewModel
 class ListProfesoresViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val profesorRepository: ProfesorRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ListProfesoresUiState())
@@ -50,7 +52,7 @@ class ListProfesoresViewModel @Inject constructor(
         }
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, eliminacionExitosa = false) }
             Timber.d("Iniciando carga de profesores para centro: $centroId")
             
             try {
@@ -76,7 +78,7 @@ class ListProfesoresViewModel @Inject constructor(
                         }
                         Timber.e(result.exception, "Error al cargar profesores para centro $centroId")
                     }
-                    is Result.Loading -> {
+                    else -> {
                         // Este estado lo manejamos al inicio
                     }
                 }
@@ -112,14 +114,46 @@ class ListProfesoresViewModel @Inject constructor(
     }
 
     /**
-     * Elimina un profesor por su ID (DNI)
-     * @param profesorId ID del profesor a eliminar
+     * Elimina un profesor completamente del sistema
+     * 
+     * Este método realiza la eliminación en dos pasos:
+     * 1. Primero busca y elimina el documento del profesor en la colección 'profesores'
+     *    y actualiza todas las referencias en clases y alumnos.
+     * 2. Luego elimina el usuario asociado al profesor de la colección 'usuarios'
+     *    y de Firebase Authentication.
+     * 
+     * @param profesorId ID del profesor a eliminar (DNI)
      */
     fun eliminarProfesor(profesorId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, eliminacionExitosa = false) }
             
             try {
+                Timber.d("Iniciando proceso de eliminación del profesor: $profesorId")
+                
+                // 1. Buscar primero el documento del profesor en la colección 'profesores'
+                var profesorDocId = ""
+                
+                // Intentar encontrar el documento del profesor por su usuarioId
+                val profesor = profesorRepository.getProfesorPorUsuarioId(profesorId)
+                if (profesor != null) {
+                    profesorDocId = profesor.id
+                    Timber.d("Profesor encontrado en colección 'profesores': $profesorDocId")
+                    
+                    // 2. Eliminar el profesor de la colección 'profesores' y actualizar referencias
+                    val profesorResult = profesorRepository.eliminarProfesor(profesorDocId)
+                    
+                    if (profesorResult is Result.Error) {
+                        Timber.e(profesorResult.exception, "Error al eliminar profesor de la colección 'profesores'")
+                        // Continuamos con el proceso aunque falle este paso
+                    } else {
+                        Timber.d("Profesor eliminado correctamente de la colección 'profesores'")
+                    }
+                } else {
+                    Timber.w("No se encontró el profesor en la colección 'profesores'")
+                }
+                
+                // 3. Eliminar el usuario asociado al profesor
                 when (val result = usuarioRepository.borrarUsuarioByDni(profesorId)) {
                     is Result.Success -> {
                         // Actualización local de la lista después de eliminar
@@ -134,11 +168,12 @@ class ListProfesoresViewModel @Inject constructor(
                             currentState.copy(
                                 profesores = profesoresFiltrados,
                                 profesoresCompletos = profesoresActualizados,
-                                isLoading = false
+                                isLoading = false,
+                                eliminacionExitosa = true
                             )
                         }
                         
-                        Timber.d("Profesor eliminado correctamente: $profesorId")
+                        Timber.d("Profesor eliminado completamente del sistema: $profesorId")
                     }
                     is Result.Error -> {
                         _uiState.update { 
@@ -170,6 +205,13 @@ class ListProfesoresViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+    
+    /**
+     * Restablece el estado de eliminación exitosa
+     */
+    fun resetEliminacionExitosa() {
+        _uiState.update { it.copy(eliminacionExitosa = false) }
     }
 
     // La función obtenerCentroIdUsuarioActual ya no es necesaria aquí
