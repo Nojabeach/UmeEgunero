@@ -28,7 +28,31 @@ private object PreferencesKeys {
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 /**
- * Repositorio para gestionar las preferencias del usuario.
+ * Repositorio para gestionar las preferencias de usuario en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para almacenar, recuperar y sincronizar
+ * preferencias personales de los usuarios, incluyendo configuraciones de
+ * interfaz, notificaciones, privacidad y experiencia de usuario.
+ *
+ * Características principales:
+ * - Almacenamiento persistente de preferencias
+ * - Sincronización de preferencias entre dispositivos
+ * - Soporte para preferencias específicas de rol
+ * - Gestión de configuraciones de privacidad y accesibilidad
+ *
+ * El repositorio permite:
+ * - Personalizar temas y apariencia
+ * - Configurar preferencias de notificaciones
+ * - Gestionar permisos de usuario
+ * - Almacenar configuraciones de accesibilidad
+ * - Mantener un perfil de configuración unificado
+ *
+ * @property dataStore Almacenamiento de preferencias de Android
+ * @property firestore Instancia de FirebaseFirestore para sincronización de preferencias
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class PreferenciasRepository @Inject constructor(

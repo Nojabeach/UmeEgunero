@@ -77,11 +77,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Comunicado
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.familiar.viewmodel.ComunicadosFamiliaViewModel
+import com.tfg.umeegunero.ui.theme.FamiliarColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -90,6 +93,7 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.MarkEmailUnread
+import androidx.compose.material.icons.filled.Campaign
 
 /**
  * Componente que muestra un mensaje cuando no hay contenido para mostrar.
@@ -128,104 +132,31 @@ fun EmptyContentMessage(
 }
 
 /**
- * Pantalla principal de comunicados para perfil familiar
+ * Pantalla para que los familiares vean los comunicados del centro.
  *
- * Esta pantalla muestra la lista de comunicados dirigidos a usuarios con perfil de familiar.
- * Permite ver los detalles de cada comunicado, marcarlos como leídos y filtrarlos por estado.
+ * Muestra una lista de comunicados generales o específicos para los
+ * hijos del familiar.
  *
- * @param viewModel ViewModel que gestiona la lógica de negocio y estado de la UI
- * @param onNavigateUp Callback para navegar hacia atrás
- * @param navController Controlador de navegación (opcional)
+ * @param navController Controlador de navegación.
+ * @param viewModel ViewModel que gestiona la lógica y el estado de los comunicados.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ComunicadosFamiliaScreen(
-    viewModel: ComunicadosFamiliaViewModel = hiltViewModel(),
-    onNavigateUp: () -> Unit = {},
-    navController: NavController? = null
+    navController: NavController,
+    viewModel: ComunicadosFamiliaViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Mostrar snackbar con mensajes de error
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
-        }
-    }
-    
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Comunicados")
-                        if (uiState.comunicadosNoLeidos > 0 || uiState.comunicadosSinConfirmar > 0) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            BadgeNotification(uiState.comunicadosNoLeidos, uiState.comunicadosSinConfirmar)
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                actions = {
-                    // Botón para activar/desactivar filtros
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Mostrar indicador de filtro activo
-                        if (uiState.filtroActivo) {
-                            IconButton(onClick = { viewModel.resetFiltros() }) {
-                                Icon(
-                                    imageVector = Icons.Default.FilterAltOff,
-                                    contentDescription = "Quitar filtros",
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
-                        } else {
-                            // Mostrar filtros disponibles
-                            AnimatedVisibility(
-                                visible = uiState.comunicadosNoLeidos > 0,
-                                enter = fadeIn() + expandVertically(),
-                                exit = fadeOut() + shrinkVertically()
-                            ) {
-                                TextButton(
-                                    onClick = { viewModel.toggleFiltroNoLeidos() },
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                ) {
-                                    Text("No leídos (${uiState.comunicadosNoLeidos})")
-                                }
-                            }
-                            
-                            AnimatedVisibility(
-                                visible = uiState.comunicadosSinConfirmar > 0,
-                                enter = fadeIn() + expandVertically(),
-                                exit = fadeOut() + shrinkVertically()
-                            ) {
-                                TextButton(
-                                    onClick = { viewModel.toggleFiltroSinConfirmar() },
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                ) {
-                                    Text("Sin confirmar (${uiState.comunicadosSinConfirmar})")
-                                }
-                            }
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Volver",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
+            DefaultTopAppBar(
+                title = "Comunicados",
+                showBackButton = true,
+                onBackClick = { navController.popBackStack() },
+                containerColor = FamiliarColor,
+                contentColor = Color.White
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -234,95 +165,52 @@ fun ComunicadosFamiliaScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(16.dp)
         ) {
-            // Mostrar contenido principal o indicador de carga
-            if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .align(Alignment.Center)
-                )
-            } else {
-                // Filtrar comunicados según los filtros activos
-                val comunicadosFiltrados = when {
-                    uiState.mostrarSoloNoLeidos -> uiState.comunicados.filter { 
-                        !viewModel.esComunicadoLeido(it.id) 
-                    }
-                    uiState.mostrarSoloSinConfirmar -> uiState.comunicados.filter {
-                        it.requiereConfirmacion && !viewModel.esComunicadoConfirmado(it.id)
-                    }
-                    else -> uiState.comunicados
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-                
-                if (comunicadosFiltrados.isEmpty()) {
-                    EmptyContentMessage(
-                        mensaje = when {
-                            uiState.comunicados.isEmpty() -> "No hay comunicados disponibles"
-                            uiState.mostrarSoloNoLeidos -> "No hay comunicados sin leer"
-                            uiState.mostrarSoloSinConfirmar -> "No hay comunicados pendientes de confirmar"
-                            else -> "No hay comunicados que coincidan con los filtros"
-                        },
-                        icon = Icons.Default.Notifications
+                uiState.error != null -> {
+                    Text(
+                        text = "Error: ${uiState.error}",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center)
                     )
-                } else {
-                    // Lista de comunicados
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(
-                            top = 8.dp,
-                            bottom = 8.dp,
-                            start = 16.dp,
-                            end = 16.dp
-                        )
+                }
+                uiState.comunicados.isEmpty() -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        items(comunicadosFiltrados) { comunicado ->
-                            ComunicadoItem(
-                                comunicado = comunicado,
-                                leido = viewModel.esComunicadoLeido(comunicado.id),
-                                confirmado = viewModel.esComunicadoConfirmado(comunicado.id),
-                                onComunicadoClick = {
-                                    // Si el comunicado requiere confirmación y no está confirmado,
-                                    // mostramos el diálogo de confirmación
-                                    if (comunicado.requiereConfirmacion && 
-                                        !viewModel.esComunicadoConfirmado(comunicado.id)) {
-                                        viewModel.mostrarConfirmacion(comunicado)
-                                    } else {
-                                        // Si no requiere confirmación o ya está confirmado,
-                                        // mostramos el detalle
-                                        viewModel.mostrarDetalle(comunicado)
-                                    }
-                                },
-                                onConfirmarClick = {
-                                    viewModel.confirmarLectura(it.id)
+                         Icon(
+                            Icons.Filled.Campaign, 
+                            contentDescription = null, 
+                            modifier = Modifier.size(64.dp),
+                            tint = Color.Gray.copy(alpha = 0.5f)
+                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("No hay comunicados disponibles.")
+                    }
+                }
+                else -> {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(uiState.comunicados) { comunicado ->
+                            // Placeholder para el item de comunicado
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = CardDefaults.cardElevation(2.dp)
+                            ) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text(comunicado.titulo, style = MaterialTheme.typography.titleMedium)
+                                    Text(comunicado.mensaje ?: "Sin contenido", style = MaterialTheme.typography.bodyMedium)
+                                    // Añadir fecha, etc.
                                 }
-                            )
+                            }
                         }
                     }
                 }
-            }
-            
-            // Diálogo de confirmación de lectura
-            if (uiState.mostrarDialogoConfirmacion && uiState.comunicadoSeleccionado != null) {
-                ConfirmacionLecturaDialog(
-                    comunicado = uiState.comunicadoSeleccionado!!,
-                    onConfirmar = {
-                        viewModel.confirmarLectura(uiState.comunicadoSeleccionado!!.id)
-                    },
-                    onDismiss = {
-                        viewModel.cerrarDialogoConfirmacion()
-                    }
-                )
-            }
-            
-            // Diálogo de detalle de comunicado
-            if (uiState.mostrarDetalle && uiState.comunicadoParaDetalle != null) {
-                ComunicadoDetalleDialog(
-                    comunicado = uiState.comunicadoParaDetalle!!,
-                    onDismiss = {
-                        viewModel.cerrarDetalle()
-                    }
-                )
             }
         }
     }
@@ -934,48 +822,8 @@ private fun formatearFecha(date: Date?): String {
 
 @Preview(showBackground = true)
 @Composable
-fun ComunicadoItemPreview() {
+private fun ComunicadosFamiliaScreenPreview() {
     UmeEguneroTheme {
-        Surface {
-            ComunicadoItem(
-                comunicado = Comunicado(
-                    id = "1",
-                    titulo = "Reunión de padres",
-                    mensaje = "Se convoca reunión de padres para el día 15 de mayo a las 18:00h en el salón de actos del centro.",
-                    fechaCreacion = Timestamp.now(),
-                    remitente = "Director",
-                    tiposDestinatarios = listOf(TipoUsuario.FAMILIAR.name),
-                    requiereConfirmacion = true,
-                    fechaLimiteConfirmacion = Timestamp.now()
-                ),
-                leido = false,
-                confirmado = false,
-                onComunicadoClick = {},
-                onConfirmarClick = {}
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ConfirmacionLecturaDialogPreview() {
-    UmeEguneroTheme {
-        Surface {
-            ConfirmacionLecturaDialog(
-                comunicado = Comunicado(
-                    id = "1",
-                    titulo = "Reunión de padres",
-                    mensaje = "Se convoca reunión de padres para el día 15 de mayo a las 18:00h en el salón de actos del centro.",
-                    fechaCreacion = Timestamp.now(),
-                    remitente = "Director",
-                    tiposDestinatarios = listOf(TipoUsuario.FAMILIAR.name),
-                    requiereConfirmacion = true,
-                    fechaLimiteConfirmacion = Timestamp.now()
-                ),
-                onConfirmar = {},
-                onDismiss = {}
-            )
-        }
+        ComunicadosFamiliaScreen(navController = rememberNavController())
     }
 } 

@@ -38,6 +38,8 @@ import androidx.compose.material.icons.filled.Festival
 import androidx.compose.material.icons.filled.Grading
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalActivity
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -85,6 +87,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCard
 import com.tfg.umeegunero.ui.components.CategoriaCardData
 import timber.log.Timber
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 /**
  * Pantalla principal del profesor, contiene un dashboard con acceso a todas las funcionalidades.
@@ -102,6 +108,16 @@ fun ProfesorDashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showContent by remember { mutableStateOf(false) } // Para animación de entrada
+    val haptic = LocalHapticFeedback.current
+    
+    // Estados para diálogos de confirmación
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showRegistroDiarioDialog by remember { mutableStateOf(false) }
+    var showChatFamiliasDialog by remember { mutableStateOf(false) }
+    var showComunicadosDialog by remember { mutableStateOf(false) }
+    var showMisAlumnosDialog by remember { mutableStateOf(false) }
+    var showCalendarioDialog by remember { mutableStateOf(false) }
+    var showPerfilDialog by remember { mutableStateOf(false) }
 
     // Efecto para mostrar contenido con animación
     LaunchedEffect(Unit) {
@@ -135,13 +151,242 @@ fun ProfesorDashboardScreen(
             }
         }
     }
+    
+    // Diálogo de confirmación para cerrar sesión
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Cerrar sesión") },
+            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showLogoutDialog = false
+                        viewModel.logout()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Registro Diario
+    if (showRegistroDiarioDialog) {
+        AlertDialog(
+            onDismissRequest = { showRegistroDiarioDialog = false },
+            title = { Text("Registro Diario") },
+            text = { Text("¿Quieres realizar el registro diario de tus alumnos?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showRegistroDiarioDialog = false
+                        try {
+                            navController.navigate(AppScreens.ListadoPreRegistroDiario.createRoute())
+                            Timber.d("Navegando a Listado Pre-Registro Diario")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Listado Pre-Registro Diario")
+                        }
+                    },
+                    enabled = !uiState.esFestivoHoy
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRegistroDiarioDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Chat Familias
+    if (showChatFamiliasDialog) {
+        AlertDialog(
+            onDismissRequest = { showChatFamiliasDialog = false },
+            title = { Text("Chat con Familias") },
+            text = { Text("¿Quieres ver tus conversaciones con las familias?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showChatFamiliasDialog = false
+                        try {
+                            navController.navigate(AppScreens.UnifiedInbox.route)
+                            Timber.d("Navegando a Chat con Familias")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Chat con Familias")
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChatFamiliasDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Comunicados
+    if (showComunicadosDialog) {
+        AlertDialog(
+            onDismissRequest = { showComunicadosDialog = false },
+            title = { Text("Comunicados") },
+            text = { Text("¿Quieres ver y gestionar los comunicados?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showComunicadosDialog = false
+                        try {
+                            navController.navigate(AppScreens.UnifiedInbox.route)
+                            Timber.d("Navegando a Comunicados y Circulares")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Comunicados y Circulares")
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showComunicadosDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Mis Alumnos
+    if (showMisAlumnosDialog) {
+        AlertDialog(
+            onDismissRequest = { showMisAlumnosDialog = false },
+            title = { Text("Mis Alumnos") },
+            text = { Text("¿Quieres ver la información de tus alumnos?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showMisAlumnosDialog = false
+                        try {
+                            navController.navigate(AppScreens.MisAlumnosProfesor.route)
+                            Timber.d("Navegando a Mis Alumnos")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Mis Alumnos")
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMisAlumnosDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Calendario
+    if (showCalendarioDialog) {
+        AlertDialog(
+            onDismissRequest = { showCalendarioDialog = false },
+            title = { Text("Calendario") },
+            text = { Text("¿Quieres ver el calendario de eventos y festivos?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showCalendarioDialog = false
+                        try {
+                            navController.navigate(AppScreens.ProfesorCalendario.route)
+                            Timber.d("Navegando a Calendario")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Calendario")
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCalendarioDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Perfil
+    if (showPerfilDialog) {
+        AlertDialog(
+            onDismissRequest = { showPerfilDialog = false },
+            title = { Text("Perfil") },
+            text = { Text("¿Quieres ir a tu perfil de usuario?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showPerfilDialog = false
+                        navController.navigate(AppScreens.Perfil.route)
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPerfilDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
 
     // --- UI Principal (Scaffold) ---
     Scaffold(
         topBar = {
             ProfesorDashboardTopBar(
-                onProfileClick = { navController.navigate(AppScreens.Perfil.route) },
-                onLogoutClick = { viewModel.logout() }
+                onProfileClick = { showPerfilDialog = true },
+                onLogoutClick = { showLogoutDialog = true }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -158,16 +403,20 @@ fun ProfesorDashboardScreen(
                 paddingValues = paddingValues,
                 uiState = uiState,
                 viewModel = viewModel,
-                navController = navController
+                navController = navController,
+                onChatFamiliasClick = { showChatFamiliasDialog = true },
+                onComunicadosClick = { showComunicadosDialog = true },
+                onMisAlumnosClick = { showMisAlumnosDialog = true },
+                onCalendarioClick = { showCalendarioDialog = true },
+                onRegistroDiarioClick = { showRegistroDiarioDialog = true },
+                haptic = haptic
             )
         }
     }
 }
 
 /**
- * Barra superior (TopAppBar) específica para el Dashboard del Profesor.
- *
- * Incluye el título de la pantalla y acciones comunes como acceso al perfil y cierre de sesión.
+ * Barra superior personalizada para el Dashboard del Profesor
  *
  * @param onProfileClick Lambda que se ejecuta al pulsar el icono de perfil.
  * @param onLogoutClick Lambda que se ejecuta al pulsar el icono de cerrar sesión.
@@ -178,6 +427,8 @@ private fun ProfesorDashboardTopBar(
     onProfileClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    
     CenterAlignedTopAppBar(
         title = {
             Text(
@@ -192,15 +443,30 @@ private fun ProfesorDashboardTopBar(
         ),
         actions = {
             // Icono de perfil
-            IconButton(onClick = onProfileClick) {
+            IconButton(onClick = { 
+                try {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al realizar feedback háptico")
+                }
+                onProfileClick() 
+            }) {
                 Icon(
                     imageVector = Icons.Default.Face, // Icono más representativo para perfil
                     contentDescription = "Ver Perfil",
                     tint = Color.White // Asegurar tinte blanco
                 )
             }
+            
             // Botón de cerrar sesión
-            IconButton(onClick = onLogoutClick) {
+            IconButton(onClick = { 
+                try {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al realizar feedback háptico")
+                }
+                onLogoutClick() 
+            }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                     contentDescription = "Cerrar sesión",
@@ -222,13 +488,25 @@ private fun ProfesorDashboardTopBar(
  * @param uiState Estado actual de la UI, proporcionado por el ViewModel.
  * @param viewModel ViewModel que gestiona el estado y la lógica de negocio del dashboard.
  * @param navController Controlador de navegación para las acciones de las tarjetas.
+ * @param onChatFamiliasClick Callback para ir a Chat con Familias
+ * @param onComunicadosClick Callback para ir a Comunicados
+ * @param onMisAlumnosClick Callback para ir a Mis Alumnos
+ * @param onCalendarioClick Callback para ir a Calendario 
+ * @param onRegistroDiarioClick Callback para ir a Registro Diario
+ * @param haptic HapticFeedback para proporcionar feedback táctil
  */
 @Composable
 fun ProfesorDashboardContent(
     paddingValues: PaddingValues,
     uiState: ProfesorDashboardUiState,
     viewModel: ProfesorDashboardViewModel,
-    navController: NavController
+    navController: NavController,
+    onChatFamiliasClick: () -> Unit,
+    onComunicadosClick: () -> Unit,
+    onMisAlumnosClick: () -> Unit,
+    onCalendarioClick: () -> Unit,
+    onRegistroDiarioClick: () -> Unit,
+    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback
 ) {
     val hoyEsFestivo = uiState.esFestivoHoy
 
@@ -241,43 +519,41 @@ fun ProfesorDashboardContent(
             color = ProfesorColor,
             onClick = { 
                 try {
-                    // Navegamos a la nueva pantalla de listado previo
-                    navController.navigate(AppScreens.ListadoPreRegistroDiario.createRoute())
-                    // Registrar en el log
-                    Timber.d("Navegando a Listado Pre-Registro Diario")
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Listado Pre-Registro Diario")
+                    Timber.e(e, "Error al realizar feedback háptico")
                 }
+                onRegistroDiarioClick()
             }
         )
     )
     val comunicacionCards = listOf(
         CategoriaCardData(
-            titulo = "Chat Familias",
-            descripcion = "Mensajes directos con padres/madres",
+            titulo = "Mensajes",
+            descripcion = "Comunicación unificada con padres y centro",
             icono = Icons.AutoMirrored.Filled.Chat,
             color = ProfesorColor,
             onClick = { 
                 try {
-                    navController.navigate(AppScreens.ConversacionesProfesor.route)
-                    Timber.d("Navegando a Chat con Familias")
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Chat con Familias")
+                    Timber.e(e, "Error al realizar feedback háptico")
                 }
+                navController.navigate(AppScreens.UnifiedInbox.route)
             }
         ),
         CategoriaCardData(
-            titulo = "Comunicados",
-            descripcion = "Avisos generales de clase o centro",
+            titulo = "Nuevo Mensaje",
+            descripcion = "Crear comunicados o mensajes personalizados",
             icono = Icons.AutoMirrored.Filled.SpeakerNotes,
             color = ProfesorColor,
             onClick = { 
                 try {
-                    navController.navigate(AppScreens.ComunicadosCirculares.route)
-                    Timber.d("Navegando a Comunicados y Circulares")
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Comunicados y Circulares")
+                    Timber.e(e, "Error al realizar feedback háptico")
                 }
+                navController.navigate(AppScreens.NewMessage.createRoute())
             }
         )
     )
@@ -289,11 +565,11 @@ fun ProfesorDashboardContent(
             color = ProfesorColor,
             onClick = { 
                 try {
-                    navController.navigate(AppScreens.MisAlumnosProfesor.route)
-                    Timber.d("Navegando a Mis Alumnos")
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Mis Alumnos")
+                    Timber.e(e, "Error al realizar feedback háptico")
                 }
+                onMisAlumnosClick()
             }
         ),
         CategoriaCardData(
@@ -303,11 +579,11 @@ fun ProfesorDashboardContent(
             color = ProfesorColor,
             onClick = { 
                 try {
-                    navController.navigate(AppScreens.ProfesorCalendario.route)
-                    Timber.d("Navegando a Calendario")
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al navegar a Calendario")
+                    Timber.e(e, "Error al realizar feedback háptico")
                 }
+                onCalendarioClick()
             }
         )
     )
@@ -548,13 +824,15 @@ private fun BienvenidaProfesorCard(
  * Aparece solo si hay alumnos pendientes y ofrece un botón para ir a la sección correspondiente.
  *
  * @param alumno Alumno pendiente.
- * @param onClick Lambda que se ejecuta al pulsar el botón "Ver".
+ * @param onClick Lambda que se ejecuta al pulsar el botón "Registrar".
  */
 @Composable
 private fun AlumnoPendienteCard(
     alumno: Alumno,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -583,7 +861,14 @@ private fun AlumnoPendienteCard(
                 )
             }
             Button(
-                onClick = onClick,
+                onClick = {
+                    try {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al realizar feedback háptico")
+                    }
+                    onClick()
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError
@@ -613,7 +898,13 @@ fun ProfesorDashboardPreview() {
                 paddingValues = PaddingValues(),
                 uiState = previewState,
                 viewModel = hiltViewModel(),
-                navController = rememberNavController()
+                navController = rememberNavController(),
+                onChatFamiliasClick = {},
+                onComunicadosClick = {},
+                onMisAlumnosClick = {},
+                onCalendarioClick = {},
+                onRegistroDiarioClick = {},
+                haptic = LocalHapticFeedback.current
             )
         }
     }
@@ -634,7 +925,13 @@ fun ProfesorDashboardFestivoDarkPreview() {
                 paddingValues = PaddingValues(),
                 uiState = previewStateFestivo,
                 viewModel = hiltViewModel(),
-                navController = rememberNavController()
+                navController = rememberNavController(),
+                onChatFamiliasClick = {},
+                onComunicadosClick = {},
+                onMisAlumnosClick = {},
+                onCalendarioClick = {},
+                onRegistroDiarioClick = {},
+                haptic = LocalHapticFeedback.current
             )
         }
     }

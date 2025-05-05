@@ -27,6 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import timber.log.Timber
+import com.tfg.umeegunero.ui.theme.FamiliarColor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -36,6 +40,7 @@ fun ChatFamiliaScreen(
 ) {
     // Estado para el mensaje que se está escribiendo
     var mensaje by remember { mutableStateOf("") }
+    val haptic = LocalHapticFeedback.current
     
     // Datos de ejemplo para el profesor
     val profesor = remember {
@@ -128,7 +133,14 @@ fun ChatFamiliaScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        navController.popBackStack() 
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -136,10 +148,20 @@ fun ChatFamiliaScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = FamiliarColor,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 ),
                 actions = {
-                    IconButton(onClick = { /* Opciones del chat */ }) {
+                    IconButton(onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        /* Opciones del chat */
+                    }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "Opciones"
@@ -204,12 +226,19 @@ fun ChatFamiliaScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { /* Adjuntar archivos */ }
+                        onClick = { 
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al realizar feedback háptico")
+                            }
+                            /* Adjuntar archivos */ 
+                        }
                     ) {
                         Icon(
                             imageVector = Icons.Default.AttachFile,
                             contentDescription = "Adjuntar",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = FamiliarColor
                         )
                     }
                     
@@ -221,6 +250,11 @@ fun ChatFamiliaScreen(
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                         keyboardActions = KeyboardActions(
                             onSend = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al realizar feedback háptico")
+                                }
                                 // Enviar mensaje
                                 if (mensaje.isNotEmpty()) {
                                     // Aquí iría la lógica para enviar el mensaje
@@ -241,6 +275,11 @@ fun ChatFamiliaScreen(
                     
                     IconButton(
                         onClick = {
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al realizar feedback háptico")
+                            }
                             // Enviar mensaje
                             if (mensaje.isNotEmpty()) {
                                 // Aquí iría la lógica para enviar el mensaje
@@ -252,7 +291,7 @@ fun ChatFamiliaScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Enviar",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = FamiliarColor
                         )
                     }
                 }
@@ -284,14 +323,14 @@ fun MensajeItem(
                     )
                 )
                 .background(
-                    if (isRemitente) MaterialTheme.colorScheme.primary
+                    if (isRemitente) FamiliarColor
                     else MaterialTheme.colorScheme.surfaceVariant
                 )
                 .padding(12.dp)
         ) {
             Text(
                 text = mensaje.texto,
-                color = if (isRemitente) MaterialTheme.colorScheme.onPrimary
+                color = if (isRemitente) Color.White
                         else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -315,10 +354,10 @@ fun MensajeItem(
                 Spacer(modifier = Modifier.width(4.dp))
                 
                 Icon(
-                    imageVector = if (mensaje.leido) Icons.Default.Done else Icons.Default.DoneAll,
+                    imageVector = if (mensaje.leido) Icons.Default.DoneAll else Icons.Default.Done,
                     contentDescription = if (mensaje.leido) "Leído" else "Enviado",
                     modifier = Modifier.size(16.dp),
-                    tint = if (mensaje.leido) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    tint = if (mensaje.leido) FamiliarColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
         }

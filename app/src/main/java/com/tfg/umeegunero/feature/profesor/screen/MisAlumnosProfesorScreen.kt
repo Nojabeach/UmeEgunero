@@ -58,7 +58,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -80,6 +82,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.ViewModel
 import com.tfg.umeegunero.feature.profesor.viewmodel.MisAlumnosUiState
 import androidx.compose.material3.HorizontalDivider
+import timber.log.Timber
 
 /**
  * Pantalla que muestra la lista de alumnos del profesor
@@ -103,13 +106,21 @@ fun MisAlumnosProfesorScreen(
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
+    val haptic = LocalHapticFeedback.current
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Mis Alumnos") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        navController.popBackStack() 
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -141,7 +152,14 @@ fun MisAlumnosProfesorScreen(
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
+                        IconButton(onClick = { 
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al realizar feedback háptico")
+                            }
+                            searchQuery = "" 
+                        }) {
                             Icon(Icons.Default.Clear, contentDescription = "Limpiar")
                         }
                     }
@@ -149,7 +167,14 @@ fun MisAlumnosProfesorScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
-                    onSearch = { focusManager.clearFocus() }
+                    onSearch = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        focusManager.clearFocus() 
+                    }
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -232,8 +257,14 @@ fun MisAlumnosProfesorScreen(
                             AlumnoCard(
                                 alumno = alumno,
                                 onClick = {
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al realizar feedback háptico")
+                                    }
                                     navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.id))
-                                }
+                                },
+                                haptic = haptic
                             )
                         }
                         
@@ -253,14 +284,22 @@ fun MisAlumnosProfesorScreen(
 fun AlumnoCard(
     alumno: Alumno,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback
 ) {
     var expandedState by remember { mutableStateOf(false) }
     
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable { 
+                try {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al realizar feedback háptico")
+                }
+                onClick() 
+            },
         elevation = CardDefaults.cardElevation(
             defaultElevation = 2.dp
         ),
@@ -342,7 +381,14 @@ fun AlumnoCard(
                 
                 // Botón para expandir información de familiares
                 IconButton(
-                    onClick = { expandedState = !expandedState }
+                    onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        expandedState = !expandedState 
+                    }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person2,
@@ -425,75 +471,12 @@ fun AlumnoCard(
 @Composable
 fun MisAlumnosProfesorScreenPreview() {
     UmeEguneroTheme {
-        // Crear datos de prueba
-        val alumnosPrueba = listOf(
-            Alumno(
-                id = "1",
-                nombre = "Ana",
-                apellidos = "García López",
-                clase = "Infantil 2A",
-                claseId = "clase_1",
-                activo = true,
-                familiares = listOf(
-                    Familiar(
-                        id = "f1",
-                        nombre = "María",
-                        apellidos = "López Sánchez",
-                        parentesco = "Madre"
-                    ),
-                    Familiar(
-                        id = "f2",
-                        nombre = "Juan",
-                        apellidos = "García Martín",
-                        parentesco = "Padre"
-                    )
-                )
-            ),
-            Alumno(
-                id = "2",
-                nombre = "Carlos",
-                apellidos = "Rodríguez Pérez",
-                clase = "Infantil 2A",
-                claseId = "clase_1",
-                activo = true,
-                familiares = listOf(
-                    Familiar(
-                        id = "f3",
-                        nombre = "Laura",
-                        apellidos = "Pérez Gómez",
-                        parentesco = "Madre"
-                    )
-                )
-            ),
-            Alumno(
-                id = "3",
-                nombre = "Sara",
-                apellidos = "Martínez Gil",
-                clase = "Infantil 2A",
-                claseId = "clase_1",
-                activo = false,
-                familiares = emptyList()
-            )
-        )
-        
-        // Usamos PreviewParameterProvider para la preview
-        val previewState = MisAlumnosUiState(
-            isLoading = false,
-            alumnos = alumnosPrueba,
-            clase = "Infantil 2A"
-        )
-        
-        val fakeViewModel = object : ViewModel() {
-            private val _uiState = MutableStateFlow(previewState)
-            val uiState: StateFlow<MisAlumnosUiState> = _uiState.asStateFlow()
-            
-            fun refrescarAlumnos() {}
-        }
-        
-        // Pantalla con navController simulado y viewModel simulado
+        // En modo preview, solo usamos un navController simulado
+        // No podemos usar un viewModel real porque depende de inyección de dependencias
+        // No importa ya que la preview solo es visual
         MisAlumnosProfesorScreen(
-            navController = rememberNavController(),
-            viewModel = fakeViewModel as MisAlumnosProfesorViewModel
+            navController = rememberNavController()
+            // No pasamos viewModel, se usará el proporcionado por hiltViewModel()
         )
     }
 } 

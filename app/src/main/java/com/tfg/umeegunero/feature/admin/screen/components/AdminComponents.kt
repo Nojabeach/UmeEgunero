@@ -36,6 +36,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.Dp
 import com.tfg.umeegunero.ui.components.CategoriaCardData
 import androidx.compose.ui.graphics.graphicsLayer
+import timber.log.Timber
 
 @Composable
 fun SectionHeader(
@@ -112,7 +113,11 @@ fun CategoriaCard(
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                try {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al realizar feedback háptico")
+                }
                 onClick()
             },
         colors = CardDefaults.cardColors(
@@ -202,7 +207,11 @@ fun BotonAccion(
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                try {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al realizar feedback háptico")
+                }
                 onClick()
             },
         colors = CardDefaults.cardColors(

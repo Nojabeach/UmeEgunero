@@ -307,4 +307,24 @@ object DateUtils {
             return 0
         }
     }
+
+    /**
+     * Convierte una fecha en formato string (dd/MM/yyyy) a un string en formato estándar
+     * 
+     * @param dateString String con la fecha en formato dd/MM/yyyy
+     * @return La fecha en formato string normalizado o fecha vacía si hay error
+     */
+    fun parseDateString(dateString: String): String {
+        return try {
+            val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            val date = formatter.parse(dateString)
+            if (date != null) {
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            ""
+        }
+    }
 } 

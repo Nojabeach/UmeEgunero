@@ -69,6 +69,7 @@ com.tfg.umeegunero/
 │   ├── profesor/                  # Funcionalidades de profesor
 │   ├── familiar/                  # Funcionalidades de familia
 │   ├── common/                    # Pantallas compartidas entre varios perfiles
+│   │   └── comunicacion/          # Sistema de comunicación unificado
 │   └── centro/                    # Gestión de centros
 ├── navigation/                    # Sistema de navegación
 ├── service/                       # Servicios en segundo plano
@@ -137,6 +138,62 @@ sealed class Result<out T> {
 }
 ```
 
+### Sistema de Comunicación Unificado
+
+El sistema de comunicación unificado centraliza todos los tipos de mensajes en un modelo común:
+
+```kotlin
+/**
+ * Modelo que representa un mensaje unificado en el sistema.
+ * 
+ * Este modelo integra diferentes tipos de comunicación: mensajes,
+ * notificaciones, comunicados, incidencias y más.
+ */
+data class UnifiedMessage(
+    val id: String,
+    val title: String,
+    val content: String,
+    val type: MessageType,
+    val priority: MessagePriority,
+    val senderId: String,
+    val senderName: String,
+    val receiverId: String,
+    val receiversIds: List<String> = emptyList(),
+    val timestamp: Timestamp = Timestamp.now(),
+    val isRead: Boolean = false,
+    val readTimestamp: Timestamp? = null,
+    val metadata: Map<String, String> = emptyMap(),
+    val relatedEntityId: String? = null,
+    val relatedEntityType: String? = null,
+    val attachments: List<Map<String, String>> = emptyList(),
+    val conversationId: String? = null,
+    val replyToId: String? = null
+)
+
+/**
+ * Tipos de mensajes soportados por el sistema unificado.
+ */
+enum class MessageType {
+    CHAT,            // Mensaje de chat entre usuarios
+    NOTIFICATION,    // Notificación general del sistema
+    ANNOUNCEMENT,    // Comunicado o circular
+    INCIDENT,        // Reporte de incidencia
+    ATTENDANCE,      // Registro de asistencia
+    DAILY_RECORD,    // Registro diario
+    SYSTEM           // Mensaje generado por el sistema
+}
+
+/**
+ * Niveles de prioridad para los mensajes.
+ */
+enum class MessagePriority {
+    LOW,      // Informativo, baja prioridad
+    NORMAL,   // Prioridad estándar
+    HIGH,     // Alta prioridad
+    URGENT    // Urgente, requiere atención inmediata
+}
+```
+
 ### Usuario
 
 ```kotlin
@@ -189,6 +246,76 @@ La aplicación sigue el patrón MVVM (Model-View-ViewModel):
 - Mantiene el estado de la UI
 - Procesa los eventos de la UI y ejecuta la lógica de negocio
 - Expone Flows/StateFlows para que la Vista observe los cambios
+
+## Sistema de Comunicación Unificado
+
+El Sistema de Comunicación Unificado centraliza todas las formas de comunicación en la aplicación en una infraestructura común:
+
+```mermaid
+graph TD
+    subgraph "UI Layer"
+        UI_Inbox[UnifiedInboxScreen]
+        UI_Detail[MessageDetailScreen]
+        UI_Compose[NewMessageScreen]
+    end
+    
+    subgraph "ViewModel Layer"
+        VM_Inbox[UnifiedInboxViewModel]
+        VM_Detail[MessageDetailViewModel] 
+        VM_Compose[NewMessageViewModel]
+    end
+    
+    subgraph "Repository Layer"
+        UMR[UnifiedMessageRepository]
+    end
+    
+    subgraph "Data Layer"
+        Firestore[(Firestore)]
+        FCM[Firebase Cloud Messaging]
+    end
+    
+    UI_Inbox <--> VM_Inbox
+    UI_Detail <--> VM_Detail
+    UI_Compose <--> VM_Compose
+    
+    VM_Inbox <--> UMR
+    VM_Detail <--> UMR
+    VM_Compose <--> UMR
+    
+    UMR <--> Firestore
+    UMR --> FCM
+    
+    style UI_Inbox fill:#bbf,stroke:#333,stroke-width:1px
+    style UI_Detail fill:#bbf,stroke:#333,stroke-width:1px
+    style UI_Compose fill:#bbf,stroke:#333,stroke-width:1px
+    style VM_Inbox fill:#f9f,stroke:#333,stroke-width:1px
+    style VM_Detail fill:#f9f,stroke:#333,stroke-width:1px
+    style VM_Compose fill:#f9f,stroke:#333,stroke-width:1px
+    style UMR fill:#bfb,stroke:#333,stroke-width:1px
+    style Firestore fill:#fbb,stroke:#333,stroke-width:1px
+    style FCM fill:#fbb,stroke:#333,stroke-width:1px
+```
+
+### Flujo de Datos en el Sistema Unificado
+
+1. **Creación de Mensajes**:
+   - Los mensajes pueden crearse desde diferentes orígenes (chat, sistema, etc.)
+   - Todos los mensajes utilizan el mismo modelo `UnifiedMessage`
+   - Se define el tipo y prioridad según el contexto
+
+2. **Almacenamiento**:
+   - Todos los mensajes se almacenan en la colección `unified_messages` en Firestore
+   - Se utilizan índices compuestos para optimizar consultas frecuentes
+
+3. **Notificaciones**:
+   - El sistema está integrado con el framework de notificaciones
+   - Cada nuevo mensaje puede generar notificaciones push a través de FCM
+   - El tipo de canal de notificación se determina según `MessageType`
+
+4. **Integración con otros subsistemas**:
+   - Las solicitudes de vinculación generan mensajes automáticamente
+   - El sistema de incidencias crea mensajes de tipo `INCIDENT`
+   - Los registros diarios pueden generar mensajes de tipo `DAILY_RECORD`
 
 ## Arquitectura de Repositorios
 
@@ -268,6 +395,15 @@ object RepositoryModule {
         return CalendarioRepositoryImpl(firestore, calendarioLocalDataSource)
     }
     
+    @Provides
+    @Singleton
+    fun provideUnifiedMessageRepository(
+        firestore: FirebaseFirestore,
+        authRepository: AuthRepository
+    ): UnifiedMessageRepository {
+        return UnifiedMessageRepository(firestore, authRepository)
+    }
+    
     // Otras dependencias...
 }
 ```
@@ -312,9 +448,10 @@ sealed class NavigationRoutes(val route: String) {
     object Registro : NavigationRoutes("registro")
     object RecuperarContrasena : NavigationRoutes("recuperar_contrasena")
     
-    // Rutas de profesor
-    object DashboardProfesor : NavigationRoutes("dashboard_profesor")
-    object ListaAlumnos : NavigationRoutes("lista_alumnos")
+    // Rutas del sistema de comunicación unificado
+    object UnifiedInbox : NavigationRoutes("unified_inbox")
+    object MessageDetail : NavigationRoutes("message_detail/{messageId}")
+    object NewMessage : NavigationRoutes("new_message")
     
     // Otras rutas...
 }
@@ -334,21 +471,19 @@ flowchart TD
     Perfil -->|Profesor| DashboardProf[Dashboard Profesor]
     Perfil -->|Familiar| DashboardFam[Dashboard Familiar]
     
-    DashboardAdmin --> GestionCentros[Gestión Centros]
-    DashboardAdmin --> GestionUsuarios[Gestión Usuarios]
+    DashboardAdmin & DashboardProf & DashboardFam -.-> UnifiedComm[Sistema Comunicación Unificado]
     
-    DashboardProf --> MisClases[Mis Clases]
-    DashboardProf --> RegistroActividades[Registro Actividades]
-    
-    DashboardFam --> MisHijos[Mis Hijos]
-    DashboardFam --> ComunicacionesProfesor[Comunicaciones]
+    UnifiedComm --> Inbox[Bandeja Unificada]
+    UnifiedComm --> NewMsg[Nuevo Mensaje]
+    Inbox --> MsgDetail[Detalle Mensaje]
     
     style Start fill:#bbf,stroke:#333,stroke-width:1px
     style Auth fill:#f9f,stroke:#333,stroke-width:1px
     style Perfil fill:#f9f,stroke:#333,stroke-width:1px
-    style DashboardAdmin fill:#bfb,stroke:#333,stroke-width:1px
-    style DashboardProf fill:#bfb,stroke:#333,stroke-width:1px
-    style DashboardFam fill:#bfb,stroke:#333,stroke-width:1px
+    style UnifiedComm fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style Inbox fill:#E3F2FD,stroke:#1976D2,stroke-width:1px
+    style NewMsg fill:#E3F2FD,stroke:#1976D2,stroke-width:1px
+    style MsgDetail fill:#E3F2FD,stroke:#1976D2,stroke-width:1px
 ```
 
 </div>

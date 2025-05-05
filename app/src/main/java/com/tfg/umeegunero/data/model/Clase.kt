@@ -3,56 +3,37 @@ package com.tfg.umeegunero.data.model
 import com.google.firebase.firestore.DocumentId
 
 /**
- * Modelo que representa una clase o grupo dentro de un curso académico en el sistema UmeEgunero.
- * 
- * Esta clase define la estructura de datos para las clases o grupos educativos, que son
- * subdivisiones de un curso académico. Una clase agrupa a un conjunto de alumnos bajo
- * la tutela de uno o varios profesores, con un espacio físico (aula) y horario asignados.
- * 
- * Las clases se almacenan como documentos en la colección 'clases' en Firestore,
- * donde el ID del documento coincide con el campo [id] de esta clase. Cada clase
- * está vinculada a un curso específico ([cursoId]) y a un centro educativo ([centroId]).
- * 
- * Relaciones principales:
- * - Una clase pertenece a un único curso ([cursoId])
- * - Una clase está asociada a un único centro educativo ([centroId])
- * - Una clase puede tener asignado un profesor principal ([profesorId])
- * - Una clase puede tener asignado un profesor titular opcional ([profesorTitularId])
- *   y puede tener varios profesores auxiliares
- * - Una clase agrupa a múltiples alumnos ([alumnosIds])
- * - Una clase se imparte en un espacio físico específico ([aula])
- * 
- * Esta entidad es gestionada principalmente por usuarios con roles ADMIN_CENTRO 
- * y es utilizada por profesores para organizar a sus alumnos y actividades diarias.
- * 
- * @property id Identificador único de la clase, anotado con @DocumentId para Firestore
- * @property cursoId Identificador del curso académico al que pertenece esta clase
- * @property centroId Identificador del centro educativo al que pertenece
- * @property nombre Nombre distintivo de la clase (ej. "A", "B", "Mañana", "Tarde")
- * @property profesorId Identificador del profesor principal asignado a la clase (usado en la nueva implementación)
- * @property profesorTitularId Identificador del profesor principal responsable de la clase (opcional)
- * @property profesoresAuxiliaresIds Lista de identificadores de profesores de apoyo asignados
- * @property alumnosIds Lista de identificadores de alumnos matriculados en esta clase
+ * Representa una clase en el contexto educativo de la aplicación UmeEgunero.
+ *
+ * Esta clase contiene información detallada sobre una clase específica, 
+ * incluyendo su identificador, nombre, centro, curso, capacidad máxima, 
+ * horario y otros detalles relevantes.
+ *
+ * @property id Identificador único de la clase
+ * @property nombre Nombre descriptivo de la clase
+ * @property centroId Identificador del centro al que pertenece la clase
+ * @property cursoId Identificador del curso asociado a la clase
+ * @property aula Número o identificador del aula donde se imparte la clase
  * @property capacidadMaxima Número máximo de alumnos permitidos en la clase
- * @property activo Indica si la clase está actualmente operativa en el sistema
- * @property horario Descripción del horario o referencia a un objeto Horario
- * @property aula Ubicación física dentro del centro donde se imparte la clase
- * 
- * @see Curso Entidad relacionada a la que pertenece esta clase
- * @see Centro Entidad relacionada que contiene esta clase
- * @see Usuario Entidad relacionada con los profesores asignados
- * @see Alumno Entidad relacionada de estudiantes pertenecientes a esta clase
+ * @property horario Rango de tiempo en el que se imparte la clase
+ * @property profesorTitularId Identificador del profesor titular de la clase
+ * @property profesoresAuxiliaresIds Lista de identificadores de profesores auxiliares
+ * @property alumnosIds Lista de identificadores de alumnos matriculados
+ * @property activo Indica si la clase está activa o no
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 data class Clase(
     @DocumentId val id: String = "",
     val cursoId: String = "",
     val centroId: String = "",
     val nombre: String = "", // Por ejemplo: "A", "B", "Mañana", "Tarde"
-    val profesorId: String = "", // Profesor principal (usado en la nueva implementación)
-    val profesorTitularId: String = "",
-    val profesoresAuxiliaresIds: List<String> = emptyList(),
-    val alumnosIds: List<String> = emptyList(),
-    val capacidadMaxima: Int = 25,
+    val profesorId: String? = null, // Cambiado a nullable
+    val profesorTitularId: String? = null, // Cambiado a nullable
+    val profesoresAuxiliaresIds: List<String>? = null, // Cambiado a nullable
+    val alumnosIds: List<String>? = null, // Cambiado a nullable
+    val capacidadMaxima: Int? = null, // Cambiado a nullable
     val activo: Boolean = true,
     val horario: String = "", // Descripción del horario o referencia a un objeto Horario
     val aula: String = "" // Ubicación física dentro del centro

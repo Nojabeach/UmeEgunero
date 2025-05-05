@@ -15,7 +15,32 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar los registros de asistencia en Firestore
+ * Repositorio para gestionar la asistencia de alumnos en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para registrar, consultar y gestionar
+ * la asistencia de los alumnos en diferentes contextos educativos, permitiendo
+ * un seguimiento detallado de la presencia y participación de los estudiantes.
+ *
+ * Características principales:
+ * - Registro de asistencia diaria
+ * - Generación de informes de asistencia
+ * - Control de ausencias y retrasos
+ * - Notificación a familias sobre inasistencias
+ * - Gestión de justificaciones de ausencia
+ *
+ * El repositorio permite:
+ * - Registrar la asistencia de alumnos por clase
+ * - Consultar histórico de asistencia
+ * - Generar estadísticas de asistencia
+ * - Notificar a familias sobre ausencias
+ * - Gestionar permisos y justificaciones
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property notificacionRepository Repositorio para enviar notificaciones relacionadas
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class RegistroAsistenciaRepository @Inject constructor(

@@ -7,6 +7,9 @@ import com.tfg.umeegunero.data.model.EntregaTarea
 import com.tfg.umeegunero.data.model.EstadoTarea
 import com.tfg.umeegunero.data.model.Tarea
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.util.FirestorePagination
+import com.tfg.umeegunero.util.QueryFilter
+import com.tfg.umeegunero.util.QueryOperator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +24,21 @@ import javax.inject.Singleton
 import com.tfg.umeegunero.util.Result
 
 /**
- * Repositorio para gestionar las tareas en Firestore
+ * Repositorio para gestionar operaciones relacionadas con tareas en la aplicación UmeEgunero.
+ *
+ * Esta interfaz define los métodos para interactuar con las tareas, permitiendo
+ * operaciones como creación, asignación, seguimiento y gestión de entregas.
+ *
+ * El repositorio maneja diferentes tipos de tareas para distintos roles de usuarios:
+ * - Profesores pueden crear y asignar tareas
+ * - Alumnos pueden ver y entregar tareas
+ * - Familiares pueden hacer seguimiento de las tareas de sus hijos
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property storageRepository Repositorio para gestionar almacenamiento de archivos adjuntos
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class TareaRepository @Inject constructor(
@@ -30,11 +47,15 @@ class TareaRepository @Inject constructor(
     companion object {
         private const val COLLECTION_TAREAS = "tareas"
         private const val COLLECTION_ENTREGAS = "entregasTareas"
+        private const val DEFAULT_PAGE_SIZE = 20
     }
 
     // Cache local de tareas
     private val _tareasLocal = MutableStateFlow<List<Tarea>>(emptyList())
     val tareasLocal: Flow<List<Tarea>> = _tareasLocal.asStateFlow()
+    
+    // Map de paginadores para diferentes consultas
+    private val paginadores = mutableMapOf<String, FirestorePagination<Tarea>>()
 
     /**
      * Obtiene todas las tareas asociadas a un profesor
@@ -56,6 +77,77 @@ class TareaRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+    
+    /**
+     * Obtiene tareas asociadas a un profesor con paginación.
+     * 
+     * @param profesorId ID del profesor
+     * @param pageNumber Número de página a cargar (empezando por 0)
+     * @param pageSize Tamaño de página (elementos por página)
+     * @return Resultado con las tareas de la página solicitada
+     */
+    suspend fun obtenerTareasPorProfesorPaginadas(
+        profesorId: String, 
+        pageNumber: Int,
+        pageSize: Int = DEFAULT_PAGE_SIZE
+    ): Result<List<Tarea>> = withContext(Dispatchers.IO) {
+        try {
+            // Clave única para este paginador
+            val paginadorKey = "profesor_$profesorId"
+            
+            // Obtener o crear el paginador para esta consulta
+            val paginador = paginadores.getOrPut(paginadorKey) {
+                FirestorePagination(
+                    db = firestore,
+                    collectionPath = COLLECTION_TAREAS,
+                    pageSize = pageSize,
+                    orderBy = "fechaCreacion",
+                    descending = true
+                ) { data -> 
+                    Tarea(
+                        id = data["id"] as String,
+                        titulo = data["titulo"] as? String ?: "",
+                        descripcion = data["descripcion"] as? String ?: "",
+                        fechaCreacion = data["fechaCreacion"] as? Timestamp ?: Timestamp.now(),
+                        fechaEntrega = data["fechaEntrega"] as? Timestamp,
+                        profesorId = data["profesorId"] as? String ?: "",
+                        profesorNombre = data["profesorNombre"] as? String ?: "",
+                        estado = EstadoTarea.valueOf(data["estado"] as? String ?: EstadoTarea.PENDIENTE.name),
+                        claseId = data["claseId"] as? String ?: "",
+                        alumnoId = data["alumnoId"] as? String ?: "",
+                        asignatura = data["asignatura"] as? String ?: "",
+                        // Otros campos según sea necesario
+                        revisadaPorFamiliar = data["revisadaPorFamiliar"] as? Boolean ?: false,
+                        fechaRevision = data["fechaRevision"] as? Timestamp,
+                        comentariosFamiliar = data["comentariosFamiliar"] as? String ?: ""
+                    )
+                }
+            }
+            
+            // Configurar filtros para el profesor específico
+            paginador.setFilters(listOf(
+                QueryFilter("profesorId", QueryOperator.EQUAL, profesorId)
+            ))
+            
+            // Cargar la página solicitada
+            when (val result = paginador.loadPage(pageNumber)) {
+                is Result.Success -> {
+                    Timber.d("Página $pageNumber cargada: ${result.data.size} tareas")
+                    return@withContext Result.Success(result.data)
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "Error cargando página $pageNumber")
+                    return@withContext Result.Error(result.exception ?: Exception("Error desconocido"))
+                }
+                else -> {
+                    return@withContext Result.Error(Exception("Resultado no esperado"))
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener tareas paginadas por profesor")
+            return@withContext Result.Error(e)
+        }
+    }
 
     /**
      * Obtiene todas las tareas asociadas a una clase
@@ -74,6 +166,72 @@ class TareaRepository @Inject constructor(
             return@withContext Result.Success(tareas)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener tareas por clase")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene tareas asociadas a una clase con paginación.
+     * 
+     * @param claseId ID de la clase
+     * @param pageNumber Número de página a cargar (empezando por 0)
+     * @param pageSize Tamaño de página (elementos por página)
+     * @return Resultado con las tareas de la página solicitada
+     */
+    suspend fun obtenerTareasPorClasePaginadas(
+        claseId: String, 
+        pageNumber: Int,
+        pageSize: Int = DEFAULT_PAGE_SIZE
+    ): Result<List<Tarea>> = withContext(Dispatchers.IO) {
+        try {
+            // Clave única para este paginador
+            val paginadorKey = "clase_$claseId"
+            
+            // Obtener o crear el paginador
+            val paginador = paginadores.getOrPut(paginadorKey) {
+                FirestorePagination(
+                    db = firestore,
+                    collectionPath = COLLECTION_TAREAS,
+                    pageSize = pageSize,
+                    orderBy = "fechaCreacion",
+                    descending = true
+                ) { data -> 
+                    Tarea(
+                        id = data["id"] as String,
+                        titulo = data["titulo"] as? String ?: "",
+                        descripcion = data["descripcion"] as? String ?: "",
+                        fechaCreacion = data["fechaCreacion"] as? Timestamp ?: Timestamp.now(),
+                        fechaEntrega = data["fechaEntrega"] as? Timestamp,
+                        profesorId = data["profesorId"] as? String ?: "",
+                        profesorNombre = data["profesorNombre"] as? String ?: "",
+                        estado = EstadoTarea.valueOf(data["estado"] as? String ?: EstadoTarea.PENDIENTE.name),
+                        claseId = data["claseId"] as? String ?: "",
+                        alumnoId = data["alumnoId"] as? String ?: "",
+                        asignatura = data["asignatura"] as? String ?: "",
+                        revisadaPorFamiliar = data["revisadaPorFamiliar"] as? Boolean ?: false
+                    )
+                }
+            }
+            
+            // Configurar filtros
+            paginador.setFilters(listOf(
+                QueryFilter("claseId", QueryOperator.EQUAL, claseId)
+            ))
+            
+            // Cargar la página solicitada
+            when (val result = paginador.loadPage(pageNumber)) {
+                is Result.Success -> {
+                    return@withContext Result.Success(result.data)
+                }
+                is Result.Error -> {
+                    return@withContext Result.Error(result.exception ?: Exception("Error desconocido"))
+                }
+                else -> {
+                    return@withContext Result.Error(Exception("Resultado no esperado"))
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener tareas paginadas por clase")
             return@withContext Result.Error(e)
         }
     }
@@ -382,7 +540,6 @@ class TareaRepository @Inject constructor(
                 .update(
                     mapOf(
                         "revisadaPorFamiliar" to true,
-                        "familiarRevisorId" to familiarId,
                         "fechaRevision" to Timestamp.now(),
                         "comentariosFamiliar" to comentario
                     )
@@ -429,4 +586,50 @@ class TareaRepository @Inject constructor(
             Timber.e(e, "Error al sincronizar tareas")
         }
     }
+
+    /**
+     * Actualiza una entrega de tarea existente.
+     *
+     * @param tareaId ID de la tarea asociada a la entrega
+     * @param entregaId ID de la entrega a actualizar
+     * @param estado Nuevo estado de la entrega
+     * @param comentarioCambio Comentario sobre el cambio realizado (ej. motivo de rechazo)
+     * @param profesorRevisorId ID del profesor que revisa la entrega (opcional)
+     * @param calificacion Calificación opcional para la entrega
+     * @return Result<Unit> Resultado de la operación
+     */
+    /*
+    suspend fun actualizarEntregaTarea(
+        tareaId: String,
+        entregaId: String,
+        estado: EstadoEntrega,
+        comentarioCambio: String?,
+        profesorRevisorId: String?, // ID del profesor que revisa la entrega
+        calificacion: Double?
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Actualizando entrega $entregaId de la tarea $tareaId a estado: $estado")
+            
+            val entregaRef = firestore.collection(COLLECTION_ENTREGAS).document(entregaId)
+            
+            val updateData = hashMapOf<String, Any>(
+                "estado" to estado.toString(),
+                "fechaModificacion" to Timestamp.now()
+            )
+            
+            // Añadir campos opcionales solo si no son nulos
+            comentarioCambio?.let { updateData["comentarioCambio"] = it }
+            profesorRevisorId?.let { updateData["profesorRevisorId"] = it }
+            calificacion?.let { updateData["calificacion"] = it }
+            
+            entregaRef.update(updateData).await()
+            
+            Timber.d("Entrega actualizada correctamente")
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar entrega $entregaId de tarea $tareaId")
+            return@withContext Result.Error(e)
+        }
+    }
+    */
 } 

@@ -6,27 +6,29 @@ import com.google.firebase.firestore.IgnoreExtraProperties
 import com.google.firebase.firestore.ServerTimestamp
 
 /**
- * Modelo que representa una actividad para niños preescolares (2-3 años)
- * 
- * Este modelo está diseñado para actividades menos estructuradas y más lúdicas,
- * adaptadas a las necesidades de desarrollo de niños pequeños.
- * 
+ * Representa una actividad preescolar en el sistema educativo de UmeEgunero.
+ *
+ * Esta clase define la estructura de una actividad realizada por un niño en edad preescolar,
+ * permitiendo un seguimiento detallado de su desarrollo, aprendizaje y comportamiento.
+ *
+ * Las actividades pueden incluir aspectos como juegos, aprendizaje, alimentación, 
+ * descanso y otras interacciones educativas importantes en la etapa infantil.
+ *
  * @property id Identificador único de la actividad
- * @property titulo Título descriptivo de la actividad
- * @property descripcion Descripción detallada de la actividad
- * @property profesorId ID del profesor que creó la actividad
- * @property profesorNombre Nombre del profesor (para mostrar sin consultas adicionales)
- * @property alumnoId ID del alumno al que está dirigida la actividad (puede ser nulo si es grupal)
- * @property claseId ID de la clase a la que está dirigida la actividad
- * @property categoria Categoría de la actividad (motricidad, lenguaje, etc.)
- * @property estado Estado actual de la actividad
- * @property fechaCreacion Fecha en que se creó la actividad
- * @property fechaProgramada Fecha programada para realizar la actividad (opcional)
- * @property revisadaPorFamiliar Indica si la familia ha revisado la actividad
- * @property fechaRevision Fecha en que la familia revisó la actividad
- * @property comentariosProfesor Observaciones adicionales del profesor
- * @property comentariosFamiliar Comentarios de la familia sobre la actividad
- * @property imagenes Lista de URLs de imágenes relacionadas (fotos de la actividad)
+ * @property alumnoId Identificador del alumno que realiza la actividad
+ * @property profesorId Identificador del profesor que registra la actividad
+ * @property fechaRegistro Fecha y hora de registro de la actividad
+ * @property tipoActividad Tipo de actividad realizada (juego, aprendizaje, alimentación, etc.)
+ * @property descripcion Descripción detallada de la actividad y su desarrollo
+ * @property etiquetas Lista de etiquetas que caracterizan la actividad
+ * @property imagenes Lista de URLs de imágenes asociadas a la actividad
+ * @property duracion Duración de la actividad en minutos
+ * @property observaciones Notas adicionales del profesor sobre la actividad
+ * @property centroId Identificador del centro educativo
+ * @property claseId Identificador de la clase a la que pertenece el alumno
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @IgnoreExtraProperties
 data class ActividadPreescolar(

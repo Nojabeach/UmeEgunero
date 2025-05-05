@@ -30,10 +30,44 @@ UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Gr
 - **Diseño Responsive**: Adaptación óptima a diferentes tamaños de pantalla
 - **Feedback Háptico**: Retroalimentación táctil para mejorar la interactividad y confirmar acciones importantes
 
-### 📝 Comunicación Integrada
-- **Sistema de Mensajería**: Comunicación directa entre profesores y familiares
-- **Comunicados Oficiales**: Envío de avisos importantes con confirmación de lectura
-- **Notificaciones**: Sistema de alertas en tiempo real para eventos importantes
+### 📝 Sistema de Comunicación Unificado
+- **Bandeja Unificada**: Una sola interfaz para todas las formas de comunicación (mensajes, comunicados, notificaciones)
+- **Tipos de Mensajes**: Soporte para múltiples formatos de comunicación adaptados a cada contexto:
+  - Chat: Comunicación directa entre usuarios
+  - Comunicados: Anuncios oficiales del centro
+  - Notificaciones: Avisos automáticos del sistema
+  - Incidencias: Registro de eventos importantes
+  - Asistencia: Información sobre presencia y ausencias
+  - Registros Diarios: Actividades y evolución de los alumnos
+- **Sistema de Prioridades**: Diferenciación visual entre mensajes normales, prioritarios y urgentes
+- **Arquitectura Centralizada**: Repositorio único para todas las operaciones de mensajería
+- **Personalización por Rol**: Experiencia adaptada a cada perfil de usuario (administrador, profesor, familiar)
+- **Integración con Solicitudes**: Generación automática de notificaciones para solicitudes de vinculación
+- **Soporte para FCM**: Notificaciones push en tiempo real para todos los tipos de mensajes
+- **Canal de Notificaciones Dedicado**: Canal específico para comunicaciones del sistema unificado
+
+### 🔗 Integración del Sistema
+El sistema de comunicación unificado se integra con:
+- **Solicitudes de Vinculación**: Notificaciones automáticas durante el proceso de vinculación familiar-alumno
+- **Sistema de Notificaciones FCM**: Notificaciones push en segundo plano y en primer plano
+- **Deeplinks**: Navegación directa a los mensajes desde las notificaciones
+- **Perfiles de Usuario**: Interfaces adaptadas para cada tipo de usuario
+
+```mermaid
+flowchart TD
+    A[Interfaz Unificada] --> B[Bandeja de Entrada]
+    A --> C[Detalle de Mensaje]
+    A --> D[Redacción]
+    
+    B --> E{Tipos de Mensaje}
+    E --> F[Chat]
+    E --> G[Comunicados]
+    E --> H[Notificaciones]
+    E --> I[Sistema]
+    
+    J[Solicitudes] --> |Genera| H
+    K[Push Notifications] <--> A
+```
 
 ### 👶 Gestión Preescolar Especializada
 - **Registros Diarios**: Seguimiento detallado de actividades, comidas, siestas y más

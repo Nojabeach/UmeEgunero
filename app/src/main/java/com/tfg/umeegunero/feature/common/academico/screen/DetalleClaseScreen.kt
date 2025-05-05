@@ -1,5 +1,8 @@
 package com.tfg.umeegunero.feature.common.academico.screen
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,6 +28,10 @@ import com.tfg.umeegunero.feature.common.academico.viewmodel.DetalleClaseViewMod
 import com.tfg.umeegunero.feature.common.academico.viewmodel.DetalleClaseUiState
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.theme.AcademicoColor
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import com.tfg.umeegunero.notification.NotificationHelper
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla de detalle de una clase que muestra información completa sobre:
@@ -315,7 +323,7 @@ private fun InfoGeneralCard(uiState: DetalleClaseUiState) {
                     )
                     
                     Text(
-                        text = "Ocupación: ${uiState.alumnos.size}/${clase.capacidadMaxima}",
+                        text = "Ocupación: ${uiState.alumnos.size}/${clase.capacidadMaxima ?: 0}",
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(start = 4.dp)
                     )
@@ -324,12 +332,13 @@ private fun InfoGeneralCard(uiState: DetalleClaseUiState) {
                 if (uiState.alumnos.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     
+                    val capacidadMaxima = clase.capacidadMaxima ?: 1 // Evitar división por cero
                     LinearProgressIndicator(
-                        progress = { uiState.alumnos.size.toFloat() / clase.capacidadMaxima.toFloat() },
+                        progress = { uiState.alumnos.size.toFloat() / capacidadMaxima.toFloat() },
                         modifier = Modifier.fillMaxWidth(),
                         color = when {
-                            uiState.alumnos.size >= clase.capacidadMaxima -> MaterialTheme.colorScheme.error
-                            uiState.alumnos.size >= clase.capacidadMaxima * 0.8f -> MaterialTheme.colorScheme.tertiary
+                            uiState.alumnos.size >= capacidadMaxima -> MaterialTheme.colorScheme.error
+                            uiState.alumnos.size >= (capacidadMaxima * 0.8f).toInt() -> MaterialTheme.colorScheme.tertiary
                             else -> MaterialTheme.colorScheme.primary
                         },
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -350,6 +359,9 @@ private fun ProfesorCard(
     telefono: String,
     esTitular: Boolean
 ) {
+    val context = LocalContext.current
+    var showEnviarNotificacionDialog by remember { mutableStateOf(false) }
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -429,7 +441,7 @@ private fun ProfesorCard(
                 }
             }
             
-            IconButton(onClick = { /* Implementar envío de mensaje */ }) {
+            IconButton(onClick = { showEnviarNotificacionDialog = true }) {
                 Icon(
                     imageVector = Icons.Default.Email,
                     contentDescription = "Enviar mensaje",
@@ -440,6 +452,88 @@ private fun ProfesorCard(
                 )
             }
         }
+    }
+    
+    // Diálogo para enviar mensaje al profesor
+    if (showEnviarNotificacionDialog) {
+        var mensajeTexto by remember { mutableStateOf("") }
+        var asuntoTexto by remember { mutableStateOf("") }
+        
+        AlertDialog(
+            onDismissRequest = { showEnviarNotificacionDialog = false },
+            title = { Text("Enviar mensaje al profesor") },
+            text = {
+                Column {
+                    Text("Enviar un mensaje a $nombre", 
+                        style = MaterialTheme.typography.bodyMedium)
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = asuntoTexto,
+                        onValueChange = { asuntoTexto = it },
+                        label = { Text("Asunto") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedTextField(
+                        value = mensajeTexto,
+                        onValueChange = { mensajeTexto = it },
+                        label = { Text("Mensaje") },
+                        maxLines = 5,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Validación básica
+                        if (asuntoTexto.isBlank() || mensajeTexto.isBlank()) {
+                            // Mostrar error
+                            Toast.makeText(context, "Por favor complete todos los campos", Toast.LENGTH_SHORT).show()
+                        } else {
+                            // Enviar la notificación mediante correo electrónico
+                            try {
+                                // Abrir correo electrónico nativo
+                                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:$email")
+                                    putExtra(Intent.EXTRA_SUBJECT, asuntoTexto)
+                                    putExtra(Intent.EXTRA_TEXT, mensajeTexto)
+                                }
+                                
+                                if (intent.resolveActivity(context.packageManager) != null) {
+                                    context.startActivity(intent)
+                                    showEnviarNotificacionDialog = false
+                                } else {
+                                    Toast.makeText(context, 
+                                        "No se encontró una aplicación de correo electrónico", 
+                                        Toast.LENGTH_LONG).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, 
+                                    "Error al enviar el mensaje: ${e.message}", 
+                                    Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                ) {
+                    Text("Enviar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showEnviarNotificacionDialog = false }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 

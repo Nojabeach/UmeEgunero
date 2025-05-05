@@ -12,8 +12,32 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para manejar el almacenamiento local de los registros de actividad.
- * Se encarga de la conversión entre los modelos de dominio y las entidades de Room.
+ * Repositorio para gestionar registros de actividad locales en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para almacenar, recuperar y gestionar
+ * registros de actividad locales, permitiendo un seguimiento detallado
+ * de las interacciones y eventos realizados por los usuarios en la aplicación.
+ *
+ * Características principales:
+ * - Almacenamiento local de registros de actividad
+ * - Sincronización con registros en la nube
+ * - Soporte para diferentes tipos de actividades
+ * - Registro de eventos de usuario
+ * - Gestión de privacidad y seguridad
+ *
+ * El repositorio permite:
+ * - Registrar acciones de usuario
+ * - Mantener un historial de interacciones
+ * - Auditar cambios y accesos
+ * - Generar informes de actividad
+ * - Depurar y monitorear el uso de la aplicación
+ *
+ * @property database Base de datos local para almacenar registros de actividad
+ * @property firestore Instancia de FirebaseFirestore para sincronización de registros
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class LocalRegistroActividadRepository @Inject constructor(

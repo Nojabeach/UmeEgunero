@@ -6,10 +6,29 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio encargado de gestionar la sincronización de datos con el servidor.
- * 
- * Gestiona las operaciones pendientes de sincronización y se comunica con el backend
- * para enviar y recibir datos.
+ * Repositorio para gestionar la sincronización de datos en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para sincronizar datos entre diferentes
+ * fuentes como Firestore, almacenamiento local y servicios remotos.
+ *
+ * Características principales:
+ * - Sincronización de datos en segundo plano
+ * - Gestión de colas de sincronización
+ * - Manejo de conflictos de datos
+ * - Registro de operaciones de sincronización
+ *
+ * El repositorio se encarga de:
+ * - Actualizar datos locales desde Firestore
+ * - Enviar cambios locales a Firestore
+ * - Manejar la conectividad y sincronización offline
+ * - Optimizar el consumo de datos y batería
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property localDatabase Base de datos local para almacenamiento de datos
+ * @property networkManager Gestor de conectividad de red
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class SyncRepository @Inject constructor() {

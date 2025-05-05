@@ -191,20 +191,20 @@ class AddClaseViewModel @Inject constructor(
                 is Result.Success -> {
                     val clase = result.data
                     // Convertimos la capacidad máxima a string de forma segura
-                    val capacidadMaximaStr = clase.capacidadMaxima.takeIf { it > 0 }?.toString() ?: ""
+                    val capacidadMaximaStr = clase.capacidadMaxima?.takeIf { it > 0 }?.toString() ?: ""
                     
                     _uiState.update {
                         it.copy(
                             id = clase.id,
-                            cursoId = clase.cursoId,
-                            centroId = clase.centroId,
-                            nombre = clase.nombre,
-                            aula = clase.aula,
-                            horario = clase.horario,
+                            cursoId = clase.cursoId ?: "",
+                            centroId = clase.centroId ?: "",
+                            nombre = clase.nombre ?: "",
+                            aula = clase.aula ?: "",
+                            horario = clase.horario ?: "",
                             capacidadMaxima = capacidadMaximaStr,
-                            profesorTitularId = clase.profesorTitularId,
-                            profesoresAuxiliaresIds = clase.profesoresAuxiliaresIds,
-                            alumnosIds = clase.alumnosIds,
+                            profesorTitularId = clase.profesorTitularId ?: "",
+                            profesoresAuxiliaresIds = clase.profesoresAuxiliaresIds ?: emptyList(),
+                            alumnosIds = clase.alumnosIds ?: emptyList(),
                             activo = clase.activo,
                             isLoading = false
                         )
@@ -361,7 +361,7 @@ class AddClaseViewModel @Inject constructor(
                 // Convertir la capacidad máxima a entero
                 val capacidadMaxima = state.capacidadMaxima.toIntOrNull() ?: 25
                 
-                // Crear objeto clase
+                // Crear objeto clase con manejo seguro de nulos
                 val clase = Clase(
                     id = if (state.isEditMode) state.id else UUID.randomUUID().toString(),
                     cursoId = state.cursoId,
@@ -373,15 +373,12 @@ class AddClaseViewModel @Inject constructor(
                     capacidadMaxima = capacidadMaxima,
                     activo = state.activo,
                     horario = state.horario,
-                    aula = state.aula
+                    aula = state.aula,
+                    profesorId = state.profesorTitularId // Aseguramos que profesorId también esté asignado
                 )
                 
                 // Guardar la clase
-                when (val resultado = if (state.isEditMode) {
-                    claseRepository.guardarClase(clase)
-                } else {
-                    claseRepository.guardarClase(clase)
-                }) {
+                when (val resultado = claseRepository.guardarClase(clase)) {
                     is Result.Success -> {
                         Timber.d("Clase guardada con ID: ${resultado.data}")
                         _uiState.update { 
@@ -463,5 +460,92 @@ class AddClaseViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    // Método para validar campos de clase
+    private fun validarCamposClase(): Boolean {
+        val state = _uiState.value
+        
+        // Validaciones con manejo de nulos seguro
+        val profesorId = state.profesorTitularId.takeIf { it.isNotBlank() }
+        val profesoresAuxiliares = state.profesoresAuxiliaresIds?.filter { it.isNotBlank() } ?: emptyList()
+        val alumnosIds = state.alumnosIds?.filter { it.isNotBlank() } ?: emptyList()
+        
+        return when {
+            state.nombre.isBlank() -> {
+                _uiState.update { it.copy(error = "El nombre de la clase es obligatorio") }
+                false
+            }
+            state.cursoId.isBlank() -> {
+                _uiState.update { it.copy(error = "Debe seleccionar un curso") }
+                false
+            }
+            state.capacidadMaxima.let { 
+                it?.toIntOrNull()?.let { capacidad -> capacidad <= 0 } ?: true 
+            } -> {
+                _uiState.update { it.copy(error = "La capacidad máxima debe ser mayor a 0") }
+                false
+            }
+            else -> true
+        }
+    }
+
+    // Método para crear clase con manejo de nulos mejorado
+    fun crearClase() {
+        if (!validarCamposClase()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            val state = _uiState.value
+            val nuevaClase = Clase(
+                id = if (state.isEditMode) state.id else UUID.randomUUID().toString(),
+                cursoId = state.cursoId,
+                centroId = state.centroId,
+                nombre = state.nombre,
+                profesorId = state.profesorTitularId?.takeIf { it.isNotBlank() },
+                profesorTitularId = state.profesorTitularId?.takeIf { it.isNotBlank() },
+                profesoresAuxiliaresIds = state.profesoresAuxiliaresIds?.filter { it.isNotBlank() } ?: emptyList(),
+                alumnosIds = state.alumnosIds?.filter { it.isNotBlank() } ?: emptyList(),
+                capacidadMaxima = state.capacidadMaxima?.toIntOrNull() ?: 25,
+                activo = state.activo,
+                horario = state.horario,
+                aula = state.aula
+            )
+
+            try {
+                val resultado = claseRepository.guardarClase(nuevaClase)
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false, 
+                                error = null, 
+                                isSuccess = true,
+                                id = resultado.data
+                            ) 
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false, 
+                                error = resultado.exception?.message ?: "Error desconocido al crear la clase"
+                            ) 
+                        }
+                    }
+                    is Result.Loading -> {
+                        // Estado de carga ya manejado
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false, 
+                        error = e.message ?: "Error inesperado al crear la clase"
+                    ) 
+                }
+            }
+        }
     }
 } 

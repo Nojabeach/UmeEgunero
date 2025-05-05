@@ -145,6 +145,25 @@ class AppNotificationManager @Inject constructor(
                 )
             }
             
+            // Añadir nuevo canal para el sistema de comunicación unificado
+            val unifiedCommunicationChannel = NotificationChannel(
+                CHANNEL_ID_UNIFIED_COMMUNICATION,
+                CHANNEL_NAME_UNIFIED_COMMUNICATION,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificaciones del sistema de comunicación unificado"
+                enableLights(true)
+                lightColor = Color.BLUE
+                enableVibration(true)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+            }
+            
             // Crear todos los canales
             notificationManager.createNotificationChannel(tareasChannel)
             notificationManager.createNotificationChannel(generalChannel)
@@ -152,6 +171,7 @@ class AppNotificationManager @Inject constructor(
             notificationManager.createNotificationChannel(solicitudesChannel)
             notificationManager.createNotificationChannel(incidenciasChannel)
             notificationManager.createNotificationChannel(asistenciaChannel)
+            notificationManager.createNotificationChannel(unifiedCommunicationChannel)
             
             Timber.d("Canales de notificación creados")
         }
@@ -211,7 +231,7 @@ class AppNotificationManager @Inject constructor(
             // Elegir la prioridad según el canal
             val priority = when(channelId) {
                 CHANNEL_ID_INCIDENCIAS -> NotificationCompat.PRIORITY_MAX
-                CHANNEL_ID_SOLICITUDES, CHANNEL_ID_TAREAS, CHANNEL_ID_ASISTENCIA -> NotificationCompat.PRIORITY_HIGH
+                CHANNEL_ID_SOLICITUDES, CHANNEL_ID_TAREAS, CHANNEL_ID_ASISTENCIA, CHANNEL_ID_UNIFIED_COMMUNICATION -> NotificationCompat.PRIORITY_HIGH
                 CHANNEL_ID_GENERAL -> NotificationCompat.PRIORITY_DEFAULT
                 CHANNEL_ID_SYNC -> NotificationCompat.PRIORITY_LOW
                 else -> NotificationCompat.PRIORITY_DEFAULT
@@ -261,5 +281,9 @@ class AppNotificationManager @Inject constructor(
         const val CHANNEL_NAME_INCIDENCIAS = "Incidencias Importantes"
         const val CHANNEL_ID_ASISTENCIA = "channel_asistencia"
         const val CHANNEL_NAME_ASISTENCIA = "Asistencia y Ausencias"
+        
+        // Constantes para el canal de comunicación unificada
+        const val CHANNEL_ID_UNIFIED_COMMUNICATION = "unified_communication"
+        const val CHANNEL_NAME_UNIFIED_COMMUNICATION = "Sistema de Comunicación Unificado"
     }
 } 

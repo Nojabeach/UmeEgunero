@@ -730,7 +730,7 @@ class VincularProfesorClaseViewModel @Inject constructor(
             if (resultAlumnos is Result.Success) {
                 val alumnos = resultAlumnos.data
                 
-                Timber.d("Actualizando ${alumnos.size} alumnos con profesor $profesorId")
+            Timber.d("Actualizando ${alumnos.size} alumnos con profesor $profesorId")
             
                 if (alumnos.isEmpty()) {
                     Timber.w("No se encontraron alumnos para la clase $claseId")
@@ -742,8 +742,8 @@ class VincularProfesorClaseViewModel @Inject constructor(
                 var alumnosFallidos = 0
                 
                 // 3. Para cada alumno, actualizar el profesorId con verificación de éxito
-                alumnos.forEach { alumno ->
-                    Timber.d("Actualizando alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni}) con profesor $profesorId")
+            alumnos.forEach { alumno ->
+                Timber.d("Actualizando alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni}) con profesor $profesorId")
                     
                     val resultado = alumnoRepository.actualizarProfesor(alumno.dni, profesorId)
                     
@@ -793,7 +793,7 @@ class VincularProfesorClaseViewModel @Inject constructor(
             if (resultAlumnos is Result.Success) {
                 val alumnos = resultAlumnos.data
                 
-                Timber.d("Eliminando profesor $profesorId de ${alumnos.size} alumnos")
+            Timber.d("Eliminando profesor $profesorId de ${alumnos.size} alumnos")
             
                 if (alumnos.isEmpty()) {
                     Timber.w("No se encontraron alumnos para la clase $claseId")
@@ -804,10 +804,10 @@ class VincularProfesorClaseViewModel @Inject constructor(
                 var alumnosActualizados = 0
                 var alumnosFallidos = 0
                 
-                alumnos.forEach { alumno ->
-                    // Solo eliminamos si el profesor asignado es el que estamos desvinculando
-                    if (alumno.profesorId == profesorId) {
-                        Timber.d("Eliminando profesor de alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni})")
+            alumnos.forEach { alumno ->
+                // Solo eliminamos si el profesor asignado es el que estamos desvinculando
+                if (alumno.profesorId == profesorId) {
+                    Timber.d("Eliminando profesor de alumno ${alumno.nombre} ${alumno.apellidos} (${alumno.dni})")
                         
                         val resultado = alumnoRepository.eliminarProfesor(alumno.dni)
                         

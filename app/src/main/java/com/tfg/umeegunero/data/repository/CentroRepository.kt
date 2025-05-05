@@ -23,6 +23,34 @@ import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.util.FirestoreCache
 import com.tfg.umeegunero.util.ErrorHandler
 
+/**
+ * Repositorio para gestionar centros educativos en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para crear, recuperar, actualizar y eliminar
+ * información de centros educativos, permitiendo una gestión integral de la
+ * información institucional y organizativa de los centros.
+ *
+ * Características principales:
+ * - Creación y gestión de centros educativos
+ * - Almacenamiento de información institucional
+ * - Gestión de usuarios asociados al centro
+ * - Control de permisos y roles por centro
+ * - Sincronización de información entre usuarios
+ *
+ * El repositorio permite:
+ * - Registrar nuevos centros educativos
+ * - Actualizar información de centros
+ * - Gestionar usuarios por centro
+ * - Configurar parámetros específicos del centro
+ * - Mantener un directorio de centros
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property storageRepository Repositorio para gestionar archivos asociados al centro
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
+ */
 @Singleton
 class CentroRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -776,13 +804,18 @@ class CentroRepository @Inject constructor(
             // Intentar eliminar los usuarios de Firebase Authentication mediante Cloud Function
             if (emailsToDelete.isNotEmpty()) {
                 try {
+                    Timber.d("Se necesitan eliminar ${emailsToDelete.size} usuarios de Firebase Authentication")
+                    
+                    // Usar Firebase Auth Admin SDK a través de Firebase Functions
+                    // en lugar de llamar directamente a una Cloud Function que ya no existe
                     val data = hashMapOf(
+                        "action" to "deleteUsers",
                         "emails" to emailsToDelete
                     )
                     
-                    // Llamada a la Cloud Function
+                    // Llamada a la Cloud Function genérica de administración de usuarios
                     functions
-                        .getHttpsCallable("deleteUsersByEmails")
+                        .getHttpsCallable("manageUsers")
                         .call(data)
                         .addOnSuccessListener { result ->
                             val resultData = result.data

@@ -2,7 +2,7 @@
 
 ## Visión General
 
-El sistema de notificaciones de UmeEgunero proporciona un mecanismo centralizado, confiable y adaptado a cada perfil de usuario para mantener informados a todos los participantes del entorno educativo. Este sistema abarca desde notificaciones en tiempo real hasta comunicaciones programadas, y utiliza Firebase Cloud Messaging (FCM) como infraestructura principal.
+El sistema de notificaciones de UmeEgunero proporciona un mecanismo centralizado, confiable y adaptado a cada perfil de usuario para mantener informados a todos los participantes del entorno educativo. Este sistema está completamente integrado con el Sistema de Comunicación Unificado, utilizando Firebase Cloud Messaging (FCM) como infraestructura principal.
 
 ```mermaid
 flowchart TD
@@ -14,14 +14,16 @@ flowchart TD
         C -->|Registro Diario| F[Procesador Registros]
         C -->|Incidencia| G[Procesador Incidencias]
         C -->|Asistencia| H[Procesador Asistencia]
+        C -->|Unificada| U[Procesador Unificado]
         
-        D & E & F & G & H --> I[AppNotificationManager]
+        D & E & F & G & H & U --> I[AppNotificationManager]
         
         I --> J1[Canal General]
         I --> J2[Canal Tareas]
         I --> J3[Canal Solicitudes]
         I --> J4[Canal Incidencias]
         I --> J5[Canal Asistencia]
+        I --> J6[Canal Comunicación Unificada]
         
         K[NotificationService] --> L[Firestore]
         L --> M[Tokens FCM]
@@ -29,6 +31,8 @@ flowchart TD
         
         N[NotificationHelper] --> I
         O[Acciones Usuario] --> K
+        
+        P[UnifiedMessageRepository] --> K
     end
     
     subgraph "Dispositivos"
@@ -37,7 +41,7 @@ flowchart TD
         P3[Administrador]
     end
     
-    J1 & J2 & J3 & J4 & J5 --> P1 & P2 & P3
+    J1 & J2 & J3 & J4 & J5 & J6 --> P1 & P2 & P3
     
     style A fill:#ff9900,stroke:#ff6600,stroke-width:2px
     style I fill:#4285F4,stroke:#0066cc,stroke-width:2px
@@ -47,6 +51,9 @@ flowchart TD
     style P1 fill:#34A853,stroke:#006600,stroke-width:2px
     style P2 fill:#34A853,stroke:#006600,stroke-width:2px
     style P3 fill:#34A853,stroke:#006600,stroke-width:2px
+    style P fill:#66BBFF,stroke:#0099FF,stroke-width:2px
+    style U fill:#66BBFF,stroke:#0099FF,stroke-width:2px
+    style J6 fill:#66BBFF,stroke:#0099FF,stroke-width:2px
 ```
 
 ## Arquitectura del Sistema de Notificaciones
@@ -69,11 +76,16 @@ flowchart TD
    - Recibir mensajes de FCM
    - Procesar diferentes tipos de notificaciones
    - Actualizar la interfaz mediante broadcasts
+   - Integrar con el sistema de comunicación unificado
 
 4. **NotificationHelper**: Clase utilitaria que simplifica:
    - Comprobación de permisos
    - Apertura de ajustes del sistema
    - Métodos específicos para cada tipo de notificación
+
+5. **UnifiedMessageRepository**: Integración con el sistema de comunicación unificado:
+   - Generación de mensajes en el sistema unificado cuando llegan notificaciones
+   - Envío de notificaciones push cuando se crean mensajes en el sistema unificado
 
 ### Canales de Notificación
 
@@ -86,7 +98,51 @@ UmeEgunero implementa un sistema de canales que categoriza las notificaciones se
 | Solicitudes | High | Solicitudes de vinculación | Peticiones nuevo alumno-familiar |
 | Incidencias | Max | Alertas de alta prioridad | Incidencias urgentes, emergencias |
 | Asistencia | High | Control de asistencia | Retrasos, ausencias, recogidas tempranas |
+| Comunicación Unificada | High | Sistema de comunicación unificado | Todos los mensajes del sistema unificado |
 | Sincronización | Low | Procesos en segundo plano | Sincronización de datos |
+
+## Integración con el Sistema de Comunicación Unificado
+
+El sistema de notificaciones está completamente integrado con el Sistema de Comunicación Unificado para proporcionar una experiencia consistente:
+
+```mermaid
+flowchart LR
+    subgraph "Origen de Mensajes"
+        Chat[Chat]
+        Anuncio[Comunicado]
+        Sistema[Sistema]
+        Incidencia[Incidencia]
+    end
+    
+    subgraph "Procesamiento"
+        UMR[UnifiedMessageRepository]
+        NotificationService
+    end
+    
+    subgraph "Entrega"
+        FCM[Firebase Cloud Messaging]
+        Notificacion[Notificación en Dispositivo]
+        InboxUnificada[Bandeja Unificada]
+    end
+    
+    Chat & Anuncio & Sistema & Incidencia --> UMR
+    UMR --> NotificationService
+    NotificationService --> FCM
+    FCM --> Notificacion
+    UMR --> InboxUnificada
+    
+    style UMR fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+    style FCM fill:#ffccbc,stroke:#e64a19,stroke-width:2px
+    style InboxUnificada fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+```
+
+Cuando se crea un mensaje en el Sistema de Comunicación Unificado:
+1. El `UnifiedMessageRepository` guarda el mensaje en Firestore
+2. Desencadena una notificación a través de `NotificationService`
+3. La notificación se entrega mediante FCM
+4. `UmeEguneroMessagingService` procesa la notificación entrante
+5. Se muestra la notificación con el canal apropiado según el tipo de mensaje
+6. Al hacer clic, se navega directamente a la vista de detalle del mensaje
 
 ## Flujo de Trabajo de las Notificaciones
 
@@ -100,12 +156,14 @@ El sistema sigue un flujo de trabajo bien definido:
 2. **Origen de notificaciones**:
    - Acción de usuario (mensaje, incidencia)
    - Evento del sistema (actualización de datos)
+   - Mensaje creado en el sistema de comunicación unificado
    - Evento programado (recordatorio)
 
 3. **Procesamiento**:
    - NotificationService determina destinatarios
    - Se construye el contenido personalizado
    - Se selecciona el canal apropiado
+   - Para mensajes del sistema unificado, se usa el canal específico
 
 4. **Envío**:
    - Se recuperan tokens FCM de los destinatarios
@@ -115,10 +173,12 @@ El sistema sigue un flujo de trabajo bien definido:
 5. **Recepción**:
    - UmeEguneroMessagingService recibe el mensaje
    - Se procesa según el tipo de notificación
+   - Para mensajes unificados, se usa `procesarNotificacionUnificada`
    - Se muestra utilizando AppNotificationManager
 
 6. **Interacción**:
    - Notificaciones abren secciones específicas (deeplinks)
+   - Para mensajes unificados, se navega directamente a la vista de detalle
    - Se envían broadcasts para actualizar UI
    - Se registran interacciones para análisis
 
@@ -127,7 +187,7 @@ El sistema sigue un flujo de trabajo bien definido:
 ```mermaid
 flowchart LR
     subgraph "Origen"
-        O1[Mensaje de Chat]
+        O1[Mensaje Unificado]
         O2[Actualización Registro]
         O3[Solicitud Vinculación]
         O4[Incidencia]
@@ -167,176 +227,123 @@ flowchart LR
     style D3 fill:#FFE082,stroke:#FFC107,stroke-width:2px
 ```
 
-### Perfil: Administrador del Centro
+### Integración con Solicitudes de Vinculación
 
-#### Recibe Notificaciones de:
-- **Solicitudes de Vinculación**: Cuando un familiar solicita vincularse a un alumno
-- **Nuevos Registros**: Cuando se registra un nuevo profesor en el centro
-- **Incidencias Graves**: Eventos importantes reportados por profesores
-- **Información del Sistema**: Actualizaciones o mantenimiento de la plataforma
+El sistema de notificaciones se integra con las solicitudes de vinculación mediante el Sistema de Comunicación Unificado:
 
-#### Ejemplo de Implementación:
+1. Cuando se crea una solicitud de vinculación:
+   - Se genera un mensaje en el sistema unificado (tipo NOTIFICATION)
+   - Se envía una notificación FCM a los administradores del centro
+   - La notificación usa el canal de Solicitudes
 
-```kotlin
-fun enviarNotificacionSolicitud(centroId: String, solicitudId: String, titulo: String, mensaje: String) {
-    // Buscar administradores del centro
-    val adminSnapshot = firestore.collection("usuarios")
-        .whereArrayContains("perfiles", mapOf(
-            "tipo" to "ADMIN_CENTRO",
-            "centroId" to centroId,
-            "verificado" to true
-        ))
-        .get()
-        .await()
+2. Cuando se procesa una solicitud:
+   - Se genera un mensaje en el sistema unificado para el familiar
+   - Se envía una notificación FCM al familiar
+   - La prioridad varía según sea aprobación o rechazo
+
+```mermaid
+sequenceDiagram
+    participant Familiar
+    participant SolicitudRepo as SolicitudRepository
+    participant UMR as UnifiedMessageRepository
+    participant FCM as Firebase Cloud Messaging
+    participant Admin
     
-    // Enviar notificación a cada administrador...
-}
+    Familiar->>SolicitudRepo: crearSolicitudVinculacion()
+    SolicitudRepo->>UMR: crearMensajeSolicitudPendiente()
+    UMR->>FCM: enviar notificación
+    FCM->>Admin: notificar
+    
+    Admin->>SolicitudRepo: procesarSolicitud()
+    SolicitudRepo->>UMR: crearMensajeSolicitudProcesada()
+    UMR->>FCM: enviar notificación
+    FCM->>Familiar: notificar resultado
 ```
-
-### Perfil: Profesor
-
-#### Recibe Notificaciones de:
-- **Mensajes de Familiares**: Comunicaciones directas sobre alumnos
-- **Confirmaciones**: Cuando un familiar confirma lectura de un comunicado
-- **Asignaciones**: Cuando se le asigna una nueva clase o alumno
-- **Eventos del Centro**: Reuniones, formaciones, eventos importantes
-
-#### Puede Enviar:
-- **Actualizaciones de Registro Diario**: Comidas, siestas, actividades de alumnos
-- **Comunicados a Familiares**: Información importante sobre alumnos
-- **Incidencias**: Situaciones que requieren atención especial
-- **Registros de Asistencia**: Información sobre ausencias o retrasos
-
-#### Ejemplo de UI para Enviar Notificaciones:
-
-La pantalla de "Nueva Incidencia" permite a los profesores:
-- Seleccionar un alumno
-- Escribir título y descripción de la incidencia
-- Marcar si es urgente (genera notificación prioritaria)
-- Enviar notificación a los familiares vinculados
-
-### Perfil: Familiar
-
-#### Recibe Notificaciones de:
-- **Actualizaciones de Registro Diario**: Actividades, comidas, siestas de su hijo/a
-- **Mensajes de Profesores**: Comunicaciones directas sobre el alumno
-- **Incidencias**: Situaciones especiales reportadas por profesores
-- **Estado de Solicitudes**: Aprobación/rechazo de vinculaciones con alumnos
-- **Asistencia**: Información sobre ausencias, retrasos o recogidas tempranas
-
-#### Puede Enviar:
-- **Mensajes a Profesores**: Consultas o información sobre el alumno
-- **Justificantes**: Documentación sobre ausencias o situaciones especiales
-
-#### Gestión de Preferencias:
-
-Los familiares pueden personalizar sus notificaciones desde la sección "Notificaciones" en su perfil:
-- Activar/desactivar notificaciones por tipo
-- Configurar horarios de recepción
-- Silenciar temporalmente
 
 ## Implementación Técnica
 
-### Permisos de Notificaciones
-
-En Android 13 (API 33) y superiores, se requiere solicitar explícitamente el permiso `POST_NOTIFICATIONS`:
+### Canal de Notificación para Comunicación Unificada
 
 ```kotlin
-fun checkNotificationPermission(): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
-    } else {
-        true // En versiones anteriores, no se requiere permiso explícito
-    }
-}
-```
-
-### Registro de Tokens FCM
-
-```kotlin
-suspend fun registerDeviceToken(): String {
-    return try {
-        val token = FirebaseMessaging.getInstance().token.await()
-        Timber.d("Token FCM obtenido: $token")
-        token
-    } catch (e: Exception) {
-        Timber.e(e, "Error al obtener token FCM")
-        ""
-    }
-}
-```
-
-### Envío de Notificaciones
-
-El modelo utiliza una función centralizada que puede ser personalizada según el tipo:
-
-```kotlin
-private fun enviarMensajeDirectoFCM(
-    token: String,
-    titulo: String,
-    mensaje: String,
-    datos: Map<String, String>,
-    channelId: String = AppNotificationManager.CHANNEL_ID_GENERAL
-) {
-    // Generar un ID único para la notificación
-    val notificationId = Random.nextInt(1000000)
-    
-    // En desarrollo, simular con notificación local
-    notificationManager.showNotification(
-        titulo,
-        mensaje,
-        channelId,
-        notificationId
+// Canal para el sistema de comunicación unificado
+val unifiedCommunicationChannel = NotificationChannel(
+    CHANNEL_ID_UNIFIED_COMMUNICATION,
+    CHANNEL_NAME_UNIFIED_COMMUNICATION,
+    NotificationManager.IMPORTANCE_HIGH
+).apply {
+    description = "Notificaciones del sistema de comunicación unificado"
+    enableLights(true)
+    lightColor = Color.BLUE
+    enableVibration(true)
+    setSound(
+        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+        AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
     )
-    
-    // En producción: implementación HTTP para FCM
 }
 ```
 
-### Procesamiento de Notificaciones Recibidas
+### Procesamiento de Mensajes Unificados
 
 ```kotlin
-override fun onMessageReceived(remoteMessage: RemoteMessage) {
-    // Determinar tipo y canal de notificación
-    val channelId = when (remoteMessage.data["tipo"]) {
-        "solicitud_vinculacion" -> AppNotificationManager.CHANNEL_ID_SOLICITUDES
-        "chat" -> AppNotificationManager.CHANNEL_ID_GENERAL
-        "registro_diario" -> AppNotificationManager.CHANNEL_ID_TAREAS
-        "incidencia" -> if (remoteMessage.data["urgente"] == "true") {
-            AppNotificationManager.CHANNEL_ID_INCIDENCIAS
-        } else {
-            AppNotificationManager.CHANNEL_ID_GENERAL
-        }
-        "asistencia" -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
-        else -> AppNotificationManager.CHANNEL_ID_GENERAL
-    }
+/**
+ * Procesa notificaciones del sistema de comunicación unificado
+ */
+private fun procesarNotificacionUnificada(data: Map<String, String>) {
+    val messageId = data["messageId"] ?: return
     
-    // Procesar según tipo
-    when (remoteMessage.data["tipo"]) {
-        "chat" -> procesarNotificacionChat(remoteMessage.data)
-        "registro_diario" -> procesarNotificacionRegistroDiario(remoteMessage.data)
-        // etc...
+    serviceScope.launch(Dispatchers.IO) {
+        // Cargar el mensaje desde el repositorio
+        val messageResult = unifiedMessageRepository.getMessageById(messageId)
+        
+        val titulo = data["titulo"] ?: "Nuevo mensaje"
+        val mensaje = data["mensaje"] ?: "Has recibido un nuevo mensaje"
+        val notificationId = messageId.hashCode()
+        
+        // Determinar canal según tipo de mensaje
+        val channelId = when (data["messageType"]) {
+            MessageType.NOTIFICATION.name -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
+            MessageType.ANNOUNCEMENT.name -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
+            MessageType.CHAT.name -> AppNotificationManager.CHANNEL_ID_GENERAL
+            MessageType.INCIDENT.name -> AppNotificationManager.CHANNEL_ID_INCIDENCIAS
+            MessageType.ATTENDANCE.name -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
+            MessageType.DAILY_RECORD.name -> AppNotificationManager.CHANNEL_ID_TAREAS
+            MessageType.SYSTEM.name -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
+            else -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
+        }
+        
+        mostrarNotificacion(titulo, mensaje, channelId, notificationId)
+        
+        // Enviar broadcast para actualizar la UI si la app está abierta
+        sendBroadcast(Intent(ACTION_NUEVO_MENSAJE_UNIFICADO).apply {
+            putExtra("messageId", messageId)
+            putExtra("messageType", data["messageType"])
+        })
     }
 }
 ```
 
-### Deeplinks para Navegación Directa
+### Navegación desde Notificaciones
 
 ```kotlin
-// Modificar el intent según el tipo de notificación
-when (channelId) {
-    AppNotificationManager.CHANNEL_ID_INCIDENCIAS -> {
-        intent?.apply {
-            action = Intent.ACTION_VIEW
-            putExtra("openSection", "incidencias")
-            putExtra("urgent", true)
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+private fun modificarIntentSegunCanal(intent: Intent?, channelId: String, data: Map<String, String>? = null) {
+    intent?.apply {
+        // Código existente...
+        
+        when (channelId) {
+            // Códigos de otros canales...
+            
+            AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION -> {
+                // Intent para abrir la bandeja de entrada unificada
+                putExtra("openSection", "unified_inbox")
+                data?.get("messageId")?.let { messageId ->
+                    putExtra("messageId", messageId)
+                }
+            }
         }
     }
-    // Otros tipos...
 }
 ```
 
@@ -356,77 +363,19 @@ when (channelId) {
 
 3. **Priorización Inteligente**:
    - Las incidencias urgentes tienen máxima prioridad (vibración, sonido)
+   - Los mensajes unificados se priorizan según su tipo y contenido
    - Las notificaciones de sincronización tienen prioridad baja (silenciosas)
 
 4. **Personalización Contextual**:
    - El contenido se adapta al perfil y preferencias del usuario
    - Se incluyen datos relevantes para facilitar la decisión de interactuar
 
-## Monitorización y Análisis
-
-El sistema incluye capacidades de monitorización:
-
-1. **Registros de Envío**:
-   - Se registra cada intento de envío de notificación
-   - Se documenta el resultado (éxito/fracaso)
-
-2. **Métricas de Interacción**:
-   - Se registran aperturas e interacciones con notificaciones
-   - Permite ajustar estrategias según patrones de uso
-
-3. **Depuración**:
-   - Sistema de log detallado con Timber
-   - Información específica para cada etapa del proceso
-
-## Consideraciones de Seguridad
-
-1. **Tokenización**:
-   - Cada dispositivo tiene un token único
-   - Los tokens se almacenan de forma segura en Firestore
-
-2. **Validación de Permisos**:
-   - Solo usuarios autorizados pueden enviar ciertos tipos de notificaciones
-   - Los profesores solo pueden notificar a familiares de sus alumnos
-
-3. **Protección de Datos**:
-   - Las notificaciones no incluyen información sensible directamente
-   - Se utilizan referencias e identificadores en lugar de datos completos
-
 ## Conclusión
 
-El sistema de notificaciones de UmeEgunero representa un componente crítico de la plataforma, permitiendo una comunicación eficiente entre todos los actores del entorno educativo. Su diseño modular, adaptado a cada perfil de usuario y optimizado para diferentes escenarios, proporciona una experiencia inmersiva y funcional que mejora significativamente la interacción entre el centro educativo y las familias.
-
----
-
-## Anexo: Guía de Depuración de Notificaciones
-
-Para desarrolladores que necesiten depurar el sistema de notificaciones:
-
-1. **Verificar Registro FCM**:
-   ```kotlin
-   Log.d("NOTIFICACIONES", "Token: ${FirebaseMessaging.getInstance().token.await()}")
-   ```
-
-2. **Forzar Actualización de Token**:
-   ```kotlin
-   FirebaseMessaging.getInstance().deleteToken()
-   ```
-
-3. **Simular Notificaciones**:
-   ```kotlin
-   notificationHelper.enviarNotificacionIncidencia(
-       alumnoId = "alumno123",
-       profesorId = "profesor456",
-       titulo = "Test Notificación",
-       mensaje = "Esta es una notificación de prueba",
-       urgente = true
-   ) { success, message -> 
-       Log.d("TEST_NOTIFICACION", "Resultado: $success - $message") 
-   }
-   ``` 
+El sistema de notificaciones de UmeEgunero representa un componente crítico de la plataforma, permitiendo una comunicación eficiente entre todos los actores del entorno educativo. Su profunda integración con el Sistema de Comunicación Unificado proporciona una experiencia coherente y consistente, garantizando que todos los usuarios reciban notificaciones relevantes de manera oportuna y contextual.
 
 ---
 
 *Documento actualizado por:* Equipo de Desarrollo UmeEgunero  
 *Fecha:* Mayo 2025  
-*Versión:* 1.0 
+*Versión:* 2.0 

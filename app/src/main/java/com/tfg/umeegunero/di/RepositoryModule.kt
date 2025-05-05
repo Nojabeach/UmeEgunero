@@ -13,14 +13,18 @@ import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepositoryImpl
 import com.tfg.umeegunero.data.repository.AlumnoRepositoryImpl
 import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.repository.ComunicadoRepository
 import com.tfg.umeegunero.data.repository.EstadisticasRepository
 import com.tfg.umeegunero.data.repository.LocalRegistroActividadRepository
-import com.tfg.umeegunero.data.repository.MensajeRepository
-import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessageRepository
+import com.tfg.umeegunero.data.repository.SolicitudRepository
+import com.tfg.umeegunero.notification.AppNotificationManager
+import com.tfg.umeegunero.data.service.NotificationService
+import com.tfg.umeegunero.data.service.EmailNotificationService
+import com.tfg.umeegunero.data.repository.CentroRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -69,38 +73,27 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideNotificacionRepository(firestore: FirebaseFirestore): NotificacionRepository {
-        return NotificacionRepository(firestore)
-    }
-
-    @Provides
-    @Singleton
-    fun provideComunicadoRepository(firestore: FirebaseFirestore): ComunicadoRepository {
-        return ComunicadoRepository(firestore)
-    }
-
-    @Provides
-    @Singleton
     fun provideTareaRepository(firestore: FirebaseFirestore): TareaRepository {
         return TareaRepository(firestore)
     }
     
     /**
-     * Proporciona una instancia del repositorio de mensajes.
-     * Este repositorio maneja la comunicación entre usuarios.
+     * Proporciona una instancia del repositorio unificado de mensajes.
+     * Este repositorio centraliza la gestión de todas las comunicaciones de la aplicación.
      *
      * @param firestore Instancia de FirebaseFirestore
      * @param authRepository Repositorio de autenticación
-     * @return Instancia de MensajeRepository
+     * @param usuarioRepository Repositorio de usuarios
+     * @return Instancia de UnifiedMessageRepository
      */
     @Provides
     @Singleton
-    fun provideMensajeRepository(
+    fun provideUnifiedMessageRepository(
         firestore: FirebaseFirestore,
         authRepository: AuthRepository,
-        storage: FirebaseStorage
-    ): MensajeRepository {
-        return MensajeRepository(firestore, authRepository, storage)
+        usuarioRepository: UsuarioRepository
+    ): UnifiedMessageRepository {
+        return UnifiedMessageRepository(firestore, authRepository, usuarioRepository)
     }
     
     /**
@@ -183,5 +176,29 @@ object RepositoryModule {
         firestore: FirebaseFirestore
     ): com.tfg.umeegunero.data.repository.FamiliarRepository {
         return com.tfg.umeegunero.data.repository.FamiliarRepositoryImpl(firestore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSolicitudRepository(
+        firestore: FirebaseFirestore,
+        notificationManager: AppNotificationManager,
+        notificationService: NotificationService,
+        centroRepository: CentroRepository,
+        usuarioRepository: UsuarioRepository,
+        alumnoRepository: AlumnoRepository,
+        emailNotificationService: EmailNotificationService,
+        unifiedMessageRepository: UnifiedMessageRepository
+    ): SolicitudRepository {
+        return SolicitudRepository(
+            firestore,
+            notificationManager,
+            notificationService,
+            centroRepository,
+            usuarioRepository,
+            alumnoRepository,
+            emailNotificationService,
+            unifiedMessageRepository
+        )
     }
 } 

@@ -3,64 +3,46 @@ package com.tfg.umeegunero.navigation
 import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.*
 import androidx.navigation.compose.*
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
+import com.tfg.umeegunero.feature.admin.screen.SeguridadScreen
+import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.SeguridadViewModel
 import com.tfg.umeegunero.feature.auth.screen.LoginScreen
 import com.tfg.umeegunero.feature.auth.screen.RegistroScreen
-import com.tfg.umeegunero.feature.common.config.screen.NotificacionesScreen
-import com.tfg.umeegunero.feature.common.files.screen.DocumentoScreen
-import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
-import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
-import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
-import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
-import com.tfg.umeegunero.feature.profesor.screen.TareasScreen
-import com.tfg.umeegunero.feature.profesor.screen.DetalleTareaScreen
-import com.tfg.umeegunero.feature.profesor.screen.EvaluacionScreen
 import com.tfg.umeegunero.feature.common.academico.screen.CalendarioScreen
 import com.tfg.umeegunero.feature.common.academico.screen.DetalleEventoScreen
-import com.tfg.umeegunero.feature.common.academico.screen.DetalleClaseScreen
-import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioViewModel
-import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
 import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.DetalleDiaEventoScreen
-import com.tfg.umeegunero.feature.common.comunicacion.screen.BandejaEntradaScreen
-import com.tfg.umeegunero.feature.common.comunicacion.screen.ComponerMensajeScreen
-import com.tfg.umeegunero.feature.familiar.screen.ComunicadosFamiliaScreen
-import com.tfg.umeegunero.feature.common.legal.screen.TerminosCondicionesScreen
-import java.time.LocalDate
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
-import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserUiState
-import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
+import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioViewModel
+import com.tfg.umeegunero.feature.common.comunicacion.screen.MessageListScreen
+import com.tfg.umeegunero.feature.common.comunicacion.screen.NewMessageScreen
 import com.tfg.umeegunero.feature.common.config.screen.ConfiguracionScreen
+import com.tfg.umeegunero.feature.common.config.screen.NotificacionesScreen
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
-import com.tfg.umeegunero.feature.common.users.screen.GestionUsuariosScreen
+import com.tfg.umeegunero.feature.common.files.screen.DocumentoScreen
+import com.tfg.umeegunero.feature.common.legal.screen.TerminosCondicionesScreen
 import com.tfg.umeegunero.feature.common.perfil.screen.EditProfileScreen
 import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
+import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
+import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
 import com.tfg.umeegunero.feature.common.users.screen.AddUserScreen
+import com.tfg.umeegunero.feature.common.users.screen.GestionUsuariosScreen
 import com.tfg.umeegunero.feature.common.users.screen.ListAlumnosScreen
-import com.tfg.umeegunero.feature.admin.viewmodel.SeguridadViewModel
-import com.tfg.umeegunero.feature.admin.screen.SeguridadScreen
-import com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen
-import com.tfg.umeegunero.feature.familiar.screen.FamiliaDashboardScreen
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
+import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
+import com.tfg.umeegunero.feature.familiar.screen.RegistroActividadScreen
+import com.tfg.umeegunero.feature.familiar.screen.TareasFamiliaScreen
+import com.tfg.umeegunero.feature.profesor.screen.TareasProfesorScreen
+import java.time.LocalDate
 
 /**
  * Navegación principal de la aplicación
@@ -75,6 +57,7 @@ fun Navigation(
     startDestination: String = AppScreens.Welcome.route,
     onCloseApp: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     // Interceptor para registrar navegación en Logcat
     LaunchedEffect(navController) {
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
@@ -449,7 +432,6 @@ fun Navigation(
         composable(route = AppScreens.ComunicadosFamilia.route) {
             com.tfg.umeegunero.feature.familiar.screen.ComunicadosFamiliaScreen(
                 viewModel = hiltViewModel(),
-                onNavigateUp = { navController.popBackStack() },
                 navController = navController
             )
         }
@@ -465,14 +447,6 @@ fun Navigation(
             )
         }
 
-        // Ruta para la evaluación académica
-        composable(route = AppScreens.Evaluacion.route) {
-            EvaluacionScreen(
-                navController = navController,
-                alumnos = emptyList()
-            )
-        }
-        
         // PANTALLAS DE CALENDARIO Y EVENTOS
         
         // Pantalla de calendario y eventos académicos
@@ -524,7 +498,7 @@ fun Navigation(
         
         // Pantalla de bandeja de entrada
         composable(route = AppScreens.BandejaEntrada.route) {
-            BandejaEntradaScreen(
+            MessageListScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
             )
@@ -532,58 +506,50 @@ fun Navigation(
         
         // Pantalla de comunicados y circulares
         composable(route = AppScreens.ComunicadosCirculares.route) {
-            com.tfg.umeegunero.feature.admin.screen.ComunicadosScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
+            // Redirigir al sistema de comunicación unificado
+            LaunchedEffect(Unit) {
+                navController.navigate(AppScreens.UnifiedInbox.route) {
+                    popUpTo(AppScreens.ComunicadosCirculares.route) { inclusive = true }
+                }
+            }
+            
+            // Mostrar un contenido temporal mientras se navega
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
         
         // Pantalla para componer mensaje
         composable(
             route = AppScreens.ComponerMensaje.route,
             arguments = listOf(
-                navArgument("destinatarioId") { 
-                    type = NavType.StringType
-                    nullable = true 
+                navArgument("receiverId") { 
+                    type = NavType.StringType 
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("messageType") { 
+                    type = NavType.StringType 
+                    nullable = true
                     defaultValue = null
                 }
             )
         ) { backStackEntry ->
-            val destinatarioId = backStackEntry.arguments?.getString("destinatarioId")
+            val receiverId = backStackEntry.arguments?.getString("receiverId")
+            val messageType = backStackEntry.arguments?.getString("messageType")
             
-            ComponerMensajeScreen(
-                navController = navController,
-                destinatarioId = destinatarioId,
-                viewModel = hiltViewModel()
+            NewMessageScreen(
+                receiverId = receiverId,
+                messageType = messageType,
+                onBack = { navController.popBackStack() },
+                onMessageSent = { navController.popBackStack() }
             )
         }
 
         // PANTALLAS DE TAREAS
-        
-        // Pantalla de tareas
-        composable(route = AppScreens.Tareas.route) {
-            TareasScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
-        }
-        
-        // Pantalla de detalle de tarea
-        composable(
-            route = AppScreens.DetalleTarea.route,
-            arguments = listOf(
-                navArgument("tareaId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val tareaId = backStackEntry.arguments?.getString("tareaId") ?: ""
-            
-            DetalleTareaScreen(
-                tareaId = tareaId,
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
-        }
-        
         
         // Pantalla de gestión de usuarios
         composable(
@@ -969,6 +935,127 @@ fun Navigation(
             com.tfg.umeegunero.feature.profesor.screen.CalendarioProfesorScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantalla de consulta de registros diarios (historial)
+        composable(
+            route = AppScreens.ConsultaRegistroDiario.route,
+            arguments = listOf(
+                navArgument("alumnoId") { type = NavType.StringType },
+                navArgument("alumnoNombre") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            val alumnoNombre = backStackEntry.arguments?.getString("alumnoNombre") ?: ""
+            
+            com.tfg.umeegunero.feature.familiar.registros.screen.ConsultaRegistroDiarioScreen(
+                alumnoId = alumnoId,
+                alumnoNombre = alumnoNombre,
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de detalle de un registro específico
+        composable(
+            route = AppScreens.DetalleRegistro.route,
+            arguments = listOf(
+                navArgument("registroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val registroId = backStackEntry.arguments?.getString("registroId") ?: ""
+            
+            com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToChat = { profesorId, alumnoId ->
+                    if (profesorId.isNotEmpty()) {
+                        navController.navigate(AppScreens.ChatFamilia.createRoute(profesorId, alumnoId ?: ""))
+                    }
+                }
+            )
+        }
+
+        // Pantalla de tareas para profesores
+        composable(route = AppScreens.TareasProfesor.route) {
+            TareasProfesorScreen(
+                navController = navController
+            )
+        }
+
+        // Pantalla de tareas para familiares
+        composable(route = AppScreens.TareasFamilia.route) {
+            TareasFamiliaScreen(
+                navController = navController
+            )
+        }
+
+        // Pantalla de registro de actividad para familiares
+        composable(
+            route = AppScreens.RegistroActividad.route,
+            arguments = listOf(navArgument("alumnoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            RegistroActividadScreen(
+                navController = navController,
+                alumnoId = alumnoId
+            )
+        }
+
+        // Agregar las nuevas rutas para el sistema unificado de mensajes
+        // y eliminar las rutas antiguas relacionadas con comunicados y mensajes
+
+        // Pantalla de bandeja de entrada unificada
+        composable(route = AppScreens.UnifiedInbox.route) {
+            com.tfg.umeegunero.feature.common.comunicacion.screen.UnifiedInboxScreen(
+                onNavigateToMessage = { messageId ->
+                    navController.navigate(AppScreens.MessageDetail.createRoute(messageId))
+                },
+                onNavigateToNewMessage = {
+                    navController.navigate(AppScreens.NewMessage.createRoute())
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de detalle de mensaje
+        composable(
+            route = AppScreens.MessageDetail.route,
+            arguments = listOf(
+                navArgument("messageId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val messageId = backStackEntry.arguments?.getString("messageId") ?: ""
+            com.tfg.umeegunero.feature.common.comunicacion.screen.MessageDetailScreen(
+                messageId = messageId,
+                onBack = { navController.popBackStack() },
+                onReply = { messageId ->
+                    // Navegar a la pantalla de nuevo mensaje con el ID del mensaje al que se responde
+                    navController.navigate(AppScreens.NewMessage.createRoute(messageType = "REPLY_TO_$messageId"))
+                }
+            )
+        }
+
+        // Pantalla para crear un nuevo mensaje
+        composable(
+            route = AppScreens.NewMessage.route,
+            arguments = AppScreens.NewMessage.arguments
+        ) { backStackEntry ->
+            val receiverId = backStackEntry.arguments?.getString("receiverId")
+            val messageType = backStackEntry.arguments?.getString("messageType")
+            
+            com.tfg.umeegunero.feature.common.comunicacion.screen.NewMessageScreen(
+                receiverId = receiverId,
+                messageType = messageType,
+                onBack = { navController.popBackStack() },
+                onMessageSent = { 
+                    // Navegar de vuelta a la bandeja de entrada al enviar un mensaje
+                    navController.navigate(AppScreens.UnifiedInbox.route) {
+                        // Limpiar la pila de navegación hasta la bandeja de entrada
+                        popUpTo(AppScreens.UnifiedInbox.route) { inclusive = true }
+                    }
+                }
             )
         }
     }

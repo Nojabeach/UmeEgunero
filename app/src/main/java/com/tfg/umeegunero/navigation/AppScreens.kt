@@ -478,6 +478,14 @@ sealed class AppScreens(val route: String) {
     }
     
     /**
+     * Detalle de un registro específico
+     * @param registroId Identificador del registro
+     */
+    object DetalleRegistro : AppScreens("detalle_registro/{registroId}") {
+        fun createRoute(registroId: String) = "detalle_registro/$registroId"
+    }
+    
+    /**
      * Sección: Pantallas específicas para familiares
      */
     /**
@@ -668,4 +676,64 @@ sealed class AppScreens(val route: String) {
 
     /** Pantalla de vinculación de alumnos con familiares */
     object VinculacionFamiliar : AppScreens("vinculacion_familiar")
+    
+    /**
+     * Detalles de un comunicado
+     * @param comunicadoId Identificador único del comunicado
+     */
+    object DetalleComunicado : AppScreens("detalle_comunicado/{comunicadoId}") {
+        fun createRoute(comunicadoId: String) = "detalle_comunicado/$comunicadoId"
+    }
+    
+    /** Pantalla para crear un nuevo comunicado */
+    object CrearComunicado : AppScreens("crear_comunicado")
+
+    /**
+     * Pantalla unificada de bandeja de mensajes
+     */
+    object UnifiedInbox : AppScreens("unified_inbox") {
+        fun createRoute() = "unified_inbox"
+    }
+
+    /**
+     * Detalle de mensaje unificado
+     * @param messageId Identificador único del mensaje
+     */
+    object MessageDetail : AppScreens("message_detail/{messageId}") {
+        fun createRoute(messageId: String) = "message_detail/$messageId"
+    }
+
+    /**
+     * Pantalla para crear un nuevo mensaje unificado
+     * @param receiverId Identificador del destinatario (opcional)
+     * @param messageType Tipo de mensaje a crear (opcional)
+     */
+    object NewMessage : AppScreens("new_message?receiverId={receiverId}&messageType={messageType}") {
+        fun createRoute(receiverId: String? = null, messageType: String? = null): String {
+            var route = "new_message"
+            val params = mutableListOf<String>()
+            
+            receiverId?.let { params.add("receiverId=$it") }
+            messageType?.let { params.add("messageType=$it") }
+            
+            if (params.isNotEmpty()) {
+                route += "?" + params.joinToString("&")
+            }
+            
+            return route
+        }
+        
+        val arguments = listOf(
+            navArgument("receiverId") { 
+                type = NavType.StringType 
+                nullable = true
+                defaultValue = null
+            },
+            navArgument("messageType") { 
+                type = NavType.StringType 
+                nullable = true
+                defaultValue = null
+            }
+        )
+    }
 } 

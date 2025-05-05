@@ -15,9 +15,9 @@ graph TD
     Firestore[Firestore] --> Usuarios[usuarios]
     Firestore --> Centros[centros]
     Firestore --> Alumnos[alumnos]
-    Firestore --> Comunicados[comunicados]
-    Firestore --> Chats[chats]
     Firestore --> Actividades[actividades]
+    Firestore --> UnifiedMessages[unified_messages]
+    Firestore --> Conversations[conversations]
     
     Usuarios --> UsuarioDoc["{uid}"]
     UsuarioDoc --> Perfiles["perfiles (subcolección)"]
@@ -32,16 +32,17 @@ graph TD
     AlumnoDoc --> Eval["evaluaciones (subcolección)"]
     AlumnoDoc --> Asist["asistencias (subcolección)"]
     
-    Chats --> ChatDoc["{chatId}"]
-    ChatDoc --> Mensajes["mensajes (subcolección)"]
+    UnifiedMessages --> MessageDoc["{messageId}"]
+    
+    Conversations --> ConversationDoc["{conversationId}"]
     
     style Firestore fill:#f9f,stroke:#333,stroke-width:2px
     style Usuarios fill:#bbf,stroke:#333,stroke-width:1px
     style Centros fill:#bbf,stroke:#333,stroke-width:1px
     style Alumnos fill:#bbf,stroke:#333,stroke-width:1px
-    style Comunicados fill:#bbf,stroke:#333,stroke-width:1px
-    style Chats fill:#bbf,stroke:#333,stroke-width:1px
     style Actividades fill:#bbf,stroke:#333,stroke-width:1px
+    style UnifiedMessages fill:#d4f8d4,stroke:#00a200,stroke-width:2px
+    style Conversations fill:#d4f8d4,stroke:#00a200,stroke-width:2px
 ```
 
 ```
@@ -59,10 +60,10 @@ firestore/
 │   └── {alumnoId}/              # Documento de alumno individual
 │       ├── evaluaciones/        # Subcolección de evaluaciones
 │       └── asistencias/         # Subcolección de registros de asistencia
-├── comunicados/                 # Colección de comunicados generales
-├── chats/                       # Colección de conversaciones
-│   └── {chatId}/                # Documento de chat individual
-│       └── mensajes/            # Subcolección de mensajes
+├── unified_messages/            # Colección del sistema de comunicación unificado
+│   └── {messageId}/             # Documento de mensaje individual
+├── conversations/               # Colección de conversaciones
+│   └── {conversationId}/        # Documento de conversación individual
 └── actividades/                 # Colección de actividades preescolares
 ```
 
@@ -199,94 +200,86 @@ Almacena información de los alumnos.
 }
 ```
 
-#### Colección: `comunicados`
+#### Colección: `unified_messages`
 
-Almacena los comunicados y circulares.
+Almacena todos los mensajes del sistema de comunicación unificado.
 
-**Documento**: `{comunicadoId}`
+**Documento**: `{messageId}`
 
 ```json
 {
-  "id": "string",            // ID único del comunicado
-  "titulo": "string",        // Título
-  "contenido": "string",     // Contenido del comunicado
-  "emisorId": "string",      // Referencia al usuario emisor
-  "centroId": "string",      // Referencia al centro
-  "destinatarios": {
-    "tipo": "string",        // "TODOS", "CLASE", "USUARIO"
-    "ids": ["string"]        // IDs de clases o usuarios
+  "id": "string",                  // ID único del mensaje
+  "title": "string",               // Título del mensaje
+  "content": "string",             // Contenido del mensaje
+  "type": "string",                // Enum: "CHAT", "NOTIFICATION", "ANNOUNCEMENT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "SYSTEM"
+  "priority": "string",            // Enum: "LOW", "NORMAL", "HIGH", "URGENT"
+  "senderId": "string",            // ID del remitente
+  "senderName": "string",          // Nombre del remitente
+  "receiverId": "string",          // ID del destinatario principal
+  "receiversIds": ["string"],      // Lista de IDs de destinatarios (para mensajes grupales)
+  "timestamp": "timestamp",        // Fecha y hora de envío
+  "isRead": "boolean",             // Si ha sido leído
+  "readTimestamp": "timestamp",    // Fecha y hora de lectura
+  "metadata": {                    // Datos adicionales según el tipo de mensaje
+    "key1": "value1",
+    "key2": "value2"
   },
-  "adjuntos": [{
-    "nombre": "string",
-    "url": "string"
-  }],
-  "fecha": "timestamp",      // Fecha de emisión
-  "requiereConfirmacion": "boolean", // Si requiere confirmación de lectura
-  "lecturas": [{             // Registro de lecturas
-    "usuarioId": "string",
-    "fecha": "timestamp",
-    "confirmado": "boolean"
-  }]
+  "relatedEntityId": "string",     // ID de entidad relacionada (ej: solicitudId, alumnoId)
+  "relatedEntityType": "string",   // Tipo de entidad relacionada
+  "attachments": [                 // Archivos adjuntos
+    {
+      "name": "string",
+      "url": "string",
+      "type": "string",
+      "size": "number"
+    }
+  ],
+  "conversationId": "string",      // Referencia a la conversación (para mensajes de chat)
+  "replyToId": "string"            // Referencia a mensaje original (para respuestas)
 }
 ```
 
-#### Colección: `chats`
+#### Colección: `conversations`
 
 Gestiona las conversaciones entre usuarios.
 
-**Documento**: `{chatId}`
+**Documento**: `{conversationId}`
 
 ```json
 {
-  "id": "string",            // ID único del chat
-  "participantes": ["string"], // Referencias a usuarios participantes
-  "tipo": "string",          // "INDIVIDUAL", "GRUPO"
-  "titulo": "string",        // Título (para chats grupales)
-  "fechaCreacion": "timestamp" // Fecha de creación
-}
-```
-
-**Subcolección**: `mensajes`
-
-```json
-{
-  "id": "string",            // ID único del mensaje
-  "emisorId": "string",      // Referencia al emisor
-  "contenido": "string",     // Contenido del mensaje
-  "fechaEnvio": "timestamp", // Fecha de envío
-  "leido": "boolean",        // Estado de lectura
-  "adjuntos": [{             // Archivos adjuntos
-    "nombre": "string",
-    "url": "string",
-    "tipo": "string"
-  }]
+  "id": "string",                   // ID único de la conversación
+  "participantIds": ["string"],     // IDs de los participantes
+  "title": "string",                // Título (opcional, para conversaciones grupales)
+  "lastMessageTimestamp": "timestamp", // Última actividad
+  "lastMessagePreview": "string",   // Vista previa del último mensaje
+  "lastMessageSenderId": "string",  // Remitente del último mensaje
+  "createdAt": "timestamp",         // Fecha de creación
+  "updatedAt": "timestamp",         // Fecha de última actualización
+  "metadata": {                     // Datos adicionales
+    "key1": "value1"
+  }
 }
 ```
 
 ## Ejemplo de Consulta Firestore
 
-Obtener todos los alumnos de un centro:
+Obtener los mensajes más recientes de un usuario en la bandeja de entrada unificada:
 
 ```kotlin
-val alumnosRef = db.collection("alumnos")
-    .whereEqualTo("centroId", centroId)
-alumnosRef.get().addOnSuccessListener { ... }
+val messagesRef = db.collection("unified_messages")
+    .whereEqualTo("receiverId", userId)
+    .orderBy("timestamp", Query.Direction.DESCENDING)
+    .limit(20)
+messagesRef.get().addOnSuccessListener { ... }
 ```
 
-Obtener todos los registros diarios de un alumno en un rango de fechas:
+Obtener todos los mensajes de una conversación específica:
 
 ```kotlin
-val startDate = Timestamp(fechaInicio)
-val endDate = Timestamp(fechaFin)
-
-val registrosRef = db.collection("alumnos")
-    .document(alumnoId)
-    .collection("registrosDiarios")
-    .whereGreaterThanOrEqualTo("fecha", startDate)
-    .whereLessThanOrEqualTo("fecha", endDate)
-    .orderBy("fecha", Query.Direction.DESCENDING)
-
-registrosRef.get().addOnSuccessListener { ... }
+val conversationMessagesRef = db.collection("unified_messages")
+    .whereEqualTo("conversationId", conversationId)
+    .orderBy("timestamp", Query.Direction.ASCENDING)
+conversationMessagesRef.get().addOnSuccessListener { ... }
 ```
 
 ## Reglas de Seguridad Firestore (fragmento)
@@ -297,9 +290,26 @@ service cloud.firestore {
     match /usuarios/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
-    match /alumnos/{alumnoId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.token.role in ["ADMIN_CENTRO", "PROFESOR"];
+    
+    match /unified_messages/{messageId} {
+      // Un usuario puede leer un mensaje si es el remitente o está en la lista de destinatarios
+      allow read: if request.auth.uid == resource.data.senderId || 
+                  request.auth.uid == resource.data.receiverId ||
+                  request.auth.uid in resource.data.receiversIds;
+                  
+      // Solo el remitente puede crear un mensaje
+      allow create: if request.auth.uid == request.resource.data.senderId;
+      
+      // Solo el remitente puede modificar ciertos campos
+      allow update: if request.auth.uid == resource.data.senderId && 
+                     request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['attachments', 'content', 'title']);
+                     
+      // Un destinatario puede actualizar campos relacionados con la lectura
+      allow update: if (request.auth.uid == resource.data.receiverId || 
+                      request.auth.uid in resource.data.receiversIds) &&
+                      request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['isRead', 'readTimestamp']);
     }
   }
 }
@@ -309,23 +319,25 @@ service cloud.firestore {
 
 - Un centro tiene muchos cursos y clases.
 - Un alumno pertenece a una clase y puede estar vinculado a varios familiares.
-- Los comunicados pueden estar dirigidos a usuarios, clases o cursos.
-- Cada alumno puede tener múltiples registros diarios, tareas y actividades.
+- El sistema de comunicación unificado centraliza todos los tipos de mensajes.
+- Cada mensaje está vinculado a un remitente y uno o más destinatarios.
+- Los mensajes pueden estar asociados a una conversación.
 
 ```mermaid
 erDiagram
     CENTRO ||--o{ CURSO : tiene
     CENTRO ||--o{ CLASE : tiene
     CURSO ||--o{ CLASE : contiene
-    USUARIO ||--o{ COMUNICADO : emite
-    CENTRO ||--o{ COMUNICADO : asocia
-    USUARIO }|--|{ CHAT : participa
+    USUARIO ||--o{ UNIFIED_MESSAGE : envia
+    USUARIO }|--o{ UNIFIED_MESSAGE : recibe
+    USUARIO }|--|{ CONVERSATION : participa
     USUARIO }|--o{ ALUMNO : administra
     CLASE ||--o{ ALUMNO : agrupa
     PROFESOR ||--o{ CLASE : enseña
     ALUMNO }|--o{ FAMILIAR : vinculado
     ALUMNO ||--o{ REGISTRO_DIARIO : tiene
     ALUMNO ||--o{ TAREA : asignado
+    CONVERSATION ||--o{ UNIFIED_MESSAGE : contiene
     
     CENTRO {
         string id
@@ -378,6 +390,36 @@ erDiagram
         string clase
     }
     
+    UNIFIED_MESSAGE {
+        string id
+        string title
+        string content
+        string type
+        string priority
+        string senderId
+        string receiverId
+        array receiversIds
+        timestamp timestamp
+        boolean isRead
+        timestamp readTimestamp
+        map metadata
+        string relatedEntityId
+        string relatedEntityType
+        array attachments
+        string conversationId
+        string replyToId
+    }
+    
+    CONVERSATION {
+        string id
+        array participantIds
+        string title
+        timestamp lastMessageTimestamp
+        string lastMessagePreview
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    
     REGISTRO_DIARIO {
         string id
         timestamp fecha
@@ -425,19 +467,19 @@ A continuación se presenta la estructura de datos anterior adaptada a un modelo
    - Clave primaria: ID
    - Claves foráneas: AlumnoID -> Alumno.ID, ProfesorID -> Usuario.ID
 
-7. **Comunicado**
-   - Atributos: ID, Título, Contenido, EmisorID, CentroID, Fecha, RequiereConfirmación
+7. **UnifiedMessage**
+   - Atributos: ID, Título, Contenido, Tipo, Prioridad, RemitenteID, DestinatarioID, Timestamp, Leído, TimestampLectura, Metadatos, EntidadRelacionadaID, TipoEntidadRelacionada, Adjuntos, ConversaciónID, RespuestaAID
    - Clave primaria: ID
-   - Claves foráneas: EmisorID -> Usuario.ID, CentroID -> Centro.ID
+   - Claves foráneas: RemitenteID -> Usuario.ID, DestinatarioID -> Usuario.ID, ConversaciónID -> Conversación.ID, RespuestaAID -> UnifiedMessage.ID
 
-8. **Chat**
-   - Atributos: ID, Tipo, Título, FechaCreación
+8. **Conversation**
+   - Atributos: ID, Título, ÚltimoMensajeTimestamp, FechaCreación, FechaActualización
    - Clave primaria: ID
 
-9. **Mensaje**
-   - Atributos: ID, ChatID, EmisorID, Contenido, FechaEnvío, Leído
-   - Clave primaria: ID
-   - Claves foráneas: ChatID -> Chat.ID, EmisorID -> Usuario.ID
+9. **ConversationParticipant**
+   - Atributos: ConversaciónID, UsuarioID
+   - Clave primaria: (ConversaciónID, UsuarioID)
+   - Claves foráneas: ConversaciónID -> Conversación.ID, UsuarioID -> Usuario.ID
 
 10. **Tarea**
     - Atributos: ID, Título, Descripción, FechaAsignación, FechaVencimiento, ProfesorID, ClaseID
@@ -475,10 +517,10 @@ graph TD
     
     subgraph "Ejemplos"
         EjAnidado["Direccion en Centro\n(objeto anidado)"]
-        EjDesnorm["centroId duplicado en\nalumnos y profesores"]
-        EjSubCol["mensajes como subcolección\nde chats"]
-        EjRefs["claseId en alumno\n(referencia)"]
-        EjArrays["familiaresIds[]\nen alumno"]
+        EjDesnorm["Duplicación senderName\nen unified_messages"]
+        EjSubCol["registrosDiarios como\nsubcolección de alumnos"]
+        EjRefs["conversationId en\nunified_messages"]
+        EjArrays["participantIds[]\nen conversations"]
     end
     
     Anidados --> EjAnidado
@@ -489,22 +531,28 @@ graph TD
     
     style RelModel fill:#f9f,stroke:#333,stroke-width:2px
     style NoSQLModel fill:#bbf,stroke:#333,stroke-width:2px
+    style EjDesnorm fill:#d4f8d4,stroke:#00a200,stroke-width:1px
+    style EjRefs fill:#d4f8d4,stroke:#00a200,stroke-width:1px
+    style EjArrays fill:#d4f8d4,stroke:#00a200,stroke-width:1px
 ```
 
 1. **Documentos Anidados**: Datos relacionados se incluyen directamente en el documento principal.
    - Ejemplo: La dirección del centro se incluye como objeto anidado.
 
 2. **Desnormalización**: Ciertos datos se duplican para optimizar consultas.
-   - Ejemplo: El `centroId` se almacena tanto en usuarios como en alumnos.
+   - Ejemplo: El nombre del remitente (`senderName`) se almacena directamente en cada mensaje para evitar búsquedas adicionales al mostrar la lista de mensajes.
+   - Ejemplo: La vista previa del último mensaje (`lastMessagePreview`) se guarda en el documento de conversación.
 
 3. **Subcolecciones**: Implementan relaciones jerárquicas.
-   - Ejemplo: `mensajes` como subcolección de `chats`.
+   - Ejemplo: `registrosDiarios` como subcolección de alumnos.
 
 4. **Referencias**: Se usan IDs como referencias en lugar de claves foráneas tradicionales.
-   - Ejemplo: `profesorId` en evaluaciones.
+   - Ejemplo: `conversationId` en mensajes para vincularlos a una conversación.
+   - Ejemplo: `relatedEntityId` y `relatedEntityType` para vincular mensajes a otras entidades.
 
 5. **Arrays de Referencias**: Para relaciones N:M.
-   - Ejemplo: `familiaresIds` en documentos de alumnos.
+   - Ejemplo: `participantIds` en conversations para listar todos los participantes.
+   - Ejemplo: `receiversIds` en unified_messages para mensajes con múltiples destinatarios.
 
 ## Consideraciones para Diagramas
 
@@ -542,7 +590,7 @@ graph LR
     end
     
     Escalabilidad --> Beneficio1[Soporte para múltiples centros y usuarios]
-    Flexibilidad --> Beneficio2[Evolución sin migraciones complejas]
+    Flexibilidad --> Beneficio2[Evolución del sistema unificado de comunicación]
     RealTime --> Beneficio3[Actualizaciones instantáneas en UI]
     Jerarquia --> Beneficio4[Alineación con datos educativos]
     
@@ -550,11 +598,12 @@ graph LR
     style Flexibilidad fill:#9f9,stroke:#333,stroke-width:1px
     style RealTime fill:#9f9,stroke:#333,stroke-width:1px
     style Jerarquia fill:#9f9,stroke:#333,stroke-width:1px
+    style Beneficio2 fill:#d4f8d4,stroke:#00a200,stroke-width:1px
 ```
 
 1. **Escalabilidad**: Firestore escala automáticamente para manejar gran número de usuarios y centros.
-2. **Flexibilidad**: Facilita la evolución del esquema sin migraciones complejas.
-3. **Consultas en Tiempo Real**: Permite implementar actualizaciones en tiempo real en la UI.
+2. **Flexibilidad**: Facilita la evolución del sistema unificado de comunicación sin migraciones complejas.
+3. **Consultas en Tiempo Real**: Permite implementar actualizaciones en tiempo real en la UI de mensajería.
 4. **Estructura Jerárquica**: Se alinea con la naturaleza jerárquica de los datos educativos.
 
 ### Desafíos y Soluciones
@@ -568,10 +617,10 @@ graph TD
         Duplicacion[Duplicación de Datos]
     end
     
-    ComplexQ --> Sol1["Índices Compuestos\noptimizados"]
-    Integridad --> Sol2["Integridad a nivel\nde aplicación"]
-    Consistencia --> Sol3["Operaciones en lote\n(batch)"]
-    Duplicacion --> Sol4["Lógica de sincronización\nen la aplicación"]
+    ComplexQ --> Sol1["Índices Compuestos\npara mensajes"]
+    Integridad --> Sol2["Reglas de seguridad\nen Firestore"]
+    Consistencia --> Sol3["Operaciones en lote\npara múltiples destinatarios"]
+    Duplicacion --> Sol4["Actualización en cascada\nde metadatos de conversación"]
     
     style ComplexQ fill:#f99,stroke:#333,stroke-width:1px
     style Integridad fill:#f99,stroke:#333,stroke-width:1px
@@ -584,10 +633,10 @@ graph TD
     style Sol4 fill:#9f9,stroke:#333,stroke-width:1px
 ```
 
-1. **Consultas Complejas**: Se implementan índices compuestos para optimizar consultas frecuentes.
-2. **Integridad Referencial**: Se mantiene a nivel de aplicación mediante transacciones de Firestore.
-3. **Consistencia**: Se utilizan lotes (batch) para operaciones que afectan múltiples documentos.
-4. **Duplicación de Datos**: Se implementa lógica de sincronización para mantener consistencia. 
+1. **Consultas Complejas**: Se implementan índices compuestos para optimizar consultas en el sistema de comunicación.
+2. **Integridad Referencial**: Se mantiene a nivel de aplicación y mediante reglas de seguridad en Firestore.
+3. **Consistencia**: Se utilizan lotes (batch) para operaciones que afectan múltiples documentos, como mensajes a múltiples destinatarios.
+4. **Duplicación de Datos**: Se implementa lógica de actualización en cascada para mantener consistencia en datos duplicados.
 
 ---
 

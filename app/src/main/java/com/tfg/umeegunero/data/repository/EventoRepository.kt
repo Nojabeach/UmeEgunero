@@ -13,7 +13,33 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar los eventos del calendario en Firestore
+ * Repositorio para gestionar eventos en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para crear, recuperar, actualizar y eliminar
+ * eventos en el contexto educativo, permitiendo a diferentes tipos de usuarios
+ * (profesores, administradores, familiares) interactuar con el calendario
+ * y la programación de actividades.
+ *
+ * Características principales:
+ * - Creación de eventos educativos
+ * - Gestión de calendarios por centro, curso y clase
+ * - Soporte para diferentes tipos de eventos
+ * - Control de permisos de visualización y edición
+ * - Sincronización de eventos entre usuarios
+ *
+ * El repositorio permite:
+ * - Programar actividades académicas
+ * - Registrar eventos escolares
+ * - Gestionar horarios de clases
+ * - Compartir eventos con usuarios autorizados
+ * - Notificar sobre próximos eventos
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property centroRepository Repositorio de centros para obtener información contextual
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class EventoRepository @Inject constructor(

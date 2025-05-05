@@ -11,11 +11,10 @@
    - [Profesor](#profesor)
    - [Familiar](#familiar)
 6. [Módulos Principales](#módulos-principales)
-   - [Comunicaciones](#comunicaciones)
+   - [Sistema de Comunicación Unificado](#sistema-de-comunicación-unificado)
    - [Calendario y Eventos](#calendario-y-eventos)
    - [Gestión de Usuarios](#gestión-de-usuarios)
    - [Gestión Académica](#gestión-académica)
-   - [Chat](#chat)
 7. [Solución de Problemas](#solución-de-problemas)
 8. [Preguntas Frecuentes](#preguntas-frecuentes)
 
@@ -114,6 +113,7 @@ flowchart TD
         Perfil[Perfil Usuario]
         Notif[Notificaciones]
         Ajustes[Configuración]
+        ComUnif[Sistema Comunicación Unificado]
     end
     
     AdminApp & AdminCentro & Profesor & Familiar --- NavComun
@@ -129,15 +129,15 @@ flowchart TD
     AdminApp --> GestAdmins[Gestión de Administradores]
     AdminApp --> Estadisticas[Estadísticas]
     AdminApp --> Seguridad[Seguridad]
-    AdminApp --> Comunicados[Comunicados]
-    AdminApp --> Notificaciones[Notificaciones]
+    AdminApp --> ComUnificada[Comunicación Unificada]
     AdminApp --> Config[Configuración]
     
     GestCentros --> ListCentros[Lista de Centros]
     GestCentros --> AddCentro[Añadir Centro]
     GestCentros --> EditCentro[Editar Centro]
     
-    GestAdmins --> ListAdmins[Lista de Administradores]
+    ComUnificada --> Bandeja[Bandeja de Entrada]
+    ComUnificada --> Nuevo[Nuevo Mensaje]
     
     Config --> EmailConfig[Configuración Email]
     Config --> Tema[Tema]
@@ -156,6 +156,7 @@ flowchart TD
     AdminCentro[Dashboard Admin Centro] --> EstructuraAcad[Estructura Académica]
     AdminCentro --> ComunidadEduc[Comunidad Educativa]
     AdminCentro --> HerramientasAdmin[Herramientas Administrativas]
+    AdminCentro --> ComUnificada[Comunicación Unificada]
     
     EstructuraAcad --> Cursos[Cursos]
     EstructuraAcad --> Clases[Clases]
@@ -166,8 +167,10 @@ flowchart TD
     ComunidadEduc --> VinculacionFam[Vinculación Familiar]
     ComunidadEduc --> AsignacionProf[Asignación Profesores]
     
-    HerramientasAdmin --> Notificaciones[Notificaciones]
-    HerramientasAdmin --> SolicitudesVinc[Solicitudes de Vinculación]
+    ComUnificada --> Bandeja[Bandeja de Entrada]
+    ComUnificada --> Nuevo[Nuevo Mensaje]
+    
+    HerramientasAdmin --> Solicitudes[Solicitudes de Vinculación]
     HerramientasAdmin --> HistorialSolic[Historial de Solicitudes]
 ```
 
@@ -178,14 +181,14 @@ El profesor gestiona el seguimiento de sus alumnos, registra actividades, gestio
 ```mermaid
 flowchart TD
     Profesor[Dashboard Profesor] --> AccionesDiarias[Acciones Diarias]
-    Profesor --> ComunicacionCol[Comunicación y Colaboración]
+    Profesor --> ComUnificada[Comunicación Unificada]
     Profesor --> GestionPlanif[Gestión y Planificación]
     
     AccionesDiarias --> RegistroDiario[Registro Diario]
     AccionesDiarias --> Asistencia[Asistencia]
     
-    ComunicacionCol --> ChatFamilias[Chat Familias]
-    ComunicacionCol --> Comunicados[Comunicados]
+    ComUnificada --> Bandeja[Bandeja de Entrada]
+    ComUnificada --> Nuevo[Nuevo Mensaje]
     
     GestionPlanif --> MisAlumnos[Mis Alumnos]
     GestionPlanif --> Tareas[Tareas y Actividades]
@@ -206,15 +209,15 @@ El familiar accede a la información de sus hijos, comunicaciones con profesores
 ```mermaid
 flowchart TD
     Familiar[Dashboard Familiar] --> GestionHijos[Gestión de Hijos]
-    Familiar --> Comunicacion[Comunicación]
+    Familiar --> ComUnificada[Comunicación Unificada]
     Familiar --> Seguimiento[Seguimiento Académico]
     
     GestionHijos --> SelectorHijos[Selector de Hijos]
     GestionHijos --> SolicitudesPendientes[Solicitudes Pendientes]
     GestionHijos --> NuevaSolicitud[Nueva Solicitud]
     
-    Comunicacion --> MensajesProfe[Mensajes con Profesores]
-    Comunicacion --> ComunicadosFam[Comunicados]
+    ComUnificada --> Bandeja[Bandeja de Entrada]
+    ComUnificada --> Nuevo[Nuevo Mensaje]
     
     Seguimiento --> HistorialReg[Historial de Registros]
     Seguimiento --> Calendario[Calendario]
@@ -228,67 +231,121 @@ flowchart TD
 
 ## Módulos Principales
 
-### Comunicaciones
+### Sistema de Comunicación Unificado
 
-El sistema de comunicaciones de UmeEgunero permite el intercambio de información entre todos los usuarios de la plataforma.
+El Sistema de Comunicación Unificado centraliza todas las formas de comunicación en una sola interfaz, simplificando la interacción entre todos los usuarios de la plataforma.
 
 ```mermaid
 flowchart TD
-    Comunicados[Módulo Comunicados] --> Crear[Crear Comunicado]
-    Comunicados --> Leer[Leer Comunicados]
-    Comunicados --> Gestionar[Gestionar Comunicados]
+    SistemaComunicacion[Sistema de Comunicación Unificado] --> Inbox[Bandeja de Entrada]
+    SistemaComunicacion --> Compose[Redactar Mensaje]
+    SistemaComunicacion --> Filtros[Filtros y Búsqueda]
     
-    Crear --> TipoCom{Tipo}
-    TipoCom --> |Informativo| Info[Informativo]
-    TipoCom --> |Circular| Circ[Circular]
-    TipoCom --> |Aviso Urgente| Urg[Urgente]
+    Inbox --> PorLeer[No Leídos]
+    Inbox --> Prioritarios[Prioritarios]
+    Inbox --> Todos[Todos]
+    Inbox --> PorTipo[Por Tipo]
     
-    Crear --> Destinatarios{Destinatarios}
-    Destinatarios --> |Todos| TodosCentro[Todo el Centro]
-    Destinatarios --> |Clases| ClasesEsp[Clases Específicas]
-    Destinatarios --> |Usuarios| UsuariosEsp[Usuarios Específicos]
+    PorTipo --> Chat[Chat]
+    PorTipo --> Comunicados[Comunicados]
+    PorTipo --> Incidencias[Incidencias]
+    PorTipo --> Asistencia[Asistencia]
+    PorTipo --> Sistema[Sistema]
     
-    Leer --> NoLeidos[No Leídos]
-    Leer --> Importantes[Importantes]
-    Leer --> Todos[Todos]
+    Inbox --> Detalles[Ver Mensaje]
+    Detalles --> Responder[Responder]
+    Detalles --> Archivar[Archivar]
+    Detalles --> Marcar[Marcar Leído/No Leído]
     
-    Gestionar --> Estadisticas[Estadísticas Lectura]
-    Gestionar --> Recordatorios[Enviar Recordatorios]
+    Compose --> TipoMensaje[Seleccionar Tipo]
+    Compose --> Destinatario[Seleccionar Destinatario]
+    Compose --> Contenido[Escribir Contenido]
+    Compose --> Prioridad[Establecer Prioridad]
+    Compose --> Adjuntos[Añadir Adjuntos]
 ```
 
-#### Para Administradores y Profesores
+#### Bandeja de Entrada Unificada
 
-1. **Crear Comunicado**:
-   - Pulse el botón "+" en la pantalla de comunicados.
-   - Seleccione el tipo: informativo, circular, aviso importante.
-   - Elija destinatarios: todo el centro, cursos, clases o usuarios específicos.
-   - Redacte el título y contenido.
-   - Añada adjuntos si es necesario (hasta 5MB por archivo).
-   - Active "Requiere confirmación" si necesita que los destinatarios confirmen la lectura.
-   - Pulse "Enviar".
+La bandeja de entrada unificada muestra todos sus mensajes organizados por tipo, prioridad y estado de lectura.
 
-2. **Gestionar Comunicados**:
-   - Vea estadísticas de lectura y confirmación.
-   - Filtre por estado, fecha o destinatarios.
-   - Envíe recordatorios a quienes no han leído/confirmado.
-   - Archive comunicados antiguos.
-   - Edite o cancele comunicados pendientes.
+1. **Acceder a la Bandeja de Entrada**:
+   - Pulse el icono de "Comunicación" en cualquier dashboard.
+   - La bandeja de entrada muestra todos sus mensajes con indicadores visuales de tipo y prioridad.
+   - Los mensajes no leídos aparecen destacados.
 
-#### Para Familias
+2. **Filtrar Mensajes**:
+   - Utilice los filtros en la parte superior para mostrar:
+     - Todos los mensajes
+     - Sólo no leídos
+     - Por tipo (Chat, Comunicado, Incidencia, etc.)
+     - Por prioridad (Normal, Alta, Urgente)
+   - Puede combinar filtros para una búsqueda más específica.
 
-1. **Ver Comunicados**:
-   - Acceda desde la tarjeta "Comunicados" en el dashboard.
-   - Los comunicados no leídos aparecen destacados.
-   - Utilice los filtros: Todos, No leídos, Importantes, Archivados.
-
-2. **Acciones sobre Comunicados**:
-   - Pulse sobre un comunicado para leerlo completo.
+3. **Ver Detalle de Mensaje**:
+   - Pulse sobre cualquier mensaje para ver su contenido completo.
    - En la vista detallada puede:
-     - Marcar como leído
-     - Descargar adjuntos
-     - Confirmar lectura (si se requiere)
-     - Responder (si está habilitado)
-     - Archivar para consulta futura
+     - Ver el remitente y destinatarios
+     - Leer el contenido completo
+     - Ver y descargar archivos adjuntos
+     - Responder al mensaje
+     - Marcar como leído/no leído
+     - Archivar el mensaje
+
+4. **Indicadores Visuales**:
+   - Los mensajes utilizan un sistema de colores para indicar:
+     - Azul: Mensajes de chat
+     - Verde: Comunicados
+     - Amarillo: Notificaciones del sistema
+     - Naranja: Incidencias
+     - Rojo: Asuntos urgentes
+
+#### Redactar Nuevo Mensaje
+
+Puede crear diferentes tipos de mensajes desde una interfaz unificada.
+
+1. **Crear Nuevo Mensaje**:
+   - Pulse el botón "+" flotante en la bandeja de entrada.
+   - Seleccione el tipo de mensaje que desea crear:
+     - Chat personal: Mensaje directo a otro usuario
+     - Comunicado: Anuncio formal para múltiples destinatarios
+     - Incidencia: Reporte de situación que requiere atención
+     - Registro: Información sobre alumno (solo profesores)
+
+2. **Seleccionar Destinatarios**:
+   - Dependiendo del tipo de mensaje, podrá seleccionar:
+     - Usuarios individuales
+     - Grupos (clases, cursos completos)
+     - Todos los usuarios de un perfil (todos los profesores, familias, etc.)
+
+3. **Redactar el Mensaje**:
+   - Escriba el título y contenido del mensaje.
+   - Puede usar formato básico (negrita, cursiva, viñetas).
+   - Ajuste la prioridad según la importancia (normal, alta, urgente).
+   - Añada adjuntos si es necesario (hasta 5 archivos, máximo 10MB en total).
+
+4. **Enviar y Seguimiento**:
+   - Pulse "Enviar" para distribuir el mensaje.
+   - Para comunicados, puede activar "Solicitar confirmación de lectura".
+   - Los mensajes enviados aparecerán en su bandeja con indicador de estado (enviado, leído).
+
+#### Notificaciones
+
+El sistema le notifica cuando recibe nuevos mensajes:
+
+1. **Notificaciones Push**:
+   - Recibirá notificaciones en su dispositivo según el tipo y prioridad del mensaje.
+   - Las notificaciones urgentes tienen un sonido distintivo.
+   - Pulse la notificación para ir directamente al mensaje.
+
+2. **Configurar Notificaciones**:
+   - Acceda a "Configuración" > "Notificaciones" para personalizar:
+     - Qué tipos de mensajes generan notificaciones
+     - Sonidos según tipo de mensaje
+     - Horario de silencio (no molestar)
+
+3. **Indicadores en la App**:
+   - El icono de comunicación muestra un contador con mensajes no leídos.
+   - En la bandeja, los mensajes nuevos aparecen destacados.
 
 ### Calendario y Eventos
 
@@ -354,35 +411,6 @@ Gestione eventos, reuniones, exámenes y otras actividades importantes.
    - Configure periodos de evaluación en "Configuración Académica".
    - Establezca criterios y plantillas de evaluación.
    - Defina fechas límite para la entrega de calificaciones.
-
-### Chat
-
-El sistema de chat permite la comunicación directa entre profesores y familias.
-
-1. **Iniciar Conversación**:
-   - Acceda a "Chat" en el menú principal.
-   - Para profesores: seleccione una familia de la lista o busque por nombre.
-   - Para familias: seleccione un profesor de la lista asociada a su hijo.
-   - Pulse "Nueva conversación" e introduzca el primer mensaje.
-
-2. **Gestionar Conversaciones**:
-   - Las conversaciones activas aparecen ordenadas por fecha de último mensaje.
-   - Los mensajes no leídos se destacan y muestran un contador.
-   - Puede archivar conversaciones antiguas mediante "Archivar".
-   - Recupere conversaciones archivadas en "Archivados".
-
-3. **Adjuntar Archivos**:
-   - Dentro de una conversación, pulse el clip para adjuntar.
-   - Seleccione el tipo: documento, imagen, audio.
-   - Elija el archivo de su dispositivo o tome una foto/grabación.
-   - Añada un comentario opcional y envíe.
-
-4. **Configurar Notificaciones**:
-   - En "Configuración" > "Notificaciones" personalice:
-     - Sonidos para nuevos mensajes
-     - Visualización en pantalla de bloqueo
-     - Horarios de silencio
-     - Prioridad de contactos
 
 ## Solución de Problemas
 
@@ -453,16 +481,19 @@ R: Vaya a su perfil de usuario, pulse "Seguridad" y seleccione "Cambiar contrase
 **P: ¿Puedo tener diferentes perfiles en la misma cuenta?**
 R: No, cada usuario tiene un tipo de perfil específico. Si necesita roles diferentes, deberá usar cuentas separadas.
 
-### Sobre Comunicaciones
+### Sobre el Sistema de Comunicación Unificado
 
-**P: ¿Los destinatarios ven quién más ha recibido un comunicado?**
-R: No por defecto. Los destinatarios solo ven que han recibido el comunicado, no la lista completa de receptores, a menos que el emisor active la opción "Mostrar destinatarios".
+**P: ¿Cómo sé qué tipo de mensaje debo enviar?**
+R: Utilice Chat para comunicaciones informales, Comunicados para anuncios oficiales, e Incidencias para reportar situaciones que requieren atención.
 
-**P: ¿Puedo cancelar un comunicado ya enviado?**
-R: Puede cancelarlo si aún no ha sido leído por ningún destinatario. Una vez leído, solo puede enviar una rectificación.
+**P: ¿Puedo ver si un destinatario ha leído mi mensaje?**
+R: Sí, para mensajes con confirmación de lectura, verá un indicador de "Leído" junto con la fecha y hora de lectura.
 
-**P: ¿Hay límite de almacenamiento para comunicados?**
-R: Los comunicados se archivan automáticamente después de 6 meses, pero siguen siendo accesibles a través de la sección "Archivo".
+**P: ¿Hay límites en el envío de mensajes?**
+R: No hay límite en la cantidad de mensajes, pero los adjuntos están limitados a 5 por mensaje y un máximo de 10MB en total.
+
+**P: ¿Puedo recuperar un mensaje archivado?**
+R: Sí, en la bandeja de entrada, vaya a "Filtros" > "Archivados" para acceder a mensajes archivados y poder restaurarlos.
 
 ### Sobre Uso General
 

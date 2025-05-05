@@ -9,40 +9,56 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import timber.log.Timber
 import com.tfg.umeegunero.data.model.EmailSoporteConstants
+import com.tfg.umeegunero.data.service.EmailNotificationService
+import com.tfg.umeegunero.data.service.TipoPlantilla
+import com.tfg.umeegunero.util.Constants
 
 /**
- * ViewModel para la pantalla de soporte técnico
+ * ViewModel para la pantalla de soporte técnico.
+ * 
+ * Gestiona el proceso de envío de mensajes de soporte técnico a través del
+ * servicio de notificaciones por correo electrónico. Mantiene el estado de la UI
+ * durante el proceso de envío y gestiona los posibles errores.
  */
 @HiltViewModel
-class SupportViewModel @Inject constructor() : ViewModel() {
+class SupportViewModel @Inject constructor(
+    private val emailService: EmailNotificationService
+) : ViewModel() {
     
     private val _uiState = MutableStateFlow(SupportUiState())
+    
+    /**
+     * Estado de la UI de soporte técnico que puede ser observado por la pantalla.
+     */
     val uiState: StateFlow<SupportUiState> = _uiState
     
+    /**
+     * Envía un email de soporte técnico al equipo de UmeEgunero.
+     * 
+     * @param destinatario Email del usuario que envía el mensaje de soporte
+     * @param nombre Nombre del usuario que envía el mensaje
+     * @param asunto Asunto del mensaje de soporte
+     * @param mensaje Contenido del mensaje de soporte
+     */
     fun sendEmailSoporte(destinatario: String, nombre: String, asunto: String, mensaje: String) {
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
             try {
-                // TODO: Implementar envío con Gmail API u otra solución
-                Timber.d("Simulando envío de email de soporte a $destinatario...") 
-                // MailjetEmailSender.sendEmail(
-                //     destinatario = destinatario,
-                //     nombre = nombre,
-                //     subject = asunto,
-                //     htmlBody = mensaje
-                // ) { success ->
-                //     _uiState.value = _uiState.value.copy(
-                //         isLoading = false,
-                //         success = success,
-                //         error = if (!success) "Error al enviar el correo" else null
-                //     )
-                // }
-                kotlinx.coroutines.delay(1500) // Simular delay de red
-                 _uiState.value = _uiState.value.copy(
-                     isLoading = false,
-                     success = true, // Simular éxito por ahora
-                     error = null
-                 )
+                Timber.d("Enviando email de soporte a $destinatario") 
+                
+                // Al usar la dirección de soporte como destinatario, el email del usuario se incluye en el contenido
+                val resultado = emailService.sendEmail(
+                    destinatario = Constants.EMAIL_SOPORTE,
+                    nombre = nombre,
+                    tipoPlantilla = TipoPlantilla.NINGUNA,
+                    asuntoPersonalizado = "Soporte UmeEgunero: $asunto"
+                )
+                
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    success = resultado,
+                    error = if (!resultado) "Error al enviar el correo" else null
+                )
 
             } catch (e: Exception) {
                 Timber.e(e, "Error en sendEmailSoporte")
@@ -55,13 +71,23 @@ class SupportViewModel @Inject constructor() : ViewModel() {
         }
     }
 
+    /**
+     * Restablece el estado de la UI a su valor inicial.
+     * 
+     * Útil después de mostrar un mensaje de éxito o error para permitir
+     * al usuario realizar un nuevo intento de envío.
+     */
     fun clearState() {
         _uiState.value = SupportUiState()
     }
 }
 
 /**
- * Estado de UI para la pantalla de soporte
+ * Estado de UI para la pantalla de soporte técnico.
+ * 
+ * @property isLoading Indica si se está procesando el envío del mensaje
+ * @property success Indica si el último envío fue exitoso
+ * @property error Mensaje de error en caso de fallo, o null si no hay error
  */
 data class SupportUiState(
     val isLoading: Boolean = false,

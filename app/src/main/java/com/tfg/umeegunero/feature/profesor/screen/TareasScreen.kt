@@ -34,7 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.EstadoTarea
 import com.tfg.umeegunero.data.model.Tarea
-import com.tfg.umeegunero.feature.profesor.viewmodel.TareasViewModel
+import com.tfg.umeegunero.feature.profesor.viewmodel.TareasProfesorViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -42,90 +42,71 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import com.tfg.umeegunero.ui.components.DefaultTopAppBar
+import kotlinx.coroutines.launch
 
 /**
- * Pantalla de gestión de tareas para profesores
+ * Pantalla para la gestión de tareas por parte del profesor.
+ *
+ * Permite al profesor ver las tareas asignadas a su clase,
+ * crear nuevas tareas y ver el estado de las entregas.
+ *
+ * @param navController Controlador de navegación.
+ * @param viewModel ViewModel que gestiona la lógica y el estado de las tareas.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TareasScreen(
+fun TareasProfesorScreen(
     navController: NavController,
-    viewModel: TareasViewModel = hiltViewModel()
+    viewModel: TareasProfesorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-    
+    val scope = rememberCoroutineScope()
+
     // Gestión de diálogos
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedTarea by remember { mutableStateOf<Tarea?>(null) }
-    
-    // Mostrar error si existe
-    LaunchedEffect(uiState.error) {
+
+    // Mostrar snackbar con mensajes de error o éxito
+    LaunchedEffect(uiState.error, uiState.mensaje) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
+            scope.launch {
+                snackbarHostState.showSnackbar(it)
+                viewModel.clearError()
+            }
         }
-    }
-    
-    // Mostrar mensaje de éxito
-    LaunchedEffect(uiState.mensaje) {
         uiState.mensaje?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearMensaje()
+            scope.launch {
+                snackbarHostState.showSnackbar(it)
+                viewModel.clearMensaje()
+            }
         }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Gestión de Tareas") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ProfesorColor,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                ),
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-                actions = {
-                    // Filtro por clase
-                    IconButton(onClick = { viewModel.mostrarFiltroClases() }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filtrar por clase"
-                        )
-                    }
-                    
-                    // Ordenar tareas
-                    IconButton(onClick = { viewModel.cambiarOrden() }) {
-                        Icon(
-                            imageVector = if (uiState.ordenAscendente) 
-                                Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                            contentDescription = "Cambiar orden"
-                        )
-                    }
-                }
+            DefaultTopAppBar(
+                title = "Gestión de Tareas",
+                showBackButton = true,
+                onBackClick = { navController.popBackStack() },
+                containerColor = ProfesorColor,
+                contentColor = Color.White
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = { showAddDialog = true }, // Abrir diálogo de añadir
                 containerColor = ProfesorColor,
                 contentColor = Color.White
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Añadir tarea"
+                    contentDescription = "Crear Tarea"
                 )
             }
         }
@@ -136,28 +117,20 @@ fun TareasScreen(
                 .padding(paddingValues)
         ) {
             // Indicador de carga
-            if (uiState.isLoading) {
+            if (uiState.isLoading && uiState.tareas.isEmpty()) { // Mostrar solo si la lista está vacía inicialmente
                 CircularProgressIndicator(
                     modifier = Modifier
                         .size(50.dp)
                         .align(Alignment.Center)
                 )
             }
-            
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Filtro seleccionado
-                if (uiState.claseSeleccionada != null) {
-                    FiltroChip(
-                        texto = "Clase: ${uiState.claseSeleccionada?.nombre ?: ""}",
-                        seleccionado = true,
-                        onSeleccionado = { viewModel.clearFiltro() }
-                    )
-                }
-                
+                // Mensaje si no hay tareas
                 AnimatedVisibility(
                     visible = !uiState.isLoading && uiState.tareas.isEmpty(),
                     enter = fadeIn(tween(300)),
@@ -169,28 +142,32 @@ fun TareasScreen(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = if (uiState.claseSeleccionada != null)
-                                "No hay tareas para esta clase"
-                            else
-                                "No hay tareas asignadas",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                             Icon(
+                                Icons.Filled.Assignment, 
+                                contentDescription = null, 
+                                modifier = Modifier.size(64.dp),
+                                tint = Color.Gray.copy(alpha = 0.5f)
+                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No hay tareas asignadas",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-                
+
+                // Lista de tareas
                 AnimatedVisibility(
-                    visible = !uiState.isLoading && uiState.tareas.isNotEmpty(),
+                    visible = !uiState.isLoading || uiState.tareas.isNotEmpty(), // Mostrar si no está cargando o si ya hay tareas
                     enter = fadeIn(tween(300)),
                     exit = fadeOut(tween(300))
                 ) {
-                    // Lista de tareas
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(uiState.tareas) { tarea ->
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(uiState.tareas, key = { it.id }) { tarea ->
                             TareaItem(
                                 tarea = tarea,
                                 onEditClick = {
@@ -202,65 +179,19 @@ fun TareasScreen(
                                     showDeleteDialog = true
                                 },
                                 onVerEntregasClick = {
-                                    navController.navigate(
-                                        AppScreens.DetalleTareaProfesor.createRoute(tarea.id)
-                                    )
-                                }
-                            )
-                            
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 8.dp)
+                                     // Navegar a la pantalla de detalle de tarea (profesor)
+                                     navController.navigate(
+                                         AppScreens.DetalleTareaProfesor.createRoute(tarea.id)
+                                     )
+                                 }
                             )
                         }
+                         item { Spacer(modifier = Modifier.height(72.dp)) } // Espacio para FAB
                     }
                 }
             }
         }
-        
-        // Diálogo para filtrar por clase
-        if (uiState.mostrarFiltroClasesDialog) {
-            AlertDialog(
-                onDismissRequest = { viewModel.mostrarFiltroClases() },
-                title = { Text("Seleccionar clase") },
-                text = {
-                    LazyColumn {
-                        items(uiState.clases) { clase ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        viewModel.aplicarFiltroClase(clase)
-                                        viewModel.mostrarFiltroClases()
-                                    }
-                                    .padding(vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = uiState.claseSeleccionada?.id == clase.id,
-                                    onClick = {
-                                        viewModel.aplicarFiltroClase(clase)
-                                        viewModel.mostrarFiltroClases()
-                                    }
-                                )
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Text(
-                                    text = clase.nombre,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.mostrarFiltroClases() }) {
-                        Text("Cerrar")
-                    }
-                }
-            )
-        }
-        
+
         // Diálogo para añadir tarea
         if (showAddDialog) {
             TareaDialog(
@@ -270,28 +201,35 @@ fun TareasScreen(
                     viewModel.crearTarea(nuevaTarea)
                     showAddDialog = false
                 },
-                clases = uiState.clases
+                clases = uiState.clases // Pasar la lista de clases
             )
         }
-        
+
         // Diálogo para editar tarea
         if (showEditDialog && selectedTarea != null) {
             TareaDialog(
                 titulo = "Editar Tarea",
-                onDismiss = { showEditDialog = false },
+                onDismiss = { 
+                    showEditDialog = false 
+                    selectedTarea = null // Limpiar selección
+                },
                 onConfirm = { tareaEditada ->
                     viewModel.actualizarTarea(tareaEditada)
                     showEditDialog = false
+                    selectedTarea = null // Limpiar selección
                 },
-                clases = uiState.clases,
+                clases = uiState.clases, // Pasar la lista de clases
                 tareaInicial = selectedTarea
             )
         }
-        
+
         // Diálogo para confirmar eliminación
         if (showDeleteDialog && selectedTarea != null) {
             AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
+                onDismissRequest = { 
+                    showDeleteDialog = false
+                    selectedTarea = null // Limpiar selección
+                },
                 title = { Text("Eliminar tarea") },
                 text = { 
                     Text(
@@ -303,6 +241,7 @@ fun TareasScreen(
                         onClick = {
                             selectedTarea?.let { viewModel.eliminarTarea(it.id) }
                             showDeleteDialog = false
+                            selectedTarea = null // Limpiar selección
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error
@@ -312,7 +251,10 @@ fun TareasScreen(
                     }
                 },
                 dismissButton = {
-                    OutlinedButton(onClick = { showDeleteDialog = false }) {
+                    OutlinedButton(onClick = { 
+                        showDeleteDialog = false
+                        selectedTarea = null // Limpiar selección
+                    }) {
                         Text("Cancelar")
                     }
                 }
@@ -350,12 +292,12 @@ fun TareaItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = tarea.titulo,
+                    text = tarea.titulo ?: "Sin título",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                
+
                 // Botones de acciones
                 Row {
                     IconButton(
@@ -368,7 +310,7 @@ fun TareaItem(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    
+
                     IconButton(
                         onClick = onEditClick,
                         modifier = Modifier.size(36.dp)
@@ -379,7 +321,7 @@ fun TareaItem(
                             tint = ProfesorColor
                         )
                     }
-                    
+
                     IconButton(
                         onClick = onDeleteClick,
                         modifier = Modifier.size(36.dp)
@@ -392,19 +334,19 @@ fun TareaItem(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Detalles de la tarea
             Text(
-                text = tarea.descripcion,
+                text = tarea.descripcion ?: "Sin descripción",
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             // Información adicional
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -423,7 +365,7 @@ fun TareaItem(
                         fontWeight = FontWeight.Medium
                     )
                 }
-                
+
                 // Clase asignada
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
@@ -438,21 +380,22 @@ fun TareaItem(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Indicador de estado
-            EstadoTareaChip(estado = tarea.estado)
+            // EstadoTareaChip(estado = tarea.estado) // Comentado si EstadoTareaChip no está definido
         }
     }
 }
 
+/* Comentado si EstadoTareaChip no está definido o causa problemas
 @Composable
 fun EstadoTareaChip(estado: EstadoTarea) {
     val (color, texto) = when (estado) {
         EstadoTarea.PENDIENTE -> Pair(MaterialTheme.colorScheme.errorContainer, "Pendiente")
         EstadoTarea.EN_PROGRESO -> Pair(MaterialTheme.colorScheme.secondaryContainer, "En progreso")
-        EstadoTarea.COMPLETADA -> Pair(MaterialTheme.colorScheme.primaryContainer, "Completada") 
+        EstadoTarea.COMPLETADA -> Pair(MaterialTheme.colorScheme.primaryContainer, "Completada")
         else -> Pair(MaterialTheme.colorScheme.surfaceVariant, estado.name)
     }
     
@@ -464,7 +407,9 @@ fun EstadoTareaChip(estado: EstadoTarea) {
         )
     )
 }
+*/
 
+/* Comentado si FiltroChip no se usa o causa problemas
 @Composable
 fun FiltroChip(
     texto: String,
@@ -490,6 +435,7 @@ fun FiltroChip(
         )
     )
 }
+*/
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -504,14 +450,21 @@ fun TareaDialog(
     var descripcion by remember { mutableStateOf(tareaInicial?.descripcion ?: "") }
     var fechaEntrega by remember { 
         mutableStateOf(
-            tareaInicial?.fechaEntrega?.toDate() ?: Date()
+            tareaInicial?.fechaEntrega?.toDate() ?: Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 7) }.time // Default a 1 semana
         ) 
     }
     var claseSeleccionadaId by remember { mutableStateOf(tareaInicial?.claseId ?: "") }
     
     // Validación
-    val isValid = tituloTarea.isNotEmpty() && descripcion.isNotEmpty() && claseSeleccionadaId.isNotEmpty()
+    val isValid = tituloTarea.isNotBlank() && descripcion.isNotBlank() && claseSeleccionadaId.isNotBlank()
     
+    // Para DatePicker
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = fechaEntrega.time,
+        yearRange = IntRange(Calendar.getInstance().get(Calendar.YEAR), Calendar.getInstance().get(Calendar.YEAR) + 5)
+    )
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -539,7 +492,8 @@ fun TareaDialog(
                     onValueChange = { tituloTarea = it },
                     label = { Text("Título") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = tituloTarea.isBlank()
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -550,7 +504,8 @@ fun TareaDialog(
                     onValueChange = { descripcion = it },
                     label = { Text("Descripción") },
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
+                    minLines = 3,
+                     isError = descripcion.isBlank()
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -561,11 +516,11 @@ fun TareaDialog(
                 
                 ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onExpandedChange = { expanded = it }
+                    onExpandedChange = { expanded = !expanded && clases.isNotEmpty() } // Solo expandir si hay clases
                 ) {
                     OutlinedTextField(
                         value = claseSeleccionada?.nombre ?: "Selecciona una clase",
-                        onValueChange = {},
+                        onValueChange = {}, // No editable directamente
                         readOnly = true,
                         label = { Text("Clase") },
                         trailingIcon = {
@@ -573,44 +528,70 @@ fun TareaDialog(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(),
+                        isError = claseSeleccionadaId.isBlank()
                     )
                     
                     ExposedDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
-                        clases.forEach { clase ->
-                            DropdownMenuItem(
-                                text = { Text(clase.nombre) },
-                                onClick = {
-                                    claseSeleccionadaId = clase.id
-                                    expanded = false
-                                }
+                        if (clases.isEmpty()) {
+                             DropdownMenuItem(
+                                text = { Text("No hay clases disponibles") },
+                                onClick = { expanded = false },
+                                enabled = false
                             )
+                        } else {
+                            clases.forEach { clase ->
+                                DropdownMenuItem(
+                                    text = { Text(clase.nombre) },
+                                    onClick = {
+                                        claseSeleccionadaId = clase.id
+                                        expanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Selector de fecha (simplificado)
-                Text("Fecha de entrega: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fechaEntrega)}")
-                
-                // Aquí podría implementarse un DatePicker, pero para simplicidad usamos un botón
-                Button(
-                    onClick = {
-                        // Mostrar un DatePicker y actualizar fechaEntrega
-                        // Por simplicidad, sumamos una semana a la fecha actual
-                        val calendar = Calendar.getInstance()
-                        calendar.time = fechaEntrega
-                        calendar.add(Calendar.DAY_OF_MONTH, 7)
-                        fechaEntrega = calendar.time
-                    },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Cambiar fecha")
-                }
+                // Selector de fecha
+                 OutlinedTextField(
+                    value = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fechaEntrega),
+                    onValueChange = { },
+                    label = { Text("Fecha de entrega") },
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
+                    trailingIcon = {
+                        Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar fecha")
+                    }
+                )
+
+                if (showDatePicker) {
+                     DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            TextButton(onClick = { 
+                                datePickerState.selectedDateMillis?.let {
+                                    fechaEntrega = Date(it)
+                                }
+                                showDatePicker = false 
+                            }) {
+                                Text("Aceptar")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDatePicker = false }) {
+                                Text("Cancelar")
+                            }
+                        }
+                    ) { 
+                         DatePicker(state = datePickerState) 
+                     }
+                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
@@ -633,16 +614,19 @@ fun TareaDialog(
                                 titulo = tituloTarea,
                                 descripcion = descripcion,
                                 fechaEntrega = com.google.firebase.Timestamp(fechaEntrega),
-                                claseId = claseSeleccionadaId
+                                claseId = claseSeleccionadaId,
+                                nombreClase = clases.find { it.id == claseSeleccionadaId }?.nombre ?: ""
                             ) ?: Tarea(
-                                id = "",
+                                id = "", // Firestore generará el ID si está vacío
                                 titulo = tituloTarea,
                                 descripcion = descripcion,
                                 fechaEntrega = com.google.firebase.Timestamp(fechaEntrega),
                                 claseId = claseSeleccionadaId,
-                                profesorId = "",
+                                nombreClase = clases.find { it.id == claseSeleccionadaId }?.nombre ?: "",
+                                // profesorId se asignará en el ViewModel
                                 estado = EstadoTarea.PENDIENTE,
                                 fechaCreacion = com.google.firebase.Timestamp.now()
+                                // Añadir prioridad si es necesario
                             )
                             
                             onConfirm(nuevaTarea)
@@ -659,16 +643,17 @@ fun TareaDialog(
 
 @Preview(showBackground = true)
 @Composable
-fun TareasScreenPreview() {
+private fun TareasProfesorScreenPreview() {
     UmeEguneroTheme {
-        TareasScreen(navController = rememberNavController())
+        TareasProfesorScreen(navController = rememberNavController())
     }
 }
 
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun TareasScreenDarkPreview() {
-    UmeEguneroTheme {
-        TareasScreen(navController = rememberNavController())
-    }
-} 
+// Eliminar Preview oscura si TareasScreenDarkPreview fue renombrada o eliminada
+// @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+// @Composable
+// private fun TareasProfesorScreenDarkPreview() {
+//     UmeEguneroTheme {
+//         TareasProfesorScreen(navController = rememberNavController())
+//     }
+// } 

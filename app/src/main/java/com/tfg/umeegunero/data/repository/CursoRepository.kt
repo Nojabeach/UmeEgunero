@@ -25,7 +25,19 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 
 /**
- * Repositorio para la gestión de cursos académicos
+ * Repositorio para gestionar operaciones relacionadas con los cursos en la aplicación UmeEgunero.
+ *
+ * Esta interfaz define los métodos para interactuar con los cursos, permitiendo
+ * operaciones como obtención, creación, actualización y eliminación de cursos.
+ *
+ * Los cursos representan períodos académicos en los que se organizan las actividades educativas.
+ * Cada curso está asociado a un centro educativo y puede contener múltiples clases.
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property centroRepository Repositorio de centros para obtener información adicional
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class CursoRepository @Inject constructor() {

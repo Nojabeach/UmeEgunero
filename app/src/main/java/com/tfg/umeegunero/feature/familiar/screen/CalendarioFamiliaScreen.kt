@@ -16,85 +16,78 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
 import java.util.*
+import timber.log.Timber
+import com.tfg.umeegunero.ui.theme.FamiliarColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarioFamiliaScreen(
     navController: NavController
 ) {
-    // Estado para almacenar la fecha seleccionada
+    // Estado para la fecha seleccionada
     var fechaSeleccionada by remember { mutableStateOf(Calendar.getInstance()) }
+    val haptic = LocalHapticFeedback.current
     
-    // Datos de ejemplo para eventos
+    // Lista de eventos de ejemplo
     val eventos = remember {
         listOf(
             Evento(
                 id = "1",
-                titulo = "Reunión de padres",
-                descripcion = "Reunión de padres y profesores para discutir el progreso de los alumnos",
-                fecha = Calendar.getInstance().apply { 
-                    set(Calendar.HOUR_OF_DAY, 17)
-                    set(Calendar.MINUTE, 0)
-                    add(Calendar.DAY_OF_MONTH, 2)
-                }.time,
-                ubicacion = "Salón de actos",
-                tipo = TipoEventoUI.REUNION,
-                alumnoId = null
+                titulo = "Reunión con padres",
+                descripcion = "Reunión trimestral para hablar sobre el progreso de los niños",
+                fecha = Calendar.getInstance().timeInMillis,
+                ubicacion = "Sala de reuniones",
+                tipo = TipoEvento.REUNION
             ),
             Evento(
                 id = "2",
-                titulo = "Excursión al museo",
-                descripcion = "Visita al museo de ciencias naturales",
-                fecha = Calendar.getInstance().apply { 
-                    set(Calendar.HOUR_OF_DAY, 9)
-                    set(Calendar.MINUTE, 0)
-                    add(Calendar.DAY_OF_MONTH, 5)
-                }.time,
-                ubicacion = "Museo de Ciencias Naturales",
-                tipo = TipoEventoUI.EXCURSION,
-                alumnoId = "1"
+                titulo = "Excursión al zoológico",
+                descripcion = "Visita educativa al zoológico de la ciudad",
+                fecha = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 2) }.timeInMillis,
+                ubicacion = "Zoológico de la ciudad",
+                tipo = TipoEvento.EXCURSION
             ),
             Evento(
                 id = "3",
-                titulo = "Entrega de proyectos",
-                descripcion = "Fecha límite para la entrega de proyectos de ciencias",
-                fecha = Calendar.getInstance().apply { 
-                    set(Calendar.HOUR_OF_DAY, 14)
-                    set(Calendar.MINUTE, 0)
-                    add(Calendar.DAY_OF_MONTH, 7)
-                }.time,
-                ubicacion = "Aula de ciencias",
-                tipo = TipoEventoUI.TAREA,
-                alumnoId = "1"
+                titulo = "Fiesta de primavera",
+                descripcion = "Celebración de la llegada de la primavera con actividades especiales",
+                fecha = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 5) }.timeInMillis,
+                ubicacion = "Patio principal",
+                tipo = TipoEvento.FIESTA
             ),
             Evento(
                 id = "4",
-                titulo = "Festival de primavera",
-                descripcion = "Celebración del festival de primavera con actividades para toda la familia",
-                fecha = Calendar.getInstance().apply { 
-                    set(Calendar.HOUR_OF_DAY, 16)
-                    set(Calendar.MINUTE, 30)
-                    add(Calendar.DAY_OF_MONTH, 10)
-                }.time,
-                ubicacion = "Patio del colegio",
-                tipo = TipoEventoUI.EVENTO_ESPECIAL,
-                alumnoId = null
+                titulo = "Vacunación",
+                descripcion = "Jornada de vacunación para todos los niños",
+                fecha = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 10) }.timeInMillis,
+                ubicacion = "Enfermería",
+                tipo = TipoEvento.SALUD
+            ),
+            Evento(
+                id = "5",
+                titulo = "Festivo local",
+                descripcion = "Día festivo por fiestas patronales",
+                fecha = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 15) }.timeInMillis,
+                ubicacion = "",
+                tipo = TipoEvento.FESTIVO
             )
         )
     }
     
-    // Filtrar eventos para la fecha seleccionada
-    val eventosFiltrados = eventos.filter { evento ->
-        val eventoCalendar = Calendar.getInstance().apply { time = evento.fecha }
-        eventoCalendar.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
-        eventoCalendar.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH) &&
-        eventoCalendar.get(Calendar.DAY_OF_MONTH) == fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
+    // Filtrado de eventos para el día seleccionado
+    val eventosDiaSeleccionado = eventos.filter { evento ->
+        val fechaEvento = Calendar.getInstance().apply { timeInMillis = evento.fecha }
+        fechaEvento.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
+        fechaEvento.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH) &&
+        fechaEvento.get(Calendar.DAY_OF_MONTH) == fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
     }
     
     Scaffold(
@@ -102,7 +95,14 @@ fun CalendarioFamiliaScreen(
             TopAppBar(
                 title = { Text("Calendario Escolar") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        navController.popBackStack() 
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -110,16 +110,24 @@ fun CalendarioFamiliaScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = FamiliarColor,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 ),
                 actions = {
-                    IconButton(onClick = { /* Filtrar eventos */ }) {
+                    IconButton(onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        /* Filtrar eventos */ 
+                    }) {
                         Icon(
                             imageVector = Icons.Default.FilterList,
                             contentDescription = "Filtrar",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = Color.White
                         )
                     }
                 }
@@ -148,10 +156,20 @@ fun CalendarioFamiliaScreen(
             CalendarioHeader(
                 fechaSeleccionada = fechaSeleccionada,
                 onPrevMonth = {
+                    try {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al realizar feedback háptico")
+                    }
                     fechaSeleccionada = fechaSeleccionada.clone() as Calendar
                     fechaSeleccionada.add(Calendar.MONTH, -1)
                 },
                 onNextMonth = {
+                    try {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al realizar feedback háptico")
+                    }
                     fechaSeleccionada = fechaSeleccionada.clone() as Calendar
                     fechaSeleccionada.add(Calendar.MONTH, 1)
                 }
@@ -160,10 +178,16 @@ fun CalendarioFamiliaScreen(
             CalendarioGrid(
                 fechaSeleccionada = fechaSeleccionada,
                 onDaySelected = { dia ->
+                    try {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al realizar feedback háptico")
+                    }
                     fechaSeleccionada = fechaSeleccionada.clone() as Calendar
                     fechaSeleccionada.set(Calendar.DAY_OF_MONTH, dia)
                 },
-                eventos = eventos
+                eventos = eventos,
+                haptic = haptic
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -176,32 +200,34 @@ fun CalendarioFamiliaScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             
-            if (eventosFiltrados.isEmpty()) {
+            if (eventosDiaSeleccionado.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .height(100.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "No hay eventos para este día",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    items(eventosFiltrados) { evento ->
-                        EventoCard(
+                LazyColumn {
+                    items(eventosDiaSeleccionado) { evento ->
+                        EventoItem(
                             evento = evento,
-                            onClick = { /* Ver detalle del evento */ }
+                            onClick = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al realizar feedback háptico")
+                                }
+                                // Navegar a detalle de evento
+                            }
                         )
-                        
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
@@ -231,8 +257,11 @@ fun CalendarioHeader(
         }
         
         val dateFormat = SimpleDateFormat("MMMM yyyy", Locale("es", "ES"))
+        val mesFormateado = dateFormat.format(fechaSeleccionada.time)
+        val mesConMayuscula = mesFormateado.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
         Text(
-            text = dateFormat.format(fechaSeleccionada.time).capitalize(),
+            text = mesConMayuscula,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -250,120 +279,155 @@ fun CalendarioHeader(
 fun CalendarioGrid(
     fechaSeleccionada: Calendar,
     onDaySelected: (Int) -> Unit,
-    eventos: List<Evento>
+    eventos: List<Evento>,
+    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Días de la semana
+    // Lógica para determinar los días del mes
+    val diasMes = remember(fechaSeleccionada.get(Calendar.YEAR), fechaSeleccionada.get(Calendar.MONTH)) {
+        val calendar = fechaSeleccionada.clone() as Calendar
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        val maxDays = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val firstDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+        
+        val dias = mutableListOf<Int>()
+        
+        // Añadir días en blanco al inicio para alinear con el primer día de la semana
+        for (i in 1 until firstDayOfWeek) {
+            dias.add(0) // 0 representa un día vacío
+        }
+        
+        // Añadir los días del mes
+        for (i in 1..maxDays) {
+            dias.add(i)
+        }
+        
+        dias
+    }
+    
+    // Determinar los días con eventos
+    val diasConEventos = remember(fechaSeleccionada.get(Calendar.YEAR), fechaSeleccionada.get(Calendar.MONTH), eventos) {
+        eventos.mapNotNull { evento ->
+            val eventoCalendar = Calendar.getInstance().apply { timeInMillis = evento.fecha }
+            if (eventoCalendar.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
+                eventoCalendar.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH)) {
+                eventoCalendar.get(Calendar.DAY_OF_MONTH)
+            } else null
+        }.toSet()
+    }
+    
+    // Cabecera con nombres de días
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            val diasSemana = listOf("L", "M", "X", "J", "V", "S", "D")
-            diasSemana.forEach { dia ->
+        listOf("D", "L", "M", "X", "J", "V", "S").forEach { dia ->
                 Text(
                     text = dia,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                    fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
                 )
             }
         }
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Días del mes
-        val cal = fechaSeleccionada.clone() as Calendar
-        cal.set(Calendar.DAY_OF_MONTH, 1)
-        val primerDia = cal.get(Calendar.DAY_OF_WEEK)
-        val diasEnMes = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val filas = (diasEnMes + primerDia - 2) / 7 + 1
-        
-        // Ajustar primerDia para que lunes sea 0 (en Calendar, domingo es 1)
-        val offsetPrimerDia = if (primerDia == Calendar.SUNDAY) 6 else primerDia - 2
-        
-        for (i in 0 until filas) {
+    // Cuadrícula de días
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        val rows = diasMes.chunked(7)
+        rows.forEach { semana ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                for (j in 0 until 7) {
-                    val diaIndex = i * 7 + j - offsetPrimerDia
+                semana.forEach { dia ->
+                    val hoy = Calendar.getInstance()
+                    val esHoy = dia != 0 && 
+                               hoy.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
+                               hoy.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH) &&
+                               hoy.get(Calendar.DAY_OF_MONTH) == dia
                     
-                    if (diaIndex >= 0 && diaIndex < diasEnMes) {
-                        val dia = diaIndex + 1
-                        val esDiaActual = fechaSeleccionada.get(Calendar.DAY_OF_MONTH) == dia
+                    val esDiaSeleccionado = dia != 0 && 
+                                           fechaSeleccionada.get(Calendar.DAY_OF_MONTH) == dia
+                    
+                    val tieneEventos = dia != 0 && diasConEventos.contains(dia)
                         
-                        // Verificar si hay eventos para este día
-                        val hayEventos = eventos.any { evento ->
-                            val eventoCalendar = Calendar.getInstance().apply { time = evento.fecha }
-                            eventoCalendar.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
-                            eventoCalendar.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH) &&
-                            eventoCalendar.get(Calendar.DAY_OF_MONTH) == dia
-                        }
-                        
-                        Box(modifier = Modifier.weight(1f)) {
-                            CalendarioDia(
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (dia != 0) {
+                            DiaItem(
                                 dia = dia,
-                                esDiaActual = esDiaActual,
-                                hayEventos = hayEventos,
-                                onClick = { onDaySelected(dia) }
-                            )
+                                esHoy = esHoy,
+                                esDiaSeleccionado = esDiaSeleccionado,
+                                tieneEventos = tieneEventos,
+                                onClick = { 
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al realizar feedback háptico")
+                                    }
+                                    onDaySelected(dia) 
                         }
-                    } else {
-                        // Día vacío
-                        Box(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center
                             )
                         }
                     }
                 }
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun CalendarioDia(
+fun DiaItem(
     dia: Int,
-    esDiaActual: Boolean,
-    hayEventos: Boolean,
+    esHoy: Boolean,
+    esDiaSeleccionado: Boolean,
+    tieneEventos: Boolean,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .aspectRatio(1f)
+            .size(40.dp)
             .clip(CircleShape)
             .background(
-                if (esDiaActual) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                else Color.Transparent
+                when {
+                    esDiaSeleccionado -> FamiliarColor
+                    esHoy -> FamiliarColor.copy(alpha = 0.3f)
+                    else -> Color.Transparent
+                }
             )
-            .padding(4.dp)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = dia.toString(),
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (esDiaActual) FontWeight.Bold else FontWeight.Normal,
-                color = if (esDiaActual) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                color = when {
+                    esDiaSeleccionado -> Color.White
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
             )
             
-            if (hayEventos) {
+            if (tieneEventos) {
                 Box(
                     modifier = Modifier
-                        .size(6.dp)
+                        .size(4.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
+                        .background(
+                            if (esDiaSeleccionado) Color.White
+                            else FamiliarColor
+                        )
                 )
             }
         }
@@ -371,13 +435,15 @@ fun CalendarioDia(
 }
 
 @Composable
-fun EventoCard(
+fun EventoItem(
     evento: Evento,
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -406,8 +472,9 @@ fun EventoCard(
                 )
                 
                 val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                val date = Date(evento.fecha)
                 Text(
-                    text = timeFormat.format(evento.fecha),
+                    text = timeFormat.format(date),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -435,17 +502,18 @@ data class Evento(
     val id: String,
     val titulo: String,
     val descripcion: String,
-    val fecha: Date,
+    val fecha: Long,
     val ubicacion: String,
-    val tipo: TipoEventoUI,
-    val alumnoId: String? // null si es un evento general
+    val tipo: TipoEvento
 )
 
-enum class TipoEventoUI(val color: Color, val icon: ImageVector) {
-    REUNION(Color(0xFF1976D2), Icons.Default.People),
-    EXCURSION(Color(0xFF388E3C), Icons.Default.Place),
-    TAREA(Color(0xFFF57C00), Icons.Default.Assignment),
-    EVENTO_ESPECIAL(Color(0xFF7B1FA2), Icons.Default.Star)
+enum class TipoEvento(val color: Color, val icon: ImageVector) {
+    REUNION(Color(0xFF1976D2), Icons.Default.Groups),
+    EXCURSION(Color(0xFF43A047), Icons.Default.DirectionsBus),
+    FIESTA(Color(0xFFE53935), Icons.Default.Celebration),
+    SALUD(Color(0xFF8E24AA), Icons.Default.HealthAndSafety),
+    FESTIVO(Color(0xFFFF9800), Icons.Default.Event),
+    OTRO(Color(0xFF757575), Icons.Default.Info)
 }
 
 // Extensión para capitalizar la primera letra

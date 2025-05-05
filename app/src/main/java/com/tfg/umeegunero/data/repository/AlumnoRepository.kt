@@ -12,7 +12,32 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar los alumnos
+ * Repositorio para gestionar información de alumnos en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para crear, recuperar, actualizar y eliminar
+ * información de alumnos, permitiendo una gestión integral de los estudiantes
+ * dentro del sistema educativo.
+ *
+ * Características principales:
+ * - Registro y gestión de perfiles de alumnos
+ * - Asignación a clases y cursos
+ * - Seguimiento de progreso académico
+ * - Gestión de información personal y académica
+ * - Control de permisos y roles de alumnos
+ *
+ * El repositorio permite:
+ * - Crear y actualizar perfiles de alumnos
+ * - Gestionar asignaciones a clases y cursos
+ * - Consultar información de alumnos
+ * - Mantener un registro académico
+ * - Facilitar el seguimiento del desarrollo educativo
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property centroRepository Repositorio de centros para obtener contexto
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 interface AlumnoRepository {
     /**
@@ -119,7 +144,7 @@ interface AlumnoRepository {
      * @param dni DNI del alumno a buscar
      * @return Resultado con el alumno encontrado o error
      */
-    suspend fun getAlumnoPorDni(dni: String): Result<Alumno>
+    suspend fun getAlumnoByDni(dni: String): Result<Alumno>
 
     /**
      * Obtiene todos los alumnos asignados a un profesor
@@ -567,29 +592,22 @@ class AlumnoRepositoryImpl @Inject constructor(
      * @param dni DNI del alumno a buscar
      * @return Resultado con el alumno encontrado o error
      */
-    override suspend fun getAlumnoPorDni(dni: String): Result<Alumno> = withContext(Dispatchers.IO) {
+    override suspend fun getAlumnoByDni(dni: String): Result<Alumno> = withContext(Dispatchers.IO) {
         try {
             val query = firestore.collection(COLLECTION_ALUMNOS)
                 .whereEqualTo("dni", dni)
                 .limit(1)
                 .get()
                 .await()
-                
-            if (query.isEmpty) {
-                Timber.w("No se encontró alumno con DNI: $dni")
-                return@withContext Result.Error(Exception("Alumno no encontrado"))
-            }
-            
-            val alumno = query.documents.first().toObject(Alumno::class.java)
-            if (alumno != null) {
-                Timber.d("Alumno encontrado por DNI: $dni - ${alumno.nombre} ${alumno.apellidos}")
-                return@withContext Result.Success(alumno)
+
+            if (!query.isEmpty) {
+                val alumno = query.documents.first().toObject(Alumno::class.java)
+                return@withContext Result.Success(alumno!!)
             } else {
-                Timber.w("Error al convertir documento a Alumno para DNI: $dni")
-                return@withContext Result.Error(Exception("Error al convertir documento a Alumno"))
+                return@withContext Result.Error(Exception("No se encontró ningún alumno con DNI: $dni"))
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al buscar alumno por DNI: $dni")
+            Timber.e(e, "Error al obtener alumno por DNI: $dni")
             return@withContext Result.Error(e)
         }
     }

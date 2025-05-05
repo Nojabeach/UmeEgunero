@@ -21,15 +21,41 @@ import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.service.EmailNotificationService
+import com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority
+import com.tfg.umeegunero.feature.common.comunicacion.model.MessageType
+import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessage
+import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessageRepository
+import java.util.UUID
+import com.tfg.umeegunero.feature.common.comunicacion.model.MessageStatus
 
 /**
- * Repositorio para gestionar las solicitudes de vinculación entre familiares y alumnos.
- * 
- * Este repositorio se encarga de todas las operaciones relacionadas con las solicitudes
- * de vinculación, como crear nuevas solicitudes, obtener solicitudes existentes,
- * y actualizar el estado de las solicitudes.
- * 
- * @property firestore Instancia de FirebaseFirestore para acceder a la base de datos
+ * Repositorio para gestionar solicitudes en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para crear, recuperar, actualizar y gestionar
+ * diferentes tipos de solicitudes en el contexto educativo, como vinculaciones
+ * de usuarios, solicitudes de registro y otras interacciones que requieren
+ * aprobación o seguimiento.
+ *
+ * Características principales:
+ * - Creación de solicitudes de vinculación
+ * - Gestión del ciclo de vida de las solicitudes
+ * - Control de estados de solicitud
+ * - Soporte para diferentes tipos de solicitudes
+ * - Registro de interacciones y cambios de estado
+ *
+ * El repositorio permite:
+ * - Crear solicitudes de vinculación familiar-alumno
+ * - Gestionar solicitudes de registro de usuarios
+ * - Rastrear el estado de las solicitudes
+ * - Notificar sobre cambios en solicitudes
+ * - Implementar flujos de aprobación
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property notificacionRepository Repositorio para enviar notificaciones relacionadas
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class SolicitudRepository @Inject constructor(
@@ -39,7 +65,8 @@ class SolicitudRepository @Inject constructor(
     private val centroRepository: CentroRepository,
     private val usuarioRepository: UsuarioRepository,
     private val alumnoRepository: AlumnoRepository,
-    private val emailNotificationService: EmailNotificationService
+    private val emailNotificationService: EmailNotificationService,
+    private val unifiedMessageRepository: UnifiedMessageRepository
 ) {
     companion object {
         private const val COLLECTION_SOLICITUDES = "solicitudes_vinculacion"
@@ -60,6 +87,9 @@ class SolicitudRepository @Inject constructor(
             
             // Enviar notificación a los administradores del centro
             enviarNotificacionSolicitudPendiente(solicitudConId)
+            
+            // Crear mensaje en el sistema unificado para los administradores
+            crearMensajeSolicitudPendiente(solicitudConId)
             
             Result.Success(solicitudConId)
         } catch (e: Exception) {
@@ -224,6 +254,9 @@ class SolicitudRepository @Inject constructor(
                 // Enviar notificación push
                 enviarNotificacionSolicitudProcesada(solicitud)
                 
+                // Crear mensaje en el sistema unificado
+                crearMensajeSolicitudProcesada(solicitud, nombreAdmin)
+                
                 // Si la solicitud fue aprobada, enviar email de aprobación
                 if (nuevoEstado == EstadoSolicitud.APROBADA) {
                     try {
@@ -351,6 +384,118 @@ class SolicitudRepository @Inject constructor(
             )
         } catch (e: Exception) {
             Timber.e(e, "Error al enviar notificación de solicitud procesada")
+        }
+    }
+    
+    /**
+     * Crea un mensaje en el sistema unificado para notificar sobre una solicitud pendiente
+     * 
+     * @param solicitud Datos de la solicitud
+     */
+    private suspend fun crearMensajeSolicitudPendiente(solicitud: SolicitudVinculacion) {
+        try {
+            // Obtener información del centro para determinar los administradores
+            val adminsResult = usuarioRepository.getAdminsByCentroId(solicitud.centroId)
+            if (adminsResult is Result.Success && adminsResult.data.isNotEmpty()) {
+                // Obtener información del alumno y centro para el mensaje
+                val alumnoInfo = alumnoRepository.getAlumnoByDni(solicitud.alumnoDni)
+                val centroInfo = centroRepository.getCentroById(solicitud.centroId)
+                
+                val alumnoNombre = if (alumnoInfo is Result.Success) alumnoInfo.data?.nombre ?: "Alumno" else "Alumno"
+                val centroNombre = if (centroInfo is Result.Success) centroInfo.data?.nombre ?: "Centro" else "Centro"
+                
+                // Crear un mensaje para cada administrador
+                adminsResult.data.forEach { admin ->
+                    val message = UnifiedMessage(
+                        id = UUID.randomUUID().toString(),
+                        title = "Nueva solicitud de vinculación pendiente",
+                        content = "El familiar ${solicitud.nombreFamiliar} ha solicitado vincularse con $alumnoNombre en $centroNombre.",
+                        type = MessageType.NOTIFICATION,
+                        priority = MessagePriority.HIGH,
+                        senderId = "system",
+                        senderName = "Sistema UmeEgunero",
+                        receiverId = admin.dni,
+                        receiversIds = emptyList(),
+                        timestamp = Timestamp.now(),
+                        status = MessageStatus.UNREAD,
+                        metadata = mapOf(
+                            "solicitudId" to solicitud.id,
+                            "alumnoDni" to solicitud.alumnoDni,
+                            "tipoNotificacion" to "SOLICITUD_VINCULACION"
+                        ),
+                        relatedEntityId = solicitud.id,
+                        relatedEntityType = "SOLICITUD_VINCULACION"
+                    )
+                    
+                    unifiedMessageRepository.sendMessage(message)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al crear mensaje para solicitud pendiente")
+        }
+    }
+    
+    /**
+     * Crea un mensaje en el sistema unificado para notificar sobre una solicitud procesada
+     * 
+     * @param solicitud Datos de la solicitud
+     * @param nombreAdmin Nombre del administrador que procesó la solicitud
+     */
+    private suspend fun crearMensajeSolicitudProcesada(solicitud: SolicitudVinculacion, nombreAdmin: String) {
+        try {
+            // Obtener información del familiar para el mensaje
+            val familiarResult = usuarioRepository.getUsuarioById(solicitud.familiarId)
+            if (familiarResult != null) {
+                // Obtener información del alumno y centro para personalizar el mensaje
+                val alumnoInfo = alumnoRepository.getAlumnoByDni(solicitud.alumnoDni)
+                val centroInfo = centroRepository.getCentroById(solicitud.centroId)
+                
+                val alumnoNombre = if (alumnoInfo is Result.Success) alumnoInfo.data?.nombre ?: "el alumno" else "el alumno"
+                val centroNombre = if (centroInfo is Result.Success) centroInfo.data?.nombre ?: "el centro" else "el centro"
+                
+                // Determinar título y contenido según el estado
+                val title = when(solicitud.estado) {
+                    EstadoSolicitud.APROBADA -> "Solicitud de vinculación aprobada"
+                    EstadoSolicitud.RECHAZADA -> "Solicitud de vinculación rechazada"
+                    else -> "Actualización de solicitud de vinculación"
+                }
+                
+                val content = when(solicitud.estado) {
+                    EstadoSolicitud.APROBADA -> 
+                        "Su solicitud para vincularse con $alumnoNombre en $centroNombre ha sido aprobada por $nombreAdmin."
+                    EstadoSolicitud.RECHAZADA -> 
+                        "Su solicitud para vincularse con $alumnoNombre en $centroNombre ha sido rechazada por $nombreAdmin."
+                    else -> 
+                        "Su solicitud para vincularse con $alumnoNombre en $centroNombre ha sido actualizada."
+                }
+                
+                // Crear mensaje para el familiar
+                val message = UnifiedMessage(
+                    id = UUID.randomUUID().toString(),
+                    title = title,
+                    content = content,
+                    type = MessageType.NOTIFICATION,
+                    priority = if (solicitud.estado == EstadoSolicitud.APROBADA) MessagePriority.HIGH else MessagePriority.NORMAL,
+                    senderId = "system",
+                    senderName = "Sistema UmeEgunero",
+                    receiverId = solicitud.familiarId,
+                    receiversIds = emptyList(),
+                    timestamp = Timestamp.now(),
+                    status = MessageStatus.UNREAD,
+                    metadata = mapOf(
+                        "solicitudId" to solicitud.id,
+                        "alumnoDni" to solicitud.alumnoDni,
+                        "estado" to solicitud.estado.name,
+                        "tipoNotificacion" to "SOLICITUD_VINCULACION"
+                    ),
+                    relatedEntityId = solicitud.id,
+                    relatedEntityType = "SOLICITUD_VINCULACION"
+                )
+                
+                unifiedMessageRepository.sendMessage(message)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al crear mensaje para solicitud procesada")
         }
     }
 } 

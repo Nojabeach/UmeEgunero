@@ -39,7 +39,11 @@ data class DetalleClaseUiState(
     val profesorTitular: Usuario? = null,
     val profesoresAuxiliares: List<Usuario> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val capacidadActual: Int = 0,
+    val capacidadMaxima: Int = 0,
+    val porcentajeOcupacion: Int = 0,
+    val plazasDisponibles: Int = 0
 )
 
 /**
@@ -95,8 +99,17 @@ class DetalleClaseViewModel @Inject constructor(
                     // 2. Cargar alumnos de la clase
                     cargarAlumnos(clase.alumnosIds)
                     
-                    // 3. Cargar profesor titular
-                    cargarProfesorTitular(clase.profesorTitularId)
+                    // 3. Cargar profesor titular (primero intentar profesorTitularId, luego profesorId)
+                    if (!clase.profesorTitularId.isNullOrBlank()) {
+                        // Si existe profesorTitularId, usarlo para cargar el profesor titular
+                        cargarProfesorTitular(clase.profesorTitularId)
+                    } else if (!clase.profesorId.isNullOrBlank()) {
+                        // Si no hay profesorTitularId pero hay profesorId, usar ese 
+                        Timber.d("Usando profesorId como profesor titular: ${clase.profesorId}")
+                        cargarProfesorTitular(clase.profesorId)
+                    } else {
+                        Timber.d("La clase no tiene profesor asignado")
+                    }
                     
                     // 4. Cargar profesores auxiliares
                     cargarProfesoresAuxiliares(clase.profesoresAuxiliaresIds)
@@ -122,61 +135,65 @@ class DetalleClaseViewModel @Inject constructor(
      * 
      * @param alumnosIds Lista de IDs de alumnos a cargar
      */
-    private suspend fun cargarAlumnos(alumnosIds: List<String>) {
-        if (alumnosIds.isEmpty()) {
-            Timber.d("No hay IDs de alumnos para cargar")
-            return
-        }
-        
-        Timber.d("Intentando cargar ${alumnosIds.size} alumnos con IDs: $alumnosIds")
+    private suspend fun cargarAlumnos(alumnosIds: List<String>?) {
+        val idsValidas = alumnosIds?.filter { it.isNotBlank() } ?: emptyList()
         
         try {
-            val alumnos = mutableListOf<Alumno>()
+            // Primero intentamos cargar los alumnos directamente por el ID de la clase
+            // Esta es la forma más fiable de obtener todos los alumnos de una clase
+            Timber.d("Intentando cargar alumnos por claseId: $claseId")
+            val resultPorClase = alumnoRepository.getAlumnosByClaseId(claseId)
             
-            // Primero intentamos cargar los alumnos por DNI (que es el ID guardado en alumnosIds)
-            for (alumnoId in alumnosIds) {
-                Timber.d("Cargando alumno con ID/DNI: $alumnoId")
+            if (resultPorClase is Result.Success && resultPorClase.data.isNotEmpty()) {
+                Timber.d("Alumnos encontrados por claseId: ${resultPorClase.data.size}")
+                _uiState.update { it.copy(alumnos = resultPorClase.data) }
+                return // Si encontramos alumnos, terminamos aquí
+            }
+            
+            // Si no hay resultados por claseId, intentamos con el método getAlumnosPorClase
+            // que usa múltiples estrategias para encontrar alumnos
+            Timber.d("Intentando método alternativo getAlumnosPorClase para: $claseId")
+            val alumnosPorClase = alumnoRepository.getAlumnosPorClase(claseId)
+            
+            if (alumnosPorClase.isNotEmpty()) {
+                Timber.d("Alumnos encontrados con getAlumnosPorClase: ${alumnosPorClase.size}")
+                _uiState.update { it.copy(alumnos = alumnosPorClase) }
+                return // Si encontramos alumnos, terminamos aquí
+            }
+            
+            // Si aún no encontramos alumnos, intentamos cargar uno por uno por DNI/ID
+            if (idsValidas.isNotEmpty()) {
+                Timber.d("Intentando cargar ${idsValidas.size} alumnos con IDs individuales: $idsValidas")
+                val alumnos = mutableListOf<Alumno>()
                 
-                try {
-                    // Intentar primero obtener por DNI desde el repositorio
-                    val resultPorDNI = alumnoRepository.getAlumnoPorDni(alumnoId)
-                    
-                    if (resultPorDNI is Result.Success && resultPorDNI.data != null) {
-                        Timber.d("Alumno encontrado por DNI: ${resultPorDNI.data.nombre} ${resultPorDNI.data.apellidos}")
-                        alumnos.add(resultPorDNI.data)
-                    } else {
-                        // Si no se encuentra por DNI, intentar por ID
-                        val result = alumnoRepository.getAlumnoById(alumnoId)
-                        
-                        if (result is Result.Success) {
-                            Timber.d("Alumno encontrado por ID: ${result.data.nombre} ${result.data.apellidos}")
-                            alumnos.add(result.data)
-                        } else if (result is Result.Error) {
-                            Timber.e(result.exception, "Error al cargar alumno con ID $alumnoId")
+                for (alumnoId in idsValidas) {
+                    try {
+                        // Intentar primero obtener por DNI
+                        val alumnoResult = alumnoRepository.getAlumnoByDni(alumnoId)
+                        if (alumnoResult is Result.Success<Alumno>) {
+                            // TODO: Implementar método para añadir alumno a clase
+                            // Anteriormente: addAlumnoToClase(alumnoResult.data, claseId)
+                            alumnos.add(alumnoResult.data)
                         }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al intentar cargar el alumno $alumnoId")
                     }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al intentar cargar el alumno $alumnoId")
                 }
-            }
-            
-            // Si no se cargaron alumnos por el método normal, intentar cargar por claseId
-            if (alumnos.isEmpty() && claseId.isNotEmpty()) {
-                Timber.d("No se encontraron alumnos por ID/DNI. Intentando cargar por claseId: $claseId")
-                val resultPorClase = alumnoRepository.getAlumnosByClaseId(claseId)
                 
-                if (resultPorClase is Result.Success && resultPorClase.data.isNotEmpty()) {
-                    Timber.d("Alumnos encontrados por claseId: ${resultPorClase.data.size}")
-                    alumnos.addAll(resultPorClase.data)
-                } else if (resultPorClase is Result.Error) {
-                    Timber.e(resultPorClase.exception, "Error al cargar alumnos por claseId $claseId")
+                if (alumnos.isNotEmpty()) {
+                    Timber.d("Total de alumnos cargados por IDs individuales: ${alumnos.size}")
+                    _uiState.update { it.copy(alumnos = alumnos) }
+                    return
                 }
             }
             
-            Timber.d("Total de alumnos cargados: ${alumnos.size}")
-            _uiState.update { it.copy(alumnos = alumnos) }
+            // Si no se ha encontrado ningún alumno, actualizar el estado con lista vacía
+            Timber.w("No se encontraron alumnos por ningún método para la clase: $claseId")
+            _uiState.update { it.copy(alumnos = emptyList()) }
+            
         } catch (e: Exception) {
-            Timber.e(e, "Error general al cargar los alumnos")
+            Timber.e(e, "Error general al cargar los alumnos para la clase: $claseId")
+            _uiState.update { it.copy(alumnos = emptyList()) }
         }
     }
 
@@ -185,8 +202,8 @@ class DetalleClaseViewModel @Inject constructor(
      * 
      * @param profesorId ID del profesor titular
      */
-    private suspend fun cargarProfesorTitular(profesorId: String) {
-        if (profesorId.isEmpty()) return
+    private suspend fun cargarProfesorTitular(profesorId: String?) {
+        if (profesorId.isNullOrBlank()) return
         
         try {
             when (val result = usuarioRepository.obtenerUsuarioPorId(profesorId)) {
@@ -210,13 +227,15 @@ class DetalleClaseViewModel @Inject constructor(
      * 
      * @param profesoresIds Lista de IDs de profesores auxiliares
      */
-    private suspend fun cargarProfesoresAuxiliares(profesoresIds: List<String>) {
-        if (profesoresIds.isEmpty()) return
+    private suspend fun cargarProfesoresAuxiliares(profesoresIds: List<String>?) {
+        val idsValidas = profesoresIds?.filter { it.isNotBlank() } ?: emptyList()
+        
+        if (idsValidas.isEmpty()) return
         
         try {
             val profesores = mutableListOf<Usuario>()
             
-            for (profesorId in profesoresIds) {
+            for (profesorId in idsValidas) {
                 when (val result = usuarioRepository.obtenerUsuarioPorId(profesorId)) {
                     is Result.Success -> {
                         result.data?.let { profesores.add(it) }
@@ -231,6 +250,44 @@ class DetalleClaseViewModel @Inject constructor(
             _uiState.update { it.copy(profesoresAuxiliares = profesores) }
         } catch (e: Exception) {
             Timber.e(e, "Error al cargar los profesores auxiliares")
+        }
+    }
+
+    // Método para calcular métricas de la clase con manejo correcto de nulos
+    private fun calcularMetricasClase(clase: Clase): Map<String, Int> {
+        // Usamos operadores de llamada segura para evitar NullPointerException
+        val capacidadActual = clase.alumnosIds?.size ?: 0
+        val capacidadMaxima = clase.capacidadMaxima ?: 0
+        
+        val porcentajeOcupacion = if (capacidadMaxima > 0) {
+            (capacidadActual.toFloat() / capacidadMaxima * 100f).toInt()
+        } else {
+            0
+        }
+        
+        val plazasDisponibles = capacidadMaxima - capacidadActual
+        
+        return mapOf(
+            "capacidadActual" to capacidadActual,
+            "capacidadMaxima" to capacidadMaxima,
+            "porcentajeOcupacion" to porcentajeOcupacion,
+            "plazasDisponibles" to plazasDisponibles
+        )
+    }
+
+    // Modificar el método de inicialización para usar el nuevo método
+    private fun inicializarDetalleClase(clase: Clase) {
+        val metricas = calcularMetricasClase(clase)
+        
+        _uiState.update { currentState ->
+            currentState.copy(
+                clase = clase,
+                // Otros campos existentes...
+                capacidadActual = metricas["capacidadActual"] ?: 0,
+                capacidadMaxima = metricas["capacidadMaxima"] ?: 0,
+                porcentajeOcupacion = metricas["porcentajeOcupacion"] ?: 0,
+                plazasDisponibles = metricas["plazasDisponibles"] ?: 0
+            )
         }
     }
 } 

@@ -11,9 +11,32 @@ import javax.inject.Singleton
 import com.tfg.umeegunero.util.Result
 
 /**
- * Repositorio para gestionar los datos de los profesores
+ * Repositorio para gestionar información de profesores en la aplicación UmeEgunero.
  *
- * @property firestore Instancia de Firestore para acceder a la base de datos
+ * Esta clase proporciona métodos para crear, recuperar, actualizar y eliminar
+ * información de profesores, permitiendo una gestión integral de los recursos
+ * humanos docentes dentro del sistema educativo.
+ *
+ * Características principales:
+ * - Registro y gestión de perfiles de profesores
+ * - Asignación de profesores a clases y cursos
+ * - Gestión de roles y permisos
+ * - Seguimiento de actividades y rendimiento
+ * - Sincronización de información entre sistemas
+ *
+ * El repositorio permite:
+ * - Crear y actualizar perfiles de profesores
+ * - Gestionar asignaciones a clases
+ * - Consultar información de profesores
+ * - Mantener un directorio de personal docente
+ * - Facilitar la comunicación y colaboración
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property centroRepository Repositorio de centros para obtener contexto
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class ProfesorRepository @Inject constructor(

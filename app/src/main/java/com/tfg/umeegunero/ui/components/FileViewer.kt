@@ -15,8 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material3.Button
@@ -368,5 +372,18 @@ fun VistaPreviaArchivoSimple(
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
+    }
+}
+
+/**
+ * Obtiene el icono adecuado según el tipo MIME
+ */
+@Composable
+fun getIconForFileType(mimeType: String): ImageVector {
+    return when {
+        mimeType.startsWith("image/") -> Icons.Default.Image
+        mimeType.startsWith("application/pdf") -> Icons.Default.PictureAsPdf
+        mimeType.startsWith("text/") -> Icons.Default.Description
+        else -> Icons.Default.AttachFile
     }
 } 

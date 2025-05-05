@@ -68,6 +68,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Meta-data para claves de seguridad -->
+        <meta-data
+            android:name="com.tfg.umeegunero.EMAIL_TOKEN_FALLBACK"
+            android:value="@string/email_security_token_fallback" />
     </application>
 
 </manifest>

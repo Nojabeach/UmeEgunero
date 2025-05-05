@@ -16,10 +16,32 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar los familiares de alumnos
+ * Repositorio para gestionar información de familiares en la aplicación UmeEgunero.
  *
- * Esta interfaz define las operaciones relacionadas con la gestión de familiares
- * y sus vinculaciones con alumnos del centro educativo.
+ * Esta clase proporciona métodos para crear, recuperar, actualizar y eliminar
+ * información de familiares, permitiendo una gestión integral de las relaciones
+ * familiares en el contexto educativo.
+ *
+ * Características principales:
+ * - Registro y gestión de perfiles de familiares
+ * - Vinculación de familiares con alumnos
+ * - Control de permisos y roles familiares
+ * - Seguimiento de comunicaciones y notificaciones
+ * - Gestión de autorizaciones y consentimientos
+ *
+ * El repositorio permite:
+ * - Crear y actualizar perfiles de familiares
+ * - Gestionar vínculos familiares-alumnos
+ * - Consultar información de familiares
+ * - Mantener un registro de relaciones familiares
+ * - Facilitar la comunicación entre familia y centro
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property centroRepository Repositorio de centros para obtener contexto
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 interface FamiliarRepository {
     /**

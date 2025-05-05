@@ -11,15 +11,33 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar etiquetas personalizadas de actividades
- * 
- * Esta clase se encarga de las operaciones CRUD relacionadas con las etiquetas
- * que utilizan los profesores para categorizar y filtrar las actividades.
- * 
- * @property firestore Instancia de Firestore para acceder a la base de datos
- * 
- * @author Maitane (Estudiante 2º DAM)
- * @version 1.0
+ * Repositorio para gestionar etiquetas en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para crear, recuperar, actualizar y eliminar
+ * etiquetas que pueden ser utilizadas para categorizar y organizar diferentes
+ * elementos dentro del sistema educativo, como actividades, tareas, registros
+ * y otros recursos.
+ *
+ * Características principales:
+ * - Creación de etiquetas personalizadas
+ * - Gestión de taxonomías y categorías
+ * - Asociación de etiquetas a diferentes entidades
+ * - Búsqueda y filtrado por etiquetas
+ * - Soporte para etiquetas específicas de centro o globales
+ *
+ * El repositorio permite:
+ * - Crear etiquetas para clasificar recursos
+ * - Asociar etiquetas a actividades y tareas
+ * - Gestionar un sistema de categorización
+ * - Facilitar la búsqueda y organización de contenido
+ * - Personalizar la experiencia de usuario
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property centroRepository Repositorio de centros para obtener contexto
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class EtiquetaRepository @Inject constructor(

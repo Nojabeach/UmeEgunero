@@ -94,16 +94,16 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                 // 2. Obtener clases asignadas al profesor
                 val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
                 if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
-                    // Para cada clase, obtener sus alumnos
-                    for (clase in clasesResult.data) {
+                // Para cada clase, obtener sus alumnos
+                for (clase in clasesResult.data) {
                         // Guardamos el nombre de la primera clase (para simplificar)
                         if (nombreClase.isEmpty()) {
                             nombreClase = clase.nombre
                         }
                         
-                        val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
-                        if (alumnosResult is Result.Success) {
-                            todosLosAlumnos.addAll(alumnosResult.data)
+                    val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
+                    if (alumnosResult is Result.Success) {
+                        todosLosAlumnos.addAll(alumnosResult.data)
                             Timber.d("Añadidos ${alumnosResult.data.size} alumnos de la clase ${clase.nombre}")
                         }
                     }
@@ -123,11 +123,11 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                         clase = nombreClase
                     )
                 } else {
-                    _uiState.value = MisAlumnosUiState(
-                        isLoading = false,
+                _uiState.value = MisAlumnosUiState(
+                    isLoading = false,
                         alumnos = alumnosSinDuplicados,
-                        clase = nombreClase
-                    )
+                    clase = nombreClase
+                )
                     Timber.d("Cargados ${alumnosSinDuplicados.size} alumnos para el profesor")
                 }
                 

@@ -17,7 +17,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar las clases
+ * Repositorio para gestionar operaciones relacionadas con las clases en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para interactuar con las clases, incluyendo operaciones
+ * de consulta, creación, actualización y eliminación.
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property centroRepository Repositorio de centros para obtener información adicional
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 interface ClaseRepository {
     /**
@@ -95,6 +104,12 @@ class ClaseRepositoryImpl @Inject constructor(
 ) : ClaseRepository {
     private val clasesCollection = firestore.collection("clases")
     
+    private fun mapearListaSegura(data: Map<String, Any?>, campo: String): List<String> {
+        return (data[campo] as? List<*>)
+            ?.filterIsInstance<String>()
+            ?: emptyList()
+    }
+
     override suspend fun getClasesByCursoId(cursoId: String): Result<List<Clase>> {
         return try {
             Timber.d("Obteniendo clases para el curso: $cursoId")
@@ -104,8 +119,22 @@ class ClaseRepositoryImpl @Inject constructor(
                 .await()
             
             val clases = snapshot.documents.mapNotNull { doc ->
-                val clase = doc.toObject<Clase>()
-                clase?.copy(id = doc.id)
+                val data = doc.data ?: return@mapNotNull null
+                
+                Clase(
+                    id = doc.id,
+                    cursoId = data["cursoId"] as? String ?: "",
+                    centroId = data["centroId"] as? String ?: "",
+                    nombre = data["nombre"] as? String ?: "",
+                    profesorId = data["profesorId"] as? String,
+                    profesorTitularId = data["profesorTitularId"] as? String,
+                    profesoresAuxiliaresIds = mapearListaSegura(data, "profesoresAuxiliaresIds"),
+                    alumnosIds = mapearListaSegura(data, "alumnosIds"),
+                    capacidadMaxima = (data["capacidadMaxima"] as? Number)?.toInt(),
+                    activo = data["activo"] as? Boolean ?: true,
+                    horario = data["horario"] as? String ?: "",
+                    aula = data["aula"] as? String ?: ""
+                )
             }
             
             Timber.d("Obtenidas ${clases.size} clases para el curso $cursoId")
@@ -122,6 +151,9 @@ class ClaseRepositoryImpl @Inject constructor(
 
         val query: Query = clasesCollection.whereEqualTo("cursoId", cursoId)
 
+        // Log de la consulta de Firestore
+        Timber.d("Consulta de Firestore: collection=clases, filtro=cursoId=$cursoId")
+
         val listenerRegistration = query.addSnapshotListener { snapshot, error ->
             if (error != null) {
                 Timber.e(error, "Error al escuchar cambios en clases del curso $cursoId")
@@ -135,14 +167,29 @@ class ClaseRepositoryImpl @Inject constructor(
                 return@addSnapshotListener
             }
 
+            // Log de los documentos recibidos
+            Timber.d("Documentos recibidos: ${snapshot.documents.size}")
+            snapshot.documents.forEach { document ->
+                Timber.d("Documento: id=${document.id}, data=${document.data}")
+            }
+
             val clases = snapshot.documents.mapNotNull { document ->
-                try {
-                    val clase = document.toObject<Clase>()
-                    clase?.copy(id = document.id)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al mapear documento de clase: ${document.id}, data: ${document.data}")
-                    null
-                }
+                val data = document.data ?: return@mapNotNull null
+                
+                Clase(
+                    id = document.id,
+                    cursoId = data["cursoId"] as? String ?: "",
+                    centroId = data["centroId"] as? String ?: "",
+                    nombre = data["nombre"] as? String ?: "",
+                    profesorId = data["profesorId"] as? String,
+                    profesorTitularId = data["profesorTitularId"] as? String,
+                    profesoresAuxiliaresIds = mapearListaSegura(data, "profesoresAuxiliaresIds"),
+                    alumnosIds = mapearListaSegura(data, "alumnosIds"),
+                    capacidadMaxima = (data["capacidadMaxima"] as? Number)?.toInt(),
+                    activo = data["activo"] as? Boolean ?: true,
+                    horario = data["horario"] as? String ?: "",
+                    aula = data["aula"] as? String ?: ""
+                )
             }
             
             Timber.d("Snapshot recibido: ${clases.size} clases para el curso $cursoId")
@@ -190,12 +237,24 @@ class ClaseRepositoryImpl @Inject constructor(
         return try {
             val document = clasesCollection.document(claseId).get().await()
             if (document.exists()) {
-                val clase = document.toObject<Clase>()?.copy(id = document.id)
-                if (clase != null) {
-                    Result.Success(clase)
-                } else {
-                    Result.Error(Exception("No se pudo convertir la clase"))
-                }
+                val data = document.data ?: return Result.Error(Exception("Datos de clase vacíos"))
+                
+                val clase = Clase(
+                    id = document.id,
+                    cursoId = data["cursoId"] as? String ?: "",
+                    centroId = data["centroId"] as? String ?: "",
+                    nombre = data["nombre"] as? String ?: "",
+                    profesorId = data["profesorId"] as? String,
+                    profesorTitularId = data["profesorTitularId"] as? String,
+                    profesoresAuxiliaresIds = mapearListaSegura(data, "profesoresAuxiliaresIds"),
+                    alumnosIds = mapearListaSegura(data, "alumnosIds"),
+                    capacidadMaxima = (data["capacidadMaxima"] as? Number)?.toInt(),
+                    activo = data["activo"] as? Boolean ?: true,
+                    horario = data["horario"] as? String ?: "",
+                    aula = data["aula"] as? String ?: ""
+                )
+                
+                Result.Success(clase)
             } else {
                 Result.Error(Exception("La clase con ID $claseId no existe"))
             }
@@ -214,8 +273,22 @@ class ClaseRepositoryImpl @Inject constructor(
                 .await()
             
             val clases = snapshot.documents.mapNotNull { doc ->
-                val clase = doc.toObject<Clase>()
-                clase?.copy(id = doc.id)
+                val data = doc.data ?: return@mapNotNull null
+                
+                Clase(
+                    id = doc.id,
+                    cursoId = data["cursoId"] as? String ?: "",
+                    centroId = data["centroId"] as? String ?: "",
+                    nombre = data["nombre"] as? String ?: "",
+                    profesorId = data["profesorId"] as? String,
+                    profesorTitularId = data["profesorTitularId"] as? String,
+                    profesoresAuxiliaresIds = mapearListaSegura(data, "profesoresAuxiliaresIds"),
+                    alumnosIds = mapearListaSegura(data, "alumnosIds"),
+                    capacidadMaxima = (data["capacidadMaxima"] as? Number)?.toInt(),
+                    activo = data["activo"] as? Boolean ?: true,
+                    horario = data["horario"] as? String ?: "",
+                    aula = data["aula"] as? String ?: ""
+                )
             }
             
             Result.Success(clases)

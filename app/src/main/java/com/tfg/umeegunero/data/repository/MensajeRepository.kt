@@ -25,9 +25,19 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para la gestión de mensajes.
- * Esta clase será reemplazada gradualmente por ChatRepository.
- * @deprecated Use ChatRepository instead
+ * Repositorio para gestionar operaciones relacionadas con mensajes en la aplicación UmeEgunero.
+ *
+ * Esta interfaz define los métodos para interactuar con los mensajes, permitiendo
+ * operaciones como envío, recuperación, listado y gestión de conversaciones.
+ *
+ * El repositorio maneja la comunicación entre diferentes tipos de usuarios 
+ * (profesores, familiares, administradores) a través de un sistema de mensajería.
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Deprecated("Use ChatRepository instead")
 @Singleton

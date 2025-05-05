@@ -84,6 +84,10 @@ import com.tfg.umeegunero.data.model.SolicitudVinculacion
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
+import android.view.HapticFeedbackConstants
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import timber.log.Timber
 
 /**
  * Pantalla principal del panel de control para administradores de centro.
@@ -138,10 +142,24 @@ fun CentroDashboardScreen(
     val nombreCentro by viewModel.nombreCentro.collectAsState(initial = "Centro Educativo")
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    
+    // Diálogos de confirmación
     var showLogoutDialog by remember { mutableStateOf(false) }
     var mostrarDialogoSolicitudes by remember { mutableStateOf(false) }
+    var showCursosDialog by remember { mutableStateOf(false) }
+    var showClasesDialog by remember { mutableStateOf(false) }
+    var showProfesoresDialog by remember { mutableStateOf(false) }
+    var showAlumnosDialog by remember { mutableStateOf(false) }
+    var showVincularProfesorDialog by remember { mutableStateOf(false) }
+    var showVincularFamiliarDialog by remember { mutableStateOf(false) }
+    var showCrearUsuarioDialog by remember { mutableStateOf(false) }
+    var showCalendarioDialog by remember { mutableStateOf(false) }
+    var showNotificacionesDialog by remember { mutableStateOf(false) }
+    var showPerfilDialog by remember { mutableStateOf(false) }
+    var showMensajesUnificadosDialog by remember { mutableStateOf(false) }
+    
     val solicitudesPendientes by viewModel.solicitudesPendientes.collectAsState()
-    val emailStatus by viewModel.emailStatus.collectAsState()
     val currentDate = remember { 
         LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).replaceFirstChar { it.uppercase() } 
     }
@@ -170,71 +188,7 @@ fun CentroDashboardScreen(
             viewModel.cargarSolicitudesPendientes()
         }
     }
-    // Obtener el ID del centro del usuario actual
-    val centroId = uiState.currentUser?.perfiles?.firstOrNull { perfil -> 
-        perfil.tipo == TipoUsuario.ADMIN_CENTRO 
-    }?.centroId ?: ""
-
-    // Funciones de navegación locales actualizadas
-    fun onNavigateToListaCursos() = try {
-        navController.navigate("gestor_academico/CURSOS?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
-    } catch (e: Exception) {
-        scope.launch {
-            snackbarHostState.showSnackbar("Error al navegar a cursos: ${e.message}")
-        }
-    }
-
-    fun onNavigateToListaClases() = try {
-        navController.navigate("gestor_academico/CLASES?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
-    } catch (e: Exception) {
-        scope.launch {
-            snackbarHostState.showSnackbar("Error al navegar a clases: ${e.message}")
-        }
-    }
-
-    fun onNavigateToGestionProfesores() = try {
-        if (centroId.isNotBlank()) {
-             navController.navigate(AppScreens.ProfesorList.createRoute(centroId))
-        } else {
-             scope.launch {
-                snackbarHostState.showSnackbar("No se pudo obtener el ID del centro para ver profesores.")
-            }
-        }
-    } catch (e: Exception) {
-         scope.launch {
-            snackbarHostState.showSnackbar("Error al navegar a la gestión de profesores: ${e.message}")
-        }
-    }
-    fun onNavigateToAddAlumno() = try {
-        if (centroId.isNotBlank()) {
-            navController.navigate(AppScreens.AlumnoList.createRoute(centroId))
-        } else {
-            scope.launch {
-                snackbarHostState.showSnackbar("No se pudo obtener el ID del centro.")
-            }
-        }
-    } catch (e: Exception) {
-        scope.launch {
-            snackbarHostState.showSnackbar("Error al navegar a lista de alumnos: ${e.message}")
-        }
-    }
-    fun onNavigateToVincularProfesorClase() = try {
-        if (centroId.isNotBlank()) {
-            navController.navigate(AppScreens.VincularProfesorClase.createRoute(centroId))
-        } else {
-            scope.launch {
-                snackbarHostState.showSnackbar("No se pudo obtener el ID del centro para vincular profesores a clases.")
-            }
-        }
-    } catch (e: Exception) {
-        scope.launch {
-            snackbarHostState.showSnackbar("Error al navegar a vinculación de profesores y clases: ${e.message}")
-        }
-    }
-    fun onNavigateToVinculacionFamiliar() = navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
-    fun onNavigateToCalendario() = navController.navigate(AppScreens.Calendario.route)
-    fun onNavigateToNotificaciones() = navController.navigate(AppScreens.Notificaciones.route)
-
+    
     // LaunchedEffect para observar eventos de email Intent
     LaunchedEffect(Unit) {
         viewModel.lanzarEmailIntentEvent.collect { emailData ->
@@ -251,11 +205,482 @@ fun CentroDashboardScreen(
             try {
                 context.startActivity(intent)
             } catch (e: android.content.ActivityNotFoundException) {
-                 scope.launch {
+                scope.launch {
                     snackbarHostState.showSnackbar("Error: No se encontró app de correo.")
                 }
             }
         }
+    }
+    
+    // Obtener el ID del centro del usuario actual
+    val centroId = uiState.currentUser?.perfiles?.firstOrNull { perfil -> 
+        perfil.tipo == TipoUsuario.ADMIN_CENTRO 
+    }?.centroId ?: ""
+
+    // Diálogo de confirmación para cerrar sesión
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Cerrar sesión") },
+            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showLogoutDialog = false
+                        viewModel.logout()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Cursos
+    if (showCursosDialog) {
+        AlertDialog(
+            onDismissRequest = { showCursosDialog = false },
+            title = { Text("Gestión de Cursos") },
+            text = { Text("¿Quieres ir a la gestión de cursos del centro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showCursosDialog = false
+                        try {
+                            navController.navigate("gestor_academico/CURSOS?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a cursos: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCursosDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Clases
+    if (showClasesDialog) {
+        AlertDialog(
+            onDismissRequest = { showClasesDialog = false },
+            title = { Text("Gestión de Clases") },
+            text = { Text("¿Quieres ir a la gestión de clases del centro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showClasesDialog = false
+                        try {
+                            navController.navigate("gestor_academico/CLASES?centroId=$centroId&selectorCentroBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a clases: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClasesDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Profesores
+    if (showProfesoresDialog) {
+        AlertDialog(
+            onDismissRequest = { showProfesoresDialog = false },
+            title = { Text("Gestión de Profesores") },
+            text = { Text("¿Quieres ir a la gestión de profesores del centro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showProfesoresDialog = false
+                        try {
+                            if (centroId.isNotBlank()) {
+                                navController.navigate(AppScreens.ProfesorList.createRoute(centroId))
+                            } else {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("No se pudo obtener el ID del centro para ver profesores.")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a profesores: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProfesoresDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Alumnos
+    if (showAlumnosDialog) {
+        AlertDialog(
+            onDismissRequest = { showAlumnosDialog = false },
+            title = { Text("Gestión de Alumnos") },
+            text = { Text("¿Quieres ir a la gestión de alumnos del centro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showAlumnosDialog = false
+                        try {
+                            if (centroId.isNotBlank()) {
+                                navController.navigate(AppScreens.AlumnoList.createRoute(centroId))
+                            } else {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("No se pudo obtener el ID del centro para ver alumnos.")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a alumnos: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAlumnosDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para Vincular Profesor a Clase
+    if (showVincularProfesorDialog) {
+        AlertDialog(
+            onDismissRequest = { showVincularProfesorDialog = false },
+            title = { Text("Vincular Profesor a Clase") },
+            text = { Text("¿Quieres vincular profesores a clases?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showVincularProfesorDialog = false
+                        try {
+                            if (centroId.isNotBlank()) {
+                                navController.navigate(AppScreens.VincularProfesorClase.createRoute(centroId))
+                            } else {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("No se pudo obtener el ID del centro.")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a vinculación profesor-clase: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showVincularProfesorDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para Vincular Familiar
+    if (showVincularFamiliarDialog) {
+        AlertDialog(
+            onDismissRequest = { showVincularFamiliarDialog = false },
+            title = { Text("Vincular Familiar") },
+            text = { Text("¿Quieres vincular familiares a alumnos?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showVincularFamiliarDialog = false
+                        try {
+                            navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a vinculación familiar: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showVincularFamiliarDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para Crear Usuario
+    if (showCrearUsuarioDialog) {
+        AlertDialog(
+            onDismissRequest = { showCrearUsuarioDialog = false },
+            title = { Text("Crear Usuario") },
+            text = { Text("¿Quieres crear un nuevo usuario?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showCrearUsuarioDialog = false
+                        try {
+                            navController.navigate(AppScreens.CrearUsuarioRapido.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a creación de usuario: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCrearUsuarioDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Calendario
+    if (showCalendarioDialog) {
+        AlertDialog(
+            onDismissRequest = { showCalendarioDialog = false },
+            title = { Text("Calendario") },
+            text = { Text("¿Quieres ver el calendario del centro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showCalendarioDialog = false
+                        try {
+                            navController.navigate(AppScreens.Calendario.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar al calendario: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCalendarioDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Notificaciones
+    if (showNotificacionesDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotificacionesDialog = false },
+            title = { Text("Notificaciones") },
+            text = { Text("¿Quieres ver las notificaciones del centro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showNotificacionesDialog = false
+                        try {
+                            navController.navigate(AppScreens.Notificaciones.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a notificaciones: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotificacionesDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a Perfil
+    if (showPerfilDialog) {
+        AlertDialog(
+            onDismissRequest = { showPerfilDialog = false },
+            title = { Text("Perfil") },
+            text = { Text("¿Quieres ir a tu perfil de usuario?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showPerfilDialog = false
+                        try {
+                            navController.navigate(AppScreens.Perfil.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar al perfil: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPerfilDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    // Añadir el diálogo de comunicación unificada después de los otros diálogos existentes
+    if (showMensajesUnificadosDialog) {
+        AlertDialog(
+            onDismissRequest = { showMensajesUnificadosDialog = false },
+            title = { Text("Sistema de Comunicación Unificado") },
+            text = { Text("¿Quieres acceder al sistema de comunicación unificado?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showMensajesUnificadosDialog = false
+                        try {
+                            navController.navigate(AppScreens.UnifiedInbox.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar al sistema de comunicación: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMensajesUnificadosDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
+    // Funciones de navegación locales actualizadas
+    val onNavigateToListaCursos: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showCursosDialog = true
+    }
+
+    val onNavigateToListaClases: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showClasesDialog = true
+    }
+
+    val onNavigateToGestionProfesores: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showProfesoresDialog = true
+    }
+
+    val onNavigateToGestionAlumnos: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showAlumnosDialog = true
+    }
+
+    val onNavigateToVincularProfesorClase: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showVincularProfesorDialog = true
+    }
+
+    val onNavigateToVincularFamiliar: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showVincularFamiliarDialog = true
+    }
+
+    val onNavigateToCalendario: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showCalendarioDialog = true
+    }
+
+    val onNavigateToNotificaciones: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showNotificacionesDialog = true
+    }
+
+    val onNavigateToPerfil: () -> Unit = {
+        try {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al realizar feedback háptico")
+        }
+        showPerfilDialog = true
     }
 
     Scaffold(
@@ -269,7 +694,7 @@ fun CentroDashboardScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = { navController.navigate(AppScreens.Perfil.route) }) {
+                    IconButton(onClick = onNavigateToPerfil) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Perfil",
@@ -278,7 +703,14 @@ fun CentroDashboardScreen(
                     }
                     
                     // Botón de prueba de email (solo para desarrollo)
-                    IconButton(onClick = { navController.navigate(AppScreens.PruebaEmail.route) }) {
+                    IconButton(onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        navController.navigate(AppScreens.PruebaEmail.route) 
+                    }) {
                         Icon(
                             imageVector = Icons.Default.Email,
                             contentDescription = "Prueba Email",
@@ -364,7 +796,7 @@ fun CentroDashboardScreen(
                                     color = CentroColor,
                                     iconTint = AppColors.PurplePrimary,
                                     border = true,
-                                    onClick = { onNavigateToListaCursos() },
+                                    onClick = onNavigateToListaCursos,
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
@@ -376,7 +808,7 @@ fun CentroDashboardScreen(
                                     color = CentroColor,
                                     iconTint = AppColors.PurpleSecondary,
                                     border = true,
-                                    onClick = { onNavigateToListaClases() },
+                                    onClick = onNavigateToListaClases,
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
@@ -388,7 +820,7 @@ fun CentroDashboardScreen(
                                     color = CentroColor,
                                     iconTint = AppColors.PurpleTertiary,
                                     border = true,
-                                    onClick = { onNavigateToCalendario() },
+                                    onClick = onNavigateToCalendario,
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
@@ -415,7 +847,7 @@ fun CentroDashboardScreen(
                                     color = CentroColor,
                                     iconTint = AppColors.Pink80,
                                     border = true,
-                                    onClick = { onNavigateToAddAlumno() },
+                                    onClick = onNavigateToGestionAlumnos,
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
@@ -427,7 +859,7 @@ fun CentroDashboardScreen(
                                     color = CentroColor,
                                     iconTint = AppColors.Green500,
                                     border = true,
-                                    onClick = { onNavigateToGestionProfesores() },
+                                    onClick = onNavigateToGestionProfesores,
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
@@ -439,7 +871,7 @@ fun CentroDashboardScreen(
                                     color = CentroColor,
                                     iconTint = AppColors.Red500,
                                     border = true,
-                                    onClick = { onNavigateToVinculacionFamiliar() },
+                                    onClick = onNavigateToVincularFamiliar,
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
@@ -451,7 +883,7 @@ fun CentroDashboardScreen(
                                     color = CentroColor,
                                     iconTint = AppColors.PurpleTertiary,
                                     border = true,
-                                    onClick = { onNavigateToVincularProfesorClase() },
+                                    onClick = onNavigateToVincularProfesorClase,
                                     modifier = Modifier.padding(4.dp) // Quitado fillMaxWidth para que quepa en la grid
                                 )
                             }
@@ -479,7 +911,7 @@ fun CentroDashboardScreen(
                                     color = CentroColor,
                                     iconTint = AppColors.GradientEnd,
                                     border = true,
-                                    onClick = { onNavigateToNotificaciones() },
+                                    onClick = onNavigateToNotificaciones,
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
@@ -507,6 +939,25 @@ fun CentroDashboardScreen(
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Comunicación",
+                                    descripcion = "Sistema unificado de mensajes y comunicados",
+                                    icono = Icons.Default.Email,
+                                    color = CentroColor,
+                                    iconTint = AppColors.Blue500,
+                                    border = true,
+                                    onClick = { 
+                                        try {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        } catch (e: Exception) {
+                                            Timber.e(e, "Error al realizar feedback háptico")
+                                        }
+                                        navController.navigate(AppScreens.UnifiedInbox.route)
+                                    },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
                             // --- Fin Nueva Sección: Herramientas Administrativas ---
 
                             // Espaciador final para scroll
@@ -516,43 +967,24 @@ fun CentroDashboardScreen(
                         }
                     }
                 }
-                
-                // --- Mover AlertDialog aquí dentro del Box --- 
-                if (showLogoutDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showLogoutDialog = false },
-                        title = { Text("Cerrar sesión") },
-                        text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                showLogoutDialog = false
-                                viewModel.logout()
-                            }) { Text("Sí") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showLogoutDialog = false }) { Text("No") }
-                        }
-                    )
-                }
-                // --- Fin AlertDialog movido ---
-                
-                // --- Diálogo de Solicitudes de Vinculación ---
-                if (mostrarDialogoSolicitudes) {
-                    SolicitudesPendientesDialog(
-                        solicitudes = solicitudesPendientes,
-                        onDismiss = { mostrarDialogoSolicitudes = false },
-                        onProcesarSolicitud = { solicitudId, aprobar ->
-                            viewModel.procesarSolicitud(
-                                solicitudId = solicitudId,
-                                aprobar = aprobar,
-                                enviarEmail = true
-                            )
-                        }
-                    )
-                }
-                // --- Fin Diálogo de Solicitudes de Vinculación ---
-                
             } // Cierre Box
+            
+            // --- Diálogo de Solicitudes de Vinculación ---
+            if (mostrarDialogoSolicitudes) {
+                SolicitudesPendientesDialog(
+                    solicitudes = solicitudesPendientes,
+                    onDismiss = { mostrarDialogoSolicitudes = false },
+                    onProcesarSolicitud = { solicitudId, aprobar ->
+                        viewModel.procesarSolicitud(
+                            solicitudId = solicitudId,
+                            aprobar = aprobar,
+                            enviarEmail = true
+                        )
+                    }
+                )
+            }
+            // --- Fin Diálogo de Solicitudes de Vinculación ---
+            
         } // Cierre lambda de contenido del Scaffold
     } // Cierre de la función @Composable CentroDashboardScreen
 
@@ -744,7 +1176,7 @@ fun SolicitudItem(
         Text("Familiar: ${solicitud.nombreFamiliar ?: solicitud.familiarId}", fontWeight = FontWeight.Bold)
         Text("Alumno DNI: ${solicitud.alumnoDni}")
         Text("Relación: ${solicitud.tipoRelacion ?: "No especificada"}")
-        Text("Fecha: ${solicitud.fechaSolicitud?.toDate()?.let { SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(it) } ?: "-"}")
+        Text("Fecha: ${solicitud.fechaSolicitud.toDate().let { SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(it) }}")
         Row(modifier = Modifier.padding(top = 8.dp)) {
             Button(onClick = { onProcesarSolicitud(solicitud.id, true) }) {
                 Text("Aprobar")

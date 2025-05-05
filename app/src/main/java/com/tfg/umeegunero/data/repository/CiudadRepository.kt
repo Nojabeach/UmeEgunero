@@ -18,10 +18,32 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * Repositorio para gestionar datos de ciudades y códigos postales.
- * 
- * Fuente de datos: Nominatim OpenStreetMap API (https://nominatim.org/)
- * API gratuita y de código abierto.
+ * Repositorio para gestionar información de ciudades en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para recuperar, almacenar y gestionar
+ * información geográfica de ciudades, facilitando la gestión de direcciones,
+ * ubicaciones de centros educativos y datos de contexto geográfico.
+ *
+ * Características principales:
+ * - Recuperación de información de ciudades
+ * - Búsqueda y filtrado de ciudades
+ * - Integración con servicios de geolocalización
+ * - Soporte para datos geográficos detallados
+ * - Caching de información de ciudades
+ *
+ * El repositorio permite:
+ * - Obtener información detallada de ciudades
+ * - Buscar ciudades por diferentes criterios
+ * - Autocompletar direcciones
+ * - Validar información geográfica
+ * - Enriquecer datos de ubicación
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property nominatimService Servicio de geolocalización para obtener datos detallados
+ * @property networkManager Gestor de conectividad de red
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class CiudadRepository @Inject constructor(

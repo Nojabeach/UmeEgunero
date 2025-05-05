@@ -30,12 +30,15 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -147,6 +150,7 @@ import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.Event
 
 /**
  * ViewModel de muestra para el preview
@@ -417,6 +421,8 @@ fun AddUserScreen(
     val fechaNacimientoFocusRequester = remember { FocusRequester() } // Para el TextField
     val cursoFocusRequester = remember { FocusRequester() } // Para el TextField del dropdown
     val claseFocusRequester = remember { FocusRequester() } // Para el TextField del dropdown
+    val numeroSSFocusRequester = remember { FocusRequester() }
+    val condicionesMedicasFocusRequester = remember { FocusRequester() }
 
     // Variables para UI de campos
     var showPassword by remember { mutableStateOf(false) }
@@ -469,6 +475,8 @@ fun AddUserScreen(
                 AddUserFormField.FECHA_NACIMIENTO -> fechaNacimientoFocusRequester
                 AddUserFormField.CURSO -> cursoFocusRequester
                 AddUserFormField.CLASE -> claseFocusRequester
+                AddUserFormField.NUMERO_SS -> numeroSSFocusRequester
+                AddUserFormField.CONDICIONES_MEDICAS -> condicionesMedicasFocusRequester
                 null -> null
             }
 
@@ -709,7 +717,7 @@ fun AddUserScreen(
                                         isLoading = uiState.isLoading,
                                         focusRequester = centroFocusRequester,
                                         modifier = Modifier.fillMaxWidth(),
-                                        enabled = !uiState.isCentroBloqueado
+                                        enabled = !uiState.isCentroSeleccionadoBloqueado
                                     )
                                 }
                             }
@@ -891,13 +899,21 @@ fun AddUserScreen(
                             cursosDisponibles = uiState.cursosDisponibles,
                             claseSeleccionada = uiState.claseSeleccionada,
                             clasesDisponibles = uiState.clasesDisponibles,
+                            numeroSS = uiState.numeroSS,
+                            numeroSSError = uiState.numeroSSError,
+                            condicionesMedicas = uiState.condicionesMedicas,
+                            condicionesMedicasError = uiState.condicionesMedicasError,
                             isLoading = uiState.isLoading,
                             onUpdateFechaNacimiento = onUpdateFechaNacimiento,
                             onCursoSelected = onCursoSelectedAlumno,
                             onUpdateClaseSeleccionada = onUpdateClaseSeleccionada,
+                            onUpdateNumeroSS = { numeroSS -> uiState.copy(numeroSS = numeroSS) },
+                            onUpdateCondicionesMedicas = { condicionesMedicas -> uiState.copy(condicionesMedicas = condicionesMedicas) },
                             fechaNacimientoFocusRequester = fechaNacimientoFocusRequester,
                             cursoFocusRequester = cursoFocusRequester,
                             claseFocusRequester = claseFocusRequester,
+                            numeroSSFocusRequester = numeroSSFocusRequester,
+                            condicionesMedicasFocusRequester = condicionesMedicasFocusRequester,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -1213,7 +1229,7 @@ fun AddUserScreenPreview() {
     val factory = remember { PreviewAddUserViewModelFactory() }
     val viewModel: PreviewAddUserViewModel = viewModel(factory = factory)
     val uiState = viewModel.uiState.copy(
-        isCentroBloqueado = true,
+        isCentroSeleccionadoBloqueado = true,
         initialCentroId = "1",
         tipoUsuario = TipoUsuario.ALUMNO,
         centroSeleccionado = viewModel.uiState.centrosDisponibles.find { it.id == "1" }
@@ -1336,40 +1352,47 @@ private fun calcularPorcentajeCompletado(uiState: AddUserUiState): Float {
 /**
  * Campo para la fecha de nacimiento
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FechaNacimientoField(
     value: String,
-    onValueChange: (String) -> Unit,
+    onFechaNacimientoChanged: (String) -> Unit,
     error: String?,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
-
+    val context = LocalContext.current
+    
+    // Creamos el DatePickerDialog con Material3
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
+        
         DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
+            onDismissRequest = { 
+                showDatePicker = false 
+            },
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         val calendar = Calendar.getInstance().apply {
                             timeInMillis = millis
                         }
-                        val day = calendar.get(Calendar.DAY_OF_MONTH)
-                        val month = calendar.get(Calendar.MONTH) + 1
+                        val day = calendar.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
+                        val month = (calendar.get(Calendar.MONTH) + 1).toString().padStart(2, '0')
                         val year = calendar.get(Calendar.YEAR)
                         val formattedDate = "$day/$month/$year"
-                        onValueChange(formattedDate)
+                        onFechaNacimientoChanged(formattedDate)
                     }
                     showDatePicker = false
                 }) {
-                    Text("Aceptar")
+                    Text("Confirmar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
+                TextButton(onClick = { 
+                    showDatePicker = false 
+                }) {
                     Text("Cancelar")
                 }
             }
@@ -1377,33 +1400,43 @@ fun FechaNacimientoField(
             DatePicker(state = datePickerState)
         }
     }
-
+    
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = onFechaNacimientoChanged,
         label = { Text(text = "Fecha de Nacimiento") },
         placeholder = { Text(text = "dd/mm/aaaa") },
-        leadingIcon = { 
+        supportingText = {
+            if (error != null) {
+                Text(text = error)
+            } else {
+                Text("Presione el icono de calendario para seleccionar la fecha")
+            }
+        },
+        leadingIcon = {
             Icon(
-                imageVector = Icons.Default.Cake,
-                contentDescription = null
+                imageVector = Icons.Default.CalendarToday,
+                contentDescription = null,
+                tint = if (error != null)
+                    MaterialTheme.colorScheme.error
+                else
+                    MaterialTheme.colorScheme.primary
             )
         },
         trailingIcon = {
             IconButton(onClick = { showDatePicker = true }) {
                 Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = "Seleccionar Fecha"
+                    imageVector = Icons.Default.Event,
+                    contentDescription = "Seleccionar fecha",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         },
         isError = error != null,
-        supportingText = error?.let { { Text(text = it) } },
-        readOnly = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Number),
+        modifier = modifier.fillMaxWidth().focusRequester(focusRequester),
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-        keyboardActions = KeyboardActions(onNext = { focusRequester.requestFocus() }),
-        modifier = modifier.focusRequester(focusRequester)
+        readOnly = true
     )
 }
 
@@ -1687,28 +1720,23 @@ fun AlumnoFields(
     cursosDisponibles: List<Curso>,
     claseSeleccionada: Clase?,
     clasesDisponibles: List<Clase>,
+    numeroSS: String = "",
+    numeroSSError: String? = null, 
+    condicionesMedicas: String = "",
+    condicionesMedicasError: String? = null,
     isLoading: Boolean,
     onUpdateFechaNacimiento: (String) -> Unit,
     onCursoSelected: (String) -> Unit,
     onUpdateClaseSeleccionada: (String) -> Unit,
+    onUpdateNumeroSS: (String) -> Unit,
+    onUpdateCondicionesMedicas: (String) -> Unit,
     fechaNacimientoFocusRequester: FocusRequester,
     cursoFocusRequester: FocusRequester,
     claseFocusRequester: FocusRequester,
+    numeroSSFocusRequester: FocusRequester = FocusRequester(),
+    condicionesMedicasFocusRequester: FocusRequester = FocusRequester(),
     modifier: Modifier = Modifier
 ) {
-    // Estados para animaciones
-    var cursoSeleccionadoAnimacion by remember { mutableStateOf(false) }
-    var showContextualHelp by remember { mutableStateOf(false) }
-    
-    // Efecto para animar cuando se selecciona un curso
-    LaunchedEffect(cursoSeleccionado) {
-        if (cursoSeleccionado != null) {
-            cursoSeleccionadoAnimacion = true
-            delay(300)
-            cursoSeleccionadoAnimacion = false
-        }
-    }
-    
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -1723,158 +1751,115 @@ fun AlumnoFields(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.School,
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .padding(end = 8.dp),
+                    modifier = Modifier.size(28.dp).padding(end = 8.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Información Académica",
+                    text = "Información del Alumno",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // Botón de información/ayuda
-                IconButton(
-                    onClick = { showContextualHelp = !showContextualHelp }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Información",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            
-            // Mensaje de ayuda contextual
-            AnimatedVisibility(
-                visible = showContextualHelp,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Seleccione un curso y luego una clase para el alumno. " +
-                              "También debe indicar su fecha de nacimiento para completar el registro.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-            
-            // Jerarquía visual de selección
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Indicador de progreso en la selección
-                LinearProgressIndicator(
-                    progress = when {
-                        cursoSeleccionado != null && claseSeleccionada != null -> 1f
-                        cursoSeleccionado != null -> 0.5f
-                        else -> 0.25f
-                    },
-                    modifier = Modifier
-                        .height(8.dp)
-                        .weight(1f),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                // Contador de pasos completados
-                Text(
-                    text = when {
-                        cursoSeleccionado != null && claseSeleccionada != null -> "3/3"
-                        cursoSeleccionado != null -> "2/3"
-                        else -> "1/3"
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    fontWeight = FontWeight.Bold
                 )
             }
 
+            // Fecha de nacimiento
             FechaNacimientoField(
                 value = fechaNacimiento,
-                onValueChange = onUpdateFechaNacimiento,
+                onFechaNacimientoChanged = { nuevaFecha ->
+                    onUpdateFechaNacimiento(nuevaFecha)
+                },
                 error = fechaNacimientoError,
-                focusRequester = fechaNacimientoFocusRequester,
-                modifier = Modifier.fillMaxWidth()
+                focusRequester = fechaNacimientoFocusRequester
             )
-            
-            // Curso con efecto de highlight cuando se selecciona
+
+            // Número de la Seguridad Social
+            OutlinedTextField(
+                value = numeroSS,
+                onValueChange = onUpdateNumeroSS,
+                label = { Text("Número de Seguridad Social") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        tint = if (numeroSSError != null)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { condicionesMedicasFocusRequester.requestFocus() }
+                ),
+                isError = numeroSSError != null,
+                supportingText = {
+                    if (numeroSSError != null) {
+                        Text(text = numeroSSError)
+                    } else {
+                        Text("Introduzca el número de la seguridad social del alumno")
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(numeroSSFocusRequester),
+                singleLine = true
+            )
+
+            // Condiciones médicas
+            OutlinedTextField(
+                value = condicionesMedicas,
+                onValueChange = onUpdateCondicionesMedicas,
+                label = { Text("Condiciones Médicas") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.MedicalServices,
+                        contentDescription = null,
+                        tint = if (condicionesMedicasError != null)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { cursoFocusRequester.requestFocus() }
+                ),
+                isError = condicionesMedicasError != null,
+                supportingText = {
+                    if (condicionesMedicasError != null) {
+                        Text(text = condicionesMedicasError)
+                    } else {
+                        Text("Alergias, enfermedades crónicas u otras condiciones relevantes")
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(condicionesMedicasFocusRequester)
+                    .height(120.dp),
+                maxLines = 5
+            )
+
+            // Curso
             CursoDropdown(
                 cursoSeleccionado = cursoSeleccionado?.nombre ?: "Elija el curso",
                 onCursoSelected = { cursoId ->
                     onCursoSelected(cursoId)
-                    // El LaunchedEffect se encargará de la animación
                 },
                 cursos = cursosDisponibles.map { it.nombre to it.id },
                 error = null,
                 isLoading = isLoading,
                 focusRequester = cursoFocusRequester,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (cursoSeleccionadoAnimacion) {
-                            Modifier.border(
-                                width = 2.dp,
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
+                modifier = Modifier.fillMaxWidth()
             )
-            
-            // Visualización del curso seleccionado como chip
-            AnimatedVisibility(
-                visible = cursoSeleccionado != null,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                cursoSeleccionado?.let { curso ->
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.School,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Curso: ${curso.nombre}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
-            }
             
             ClaseDropdown(
                 clases = clasesDisponibles,
@@ -1885,39 +1870,6 @@ fun AlumnoFields(
                 focusRequester = claseFocusRequester,
                 modifier = Modifier.fillMaxWidth()
             )
-            
-            // Visualización de la clase seleccionada como chip
-            AnimatedVisibility(
-                visible = claseSeleccionada != null,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                claseSeleccionada?.let { clase ->
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Class,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Clase: ${clase.nombre} (Aula: ${clase.aula})",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }

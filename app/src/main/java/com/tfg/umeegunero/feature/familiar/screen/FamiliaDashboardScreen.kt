@@ -75,6 +75,9 @@ import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCardBienvenid
 import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.BorderStroke
 import com.tfg.umeegunero.util.DateUtils
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import timber.log.Timber
 
 /**
  * Modelo para representar una solicitud de vinculación pendiente
@@ -119,12 +122,21 @@ fun FamiliaDashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     
     // Variables para control de animaciones
     var showContent by remember { mutableStateOf(false) }
     
     // Estado para controlar el diálogo de nueva solicitud
     var showNuevaSolicitudDialog by remember { mutableStateOf(false) }
+    
+    // Estados para diálogos de confirmación
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showNavigateToNotificacionesDialog by remember { mutableStateOf(false) }
+    var showNavigateToCalendarioDialog by remember { mutableStateOf(false) }
+    var showNavigateToMensajesDialog by remember { mutableStateOf(false) }
+    var showNavigateToConfiguracionDialog by remember { mutableStateOf(false) }
+    var showNavigateToHistorialDialog by remember { mutableStateOf(false) }
     
     // Efecto para mostrar contenido con animación
     LaunchedEffect(Unit) {
@@ -172,6 +184,200 @@ fun FamiliaDashboardScreen(
         )
     }
     
+    // Diálogo de confirmación para cerrar sesión
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Cerrar sesión") },
+            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showLogoutDialog = false
+                        viewModel.logout()
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a notificaciones
+    if (showNavigateToNotificacionesDialog) {
+        AlertDialog(
+            onDismissRequest = { showNavigateToNotificacionesDialog = false },
+            title = { Text("Notificaciones") },
+            text = { Text("¿Quieres ver tus notificaciones pendientes?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showNavigateToNotificacionesDialog = false
+                        navController.navigate(AppScreens.NotificacionesFamilia.route)
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNavigateToNotificacionesDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a calendario
+    if (showNavigateToCalendarioDialog) {
+        AlertDialog(
+            onDismissRequest = { showNavigateToCalendarioDialog = false },
+            title = { Text("Calendario") },
+            text = { Text("¿Quieres ver el calendario de eventos del centro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showNavigateToCalendarioDialog = false
+                        navController.navigate(AppScreens.CalendarioFamilia.route)
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNavigateToCalendarioDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a mensajes
+    if (showNavigateToMensajesDialog) {
+        AlertDialog(
+            onDismissRequest = { showNavigateToMensajesDialog = false },
+            title = { Text("Mensajes Unificados") },
+            text = { Text("¿Quieres acceder a tu bandeja de mensajes unificada?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showNavigateToMensajesDialog = false
+                        navController.navigate(AppScreens.UnifiedInbox.route)
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNavigateToMensajesDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a configuración
+    if (showNavigateToConfiguracionDialog) {
+        AlertDialog(
+            onDismissRequest = { showNavigateToConfiguracionDialog = false },
+            title = { Text("Configuración") },
+            text = { Text("¿Quieres ir a la configuración de tu perfil?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showNavigateToConfiguracionDialog = false
+                        navController.navigate(AppScreens.Perfil.route)
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNavigateToConfiguracionDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de confirmación para ir a historial
+    if (showNavigateToHistorialDialog) {
+        AlertDialog(
+            onDismissRequest = { showNavigateToHistorialDialog = false },
+            title = { Text("Historial") },
+            text = { 
+                if (uiState.hijoSeleccionado != null) {
+                    Text("¿Quieres ver el historial de ${uiState.hijoSeleccionado!!.nombre}?")
+                } else {
+                    Text("Necesitas seleccionar un hijo primero")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        showNavigateToHistorialDialog = false
+                        if (uiState.hijoSeleccionado != null) {
+                            val alumnoId = uiState.hijoSeleccionado!!.dni
+                            val alumnoNombre = uiState.hijoSeleccionado!!.nombre
+                            navController.navigate(
+                                AppScreens.ConsultaRegistroDiario.createRoute(
+                                    alumnoId = alumnoId,
+                                    alumnoNombre = alumnoNombre
+                                )
+                            )
+                        } else {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Selecciona un hijo primero")
+                            }
+                        }
+                    },
+                    enabled = uiState.hijoSeleccionado != null
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNavigateToHistorialDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -190,13 +396,9 @@ fun FamiliaDashboardScreen(
                             }
                         }
                     ) {
-                        IconButton(onClick = {
-                            try {
-                                navController.navigate(AppScreens.ConversacionesFamilia.route)
-                            } catch (e: Exception) {
-                                // Nunca cerrar la app, solo mostrar error si ocurre
-                            }
-                        }) {
+                        IconButton(
+                            onClick = { showNavigateToMensajesDialog = true }
+                        ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Chat,
                                 contentDescription = "Mensajes"
@@ -204,14 +406,14 @@ fun FamiliaDashboardScreen(
                         }
                     }
                     // Icono de perfil
-                    IconButton(onClick = { navController.navigate(AppScreens.Perfil.route) }) {
+                    IconButton(onClick = { showNavigateToConfiguracionDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Perfil"
                         )
                     }
                     // Cerrar sesión
-                    IconButton(onClick = { viewModel.logout() }) {
+                    IconButton(onClick = { showLogoutDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Cerrar sesión"
@@ -229,7 +431,14 @@ fun FamiliaDashboardScreen(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showNuevaSolicitudDialog = true },
+                onClick = { 
+                    try {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al realizar feedback háptico")
+                    }
+                    showNuevaSolicitudDialog = true 
+                },
                 containerColor = FamiliarColor,
                 contentColor = Color.White
             ) {
@@ -261,27 +470,13 @@ fun FamiliaDashboardScreen(
                 exit = fadeOut()
             ) {
                 val cards = listOf(
-                    CategoriaCardData("Mensajes", "Consulta y responde mensajes de la escuela", Icons.AutoMirrored.Filled.Chat, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ConversacionesFamilia.route) }),
-                    CategoriaCardData("Calendario", "Revisa eventos y fechas importantes", Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.CalendarioFamilia.route) }),
-                    CategoriaCardData("Historial", "Consulta el registro diario de tu hijo/a", Icons.AutoMirrored.Filled.Assignment, MaterialTheme.colorScheme.secondary, onClick = {
-                        if (uiState.hijoSeleccionado != null) {
-                            val alumnoId = uiState.hijoSeleccionado!!.dni
-                            val alumnoNombre = uiState.hijoSeleccionado!!.nombre
-                            navController.navigate(
-                                AppScreens.ConsultaRegistroDiario.createRoute(
-                                    alumnoId = alumnoId,
-                                    alumnoNombre = alumnoNombre
-                                )
-                            )
-                        } else {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Selecciona un hijo primero")
-                            }
-                        }
+                    CategoriaCardData("Mensajes", "Mensajería unificada y comunicados del centro", Icons.AutoMirrored.Filled.Chat, MaterialTheme.colorScheme.primary, onClick = { 
+                        navController.navigate(AppScreens.UnifiedInbox.route)
                     }),
-                    CategoriaCardData("Comunicados", "Lee los comunicados del centro", Icons.AutoMirrored.Filled.Announcement, MaterialTheme.colorScheme.primary, onClick = { navController.navigate(AppScreens.ComunicadosFamilia.route) }),
-                    CategoriaCardData("Tareas", "Revisa y entrega tareas de tu hijo/a", Icons.AutoMirrored.Filled.Assignment, MaterialTheme.colorScheme.tertiary, onClick = { navController.navigate(AppScreens.TareasFamilia.route) }),
-                    CategoriaCardData("Actividades", "Consulta y participa en actividades escolares", Icons.Default.PlayCircle, MaterialTheme.colorScheme.secondary, onClick = { navController.navigate(AppScreens.ActividadesPreescolar.route) })
+                    CategoriaCardData("Calendario", "Revisa eventos y fechas importantes", Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiary, onClick = { showNavigateToCalendarioDialog = true }),
+                    CategoriaCardData("Historial", "Consulta el registro diario de tu hijo/a", Icons.AutoMirrored.Filled.Assignment, MaterialTheme.colorScheme.secondary, onClick = { showNavigateToHistorialDialog = true }),
+                    CategoriaCardData("Notificaciones", "Revisa todas las notificaciones pendientes", Icons.Default.Notifications, MaterialTheme.colorScheme.primary, onClick = { showNavigateToNotificacionesDialog = true }),
+                    CategoriaCardData("Configuración", "Ajusta preferencias de tu perfil y notificaciones", Icons.Default.Settings, MaterialTheme.colorScheme.tertiary, onClick = { showNavigateToConfiguracionDialog = true })
                 )
                 
                 LazyVerticalGrid(
@@ -372,9 +567,15 @@ fun FamiliaDashboardScreen(
                                 alumno = uiState.hijoSeleccionado!!,
                                 registrosActividad = uiState.registrosActividad,
                                 onVerDetalles = { registroId ->
-                                    navController.navigate(
-                                        "detalle_registro/$registroId"
-                                    )
+                                    try {
+                                        navController.navigate(
+                                            AppScreens.DetalleRegistro.createRoute(registroId)
+                                        )
+                                    } catch (e: Exception) {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("No se pudo navegar a los detalles")
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -529,6 +730,7 @@ fun HijosMultiSelector(
     hijoSeleccionado: Alumno?,
     onHijoSelected: (Alumno) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     if (hijos.isEmpty()) {
         // Si no hay hijos, mostrar un mensaje informativo
         Card(
@@ -592,7 +794,14 @@ fun HijosMultiSelector(
                             modifier = Modifier
                                 .width(120.dp)
                                 .height(140.dp)
-                                .clickable { onHijoSelected(hijo) },
+                                .clickable { 
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al realizar feedback háptico")
+                                    }
+                                    onHijoSelected(hijo) 
+                                },
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isSelected) 
                                     FamiliarColor.copy(alpha = 0.2f) 
@@ -972,6 +1181,7 @@ fun ResumenActividadCard(
     onVerDetalles: (String) -> Unit
 ) {
     val ultimoRegistro = registrosActividad.maxByOrNull { it.fecha }
+    val haptic = LocalHapticFeedback.current
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1004,6 +1214,11 @@ fun ResumenActividadCard(
                     
                     Button(
                         onClick = { 
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al realizar feedback háptico")
+                            }
                             onVerDetalles(ultimoRegistro.id)
                         },
                         colors = ButtonDefaults.buttonColors(
@@ -1149,6 +1364,8 @@ fun NotificacionesCard(
     totalNoLeidas: Int,
     onVerTodas: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1198,7 +1415,14 @@ fun NotificacionesCard(
             Spacer(modifier = Modifier.height(16.dp))
             
             Button(
-                onClick = onVerTodas,
+                onClick = { 
+                    try {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al realizar feedback háptico")
+                    }
+                    onVerTodas() 
+                },
                 modifier = Modifier.align(Alignment.End),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = FamiliarColor

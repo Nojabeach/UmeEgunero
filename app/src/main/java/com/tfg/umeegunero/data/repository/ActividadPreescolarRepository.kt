@@ -15,7 +15,22 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar actividades preescolares en Firestore
+ * Repositorio para gestionar operaciones relacionadas con actividades preescolares en UmeEgunero.
+ *
+ * Esta interfaz define los métodos para interactuar con las actividades de educación infantil,
+ * permitiendo la creación, seguimiento, registro y consulta de actividades diarias
+ * realizadas por niños en edad preescolar.
+ *
+ * El repositorio permite a diferentes roles realizar acciones específicas:
+ * - Profesores pueden registrar y documentar actividades
+ * - Familiares pueden consultar el progreso y desarrollo de sus hijos
+ * - Administradores pueden gestionar y supervisar las actividades
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property storageRepository Repositorio para gestionar almacenamiento de archivos multimedia
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class ActividadPreescolarRepository @Inject constructor(

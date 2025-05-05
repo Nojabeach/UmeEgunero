@@ -1,24 +1,21 @@
 package com.tfg.umeegunero.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.ktx.functions
+import com.google.firebase.ktx.Firebase
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.util.Result
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
-import timber.log.Timber
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.Firebase
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 /**
@@ -150,11 +147,12 @@ interface AuthRepository {
     /**
      * Elimina un usuario de Firebase Authentication por su email.
      * 
-     * Este método utiliza un servicio de Google Apps Script para eliminar un usuario
-     * de Firebase Authentication mediante su correo electrónico.
-     * 
-     * @param email Correo electrónico del usuario a eliminar
-     * @return Resultado encapsulado que indica éxito o error en la operación
+     * Este método utiliza Firebase Functions para eliminar de forma segura un usuario
+     * mediante su correo electrónico. La eliminación se realiza en el servidor
+     * para mantener la seguridad y evitar exposición de tokens o claves.
+     *
+     * @param email Dirección de correo electrónico del usuario a eliminar
+     * @return Resultado de la operación
      */
     suspend fun deleteUserByEmail(email: String): Result<Unit>
 }
@@ -468,52 +466,42 @@ class AuthRepositoryImpl @Inject constructor(
     /**
      * Elimina un usuario de Firebase Authentication por su email.
      * 
-     * Este método utiliza un servicio de Google Apps Script para eliminar un usuario
-     * de Firebase Authentication mediante su correo electrónico.
-     * 
-     * @param email Correo electrónico del usuario a eliminar
-     * @return Resultado encapsulado que indica éxito o error en la operación
+     * Este método utiliza Firebase Functions para eliminar de forma segura un usuario
+     * mediante su correo electrónico. La eliminación se realiza en el servidor
+     * para mantener la seguridad y evitar exposición de tokens o claves.
+     *
+     * @param email Dirección de correo electrónico del usuario a eliminar
+     * @return Resultado de la operación
      */
     override suspend fun deleteUserByEmail(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        Timber.d("Solicitando eliminación de usuario con email: $email")
         try {
-            // URL del servicio web de Google Apps Script desplegado
-            val serviceUrl = "https://script.google.com/macros/s/AKfycbze3MmQnykWCV_ymsZgnICiC1wFIZG37-8Pr66ZbJS9X87LiL10wC3JJYVu1MVzsjxP/exec"
+            // Actualizado para usar Firebase Functions en lugar de Apps Script
+            val data = hashMapOf(
+                "action" to "deleteUser",
+                "email" to email
+            )
             
-            // Crear la solicitud HTTP
-            val client = OkHttpClient()
-            val json = JSONObject().apply {
-                put("action", "deleteUser")
-                put("email", email)
-                // No necesitamos apiKey si no se configuró en el script
-            }
+            val functions = Firebase.functions
+            val result = functions
+                .getHttpsCallable("manageUsers")
+                .call(data)
+                .await()
             
-            val requestBody = json.toString().toRequestBody("application/json".toMediaType())
-            val request = Request.Builder()
-                .url(serviceUrl)
-                .post(requestBody)
-                .build()
-                
-            // Ejecutar la solicitud
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string()
+            val resultData = result.data as? Map<*, *>
+            val success = resultData?.get("success") as? Boolean ?: false
             
-            if (response.isSuccessful && responseBody != null) {
-                val jsonResponse = JSONObject(responseBody)
-                if (jsonResponse.optBoolean("success", false)) {
-                    Timber.d("Usuario eliminado correctamente de Firebase Auth: $email")
-                    Result.Success(Unit)
-                } else {
-                    val errorMsg = jsonResponse.optString("error", "Error desconocido")
-                    Timber.e("Error al eliminar usuario de Firebase Auth: $errorMsg")
-                    Result.Error(Exception("Error al eliminar usuario: $errorMsg"))
-                }
+            if (success) {
+                Timber.d("Usuario eliminado correctamente: $email")
+                return@withContext Result.Success(Unit)
             } else {
-                Timber.e("Error en la comunicación con el servicio de Google Apps Script")
-                Result.Error(Exception("Error en la comunicación con el servicio: ${response.code}"))
+                val errorMessage = resultData?.get("error") as? String ?: "Error desconocido al eliminar usuario"
+                Timber.e("Error al eliminar usuario: $errorMessage")
+                return@withContext Result.Error(Exception(errorMessage))
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al eliminar usuario de Firebase Auth")
-            Result.Error(e)
+            Timber.e(e, "Error al ejecutar la función para eliminar usuario: ${e.message}")
+            return@withContext Result.Error(e)
         }
     }
 } 

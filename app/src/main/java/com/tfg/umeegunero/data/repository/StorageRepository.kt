@@ -25,7 +25,31 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para la gestión de archivos
+ * Repositorio para gestionar el almacenamiento de archivos en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para subir, descargar, eliminar y gestionar
+ * archivos multimedia y documentos asociados a diferentes entidades como
+ * tareas, actividades, mensajes y perfiles de usuario.
+ *
+ * Características principales:
+ * - Subida de archivos a Firebase Storage
+ * - Generación de URLs de descarga
+ * - Gestión de permisos de archivos
+ * - Compresión y optimización de imágenes
+ * - Manejo de diferentes tipos de archivos (imágenes, documentos, etc.)
+ *
+ * El repositorio se encarga de:
+ * - Almacenar archivos de manera segura
+ * - Generar nombres únicos para archivos
+ * - Manejar límites de tamaño y tipos de archivos
+ * - Proporcionar métodos de acceso a archivos
+ *
+ * @property storage Instancia de FirebaseStorage para operaciones de almacenamiento
+ * @property firestore Instancia de FirebaseFirestore para referencias de documentos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class StorageRepository @Inject constructor(

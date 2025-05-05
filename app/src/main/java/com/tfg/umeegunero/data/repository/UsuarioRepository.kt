@@ -36,7 +36,20 @@ import com.tfg.umeegunero.data.service.RemoteConfigService
 import com.google.firebase.firestore.FieldValue
 
 /**
- * Repositorio para gestionar usuarios y operaciones relacionadas
+ * Repositorio para gestionar operaciones relacionadas con usuarios en la aplicación UmeEgunero.
+ *
+ * Esta interfaz define los métodos para interactuar con los usuarios, permitiendo
+ * operaciones como obtención, creación, actualización y eliminación de usuarios.
+ *
+ * El repositorio maneja diferentes tipos de usuarios (administradores, profesores, 
+ * familiares, alumnos) y proporciona métodos para gestionar sus perfiles, 
+ * autenticación y datos personales.
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para gestionar el inicio de sesión
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 open class UsuarioRepository @Inject constructor(
@@ -2275,6 +2288,205 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error general al eliminar usuario: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Guarda un nuevo usuario en Firestore y Firebase Authentication
+     * 
+     * @param usuario Objeto Usuario con los datos a guardar
+     * @param password Contraseña para crear la cuenta de Firebase Auth
+     * @return Result con éxito o error
+     */
+    suspend fun saveUsuario(usuario: Usuario, password: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Iniciando guardado de usuario: ${usuario.dni}, email: ${usuario.email}")
+            
+            // Verificar que el DNI no existe ya en Firestore
+            val existingUser = usuariosCollection.document(usuario.dni).get().await()
+            if (existingUser.exists()) {
+                return@withContext Result.Error(Exception("Ya existe un usuario con este DNI"))
+            }
+            
+            // Crear usuario en Firebase Auth
+            val authResult = firebaseAuth.createUserWithEmailAndPassword(usuario.email, password).await()
+            val uid = authResult.user?.uid ?: throw Exception("Error al crear usuario en Firebase Auth")
+            Timber.d("Usuario creado en Firebase Auth con UID: $uid")
+            
+            // Actualizar el usuario con el UID de Firebase
+            val usuarioConUid = usuario.copy(
+                firebaseUid = uid,
+                fechaRegistro = Timestamp.now()
+            )
+            
+            // Guardar en Firestore
+            usuariosCollection.document(usuario.dni).set(usuarioConUid).await()
+            Timber.d("Usuario guardado en Firestore: ${usuario.dni}")
+            
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al guardar usuario: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Actualiza un usuario existente en Firestore
+     * 
+     * @param usuario Objeto Usuario con los datos actualizados
+     * @return Result con éxito o error
+     */
+    suspend fun updateUsuario(usuario: Usuario): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Actualizando usuario: ${usuario.dni}")
+            
+            // Verificar que el usuario existe
+            val existingUser = usuariosCollection.document(usuario.dni).get().await()
+            if (!existingUser.exists()) {
+                return@withContext Result.Error(Exception("El usuario no existe"))
+            }
+            
+            // Actualizar en Firestore
+            usuariosCollection.document(usuario.dni).set(usuario).await()
+            Timber.d("Usuario actualizado en Firestore: ${usuario.dni}")
+            
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar usuario: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Guarda un nuevo alumno en Firestore
+     * 
+     * @param alumno Objeto Alumno con los datos a guardar
+     * @return Result con éxito o error
+     */
+    suspend fun saveAlumno(alumno: Alumno): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Guardando alumno: ${alumno.dni}, nombre: ${alumno.nombre}")
+            
+            // Verificar que el DNI no existe ya en Firestore
+            val existingAlumno = alumnosCollection.document(alumno.dni).get().await()
+            if (existingAlumno.exists()) {
+                return@withContext Result.Error(Exception("Ya existe un alumno con este DNI"))
+            }
+            
+            // Guardar en Firestore
+            alumnosCollection.document(alumno.dni).set(alumno).await()
+            Timber.d("Alumno guardado en Firestore: ${alumno.dni}")
+            
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al guardar alumno: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene los administradores de un centro específico
+     * @param centroId ID del centro
+     * @return Lista de usuarios administradores del centro
+     */
+    suspend fun getAdminsByCentroId(centroId: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando administradores para el centro: $centroId")
+            
+            // Buscar usuarios que tengan un perfil de tipo ADMIN_CENTRO para el centro específico
+            val query = usuariosCollection
+                .whereArrayContains("perfiles", 
+                    mapOf(
+                        "tipo" to TipoUsuario.ADMIN_CENTRO.name,
+                        "centroId" to centroId
+                    )
+                )
+                .get()
+                .await()
+            
+            if (query.isEmpty) {
+                // Alternativa: buscar por el centro en la colección de centros
+                val centroDoc = centrosCollection.document(centroId).get().await()
+                if (centroDoc.exists()) {
+                    val centro = centroDoc.toObject(Centro::class.java)
+                    val adminIds = centro?.adminIds ?: emptyList()
+                    
+                    if (adminIds.isNotEmpty()) {
+                        val admins = mutableListOf<Usuario>()
+                        for (adminId in adminIds) {
+                            val adminDoc = usuariosCollection.document(adminId).get().await()
+                            if (adminDoc.exists()) {
+                                val admin = adminDoc.toObject(Usuario::class.java)
+                                admin?.let { admins.add(it) }
+                            }
+                        }
+                        return@withContext Result.Success(admins)
+                    }
+                }
+                
+                // Si no se encontraron admins ni por perfiles ni por centro.adminIds
+                return@withContext Result.Success(emptyList())
+            }
+            
+            // Convertir documentos a objetos Usuario
+            val admins = query.documents.mapNotNull { it.toObject(Usuario::class.java) }
+            return@withContext Result.Success(admins)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener administradores del centro: $centroId")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Busca usuarios por nombre o correo electrónico
+     * @param query Texto de búsqueda
+     * @param limit Límite de resultados (opcional)
+     * @return Lista de usuarios que coinciden con la búsqueda
+     */
+    suspend fun buscarUsuariosPorNombreOCorreo(query: String, limit: Int = 20): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando usuarios por: $query")
+            val queryLowerCase = query.lowercase()
+            
+            // Primero intentamos una búsqueda exacta por correo
+            val emailQuery = usuariosCollection
+                .whereEqualTo("email", query)
+                .limit(1)
+                .get()
+                .await()
+            
+            val usuarios = mutableListOf<Usuario>()
+            
+            // Si encontramos por email, lo añadimos primero
+            if (!emailQuery.isEmpty) {
+                emailQuery.documents.forEach { doc ->
+                    doc.toObject(Usuario::class.java)?.let { usuarios.add(it) }
+                }
+                
+                // Si alcanzamos el límite, devolvemos ya
+                if (usuarios.size >= limit) {
+                    return@withContext Result.Success(usuarios.take(limit))
+                }
+            }
+            
+            // Luego buscamos por nombre/apellidos que contengan la query
+            val allUsuarios = usuariosCollection.get().await()
+                .documents
+                .mapNotNull { it.toObject(Usuario::class.java) }
+                .filter { usuario ->
+                    usuario.nombre.lowercase().contains(queryLowerCase) ||
+                    usuario.apellidos.lowercase().contains(queryLowerCase) ||
+                    "${usuario.nombre} ${usuario.apellidos}".lowercase().contains(queryLowerCase) ||
+                    usuario.email.lowercase().contains(queryLowerCase)
+                }
+                .take(limit - usuarios.size)
+            
+            usuarios.addAll(allUsuarios)
+            
+            return@withContext Result.Success(usuarios)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar usuarios por nombre o correo: $query")
             return@withContext Result.Error(e)
         }
     }

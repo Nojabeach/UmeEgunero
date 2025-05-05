@@ -52,6 +52,9 @@ data class AddAlumnoUiState(
     val alergias: String = "",
     val medicacion: String = "",
     val necesidadesEspeciales: String = "",
+    val observacionesMedicas: String = "",
+    val numeroSS: String = "",
+    val condicionesMedicas: String = "",
     
     // Observaciones
     val observaciones: String = "",
@@ -262,6 +265,18 @@ class AddAlumnoViewModel @Inject constructor(
         _uiState.update { it.copy(necesidadesEspeciales = necesidades) }
     }
     
+    fun updateObservacionesMedicas(observacionesMedicas: String) {
+        _uiState.update { it.copy(observacionesMedicas = observacionesMedicas) }
+    }
+    
+    fun updateNumeroSS(numeroSS: String) {
+        _uiState.update { it.copy(numeroSS = numeroSS) }
+    }
+    
+    fun updateCondicionesMedicas(condicionesMedicas: String) {
+        _uiState.update { it.copy(condicionesMedicas = condicionesMedicas) }
+    }
+    
     // Función para actualizar observaciones
     fun updateObservaciones(observaciones: String) {
         _uiState.update { it.copy(observaciones = observaciones) }
@@ -310,6 +325,9 @@ class AddAlumnoViewModel @Inject constructor(
                     alergias = _uiState.value.alergias.split(",").map { it.trim() }.filter { it.isNotEmpty() },
                     medicacion = _uiState.value.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() },
                     necesidadesEspeciales = _uiState.value.necesidadesEspeciales,
+                    observacionesMedicas = _uiState.value.observacionesMedicas,
+                    numeroSS = _uiState.value.numeroSS,
+                    condicionesMedicas = _uiState.value.condicionesMedicas,
                     observaciones = _uiState.value.observaciones,
                     activo = true, // Marcar como activo por defecto
                     profesorId = profesorId // Asignamos el profesor vinculado a la clase

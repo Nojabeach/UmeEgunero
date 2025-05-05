@@ -6,8 +6,24 @@ import com.google.firebase.firestore.DocumentSnapshot
 import java.io.Serializable
 
 /**
- * Modelo de datos para mensajes en formato de Firebase.
- * Usado para la comunicación directa con Firestore.
+ * Representa un mensaje en el sistema de comunicación de UmeEgunero.
+ *
+ * Esta clase define la estructura de un mensaje enviado entre usuarios del sistema,
+ * permitiendo la comunicación entre diferentes roles como profesores, familiares 
+ * y administradores.
+ *
+ * @property id Identificador único del mensaje
+ * @property emisorId Identificador del usuario que envía el mensaje
+ * @property receptorId Identificador del usuario que recibe el mensaje
+ * @property contenido Texto del mensaje
+ * @property fechaEnvio Fecha y hora de envío del mensaje
+ * @property leido Indica si el mensaje ha sido leído por el receptor
+ * @property tipoMensaje Tipo de mensaje (texto, imagen, documento, etc.)
+ * @property conversacionId Identificador de la conversación a la que pertenece el mensaje
+ * @property adjuntos Lista de archivos adjuntos al mensaje
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 data class Mensaje(
     val id: String = "",

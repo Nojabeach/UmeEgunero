@@ -103,8 +103,8 @@ fun AdminDashboardScreen(
     onNavigateToEmailConfig: () -> Unit,
     onNavigateToNotificaciones: () -> Unit,
     onNavigateToComunicados: () -> Unit,
-    onNavigateToBandejaEntrada: () -> Unit,
-    onNavigateToComponerMensaje: () -> Unit,
+    onNavigateToBandejaEntrada: () -> Unit = { navController.navigate(AppScreens.UnifiedInbox.route) },
+    onNavigateToComponerMensaje: () -> Unit = { navController.navigate(AppScreens.NewMessage.createRoute()) },
     onNavigateToSoporteTecnico: () -> Unit,
     onNavigateToFAQ: () -> Unit,
     onNavigateToTerminos: () -> Unit,
@@ -247,13 +247,13 @@ fun AdminDashboardScreen(
     if (showBandejaEntradaDialog) {
         AlertDialog(
             onDismissRequest = { showBandejaEntradaDialog = false },
-            title = { Text("Bandeja de entrada") },
-            text = { Text("¿Quieres ver tu bandeja de entrada?") },
+            title = { Text("Bandeja de mensajes") },
+            text = { Text("¿Quieres ver tu bandeja de mensajes unificada?") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showBandejaEntradaDialog = false
-                        onNavigateToBandejaEntrada()
+                        navController.navigate(AppScreens.UnifiedInbox.route)
                     }
                 ) {
                     Text("Sí")
@@ -271,12 +271,12 @@ fun AdminDashboardScreen(
         AlertDialog(
             onDismissRequest = { showComponerMensajeDialog = false },
             title = { Text("Nuevo mensaje") },
-            text = { Text("¿Quieres componer un nuevo mensaje?") },
+            text = { Text("¿Quieres crear un nuevo mensaje?") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showComponerMensajeDialog = false
-                        onNavigateToComponerMensaje()
+                        navController.navigate(AppScreens.NewMessage.createRoute())
                     }
                 ) {
                     Text("Sí")

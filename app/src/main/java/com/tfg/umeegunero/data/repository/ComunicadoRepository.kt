@@ -28,7 +28,33 @@ data class EstadisticasComunicado(
 )
 
 /**
- * Repositorio para la gestión de comunicados en Firestore
+ * Repositorio para gestionar comunicados en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para crear, recuperar, actualizar y eliminar
+ * comunicados oficiales dentro del contexto educativo, permitiendo a diferentes
+ * tipos de usuarios (profesores, administradores) informar y comunicar
+ * información importante a familias y alumnos.
+ *
+ * Características principales:
+ * - Creación de comunicados oficiales
+ * - Gestión de destinatarios (centro, curso, clase, usuarios específicos)
+ * - Control de lectura y confirmación de comunicados
+ * - Soporte para diferentes tipos de comunicados
+ * - Registro de interacciones con comunicados
+ *
+ * El repositorio permite:
+ * - Enviar comunicados generales o específicos
+ * - Rastrear la lectura de comunicados
+ * - Gestionar la visibilidad de comunicados
+ * - Notificar sobre nuevos comunicados
+ * - Mantener un historial de comunicaciones
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ * @property notificacionRepository Repositorio para enviar notificaciones relacionadas
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class ComunicadoRepository @Inject constructor(

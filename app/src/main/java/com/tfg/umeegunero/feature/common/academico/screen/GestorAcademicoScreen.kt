@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 import com.tfg.umeegunero.navigation.AppScreens
+import timber.log.Timber
 
 enum class ModoVisualizacion { CURSOS, CLASES }
 
@@ -87,6 +88,28 @@ fun GestorAcademicoScreen(
     var itemToDelete by remember { mutableStateOf<String?>(null) }
     var deleteType by remember { mutableStateOf("") } // "curso" o "clase"
 
+    // Efectos para inicializar el ViewModel con los parámetros recibidos
+    LaunchedEffect(centroId, cursoId, modo) {
+        Timber.d("🔄 Inicializando GestorAcademicoScreen: modo=$modo, centroId=$centroId, cursoId=$cursoId")
+        
+        // Si recibimos un centroId, buscamos el Centro correspondiente en la lista
+        if (!centroId.isNullOrEmpty()) {
+            val centro = centros.find { it.id == centroId }
+            if (centro != null) {
+                Timber.d("📌 Seleccionando centro: ${centro.nombre} (${centro.id})")
+                viewModel.onCentroSelected(centro)
+            } else {
+                Timber.d("⚠️ Centro no encontrado en la lista, esperando carga...")
+            }
+        }
+        
+        // Si estamos en modo CLASES y tenemos un cursoId, inicializamos con ese curso
+        if (modo == ModoVisualizacion.CLASES && !cursoId.isNullOrEmpty()) {
+            Timber.d("🎯 Inicializando con curso ID: $cursoId")
+            viewModel.inicializarConCursoId(cursoId)
+        }
+    }
+    
     // Mostrar error en Snackbar
     LaunchedEffect(error) {
         error?.let {
@@ -220,6 +243,7 @@ fun GestorAcademicoScreen(
                     }
                 }
             } else {
+                // AnimatedVisibility para listas no vacías
                 AnimatedVisibility(
                     visible = (modo == ModoVisualizacion.CURSOS && cursos.isNotEmpty()) || (modo == ModoVisualizacion.CLASES && clases.isNotEmpty()),
                     enter = fadeIn(),

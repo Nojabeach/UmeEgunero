@@ -33,6 +33,8 @@ import com.google.firebase.firestore.DocumentId
  * @property alergias Lista de alergias conocidas (alimentos, medicamentos, etc.).
  * @property medicacion Lista de medicamentos que el alumno debe tomar regularmente.
  * @property observacionesMedicas Observaciones relevantes sobre la salud del alumno.
+ * @property numeroSS Número de Seguridad Social del alumno (dato sensible).
+ * @property condicionesMedicas Información detallada sobre condiciones médicas que requieren atención (dato sensible).
  * @property observaciones Observaciones generales sobre el comportamiento o situación del alumno.
  * @property familiares Lista de objetos [Familiar] con información de contactos familiares.
  * @property presente Indica si el alumno está presente/asistió en una fecha determinada.
@@ -61,6 +63,8 @@ data class Alumno(
     val alergias: List<String> = emptyList(),
     val medicacion: List<String> = emptyList(),
     val observacionesMedicas: String = "",
+    val numeroSS: String = "",
+    val condicionesMedicas: String = "",
     val observaciones: String = "",
     val familiares: List<Familiar> = emptyList(),
     val presente: Boolean = false

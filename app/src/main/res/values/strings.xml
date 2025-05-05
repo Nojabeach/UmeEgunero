@@ -57,4 +57,7 @@
     <string name="sync_notification_text">Operaciones pendientes: %1$d</string>
     <string name="sync_notification_error_title">Error en la sincronización</string>
     <string name="sync_notification_error_text">No se pudieron sincronizar los datos. Inténtalo más tarde.</string>
+
+    <!-- Tokens de seguridad -->
+    <string name="email_security_token_fallback" translatable="false">umeegunero_app_token_2023</string>
 </resources>

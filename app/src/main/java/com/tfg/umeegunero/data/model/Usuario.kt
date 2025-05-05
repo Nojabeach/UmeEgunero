@@ -13,38 +13,28 @@ data class PreferenciasNotificacion(
 )
 
 /**
- * Modelo principal que representa a un usuario en el sistema UmeEgunero.
- * 
- * Esta clase contiene toda la información personal y de gestión de los usuarios,
- * independientemente de su rol en el sistema (administrador, profesor, familiar).
- * La información específica según el rol se gestiona mediante la colección de perfiles.
+ * Representa un usuario en la aplicación UmeEgunero.
  *
- * Los usuarios se almacenan en Firestore en la colección 'usuarios' donde el ID del
- * documento corresponde al DNI del usuario.
+ * Esta clase define la estructura de datos para los diferentes tipos de usuarios
+ * que pueden interactuar con la aplicación, como administradores, profesores, 
+ * familiares y alumnos.
  *
- * @property dni Documento Nacional de Identidad del usuario (formato español). Sirve como
- *               identificador único en el sistema y clave primaria en la base de datos.
- * @property email Correo electrónico del usuario, utilizado para autenticación y comunicaciones.
- * @property nombre Nombre del usuario.
- * @property apellidos Apellidos del usuario.
- * @property telefono Número de teléfono de contacto.
- * @property fechaRegistro Fecha y hora en que el usuario se registró en el sistema.
- * @property ultimoAcceso Fecha y hora del último inicio de sesión del usuario. Puede ser null
- *                       si el usuario nunca ha iniciado sesión.
- * @property activo Estado de la cuenta (true = activa, false = desactivada).
- * @property perfiles Lista de perfiles asignados al usuario, que determinan sus roles y permisos.
- * @property direccion Información de domicilio del usuario (opcional).
- * @property preferencias Configuraciones personalizadas del usuario (tema, notificaciones, etc).
- * @property documentId Campo utilizado por Firestore para mapear el ID del documento.
- *                      Por defecto se establece igual al DNI.
- * @property avatarUrl URL del avatar del usuario (opcional).
- * @property firebaseUid UID único de Firebase Authentication asociado a este usuario.
- * @property preferenciasNotificacion Configuración de notificaciones del usuario
- * @property nombreAlumno Nombre del alumno asociado (utilizado en conversaciones)
+ * Cada usuario tiene un conjunto de propiedades que definen su perfil, rol y 
+ * permisos dentro del sistema educativo.
  *
- * @see Perfil
- * @see Direccion
- * @see Preferencias
+ * @property id Identificador único del usuario
+ * @property nombre Nombre del usuario
+ * @property apellidos Apellidos del usuario
+ * @property email Correo electrónico del usuario
+ * @property tipoUsuario Tipo de usuario (administrador, profesor, familiar, alumno)
+ * @property centroId Identificador del centro educativo al que pertenece el usuario
+ * @property activo Indica si el usuario está activo en el sistema
+ * @property fechaRegistro Fecha de registro del usuario en la aplicación
+ * @property ultimoAcceso Fecha del último acceso del usuario
+ * @property imagenPerfil URL de la imagen de perfil del usuario
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 data class Usuario(
     val dni: String = "",

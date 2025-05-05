@@ -5,7 +5,30 @@ import com.google.firebase.firestore.DocumentId
 import java.util.Date
 
 /**
- * Representa una tarea asignada por un profesor a una clase o alumno específico
+ * Representa una tarea en el sistema educativo de UmeEgunero.
+ *
+ * Esta clase define la estructura de una tarea académica, que puede ser asignada
+ * por profesores a alumnos, con capacidad de seguimiento y evaluación.
+ *
+ * Las tareas pueden ser de diversos tipos, como trabajos escritos, proyectos,
+ * ejercicios o actividades prácticas, con diferentes estados de progreso.
+ *
+ * @property id Identificador único de la tarea
+ * @property titulo Título descriptivo de la tarea
+ * @property descripcion Descripción detallada de los requisitos y objetivos de la tarea
+ * @property profesorId Identificador del profesor que asigna la tarea
+ * @property cursoId Identificador del curso al que pertenece la tarea
+ * @property claseId Identificador de la clase a la que se asigna la tarea
+ * @property fechaCreacion Fecha de creación de la tarea
+ * @property fechaEntrega Fecha límite de entrega de la tarea
+ * @property tipoTarea Tipo de tarea (trabajo, ejercicio, proyecto, etc.)
+ * @property estado Estado actual de la tarea (pendiente, en progreso, entregada, calificada)
+ * @property alumnosIds Lista de identificadores de alumnos a los que se asigna la tarea
+ * @property archivosAdjuntos Lista de archivos adjuntos relacionados con la tarea
+ * @property puntuacionMaxima Puntuación máxima posible para la tarea
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 data class Tarea(
     @DocumentId val id: String = "",

@@ -13,16 +13,32 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para la gestión de la configuración de seguridad.
- * 
- * Este repositorio maneja la persistencia de la configuración de
- * seguridad del sistema usando DataStore Preferences.
- * 
- * ## Características
- * - Persistencia de configuración
- * - Valores por defecto
- * - Manejo de errores
- * - Flujos de datos reactivos
+ * Repositorio para gestionar aspectos de seguridad en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para manejar la seguridad de la aplicación,
+ * incluyendo autenticación, autorización, gestión de roles y permisos,
+ * y protección de datos sensibles.
+ *
+ * Características principales:
+ * - Validación de credenciales de usuario
+ * - Gestión de roles y permisos
+ * - Control de acceso a recursos
+ * - Registro de actividades de seguridad
+ * - Protección contra accesos no autorizados
+ *
+ * El repositorio se encarga de:
+ * - Verificar la identidad de los usuarios
+ * - Gestionar tokens de autenticación
+ * - Implementar políticas de seguridad
+ * - Registrar intentos de acceso
+ * - Proteger información sensible
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property auth Instancia de FirebaseAuth para autenticación
+ * @property remoteConfig Servicio de configuración remota para políticas de seguridad
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class SeguridadRepository @Inject constructor(

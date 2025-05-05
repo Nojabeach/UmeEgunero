@@ -9,7 +9,31 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repositorio para gestionar la configuración global de la aplicación
+ * Repositorio para gestionar la configuración de la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para manejar las preferencias y configuraciones
+ * de usuario, incluyendo temas, notificaciones, idioma y otras preferencias
+ * personalizables.
+ *
+ * Características principales:
+ * - Almacenamiento de preferencias de usuario
+ * - Gestión de configuraciones globales de la aplicación
+ * - Sincronización de preferencias entre dispositivos
+ * - Soporte para configuraciones específicas de rol (profesor, familiar, admin)
+ *
+ * El repositorio permite:
+ * - Personalizar la experiencia de usuario
+ * - Configurar preferencias de privacidad
+ * - Gestionar permisos de notificaciones
+ * - Seleccionar temas y apariencia
+ * - Configurar opciones de accesibilidad
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property dataStore Almacenamiento de preferencias de Android
+ * @property remoteConfig Servicio de configuración remota de Firebase
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class ConfigRepository @Inject constructor(

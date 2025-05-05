@@ -10,19 +10,25 @@ flowchart TD
     B --> C[Mostrar información alumno]
     C --> D[Confirmar solicitud]
     D --> E[Crear solicitud en Firestore]
-    E --> F[Notificar administrador]
-    F --> G[Administrador revisa]
+    E --> F1[Notificar administrador vía FCM]
+    E --> F2[Crear mensaje en Sistema Unificado]
+    E --> F3[Enviar correo electrónico]
+    F1 & F2 & F3 --> G[Administrador revisa]
     G --> H{Decisión}
     H -->|Aprobar| I[Actualizar: APROBADA]
     H -->|Rechazar| J[Actualizar: RECHAZADA]
     I --> K[Crear vinculación]
-    I & J --> L[Notificar resultado]
-    L --> M[Proceso completado]
+    I & J --> L1[Notificar resultado vía FCM]
+    I & J --> L2[Crear mensaje resultado en Sistema Unificado]
+    I & J --> L3[Enviar email confirmación]
+    L1 & L2 & L3 --> M[Proceso completado]
     
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style E fill:#bbf,stroke:#333,stroke-width:2px
     style G fill:#fbb,stroke:#333,stroke-width:2px
     style H fill:#bfb,stroke:#333,stroke-width:2px
+    style F2 fill:#d4f8d4,stroke:#00a200,stroke-width:2px
+    style L2 fill:#d4f8d4,stroke:#00a200,stroke-width:2px
     style M fill:#ffb,stroke:#333,stroke-width:2px
 ```
 
@@ -342,6 +348,7 @@ sequenceDiagram
     participant App as UmeEgunero App
     participant Firestore
     participant FCM as Firebase Cloud Messaging
+    participant UCM as Sistema Comunicación Unificado
     participant Script as Google Apps Script
     participant Admin as Administrador Centro
     
@@ -356,6 +363,10 @@ sequenceDiagram
     par Notificación Push
         App->>FCM: Enviar notificación
         FCM->>Admin: Notificar nueva solicitud
+    and Mensaje Unificado
+        App->>UCM: Crear mensaje tipo NOTIFICATION
+        UCM->>Firestore: Guardar mensaje
+        UCM->>Admin: Mostrar en bandeja unificada
     and Email de Respaldo
         App->>Script: Enviar datos solicitud
         Script->>Admin: Enviar email estructurado
@@ -375,6 +386,10 @@ sequenceDiagram
     par Notificación de Resultado
         App->>FCM: Enviar resultado
         FCM->>Familiar: Notificar decisión
+    and Mensaje Unificado Resultado
+        App->>UCM: Crear mensaje resultado
+        UCM->>Firestore: Guardar mensaje resultado
+        UCM->>Familiar: Mostrar en bandeja unificada
     and Email de Confirmación
         App->>Script: Enviar resultado
         Script->>Familiar: Enviar email de confirmación

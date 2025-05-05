@@ -20,7 +20,30 @@ import timber.log.Timber
 import java.util.Date
 
 /**
- * Repositorio encargado de la gestión de notificaciones en la aplicación
+ * Repositorio para gestionar notificaciones en la aplicación UmeEgunero.
+ *
+ * Esta clase proporciona métodos para crear, enviar, recuperar y gestionar
+ * notificaciones para diferentes tipos de usuarios (profesores, familiares, 
+ * administradores, alumnos).
+ *
+ * Características principales:
+ * - Creación de notificaciones personalizadas
+ * - Envío de notificaciones push
+ * - Gestión de preferencias de notificación
+ * - Seguimiento de notificaciones leídas/no leídas
+ *
+ * El repositorio maneja diferentes tipos de notificaciones como:
+ * - Comunicados
+ * - Recordatorios de tareas
+ * - Alertas de actividades
+ * - Mensajes nuevos
+ *
+ * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
+ * @property messaging Servicio de Firebase Cloud Messaging para notificaciones push
+ * @property authRepository Repositorio de autenticación para identificar al usuario actual
+ *
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class NotificacionRepository @Inject constructor(

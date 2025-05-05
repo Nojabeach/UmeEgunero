@@ -25,11 +25,17 @@ import java.time.format.DateTimeParseException
 import javax.inject.Inject
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.UUID
+import com.google.firebase.Timestamp
+import java.util.Date
+import com.tfg.umeegunero.util.DateUtils
+import com.tfg.umeegunero.data.model.UsuarioEstado
 
 // Enum para identificar los campos del formulario
 enum class AddUserFormField {
     DNI, EMAIL, PASSWORD, CONFIRM_PASSWORD, NOMBRE, APELLIDOS, TELEFONO,
-    CENTRO, FECHA_NACIMIENTO, CURSO, CLASE
+    CENTRO, FECHA_NACIMIENTO, CURSO, CLASE,
+    NUMERO_SS, CONDICIONES_MEDICAS
 }
 
 /**
@@ -45,6 +51,8 @@ data class AddUserUiState(
     val telefono: String = "",
     val tipoUsuario: TipoUsuario = TipoUsuario.FAMILIAR,
     val centroId: String = "",
+    val numeroSS: String = "",
+    val condicionesMedicas: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
     val success: Boolean = false, // Se reemplazará por showSuccessDialog
@@ -56,25 +64,36 @@ data class AddUserUiState(
     val nombreError: String? = null,
     val apellidosError: String? = null,
     val telefonoError: String? = null,
-    val isAdminApp: Boolean = false,
-    val centrosDisponibles: List<Centro> = emptyList(),
-    val cursosDisponibles: List<Curso> = emptyList(),
-    val clasesDisponibles: List<Clase> = emptyList(),
-    val centroSeleccionado: Centro? = null,
-    val cursoSeleccionado: Curso? = null,
-    val claseSeleccionada: Clase? = null,
-    val fechaNacimiento: String = "",
+    val centroError: String? = null,
     val fechaNacimientoError: String? = null,
+    val numeroSSError: String? = null,
+    val condicionesMedicasError: String? = null,
+    val cursoError: String? = null,
+    val claseError: String? = null,
+    val firstInvalidField: AddUserFormField? = null,
+    val validationAttemptFailed: Boolean = false,
     val isEditMode: Boolean = false,
+    val userId: String = "",
+    val fechaNacimiento: String = "",
+    val centroSeleccionado: Centro? = null,
+    val centrosDisponibles: List<Centro> = emptyList(),
+    val cursoSeleccionado: Curso? = null,
+    val cursosDisponibles: List<Curso> = emptyList(),
+    val claseSeleccionada: Clase? = null,
+    val clasesDisponibles: List<Clase> = emptyList(),
+    val showCentroWarning: Boolean = false,
+    val showCursosWarning: Boolean = false,
+    val isTipoUsuarioBloqueado: Boolean = false,
+    val isCentroSeleccionadoBloqueado: Boolean = false,
+    val isAdminApp: Boolean = false,
+    // Propiedades adicionales que hacían falta
     val initialCentroId: String? = null,
     val isCentroBloqueado: Boolean = false,
-    val isTipoUsuarioBloqueado: Boolean = false, // Nueva bandera para bloquear el tipo de usuario
-    val firstInvalidField: AddUserFormField? = null, // Para scroll al error
-    val validationAttemptFailed: Boolean = false, // Trigger para scroll al error
     val alergias: String = "",
     val medicacion: String = "",
     val necesidadesEspeciales: String = "",
-    val observaciones: String = ""
+    val observaciones: String = "",
+    val observacionesMedicas: String = ""
 ) {
     // Determina si el formulario es válido según el tipo de usuario
     val isFormValid: Boolean
@@ -773,244 +792,70 @@ class AddUserViewModel @Inject constructor(
     
     // Guarda un usuario en Firebase Authentication y Firestore
     fun saveUser() {
-        if (!_uiState.value.isFormValid) {
-             Timber.w("saveUser llamada con formulario inválido!")
-             attemptSaveAndFocusError() // Trigger focus en el primer error
-             return
+        // Primero validar campos
+        val validatedState = validateFields(_uiState.value)
+        
+        // Si hay errores, actualizar el estado y detener
+        if (validatedState.firstInvalidField != null) {
+            _uiState.update { 
+                validatedState.copy(validationAttemptFailed = true)
+            }
+            return
         }
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, validationAttemptFailed = false, firstInvalidField = null) }
-            
             try {
-                val currentState = _uiState.value // Cachear estado actual
-
-                // --- CASO ALUMNO --- 
-                if (currentState.tipoUsuario == TipoUsuario.ALUMNO) {
-                    Timber.d("Iniciando guardado de ALUMNO")
-                    // Validar IDs necesarios para alumno
-                    val centroId = currentState.centroSeleccionado?.id
-                    val cursoId = currentState.cursoSeleccionado?.id
-                    val claseId = currentState.claseSeleccionada?.id
-                    
-                    if (centroId.isNullOrBlank() || cursoId.isNullOrBlank() || claseId.isNullOrBlank()) {
-                         Timber.e("Error: Faltan IDs necesarios para guardar alumno. Centro: $centroId, Curso: $cursoId, Clase: $claseId")
-                         _uiState.update { it.copy(isLoading = false, error = "Faltan datos académicos (centro, curso o clase) para guardar el alumno.") }
-                         return@launch
-                    }
-                    
-                    val result = procesarGuardadoAlumno(currentState)
-                    
-                    when (result) {
-                        is Result.Success -> {
-                            _uiState.update { 
-                                it.copy(
-                                    isLoading = false,
-                                    showSuccessDialog = true,
-                                    error = null
-                                )
-                            }
-                            Timber.d("Alumno guardado correctamente con DNI: ${currentState.dni}")
-                        }
-                        is Result.Error -> {
-                            _uiState.update { 
-                                it.copy(
-                                    isLoading = false,
-                                    error = "Error al guardar alumno en Firestore: ${result.exception?.message}"
-                                )
-                            }
-                            Timber.e(result.exception, "Error al guardar alumno en Firestore")
-                        }
-                        else -> { /* Ignorar estado Loading */ }
-                    }
-                    
-                    return@launch // Salir de la coroutine para no ejecutar el código de Auth
-                }
-
-                // --- OTROS TIPOS DE USUARIO (REQUIEREN AUTH) --- 
-                Timber.d("Iniciando guardado de usuario tipo: ${currentState.tipoUsuario}")
-                val email = currentState.email
-                val password = currentState.password
+                _uiState.update { it.copy(isLoading = true) }
+                val userData = getUserData()
                 
-                // Doble validación por seguridad
-                if (email.isBlank() || password.isBlank()) {
-                    Timber.e("Error: Email o Password vacíos al intentar crear cuenta Auth para tipo ${currentState.tipoUsuario}")
-                    _uiState.update { it.copy(isLoading = false, error = "El email y la contraseña no pueden estar vacíos.") }
-                    return@launch
+                val result = when (userData) {
+                    is Alumno -> {
+                        Timber.d("Guardando alumno: ${userData.nombre}")
+                        usuarioRepository.saveAlumno(userData)
+                    }
+                    is Usuario -> {
+                        Timber.d("Guardando usuario: ${userData.nombre}, edit mode: ${uiState.value.isEditMode}")
+                        if (uiState.value.isEditMode) {
+                            usuarioRepository.updateUsuario(userData)
+                        } else {
+                            usuarioRepository.saveUsuario(userData, uiState.value.password)
+                        }
+                    }
+                    else -> {
+                        Timber.e("Tipo de datos no soportado: ${userData.javaClass.simpleName}")
+                        Result.Error(Exception("Tipo de usuario no soportado"))
+                    }
                 }
                 
-                // 1. Crear usuario en Firebase Authentication
-                val authResult = if (currentState.tipoUsuario == TipoUsuario.ADMIN_CENTRO || 
-                                    currentState.tipoUsuario == TipoUsuario.PROFESOR) {
-                    centroRepository.createUserWithEmailAndPassword(email, password)
-                } else {
-                    usuarioRepository.crearUsuarioConEmailYPassword(email, password)
-                }
-                
-                when (authResult) {
-                    is Result.Success -> {
-                         // Obtener el UID directamente, ya que ambos métodos devuelven Result<String>
-                         var uid: String = authResult.data as String
-                         
-                         if (currentState.tipoUsuario == TipoUsuario.ADMIN_CENTRO || currentState.tipoUsuario == TipoUsuario.PROFESOR) {
-                             Timber.d("Usuario Auth (Centro/Prof) creado con UID: $uid")
-                         } else {
-                             Timber.d("Usuario Auth (AdminApp/Familiar) creado con UID: $uid")
-                         }
-                         
-                         // Validar que se obtuvo un UID
-                         if (uid.isBlank()) {
-                             Timber.e("Error: UID nulo después de crear usuario en Auth para tipo ${currentState.tipoUsuario}.")
-                             _uiState.update { it.copy(isLoading = false, error = "Error interno al obtener ID de usuario.") }
-                             return@launch
-                         }
-
-                        // 2. Crear objeto Usuario
-                        val perfiles = createPerfiles() // Crear perfiles ANTES de crear el objeto Usuario
-                        if (perfiles.isEmpty() && currentState.tipoUsuario != TipoUsuario.FAMILIAR && currentState.tipoUsuario != TipoUsuario.ADMIN_APP) {
-                            // Si se requiere un perfil con centroId (ADMIN_CENTRO, PROFESOR) y falló,
-                            // no continuar con el guardado en Firestore.
-                              Timber.e("Error: No se pudieron crear perfiles válidos para el usuario tipo ${currentState.tipoUsuario}.")
-                              _uiState.update { it.copy(isLoading = false, error = "Error al crear el perfil de usuario. Verifique la selección del centro.") }
-                              // Considerar eliminar el usuario de Auth si falla la creación de perfil?
-                              return@launch
-                         }
-
-                         // Crear objeto Usuario y guardarlo en una variable para usarlo después
-                         val usuario = Usuario(
-                              dni = currentState.dni,
-                              email = currentState.email,
-                              nombre = currentState.nombre,
-                              apellidos = currentState.apellidos,
-                              telefono = currentState.telefono,
-                              fechaRegistro = com.google.firebase.Timestamp.now(),
-                              perfiles = perfiles,
-                              activo = true // Por defecto activo al crear
-                          )
-                         
-                         // 3. Guardar usuario en Firestore
-                         Timber.d("Guardando usuario en Firestore con ID (DNI): ${usuario.dni}")
-                         val saveResult = usuarioRepository.guardarUsuario(usuario)
-                         
-                         when (saveResult) {
-                             is Result.Success -> {
-                                 _uiState.update { 
-                                     it.copy(
-                                         isLoading = false,
-                                         showSuccessDialog = true,
-                                         error = null
-                                     )
-                                 }
-                                 Timber.d("Usuario (${currentState.tipoUsuario}) guardado correctamente en Firestore con ID: $uid")
-                             }
-                             is Result.Error -> {
-                                 _uiState.update { 
-                                     it.copy(
-                                         isLoading = false,
-                                         error = "Error al guardar usuario en Firestore: ${saveResult.exception?.message}"
-                                     )
-                                 }
-                                 Timber.e(saveResult.exception, "Error al guardar usuario (${currentState.tipoUsuario}) en Firestore con ID: $uid")
-                                 // Considerar eliminar el usuario de Auth si falla el guardado en Firestore?
-                             }
-                             else -> { /* Ignorar estado Loading */ }
-                         }
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                error = "Error al crear cuenta en Firebase: ${authResult.exception?.message}"
-                            )
-                        }
-                        Timber.e(authResult.exception, "Error al crear cuenta en Firebase para tipo ${currentState.tipoUsuario}")
-                    }
-                    else -> { /* Ignorar estado Loading */ }
-                }
+                handleSaveResult(result)
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        error = "Error inesperado: ${e.message}",
-                        showSuccessDialog = false
-                    )
-                }
-                Timber.e(e, "Error inesperado al guardar usuario")
-            } finally {
-                _uiState.update { it.copy(validationAttemptFailed = false, firstInvalidField = null) }
+                Timber.e(e, "Error al guardar usuario")
+                _uiState.update { it.copy(
+                    error = "Error: ${e.message}",
+                    isLoading = false
+                )}
             }
         }
     }
     
-    /**
-     * Procesa y guarda los datos de un alumno, realizando las validaciones
-     * y la asignación a la clase correspondiente.
-     *
-     * @param currentState Estado actual de la UI con los datos del alumno
-     * @return Result con el resultado de la operación
-     */
-    private suspend fun procesarGuardadoAlumno(currentState: AddUserUiState): Result<Any> {
-        try {
-            val centroId = currentState.centroSeleccionado?.id ?: ""
-            val claseId = currentState.claseSeleccionada?.id ?: ""
-            
-            // Convertir listas de alergias y medicación desde strings separados por comas
-            val alergiasList = currentState.alergias.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-            val medicacionList = currentState.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-
-            // Crear objeto Alumno
-            val alumno = Alumno(
-                dni = currentState.dni,
-                nombre = currentState.nombre,
-                apellidos = currentState.apellidos,
-                fechaNacimiento = currentState.fechaNacimiento,
-                telefono = currentState.telefono,
-                email = currentState.email,
-                centroId = centroId,
-                curso = currentState.cursoSeleccionado?.nombre ?: "",
-                clase = currentState.claseSeleccionada?.nombre ?: "",
-                claseId = claseId,
-                aulaId = currentState.claseSeleccionada?.aula ?: "",
-                alergias = alergiasList,
-                medicacion = medicacionList,
-                necesidadesEspeciales = currentState.necesidadesEspeciales,
-                observaciones = currentState.observaciones,
-                activo = true
-            )
-            
-            // Determinar si es edición o creación nueva
-            val saveResult = if (currentState.isEditMode) {
-                // Actualizar alumno existente
-                Timber.d("Actualizando alumno existente con DNI: ${currentState.dni}")
-                usuarioRepository.guardarAlumno(alumno)
-            } else {
-                // Crear nuevo alumno
-                Timber.d("Registrando nuevo alumno con DNI: ${currentState.dni}")
-                usuarioRepository.registrarAlumno(alumno)
+    private fun handleSaveResult(result: Result<Unit>) {
+        when (result) {
+            is Result.Success -> {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    showSuccessDialog = true
+                ) }
             }
-            
-            // Actualizar la lista de alumnos de la clase si el guardado fue exitoso
-            if (saveResult is Result.Success) {
-                try {
-                    Timber.d("Actualizando la lista de alumnos de la clase $claseId con el alumno ${alumno.dni}")
-                    val asignacionResult = cursoRepository.asignarAlumnoAClase(alumno.dni, claseId)
-                    
-                    if (asignacionResult is Result.Error) {
-                        Timber.e(asignacionResult.exception, "Error al asignar alumno a clase: ${asignacionResult.exception?.message}")
-                        // Continuamos con el flujo normal, no bloqueamos por este error
-                    } else {
-                        Timber.d("Alumno asignado correctamente a la clase")
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al intentar asignar el alumno a la clase: ${e.message}")
-                    // Continuamos con el flujo normal, no bloqueamos por este error
-                }
+            is Result.Error -> {
+                _uiState.update { it.copy(
+                    error = result.exception?.message ?: "Error desconocido al guardar",
+                    isLoading = false
+                ) }
             }
-            
-            return saveResult
-        } catch (e: Exception) {
-            Timber.e(e, "Error en procesarGuardadoAlumno: ${e.message}")
-            return Result.Error(e)
+            is Result.Loading -> {
+                // No hacer nada, ya estamos mostrando el estado de carga
+                _uiState.update { it.copy(isLoading = true) }
+            }
         }
     }
 
@@ -1273,6 +1118,9 @@ class AddUserViewModel @Inject constructor(
                             medicacion = alumno.medicacion.joinToString(", "),
                             necesidadesEspeciales = alumno.necesidadesEspeciales,
                             observaciones = alumno.observaciones,
+                            observacionesMedicas = alumno.observacionesMedicas,
+                            numeroSS = alumno.numeroSS,
+                            condicionesMedicas = alumno.condicionesMedicas,
                             // Para administradores de centro y profesores, bloquear el cambio de tipo
                             isCentroBloqueado = false
                         )
@@ -1377,31 +1225,82 @@ class AddUserViewModel @Inject constructor(
     }
 
     /**
-     * Actualiza el texto de las alergias del alumno
+     * Actualiza el número de seguridad social del alumno
+     */
+    fun updateNumeroSS(numeroSS: String) {
+        // No validamos formato específico, solo que no esté vacío
+        val error = if (numeroSS.isBlank() && _uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
+            "El número de Seguridad Social es obligatorio para alumnos"
+        } else null
+        
+        _uiState.update { it.copy(
+            numeroSS = numeroSS,
+            numeroSSError = error,
+            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.NUMERO_SS) null else it.firstInvalidField,
+            validationAttemptFailed = false
+        )}
+    }
+
+    /**
+     * Actualiza las condiciones médicas del alumno
+     */
+    fun updateCondicionesMedicas(condicionesMedicas: String) {
+        _uiState.update { it.copy(
+            condicionesMedicas = condicionesMedicas,
+            condicionesMedicasError = null,
+            firstInvalidField = if (it.firstInvalidField == AddUserFormField.CONDICIONES_MEDICAS) null else it.firstInvalidField,
+            validationAttemptFailed = false
+        )}
+    }
+
+    /**
+     * Actualiza las alergias del alumno
      */
     fun updateAlergias(alergias: String) {
-        _uiState.update { it.copy(alergias = alergias) }
+        _uiState.update { it.copy(
+            alergias = alergias,
+            validationAttemptFailed = false
+        )}
     }
-    
+
     /**
-     * Actualiza el texto de la medicación del alumno
+     * Actualiza la medicación del alumno
      */
     fun updateMedicacion(medicacion: String) {
-        _uiState.update { it.copy(medicacion = medicacion) }
+        _uiState.update { it.copy(
+            medicacion = medicacion,
+            validationAttemptFailed = false
+        )}
     }
-    
+
     /**
-     * Actualiza el texto de las necesidades especiales del alumno
+     * Actualiza las necesidades especiales del alumno
      */
     fun updateNecesidadesEspeciales(necesidadesEspeciales: String) {
-        _uiState.update { it.copy(necesidadesEspeciales = necesidadesEspeciales) }
+        _uiState.update { it.copy(
+            necesidadesEspeciales = necesidadesEspeciales,
+            validationAttemptFailed = false
+        )}
     }
-    
+
     /**
-     * Actualiza el texto de las observaciones generales del alumno
+     * Actualiza las observaciones médicas del alumno
+     */
+    fun updateObservacionesMedicas(observacionesMedicas: String) {
+        _uiState.update { it.copy(
+            observacionesMedicas = observacionesMedicas,
+            validationAttemptFailed = false
+        )}
+    }
+
+    /**
+     * Actualiza las observaciones generales del alumno
      */
     fun updateObservaciones(observaciones: String) {
-        _uiState.update { it.copy(observaciones = observaciones) }
+        _uiState.update { it.copy(
+            observaciones = observaciones,
+            validationAttemptFailed = false
+        )}
     }
 
     /**
@@ -1417,5 +1316,236 @@ class AddUserViewModel @Inject constructor(
                password.any { it.isLetter() } && 
                password.any { it.isDigit() } &&
                password.any { !it.isLetterOrDigit() } // Validar al menos un carácter especial
+    }
+
+    /**
+     * Valida todos los campos según el tipo de usuario seleccionado
+     */
+    private fun validateFields(uiState: AddUserUiState): AddUserUiState {
+        var currentState = uiState.copy(
+            dniError = null,
+            emailError = null,
+            passwordError = null,
+            confirmPasswordError = null,
+            nombreError = null,
+            apellidosError = null,
+            telefonoError = null,
+            centroError = null,
+            fechaNacimientoError = null,
+            numeroSSError = null,
+            condicionesMedicasError = null,
+            firstInvalidField = null
+        )
+
+        // Validar DNI
+        if (currentState.dni.isEmpty()) {
+            currentState = currentState.copy(
+                dniError = "El DNI/NIE es obligatorio",
+                firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.DNI else currentState.firstInvalidField
+            )
+        } else if (!isValidDNI(currentState.dni)) {
+            currentState = currentState.copy(
+                dniError = "El formato del DNI/NIE no es válido",
+                firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.DNI else currentState.firstInvalidField
+            )
+        }
+
+        // Validar nombre
+        if (currentState.nombre.isEmpty()) {
+            currentState = currentState.copy(
+                nombreError = "El nombre es obligatorio",
+                firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.NOMBRE else currentState.firstInvalidField
+            )
+        }
+
+        // Validar apellidos
+        if (currentState.apellidos.isEmpty()) {
+            currentState = currentState.copy(
+                apellidosError = "Los apellidos son obligatorios",
+                firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.APELLIDOS else currentState.firstInvalidField
+            )
+        }
+
+        // Validar teléfono
+        if (currentState.telefono.isEmpty()) {
+            currentState = currentState.copy(
+                telefonoError = "El teléfono es obligatorio",
+                firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.TELEFONO else currentState.firstInvalidField
+            )
+        } else if (!isValidPhone(currentState.telefono)) {
+            currentState = currentState.copy(
+                telefonoError = "El formato del teléfono no es válido",
+                firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.TELEFONO else currentState.firstInvalidField
+            )
+        }
+
+        // Validar correo (solo para usuarios excepto alumnos)
+        if (currentState.tipoUsuario != TipoUsuario.ALUMNO) {
+            if (currentState.email.isEmpty()) {
+                currentState = currentState.copy(
+                    emailError = "El email es obligatorio",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.EMAIL else currentState.firstInvalidField
+                )
+            } else if (!isValidEmail(currentState.email)) {
+                currentState = currentState.copy(
+                    emailError = "El formato del email no es válido",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.EMAIL else currentState.firstInvalidField
+                )
+            }
+
+            // Validar contraseña
+            if (currentState.password.isEmpty()) {
+                currentState = currentState.copy(
+                    passwordError = "La contraseña es obligatoria",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.PASSWORD else currentState.firstInvalidField
+                )
+            } else if (!isValidPassword(currentState.password)) {
+                currentState = currentState.copy(
+                    passwordError = "La contraseña debe tener al menos 6 caracteres",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.PASSWORD else currentState.firstInvalidField
+                )
+            }
+
+            // Validar confirmación de contraseña
+            if (currentState.confirmPassword.isEmpty()) {
+                currentState = currentState.copy(
+                    confirmPasswordError = "Debe confirmar la contraseña",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.CONFIRM_PASSWORD else currentState.firstInvalidField
+                )
+            } else if (currentState.password != currentState.confirmPassword) {
+                currentState = currentState.copy(
+                    confirmPasswordError = "Las contraseñas no coinciden",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.CONFIRM_PASSWORD else currentState.firstInvalidField
+                )
+            }
+        }
+
+        // Validar centro seleccionado
+        if (currentState.centroId.isEmpty()) {
+            currentState = currentState.copy(
+                centroError = "Debe seleccionar un centro",
+                firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.CENTRO else currentState.firstInvalidField
+            )
+        }
+
+        // Validaciones específicas para alumnos
+        if (currentState.tipoUsuario == TipoUsuario.ALUMNO) {
+            // Validar fecha de nacimiento
+            if (currentState.fechaNacimiento.isEmpty()) {
+                currentState = currentState.copy(
+                    fechaNacimientoError = "La fecha de nacimiento es obligatoria",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.FECHA_NACIMIENTO else currentState.firstInvalidField
+                )
+            } else if (!isValidDateFormat(currentState.fechaNacimiento)) {
+                currentState = currentState.copy(
+                    fechaNacimientoError = "El formato de fecha debe ser DD/MM/AAAA",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.FECHA_NACIMIENTO else currentState.firstInvalidField
+                )
+            }
+
+            // Validar Número de Seguridad Social (opcional pero con formato válido si se proporciona)
+            if (currentState.numeroSS.isNotEmpty() && !isValidNumeroSS(currentState.numeroSS)) {
+                currentState = currentState.copy(
+                    numeroSSError = "El formato del número de la Seguridad Social no es válido",
+                    firstInvalidField = if (currentState.firstInvalidField == null) AddUserFormField.NUMERO_SS else currentState.firstInvalidField
+                )
+            }
+
+            // La validación de condiciones médicas no es estricta, ya que es información opcional y de formato libre
+        }
+
+        return currentState
+    }
+
+    /**
+     * Valida el formato del número de la Seguridad Social
+     */
+    private fun isValidNumeroSS(numeroSS: String): Boolean {
+        // Formato básico: 12 dígitos o formato XX/XXXXXXXXXX
+        val regex = """^(\d{12}|[A-Z]{2}/\d{10})$""".toRegex()
+        return regex.matches(numeroSS)
+    }
+
+    /**
+     * Valida el formato del DNI/NIE
+     */
+    private fun isValidDNI(dni: String): Boolean {
+        // Regex para DNI: 8 números + letra
+        val dniRegex = """^\d{8}[A-Za-z]$""".toRegex()
+        // Regex para NIE: X/Y/Z + 7 números + letra
+        val nieRegex = """^[XYZxyz]\d{7}[A-Za-z]$""".toRegex()
+        return dniRegex.matches(dni) || nieRegex.matches(dni)
+    }
+
+    /**
+     * Valida el formato del teléfono
+     */
+    private fun isValidPhone(telefono: String): Boolean {
+        val regex = """^[6789]\d{8}$""".toRegex()
+        return regex.matches(telefono)
+    }
+
+    /**
+     * Valida el formato del email
+     */
+    private fun isValidEmail(email: String): Boolean {
+        val regex = """^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$""".toRegex()
+        return regex.matches(email)
+    }
+
+    /**
+     * Valida el formato de la contraseña
+     */
+    private fun isValidPassword(password: String): Boolean {
+        return password.length >= 6
+    }
+
+    /**
+     * Valida el formato de la fecha
+     */
+    private fun isValidDateFormat(fecha: String): Boolean {
+        val regex = """^\d{2}/\d{2}/\d{4}$""".toRegex()
+        return regex.matches(fecha)
+    }
+    
+    /**
+     * Crea un objeto Usuario o Alumno a partir del estado actual del UI
+     */
+    private fun getUserData(): Any {
+        val state = _uiState.value
+        return when (state.tipoUsuario) {
+            TipoUsuario.ADMIN_APP, TipoUsuario.ADMIN_CENTRO, TipoUsuario.PROFESOR, TipoUsuario.FAMILIAR -> {
+                Usuario(
+                    dni = state.dni,
+                    nombre = state.nombre,
+                    apellidos = state.apellidos,
+                    email = state.email,
+                    telefono = state.telefono,
+                    perfiles = createPerfiles(),
+                    activo = true
+                )
+            }
+            TipoUsuario.ALUMNO -> {
+                Alumno(
+                    id = state.userId.ifEmpty { UUID.randomUUID().toString() },
+                    dni = state.dni,
+                    nombre = state.nombre,
+                    apellidos = state.apellidos,
+                    fechaNacimiento = DateUtils.parseDateString(state.fechaNacimiento),
+                    centroId = state.centroSeleccionado?.id ?: "",
+                    claseId = state.claseSeleccionada?.id ?: "",
+                    curso = state.cursoSeleccionado?.nombre ?: "",
+                    clase = state.claseSeleccionada?.nombre ?: "",
+                    numeroSS = state.numeroSS,
+                    condicionesMedicas = state.condicionesMedicas,
+                    alergias = if (state.alergias.isNotEmpty()) state.alergias.split(",").map { it.trim() } else emptyList(),
+                    medicacion = if (state.medicacion.isNotEmpty()) state.medicacion.split(",").map { it.trim() } else emptyList(),
+                    necesidadesEspeciales = state.necesidadesEspeciales,
+                    observaciones = state.observaciones,
+                    observacionesMedicas = state.observacionesMedicas
+                )
+            }
+            else -> throw IllegalArgumentException("Tipo de usuario no soportado: ${state.tipoUsuario}")
+        }
     }
 }
