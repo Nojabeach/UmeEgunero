@@ -21,12 +21,12 @@ import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.service.EmailNotificationService
-import com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority
-import com.tfg.umeegunero.feature.common.comunicacion.model.MessageType
-import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessage
-import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessageRepository
+import com.tfg.umeegunero.data.model.MessagePriority
+import com.tfg.umeegunero.data.model.MessageStatus
+import com.tfg.umeegunero.data.model.MessageType
+import com.tfg.umeegunero.data.model.UnifiedMessage
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import java.util.UUID
-import com.tfg.umeegunero.feature.common.comunicacion.model.MessageStatus
 
 /**
  * Repositorio para gestionar solicitudes en la aplicación UmeEgunero.

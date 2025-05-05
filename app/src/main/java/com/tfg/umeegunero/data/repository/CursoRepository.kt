@@ -395,4 +395,19 @@ class CursoRepository @Inject constructor() {
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene cursos por centro con formato Result para usar en la interfaz de mensajes
+     * @param centroId ID del centro
+     * @return Result con la lista de cursos o error
+     */
+    suspend fun getCursosPorCentro(centroId: String): Result<List<Curso>> = withContext(Dispatchers.IO) {
+        try {
+            val cursos = obtenerCursosPorCentro(centroId, true)
+            return@withContext Result.Success(cursos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener cursos por centro: ${e.message}")
+            return@withContext Result.Error(e)
+        }
+    }
 }

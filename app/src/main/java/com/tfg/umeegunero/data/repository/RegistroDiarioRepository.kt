@@ -630,4 +630,40 @@ class RegistroDiarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+    
+    /**
+     * Obtiene registros de un alumno en un rango de fechas específico
+     * @param alumnoId ID del alumno
+     * @param fechaInicio Fecha de inicio del rango
+     * @param fechaFin Fecha de fin del rango
+     * @return Resultado con la lista de registros encontrados
+     */
+    suspend fun obtenerRegistrosPorFecha(
+        alumnoId: String,
+        fechaInicio: Date,
+        fechaFin: Date
+    ): Result<List<RegistroActividad>> {
+        return try {
+            val registrosRef = firestore.collection("registrosActividad")
+                .whereEqualTo("alumnoId", alumnoId)
+                .whereGreaterThanOrEqualTo("fecha", Timestamp(fechaInicio.time / 1000, 0))
+                .whereLessThanOrEqualTo("fecha", Timestamp(fechaFin.time / 1000, 0))
+                .get()
+                .await()
+                
+            val registros = registrosRef.documents.mapNotNull { documento ->
+                try {
+                    documento.toObject(RegistroActividad::class.java)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al convertir documento a RegistroActividad")
+                    null
+                }
+            }
+            
+            Result.Success(registros)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros por fecha para alumno: $alumnoId")
+            Result.Error(e)
+        }
+    }
 } 

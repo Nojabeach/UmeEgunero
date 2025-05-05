@@ -23,8 +23,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.R
-import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessageRepository
-import com.tfg.umeegunero.feature.common.comunicacion.model.MessageType
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
+import com.tfg.umeegunero.data.model.MessageType
 
 /**
  * Servicio para procesar mensajes de Firebase Cloud Messaging (FCM).

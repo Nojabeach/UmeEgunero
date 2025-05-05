@@ -656,4 +656,19 @@ private fun TareasProfesorScreenPreview() {
 //     UmeEguneroTheme {
 //         TareasProfesorScreen(navController = rememberNavController())
 //     }
-// } 
+// }
+
+/**
+ * Pantalla de listado de tareas
+ */
+@Composable
+fun TareasScreen(
+    navController: NavController
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("Pantalla de tareas en construcción")
+    }
+} 

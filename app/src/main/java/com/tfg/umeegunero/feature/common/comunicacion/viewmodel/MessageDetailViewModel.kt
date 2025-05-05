@@ -2,8 +2,8 @@ package com.tfg.umeegunero.feature.common.comunicacion.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessage
-import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessageRepository
+import com.tfg.umeegunero.data.model.UnifiedMessage
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -128,7 +128,7 @@ class MessageDetailViewModel @Inject constructor(
                         currentState.message?.let { message ->
                             currentState.copy(
                                 message = message.copy(
-                                    status = com.tfg.umeegunero.feature.common.comunicacion.model.MessageStatus.READ
+                                    status = com.tfg.umeegunero.data.model.MessageStatus.READ
                                 )
                             )
                         } ?: currentState
@@ -178,5 +178,28 @@ class MessageDetailViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Marca el mensaje como leído
+     */
+    fun markMessageAsRead(messageId: String) {
+        viewModelScope.launch {
+            try {
+                val result = messageRepository.markAsRead(messageId)
+                if (result is Result.Success && _uiState.value.message != null) {
+                    // Actualizar el estado local del mensaje
+                    _uiState.update { 
+                        it.copy(
+                            message = it.message?.copy(
+                                status = com.tfg.umeegunero.data.model.MessageStatus.READ
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al marcar mensaje como leído: $messageId")
+            }
+        }
     }
 } 

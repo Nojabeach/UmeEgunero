@@ -1,16 +1,6 @@
-package com.tfg.umeegunero.feature.common.comunicacion.model
+package com.tfg.umeegunero.data.model
 
 import com.google.firebase.Timestamp
-
-/**
- * Modelo que representa un participante en una conversación
- */
-data class ParticipantDetail(
-    val id: String,
-    val name: String,
-    val avatarUrl: String? = null,
-    val userType: String = ""
-)
 
 /**
  * Modelo que representa una conversación en el sistema de mensajería unificado

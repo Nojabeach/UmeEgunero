@@ -283,4 +283,3 @@ Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](L
 - A los profesores del ciclo por su guía y apoyo
 - A los centros educativos que colaboraron en la fase de pruebas
 - A las bibliotecas open source utilizadas en el proyecto
-

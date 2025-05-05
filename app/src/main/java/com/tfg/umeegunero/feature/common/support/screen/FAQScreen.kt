@@ -333,59 +333,123 @@ private fun getCategorias(): List<FAQCategory> {
             items = listOf(
                 FAQItem(
                     "¿Cómo puedo crear una cuenta?",
-                    "Para crear una cuenta, ve a la pantalla de registro y sigue los pasos indicados. Necesitarás proporcionar tu email, contraseña y datos personales básicos."
+                    "No puedes crear una cuenta directamente. Tu centro educativo debe registrarte en el sistema. Una vez registrado, recibirás un correo con tus credenciales iniciales para acceder a la aplicación."
                 ),
                 FAQItem(
                     "¿Qué hago si olvido mi contraseña?",
-                    "En la pantalla de inicio de sesión, haz clic en '¿Olvidaste tu contraseña?' y sigue las instrucciones para restablecerla a través de tu correo electrónico."
+                    "En la pantalla de inicio de sesión, toca en '¿Olvidaste tu contraseña?' y sigue las instrucciones. Recibirás un correo electrónico con un enlace para restablecerla."
                 ),
                 FAQItem(
-                    "¿Cómo puedo cambiar mi correo electrónico?",
-                    "Accede a tu perfil, selecciona la opción 'Editar perfil' y sigue las instrucciones para cambiar tu correo electrónico. Deberás verificar el nuevo correo."
+                    "¿Cómo cambio mi información personal?",
+                    "Accede al menú lateral y selecciona 'Perfil'. Allí encontrarás la opción para editar tu información personal como nombre, teléfono y foto de perfil."
+                ),
+                FAQItem(
+                    "¿Es segura mi información personal?",
+                    "Sí. UmeEgunero utiliza encriptación de datos y cumple con las normativas de protección de datos. Solo el personal autorizado del centro puede ver tu información completa."
                 )
             )
         ),
         FAQCategory(
-            title = "Funcionalidades",
-            icon = Icons.Default.Functions,
+            title = "Sistema de Mensajería",
+            icon = Icons.Default.Message,
             items = listOf(
                 FAQItem(
-                    "¿Cómo puedo ver el horario de mi hijo?",
-                    "Accede a la sección 'Horario' en el menú principal. Allí podrás ver el horario completo y las actividades programadas para cada día de la semana."
+                    "¿Cómo funciona el sistema de mensajería unificado?",
+                    "El sistema centraliza todos los tipos de comunicación (notificaciones, chats, comunicados e incidencias) en una bandeja de entrada unificada. Puedes filtrar por tipo de mensaje y ver todas tus notificaciones en un solo lugar."
                 ),
                 FAQItem(
-                    "¿Cómo funciona el chat con los profesores?",
-                    "El chat está disponible en la sección 'Comunicación'. Selecciona el profesor con quien deseas hablar y comienza la conversación. Puedes adjuntar archivos y fotos si es necesario."
+                    "¿Cómo envío un mensaje a un profesor?",
+                    "En la pantalla de mensajes, toca el botón '+' para crear un nuevo mensaje. Selecciona al profesor como destinatario, escribe el asunto y contenido, y envíalo. También puedes adjuntar archivos si es necesario."
                 ),
                 FAQItem(
-                    "¿Puedo recibir notificaciones?",
-                    "Sí, ve a Configuración > Notificaciones para personalizar qué tipo de notificaciones deseas recibir y cómo (email, push, etc.). También puedes establecer horarios de no molestar."
+                    "¿Puedo ver si han leído mis mensajes?",
+                    "Sí. En la pantalla de detalle del mensaje verás cuándo fue leído por el destinatario. Los mensajes no leídos aparecen destacados en la bandeja de entrada."
                 ),
                 FAQItem(
-                    "¿Cómo puedo ver las calificaciones?",
-                    "En la sección 'Académico' encontrarás todas las calificaciones, evaluaciones y comentarios de los profesores organizados por asignaturas y períodos."
+                    "¿Cómo filtro mis mensajes por tipo?",
+                    "En la pantalla de mensajes, usa el selector de tipo ubicado en la parte superior para filtrar: Todos, Notificaciones, Chats, Comunicados o Incidencias."
+                ),
+                FAQItem(
+                    "¿Puedo eliminar mensajes?",
+                    "Sí. Desliza un mensaje hacia la izquierda en la bandeja de entrada o usa el botón de eliminar en la pantalla de detalle del mensaje."
                 )
             )
         ),
         FAQCategory(
-            title = "Seguridad y Privacidad",
-            icon = Icons.Default.Security,
+            title = "Perfil Profesor",
+            icon = Icons.Default.School,
             items = listOf(
                 FAQItem(
-                    "¿Cómo se protegen mis datos?",
-                    "Utilizamos encriptación de extremo a extremo y cumplimos con las normativas de protección de datos (RGPD). Todos los datos se almacenan en servidores seguros con certificación ISO 27001."
+                    "¿Cómo veo la lista de mis alumnos?",
+                    "En el dashboard de profesor, selecciona la opción 'Mis Alumnos'. Allí verás la lista completa de alumnos asignados a tu clase con sus datos básicos."
                 ),
                 FAQItem(
-                    "¿Quién puede ver la información de mi hijo?",
-                    "Solo los profesores asignados y el personal autorizado del centro pueden acceder a la información de tu hijo. Puedes revisar los permisos específicos en la sección de privacidad."
+                    "¿Cómo completo el registro diario de un alumno?",
+                    "Desde 'Registro Diario' en el dashboard, selecciona la fecha y los alumnos que deseas registrar. Completa la información sobre comidas, siesta, deposiciones y materiales necesarios. Finalmente, guarda el registro con el botón flotante."
                 ),
                 FAQItem(
-                    "¿Cómo puedo denunciar un problema de seguridad?",
-                    "Contacta inmediatamente con nuestro equipo de seguridad a través de la sección de soporte técnico o escríbenos directamente a seguridad@umeegunero.com."
+                    "¿Puedo registrar varios alumnos a la vez?",
+                    "Sí. En la pantalla de 'Registro Diario', puedes seleccionar múltiples alumnos y registrarlos simultáneamente. También puedes filtrar por asistencia para facilitar el proceso."
                 ),
                 FAQItem(
-                    "¿Se comparten mis datos con terceros?",
-                    "No compartimos datos personales con terceros sin tu consentimiento explícito. Puedes revisar nuestra política de privacidad completa en la aplicación."
+                    "¿Cómo sé si los familiares han visto los registros diarios?",
+                    "Los registros más importantes generan notificaciones para los familiares. Puedes ver su estado en la sección de registros, donde se indica si han sido leídos."
+                ),
+                FAQItem(
+                    "¿Puedo enviar comunicados a todos los familiares de mi clase?",
+                    "Sí. Desde el sistema de mensajería, crea un nuevo mensaje, selecciona tipo 'Comunicado' y elige tu clase completa como destinatario para enviar información a todos los familiares a la vez."
+                )
+            )
+        ),
+        FAQCategory(
+            title = "Perfil Familiar",
+            icon = Icons.Default.People,
+            items = listOf(
+                FAQItem(
+                    "¿Cómo veo las actividades diarias de mi hijo?",
+                    "Accede a 'Registro Diario' desde el dashboard familiar para ver detalladamente la información sobre comidas, siestas, deposiciones y actividades realizadas por tu hijo cada día."
+                ),
+                FAQItem(
+                    "¿Cómo me comunico con el profesor?",
+                    "Usa el sistema de mensajería para enviar un mensaje directo al profesor. También puedes responder a cualquier mensaje o comunicado que hayas recibido."
+                ),
+                FAQItem(
+                    "¿Puedo tener varios niños vinculados a mi cuenta?",
+                    "Sí. Un familiar puede estar vinculado a varios alumnos. Solicita al centro educativo que realice la vinculación correspondiente y podrás gestionar todos tus hijos desde la misma cuenta."
+                ),
+                FAQItem(
+                    "¿Cómo solicito vincularme a un alumno?",
+                    "Desde tu perfil familiar, selecciona 'Solicitar Vinculación' e introduce el código de vinculación proporcionado por el centro. El centro educativo revisará y aprobará tu solicitud."
+                ),
+                FAQItem(
+                    "¿Cómo configuro las notificaciones?",
+                    "Ve a 'Configuración' en el menú lateral y selecciona 'Notificaciones'. Allí podrás personalizar qué tipo de notificaciones deseas recibir y cómo (push, email, etc.)."
+                )
+            )
+        ),
+        FAQCategory(
+            title = "Perfil Administrador Centro",
+            icon = Icons.Default.AdminPanelSettings,
+            items = listOf(
+                FAQItem(
+                    "¿Cómo añado un nuevo profesor al sistema?",
+                    "En el dashboard de administrador, selecciona 'Gestión de Usuarios' y luego 'Añadir Usuario'. Completa el formulario seleccionando el tipo 'Profesor' y asigna una clase si es necesario."
+                ),
+                FAQItem(
+                    "¿Cómo gestiono las clases y cursos?",
+                    "Accede a 'Gestión Académica' donde podrás crear, editar y eliminar cursos y clases. También podrás asignar profesores a cada clase y gestionar los alumnos por clase."
+                ),
+                FAQItem(
+                    "¿Cómo apruebo solicitudes de vinculación familiar?",
+                    "En el apartado 'Solicitudes de Vinculación' verás todas las solicitudes pendientes. Revisa cada solicitud y aprueba o rechaza según corresponda."
+                ),
+                FAQItem(
+                    "¿Cómo envío un comunicado a todo el centro?",
+                    "Desde el sistema de mensajería, crea un nuevo mensaje de tipo 'Comunicado', selecciona 'Todo el centro' como destinatario, completa la información y envíalo."
+                ),
+                FAQItem(
+                    "¿Puedo ver estadísticas del centro?",
+                    "Sí. En la sección 'Estadísticas' encontrarás información sobre asistencia, comunicaciones y actividad general del centro educativo presentada en gráficos interactivos."
                 )
             )
         ),
@@ -395,23 +459,23 @@ private fun getCategorias(): List<FAQCategory> {
             items = listOf(
                 FAQItem(
                     "¿Qué hago si la app no funciona correctamente?",
-                    "Intenta cerrar la app y volver a abrirla. Si el problema persiste, ve a Ajustes > Aplicaciones > UmeEgunero > Almacenamiento > Borrar caché, y reinicia la aplicación."
+                    "Intenta cerrar la app completamente y volver a abrirla. Si el problema persiste, ve a Ajustes > Aplicaciones > UmeEgunero > Almacenamiento > Borrar caché, y reinicia la aplicación."
                 ),
                 FAQItem(
-                    "¿Cómo puedo reportar un error?",
-                    "Ve a la sección de soporte técnico y utiliza el formulario de contacto para describir el problema. Adjunta capturas de pantalla si es posible para ayudarnos a diagnosticar el error."
+                    "¿Cómo reporto un error en la aplicación?",
+                    "Ve a la sección 'Soporte Técnico' en el menú de configuración y describe detalladamente el problema. Si es posible, incluye capturas de pantalla para ayudarnos a diagnosticar el error."
                 ),
                 FAQItem(
-                    "¿Qué versión de Android necesito?",
-                    "La app requiere Android 10 (API nivel 29) o superior para funcionar correctamente. Para iOS, se requiere iOS 13 o superior."
+                    "¿Qué información necesito para contactar con soporte?",
+                    "Ten a mano tu DNI, el nombre de tu centro educativo y, si es posible, capturas de pantalla del error. Esto nos ayudará a resolver tu problema más rápidamente."
                 ),
                 FAQItem(
-                    "¿Con qué frecuencia se actualiza la aplicación?",
-                    "Publicamos actualizaciones mensuales con mejoras y correcciones. Las actualizaciones importantes se notifican dentro de la aplicación."
+                    "¿Hay algún requisito mínimo para usar la app?",
+                    "La app requiere Android 8.0 (API nivel 26) o superior. Además, necesitas una conexión a internet estable para sincronizar los datos correctamente."
                 ),
                 FAQItem(
-                    "¿Dónde puedo ver tutoriales sobre el uso de la aplicación?",
-                    "En la sección de ayuda encontrarás tutoriales en video y guías paso a paso sobre todas las funcionalidades de la aplicación."
+                    "¿Dónde encuentro tutoriales sobre el uso de la aplicación?",
+                    "En la sección 'Ayuda' del menú lateral encontrarás tutoriales y guías paso a paso sobre todas las funcionalidades principales de la aplicación."
                 )
             )
         )

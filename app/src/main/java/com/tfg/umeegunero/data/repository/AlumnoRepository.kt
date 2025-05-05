@@ -152,6 +152,24 @@ interface AlumnoRepository {
      * @return Lista de alumnos asignados al profesor
      */
     suspend fun getAlumnosForProfesor(profesorId: String): List<Alumno>
+
+    /**
+     * Obtiene todos los alumnos de un centro
+     * @param centroId ID del centro
+     * @return Lista de alumnos del centro
+     */
+    suspend fun getAlumnosByCentroId(centroId: String): List<Alumno>
+
+    /**
+     * Busca alumnos que tengan a un familiar en su lista de familiares
+     * 
+     * Este método busca alumnos cuyo campo familiarIds contiene el ID del familiar.
+     * Es una búsqueda alternativa para cuando la relación principal falla.
+     * 
+     * @param familiarId ID del familiar a buscar en la lista de familiares de los alumnos
+     * @return Resultado con la lista de alumnos encontrados
+     */
+    suspend fun getAlumnosWithFamiliarId(familiarId: String): Result<List<Alumno>>
 }
 
 /**
@@ -628,6 +646,111 @@ class AlumnoRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener alumnos para el profesor: $profesorId")
             return@withContext emptyList()
+        }
+    }
+
+    /**
+     * Obtiene todos los alumnos de un centro
+     * @param centroId ID del centro
+     * @return Lista de alumnos del centro
+     */
+    override suspend fun getAlumnosByCentroId(centroId: String): List<Alumno> = withContext(Dispatchers.IO) {
+        try {
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("centroId", centroId)
+                .get()
+                .await()
+
+            Timber.d("Recuperados ${query.size()} alumnos para el centro: $centroId")
+            return@withContext query.toObjects(Alumno::class.java)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumnos por centro: $centroId")
+            return@withContext emptyList()
+        }
+    }
+
+    /**
+     * Busca alumnos que tengan a un familiar en su lista de familiares
+     * 
+     * Este método busca alumnos cuyo campo familiarIds contiene el ID del familiar.
+     * Es una búsqueda alternativa para cuando la relación principal falla.
+     * 
+     * @param familiarId ID del familiar a buscar en la lista de familiares de los alumnos
+     * @return Resultado con la lista de alumnos encontrados
+     */
+    override suspend fun getAlumnosWithFamiliarId(familiarId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando alumnos con familiar ID: $familiarId en lista familiarIds")
+            
+            // Consulta alumnos donde el array familiarIds contiene el ID dado
+            val querySnapshot = firestore.collection(COLLECTION_ALUMNOS)
+                .whereArrayContains("familiarIds", familiarId)
+                .get()
+                .await()
+            
+            // Mapea los documentos a objetos Alumno
+            val alumnos = querySnapshot.documents.mapNotNull { document ->
+                try {
+                    val alumno = document.toObject(Alumno::class.java)
+                    if (alumno != null) {
+                        // Asegurarse de asignar el ID del documento si no está presente
+                        if (alumno.id.isEmpty()) {
+                            alumno.copy(id = document.id)
+                        } else {
+                            alumno
+                        }
+                    } else {
+                        Timber.w("No se pudo convertir documento ${document.id} a Alumno")
+                        null
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al convertir documento a Alumno: ${document.id}")
+                    null
+                }
+            }
+            
+            // Si no encontramos alumnos, intentemos buscar por DNI del familiar
+            if (alumnos.isEmpty()) {
+                Timber.d("No se encontraron alumnos por familiarIds, intentando por campo 'familiares'")
+                
+                // Consultar todos los alumnos y filtrar aquellos que tengan el familiarId en su lista de familiares
+                val todosLosAlumnos = firestore.collection(COLLECTION_ALUMNOS)
+                    .get()
+                    .await()
+                    
+                val alumnosConFamiliar = todosLosAlumnos.documents.mapNotNull { document ->
+                    try {
+                        val alumno = document.toObject(Alumno::class.java)
+                        val familiares = document.get("familiares") as? List<Map<String, Any>> ?: emptyList()
+                        
+                        // Comprobar si algún familiar tiene el ID buscado
+                        val tieneFamiliar = familiares.any { familiar ->
+                            val id = familiar["id"] as? String ?: ""
+                            id == familiarId
+                        }
+                        
+                        if (tieneFamiliar) {
+                            Timber.d("Encontrado alumno ${alumno?.nombre} con familiar $familiarId en campo 'familiares'")
+                            alumno?.copy(id = document.id)
+                        } else {
+                            null
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al procesar alumno: ${document.id}")
+                        null
+                    }
+                }
+                
+                Timber.d("Búsqueda alternativa encontró ${alumnosConFamiliar.size} alumnos con familiar $familiarId")
+                return@withContext Result.Success(alumnosConFamiliar)
+            }
+            
+            Timber.d("Encontrados ${alumnos.size} alumnos con familiar ID: $familiarId")
+            return@withContext Result.Success(alumnos)
+            
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar alumnos con familiar ID: $familiarId")
+            return@withContext Result.Error(e)
         }
     }
 } 

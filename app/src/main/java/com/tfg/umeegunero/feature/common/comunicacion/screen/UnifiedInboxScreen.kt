@@ -30,8 +30,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Mail
+import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,13 +43,17 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -63,13 +71,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tfg.umeegunero.feature.common.comunicacion.model.MessageType
-import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessage
+import com.tfg.umeegunero.data.model.MessagePriority
+import com.tfg.umeegunero.data.model.MessageType
+import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.UnifiedInboxUiState
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.UnifiedInboxViewModel
 import com.tfg.umeegunero.ui.components.EmptyContent
@@ -78,6 +88,10 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.material.icons.filled.Announcement
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Info
 
 /**
  * Pantalla unificada de bandeja de entrada para todos los tipos de comunicaciones
@@ -131,16 +145,9 @@ fun UnifiedInboxScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Mensajes") },
+                            text = { Text("Incidencias") },
                             onClick = {
-                                viewModel.filterByType(MessageType.CHAT)
-                                showFilterMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Notificaciones") },
-                            onClick = {
-                                viewModel.filterByType(MessageType.NOTIFICATION)
+                                viewModel.filterByType(MessageType.INCIDENT)
                                 showFilterMenu = false
                             }
                         )
@@ -152,9 +159,9 @@ fun UnifiedInboxScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Incidencias") },
+                            text = { Text("Chats") },
                             onClick = {
-                                viewModel.filterByType(MessageType.INCIDENT)
+                                viewModel.filterByType(MessageType.CHAT)
                                 showFilterMenu = false
                             }
                         )
@@ -166,9 +173,16 @@ fun UnifiedInboxScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Registros") },
+                            text = { Text("Registros diarios") },
                             onClick = {
                                 viewModel.filterByType(MessageType.DAILY_RECORD)
+                                showFilterMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Notificaciones") },
+                            onClick = {
+                                viewModel.filterByType(MessageType.NOTIFICATION)
                                 showFilterMenu = false
                             }
                         )
@@ -368,17 +382,20 @@ fun MessageItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
-                    if (message.priority == com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority.HIGH) {
+                    // Badge de prioridad
+                    if (message.priority == MessagePriority.HIGH || 
+                        message.priority == MessagePriority.URGENT) {
+                        
+                        val priorityText = if (message.priority == MessagePriority.URGENT) {
+                            "Urgente"
+                        } else {
+                            "Alta"
+                        }
+                        
                         Text(
-                            text = " • Prioritario",
+                            text = " • $priorityText",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFF57C00)
-                        )
-                    } else if (message.priority == com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority.URGENT) {
-                        Text(
-                            text = " • Urgente",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Red
+                            color = if (message.priority == MessagePriority.HIGH) Color(0xFFF57C00) else Color.Red
                         )
                     }
                 }
@@ -428,5 +445,54 @@ fun getMessageTypeColor(type: MessageType): Color {
         MessageType.ATTENDANCE -> Color(0xFF2196F3) // Azul
         MessageType.DAILY_RECORD -> Color(0xFFFF9800) // Naranja
         MessageType.SYSTEM -> Color(0xFF9C27B0) // Púrpura
+    }
+}
+
+/**
+ * Determina el icono a mostrar según el tipo de mensaje
+ */
+@Composable
+private fun getIconForMessageType(type: MessageType?): @Composable () -> Unit = {
+    when (type) {
+        MessageType.CHAT -> Icon(
+            imageVector = Icons.Default.Message,
+            contentDescription = "Mensaje",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        MessageType.NOTIFICATION -> Icon(
+            imageVector = Icons.Default.Notifications,
+            contentDescription = "Notificación",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        MessageType.ANNOUNCEMENT -> Icon(
+            imageVector = Icons.Default.Announcement,
+            contentDescription = "Comunicado",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        MessageType.INCIDENT -> Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = "Incidencia",
+            tint = Color(0xFFE53935)
+        )
+        MessageType.ATTENDANCE -> Icon(
+            imageVector = Icons.Default.Event,
+            contentDescription = "Asistencia",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        MessageType.DAILY_RECORD -> Icon(
+            imageVector = Icons.Default.DateRange,
+            contentDescription = "Registro diario",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        MessageType.SYSTEM -> Icon(
+            imageVector = Icons.Default.Info,
+            contentDescription = "Sistema",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        null -> Icon(
+            imageVector = Icons.Default.Mail,
+            contentDescription = "Todos",
+            tint = MaterialTheme.colorScheme.primary
+        )
     }
 } 

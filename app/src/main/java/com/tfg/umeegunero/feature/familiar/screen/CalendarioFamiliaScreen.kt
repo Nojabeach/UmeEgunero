@@ -2,6 +2,7 @@ package com.tfg.umeegunero.feature.familiar.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -404,7 +405,12 @@ fun DiaItem(
                     else -> Color.Transparent
                 }
             )
-            .clickable(onClick = onClick),
+            .clickable(
+                enabled = true,
+                onClick = onClick,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(

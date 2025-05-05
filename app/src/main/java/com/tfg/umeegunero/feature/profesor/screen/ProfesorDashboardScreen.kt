@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Festival
 import androidx.compose.material.icons.filled.Grading
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalActivity
 import androidx.compose.material.icons.filled.Notifications
@@ -91,6 +92,79 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+
+/**
+ * Componente para mostrar una tarjeta en el dashboard con título, descripción e icono
+ */
+@Composable
+private fun CardDashboard(
+    titulo: String,
+    descripcion: String,
+    icono: ImageVector,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 140.dp, max = 200.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Icono en la parte superior
+            Box(
+                modifier = Modifier
+                    .background(color = color, shape = CircleShape)
+                    .size(48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icono,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            
+            // Espacio flexible
+            Spacer(modifier = Modifier.weight(1f))
+            
+            // Título y descripción en la parte inferior
+            Column {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = descripcion,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
 
 /**
  * Pantalla principal del profesor, contiene un dashboard con acceso a todas las funcionalidades.
@@ -196,11 +270,14 @@ fun ProfesorDashboardScreen(
                             Timber.e(e, "Error al realizar feedback háptico")
                         }
                         showRegistroDiarioDialog = false
-                        try {
-                            navController.navigate(AppScreens.ListadoPreRegistroDiario.createRoute())
-                            Timber.d("Navegando a Listado Pre-Registro Diario")
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al navegar a Listado Pre-Registro Diario")
+                        // Usar profesorId del estado para pasarlo como parámetro a la pantalla
+                        val profesorId = uiState.profesor?.dni ?: ""
+                        if (profesorId.isNotEmpty()) {
+                            navController.navigate(AppScreens.ListadoPreRegistroDiario.createRouteWithParams(profesorId))
+                            Timber.d("Navegando a ListadoPreRegistroDiario con profesorId: $profesorId")
+                        } else {
+                            Timber.e("No se pudo navegar a ListadoPreRegistroDiario: profesorId vacío")
+                            // Podríamos mostrar un mensaje de error aquí
                         }
                     },
                     enabled = !uiState.esFestivoHoy
@@ -605,25 +682,48 @@ fun ProfesorDashboardContent(
             )
         }
 
-        // --- Acciones Diarias ---
-        item { SeccionTitulo("Acciones Diarias") }
-        item {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Mostrar una única card para registro diario con altura aumentada
-                CategoriaCard(
-                    titulo = accionesDiariasCards[0].titulo,
-                    descripcion = accionesDiariasCards[0].descripcion,
-                    icono = accionesDiariasCards[0].icono,
-                    color = accionesDiariasCards[0].color,
-                    iconTint = accionesDiariasCards[0].iconTint,
-                    border = true,
-                    enabled = !hoyEsFestivo,
-                    onClick = accionesDiariasCards[0].onClick,
-                    modifier = Modifier.heightIn(min = 100.dp)
-                )
+        // --- Sección de acciones diarias - Solo si no es festivo
+        if (!hoyEsFestivo) {
+            item { SeccionTitulo("Acciones Diarias") }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Tarjeta para registro diario de alumnos
+                    CardDashboard(
+                        titulo = "Registro diario",
+                        descripcion = "Registra la actividad y necesidades diarias de tus alumnos",
+                        icono = Icons.AutoMirrored.Filled.ListAlt,
+                        color = ProfesorColor,
+                        onClick = {
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al realizar feedback háptico")
+                            }
+                            navController.navigate(AppScreens.ListadoPreRegistroDiario.route)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    // Tarjeta para histórico de registros diarios
+                    CardDashboard(
+                        titulo = "Histórico de registros",
+                        descripcion = "Consulta registros anteriores de actividad de tus alumnos",
+                        icono = Icons.Default.History,
+                        color = ProfesorColor,
+                        onClick = {
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al realizar feedback háptico")
+                            }
+                            navController.navigate(AppScreens.HistoricoRegistroDiario.route)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
 

@@ -16,27 +16,27 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Estado de la UI para la bandeja de entrada unificada
+ * Estado de la UI para la lista de mensajes
  */
-data class UnifiedInboxUiState(
+data class MessageListUiState(
     val isLoading: Boolean = false,
     val messages: List<UnifiedMessage> = emptyList(),
     val filteredMessages: List<UnifiedMessage> = emptyList(),
-    val selectedFilter: MessageType? = null,
+    val selectedTabIndex: Int = 0,
     val error: String? = null,
     val searchQuery: String = ""
 )
 
 /**
- * ViewModel para la bandeja de entrada unificada
+ * ViewModel para la pantalla de lista de mensajes
  */
 @HiltViewModel
-class UnifiedInboxViewModel @Inject constructor(
+class MessageListViewModel @Inject constructor(
     private val messageRepository: UnifiedMessageRepository
 ) : ViewModel() {
     
-    private val _uiState = MutableStateFlow(UnifiedInboxUiState())
-    val uiState: StateFlow<UnifiedInboxUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(MessageListUiState())
+    val uiState: StateFlow<MessageListUiState> = _uiState.asStateFlow()
     
     /**
      * Carga todos los mensajes del usuario actual
@@ -48,11 +48,12 @@ class UnifiedInboxViewModel @Inject constructor(
             messageRepository.getCurrentUserInbox().collect { result ->
                 when (result) {
                     is Result.Success -> {
+                        val messages = result.data.sortedByDescending { it.timestamp.seconds }
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                messages = result.data,
-                                error = null
+                                messages = messages,
+                                filteredMessages = messages
                             )
                         }
                         applyFilters()
@@ -76,7 +77,7 @@ class UnifiedInboxViewModel @Inject constructor(
     /**
      * Marca un mensaje como leído
      */
-    fun markAsRead(messageId: String) {
+    fun markMessageAsRead(messageId: String) {
         viewModelScope.launch {
             try {
                 messageRepository.markAsRead(messageId)
@@ -94,13 +95,9 @@ class UnifiedInboxViewModel @Inject constructor(
                     currentState.copy(messages = updatedMessages)
                 }
                 
-                // Reaplicar filtros si hay alguno activo
                 applyFilters()
             } catch (e: Exception) {
                 Timber.e(e, "Error al marcar mensaje como leído: $messageId")
-                _uiState.update { 
-                    it.copy(error = "Error al marcar como leído: ${e.message}")
-                }
             }
         }
     }
@@ -120,7 +117,7 @@ class UnifiedInboxViewModel @Inject constructor(
                         currentState.copy(messages = updatedMessages)
                     }
                     
-                    // Reaplicar filtros si hay alguno activo
+                    // Reaplicar filtros
                     applyFilters()
                 } else if (result is Result.Error) {
                     _uiState.update { 
@@ -137,10 +134,10 @@ class UnifiedInboxViewModel @Inject constructor(
     }
     
     /**
-     * Filtra los mensajes por tipo
+     * Selecciona una pestaña para filtrar los mensajes
      */
-    fun filterByType(type: MessageType?) {
-        _uiState.update { it.copy(selectedFilter = type) }
+    fun selectTab(index: Int) {
+        _uiState.update { it.copy(selectedTabIndex = index) }
         applyFilters()
     }
     
@@ -159,10 +156,15 @@ class UnifiedInboxViewModel @Inject constructor(
         val currentState = _uiState.value
         
         val filtered = currentState.messages.filter { message ->
-            // Filtrar por tipo si hay alguno seleccionado
-            val matchesType = currentState.selectedFilter?.let { 
-                message.type == it 
-            } ?: true
+            // Filtrar por tipo según la pestaña seleccionada
+            val matchesType = when (currentState.selectedTabIndex) {
+                0 -> true // Todos
+                1 -> message.type == MessageType.NOTIFICATION // Notificaciones
+                2 -> message.type == MessageType.CHAT // Chats
+                3 -> message.type == MessageType.ANNOUNCEMENT // Comunicados
+                4 -> message.type == MessageType.INCIDENT // Incidencias
+                else -> true
+            }
             
             // Filtrar por búsqueda si hay texto de búsqueda
             val matchesSearch = if (currentState.searchQuery.isNotBlank()) {

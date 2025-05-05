@@ -93,6 +93,13 @@ interface ClaseRepository {
      * @return Resultado de la operación
      */
     suspend fun desasignarProfesor(claseId: String): Result<Unit>
+
+    /**
+     * Obtiene las clases por curso (un alias para getClasesByCursoId para mantener coherencia de nombres)
+     * @param cursoId ID del curso
+     * @return Resultado con la lista de clases
+     */
+    suspend fun getClasesPorCurso(cursoId: String): Result<List<Clase>>
 }
 
 /**
@@ -481,5 +488,14 @@ class ClaseRepositoryImpl @Inject constructor(
             Timber.e(e, "Error al eliminar profesor principal de clase")
             Result.Error(e)
         }
+    }
+
+    /**
+     * Obtiene las clases por curso (un alias para getClasesByCursoId para mantener coherencia de nombres)
+     * @param cursoId ID del curso
+     * @return Resultado con la lista de clases
+     */
+    override suspend fun getClasesPorCurso(cursoId: String): Result<List<Clase>> {
+        return getClasesByCursoId(cursoId)
     }
 }

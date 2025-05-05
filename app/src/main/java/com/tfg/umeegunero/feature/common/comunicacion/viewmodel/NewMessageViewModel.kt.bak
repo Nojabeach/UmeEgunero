@@ -5,14 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.data.model.MessagePriority
-import com.tfg.umeegunero.data.model.MessageStatus
-import com.tfg.umeegunero.data.model.MessageType
-import com.tfg.umeegunero.data.model.RecipientItem
-import com.tfg.umeegunero.data.model.UnifiedMessage
-import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
-import com.tfg.umeegunero.data.model.RecipientGroup
-import com.tfg.umeegunero.data.model.RecipientGroupType
+import com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority
+import com.tfg.umeegunero.feature.common.comunicacion.model.MessageStatus
+import com.tfg.umeegunero.feature.common.comunicacion.model.MessageType
+import com.tfg.umeegunero.feature.common.comunicacion.model.RecipientItem
+import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessage
+import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessageRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +38,27 @@ data class UserSearchResult(
     val name: String,
     val userType: String
 )
+
+/**
+ * Estructura para representar un grupo de destinatarios
+ */
+data class RecipientGroup(
+    val id: String,
+    val name: String,
+    val type: RecipientGroupType
+)
+
+/**
+ * Tipos de grupos de destinatarios
+ */
+enum class RecipientGroupType {
+    CENTER,        // Todo un centro educativo
+    COURSE,        // Un curso completo
+    CLASS,         // Una clase específica
+    TEACHER,       // Todos los profesores
+    PARENT,        // Todos los padres/tutores
+    USER           // Usuario individual
+}
 
 /**
  * Estado de la UI para la pantalla de nuevo mensaje
@@ -561,40 +580,42 @@ class NewMessageViewModel @Inject constructor(
                 for (group in currentState.recipientGroups) {
                     when (group.type) {
                         RecipientGroupType.CENTER -> {
-                            // Simular la obtención de usuarios del centro
-                            // Originalmente: val usersResult = usuarioRepository.getUsuariosPorCentro(group.id)
-                            Timber.d("Simulando obtención de usuarios para centro: ${group.id}")
-                            val usuarios = listOf("usuario1", "usuario2", "usuario3")
-                            expandedReceivers.addAll(usuarios)
+                            // Obtener todos los usuarios del centro
+                            val usersResult = usuarioRepository.getUsuariosPorCentro(group.id)
+                            if (usersResult is Result.Success) {
+                                expandedReceivers.addAll(usersResult.data.map { it.dni })
+                            }
                         }
                         RecipientGroupType.COURSE -> {
-                            // Simular la obtención de alumnos del curso
-                            // Originalmente: val alumnosResult = claseRepository.getAllAlumnosPorCurso(group.id)
-                            Timber.d("Simulando obtención de alumnos para curso: ${group.id}")
-                            val alumnosIds = listOf("alumno1", "alumno2", "alumno3")
-                            expandedReceivers.addAll(alumnosIds)
-                            
-                            // Simular la obtención de familiares de los alumnos
-                            for (alumnoId in alumnosIds) {
-                                // Originalmente: val familiaresResult = usuarioRepository.getFamiliaresPorAlumnoId(alumnoId)
-                                Timber.d("Simulando obtención de familiares para alumno: $alumnoId")
-                                val familiares = listOf("familiar1", "familiar2")
-                                expandedReceivers.addAll(familiares)
+                            // Obtener todos los alumnos del curso
+                            val alumnosResult = claseRepository.getAllAlumnosPorCurso(group.id)
+                            if (alumnosResult is Result.Success) {
+                                val alumnosIds = alumnosResult.data.map { it.dni }
+                                expandedReceivers.addAll(alumnosIds)
+                                
+                                // Obtener los familiares de esos alumnos
+                                for (alumnoId in alumnosIds) {
+                                    val familiaresResult = usuarioRepository.getFamiliaresPorAlumnoId(alumnoId)
+                                    if (familiaresResult is Result.Success) {
+                                        expandedReceivers.addAll(familiaresResult.data.map { it.dni })
+                                    }
+                                }
                             }
                         }
                         RecipientGroupType.CLASS -> {
-                            // Simular la obtención de alumnos de la clase
-                            // Originalmente: val alumnosResult = claseRepository.getAlumnosPorClase(group.id)
-                            Timber.d("Simulando obtención de alumnos para clase: ${group.id}")
-                            val alumnosIds = listOf("alumno1", "alumno2", "alumno3")
-                            expandedReceivers.addAll(alumnosIds)
-                            
-                            // Simular la obtención de familiares de los alumnos
-                            for (alumnoId in alumnosIds) {
-                                // Originalmente: val familiaresResult = usuarioRepository.getFamiliaresPorAlumnoId(alumnoId)
-                                Timber.d("Simulando obtención de familiares para alumno: $alumnoId")
-                                val familiares = listOf("familiar1", "familiar2")
-                                expandedReceivers.addAll(familiares)
+                            // Obtener todos los alumnos de la clase
+                            val alumnosResult = claseRepository.getAlumnosPorClase(group.id)
+                            if (alumnosResult is Result.Success) {
+                                val alumnosIds = alumnosResult.data.map { it.dni }
+                                expandedReceivers.addAll(alumnosIds)
+                                
+                                // Obtener los familiares de esos alumnos
+                                for (alumnoId in alumnosIds) {
+                                    val familiaresResult = usuarioRepository.getFamiliaresPorAlumnoId(alumnoId)
+                                    if (familiaresResult is Result.Success) {
+                                        expandedReceivers.addAll(familiaresResult.data.map { it.dni })
+                                    }
+                                }
                             }
                         }
                         RecipientGroupType.TEACHER -> {

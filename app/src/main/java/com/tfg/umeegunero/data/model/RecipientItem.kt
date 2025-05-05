@@ -1,4 +1,4 @@
-package com.tfg.umeegunero.feature.common.comunicacion.model
+package com.tfg.umeegunero.data.model
 
 /**
  * Modelo de datos para representar un destinatario en la interfaz de usuarios

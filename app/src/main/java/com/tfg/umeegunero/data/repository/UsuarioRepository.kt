@@ -2490,4 +2490,44 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Busca usuarios por tipo de perfil
+     * @param tipo El tipo de perfil (PROFESOR, FAMILIAR, etc.)
+     * @return Result con la lista de usuarios encontrados
+     */
+    suspend fun buscarUsuariosPorPerfil(tipo: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            val tipoEnum = try {
+                TipoUsuario.valueOf(tipo)
+            } catch (e: IllegalArgumentException) {
+                Timber.e(e, "Tipo de usuario inválido: $tipo")
+                return@withContext Result.Error(Exception("Tipo de usuario inválido: $tipo"))
+            }
+            
+            // Firestore no permite consultas por arrays directamente,
+            // así que debemos obtener todos y filtrar en memoria
+            val snapshot = usuariosCollection.get().await()
+            
+            val usuarios = snapshot.documents.mapNotNull { doc ->
+                try {
+                    val usuario = doc.toObject(Usuario::class.java)
+                    // Filtramos si tiene algún perfil del tipo solicitado
+                    if (usuario != null && usuario.perfiles.any { it.tipo == tipoEnum }) {
+                        usuario
+                    } else {
+                        null
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al convertir documento a Usuario: ${doc.id}")
+                    null
+                }
+            }
+            
+            return@withContext Result.Success(usuarios)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar usuarios por perfil: $tipo")
+            return@withContext Result.Error(e)
+        }
+    }
 }

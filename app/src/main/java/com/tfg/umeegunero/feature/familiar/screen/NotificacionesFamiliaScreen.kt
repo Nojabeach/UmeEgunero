@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
 import java.util.*
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -285,8 +286,9 @@ fun NotificacionItem(
     onMarcarLeida: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onNotificacionClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onNotificacionClick),
         colors = CardDefaults.cardColors(
             containerColor = if (!notificacion.leida) 
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
@@ -308,16 +310,17 @@ fun NotificacionItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Message,
-                    contentDescription = "Mensaje",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-                Icon(
-                    imageVector = Icons.Default.Assignment,
-                    contentDescription = "Tarea",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
+                    imageVector = when (notificacion.tipo) {
+                        TipoNotificacion.MENSAJE -> Icons.Default.Message
+                        TipoNotificacion.TAREA -> Icons.Default.Assignment
+                        TipoNotificacion.EVENTO -> Icons.Default.Event
+                        TipoNotificacion.CALIFICACION -> Icons.Default.Star
+                        TipoNotificacion.ASISTENCIA -> Icons.Default.Person
+                        TipoNotificacion.GENERAL -> Icons.Default.Notifications
+                    },
+                    contentDescription = notificacion.tipo.name,
+                    tint = notificacion.tipo.color,
+                    modifier = Modifier.size(24.dp)
                 )
             }
             
@@ -362,25 +365,37 @@ fun NotificacionItem(
             }
             
             // Indicador de no leída y menú de opciones
-            if (!notificacion.leida) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            IconButton(
-                onClick = { onMarcarLeida() }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    imageVector = if (notificacion.leida) Icons.Default.MoreVert else Icons.Default.Done,
-                    contentDescription = if (notificacion.leida) "Opciones" else "Marcar como leída",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (!notificacion.leida) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
+                
+                IconButton(
+                    onClick = {
+                        // Usamos un try-catch para evitar posibles problemas
+                        try {
+                            onMarcarLeida() 
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al marcar como leída la notificación")
+                        }
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (notificacion.leida) Icons.Default.MoreVert else Icons.Default.Done,
+                        contentDescription = if (notificacion.leida) "Opciones" else "Marcar como leída",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

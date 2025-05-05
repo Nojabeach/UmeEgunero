@@ -17,19 +17,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import java.time.LocalDate
+import java.util.Date
+import java.util.Calendar
 
 /**
  * Componente que permite seleccionar una fecha navegando por días
  * 
  * @param selectedDate La fecha actualmente seleccionada
  * @param onDateSelected Callback cuando se selecciona una nueva fecha
+ * @param onDismissRequest Callback para cerrar el selector (opcional)
  * @param buttonColors Colores personalizados para el botón central
  */
 @Composable
 fun DateSelector(
-    selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit,
+    selectedDate: Date,
+    onDateSelected: (Date) -> Unit,
+    onDismissRequest: () -> Unit = {},
     buttonColors: ButtonColors = ButtonDefaults.outlinedButtonColors()
 ) {
     Row(
@@ -37,12 +40,17 @@ fun DateSelector(
     ) {
         // Botón para día anterior
         IconButton(
-            onClick = { onDateSelected(selectedDate.minusDays(1)) }
+            onClick = { 
+                val calendar = Calendar.getInstance()
+                calendar.time = selectedDate
+                calendar.add(Calendar.DAY_OF_MONTH, -1)
+                onDateSelected(calendar.time)
+            }
         ) {
             Icon(
                 imageVector = Icons.Default.ChevronLeft,
                 contentDescription = "Día anterior",
-                tint = buttonColors.contentColor
+                tint = MaterialTheme.colorScheme.primary
             )
         }
         
@@ -51,9 +59,8 @@ fun DateSelector(
         // Botón central (seleccionar fecha)
         OutlinedButton(
             onClick = { 
-                // Aquí se podría mostrar un DatePicker
                 // Por ahora, simplemente volvemos a hoy
-                onDateSelected(LocalDate.now())
+                onDateSelected(Date())
             },
             colors = buttonColors
         ) {
@@ -64,12 +71,17 @@ fun DateSelector(
         
         // Botón para día siguiente
         IconButton(
-            onClick = { onDateSelected(selectedDate.plusDays(1)) }
+            onClick = { 
+                val calendar = Calendar.getInstance()
+                calendar.time = selectedDate
+                calendar.add(Calendar.DAY_OF_MONTH, 1)
+                onDateSelected(calendar.time)
+            }
         ) {
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "Día siguiente",
-                tint = buttonColors.contentColor
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }

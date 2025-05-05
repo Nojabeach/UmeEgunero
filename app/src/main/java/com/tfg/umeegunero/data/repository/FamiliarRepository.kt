@@ -92,6 +92,14 @@ interface FamiliarRepository {
      * @return Información del familiar o null si no existe
      */
     suspend fun getFamiliarByUsuarioId(usuarioId: String): Result<Familiar?>
+
+    /**
+     * Obtiene los IDs de los hijos vinculados a un familiar directamente desde Firestore
+     * 
+     * @param familiarId ID del familiar
+     * @return Lista de IDs de hijos o null si hay error o no existen
+     */
+    suspend fun obtenerHijosIdsPorFamiliarId(familiarId: String): List<String>?
 }
 
 /**
@@ -335,6 +343,65 @@ class FamiliarRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener familiar por ID de usuario")
             Result.Error(e)
+        }
+    }
+
+    override suspend fun obtenerHijosIdsPorFamiliarId(familiarId: String): List<String>? = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando hijos IDs para familiar: $familiarId")
+            
+            // Intentar obtener directamente del documento del familiar
+            val familiarDoc = firestore.collection("familiares")
+                .whereEqualTo("id", familiarId)
+                .limit(1)
+                .get()
+                .await()
+                
+            if (!familiarDoc.isEmpty) {
+                val doc = familiarDoc.documents.first()
+                val hijosIds = doc.get("hijosIds") as? List<String>
+                
+                if (hijosIds != null) {
+                    Timber.d("Encontrados ${hijosIds.size} hijosIds en documento familiar")
+                    return@withContext hijosIds
+                }
+                
+                // Intentar otros posibles nombres de campo
+                val alumnosIds = doc.get("alumnosIds") as? List<String>
+                if (alumnosIds != null) {
+                    Timber.d("Encontrados ${alumnosIds.size} alumnosIds en documento familiar")
+                    return@withContext alumnosIds
+                }
+                
+                // Otro posible nombre de campo
+                val vinculadosIds = doc.get("vinculadosIds") as? List<String>
+                if (vinculadosIds != null) {
+                    Timber.d("Encontrados ${vinculadosIds.size} vinculadosIds en documento familiar")
+                    return@withContext vinculadosIds
+                }
+            } else {
+                Timber.d("No se encontró documento de familiar para ID: $familiarId")
+            }
+            
+            // También probar en la colección usuarios
+            val usuarioDoc = firestore.collection("usuarios")
+                .document(familiarId)
+                .get()
+                .await()
+                
+            if (usuarioDoc.exists()) {
+                val hijosIds = usuarioDoc.get("hijosIds") as? List<String>
+                
+                if (hijosIds != null) {
+                    Timber.d("Encontrados ${hijosIds.size} hijosIds en documento usuario")
+                    return@withContext hijosIds
+                }
+            }
+            
+            return@withContext null
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener hijos IDs para familiar: $familiarId")
+            return@withContext null
         }
     }
 } 

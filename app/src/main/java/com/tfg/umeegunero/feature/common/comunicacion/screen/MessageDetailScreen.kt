@@ -61,7 +61,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tfg.umeegunero.feature.common.comunicacion.model.MessageType
+import com.tfg.umeegunero.data.model.MessagePriority
+import com.tfg.umeegunero.data.model.MessageStatus
+import com.tfg.umeegunero.data.model.MessageType
+import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.MessageDetailViewModel
 import com.tfg.umeegunero.ui.components.ErrorContent
 import kotlinx.coroutines.launch
@@ -307,25 +310,32 @@ fun MessageDetailScreen(
                                 }
                             }
                             
-                            // Indicador de prioridad
-                            if (message.priority == com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority.HIGH ||
-                                message.priority == com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority.URGENT) {
+                            // Badge de prioridad
+                            if (message.priority == MessagePriority.HIGH || 
+                                message.priority == MessagePriority.URGENT) {
+                                
+                                // Fondo adaptado según nivel de prioridad
+                                val backgroundColor = when (message.priority) {
+                                    MessagePriority.HIGH -> Color(0xFFFFA000)
+                                    MessagePriority.URGENT -> Color(0xFFE53935)
+                                    else -> Color(0xFF2E7D32) // Para LOW y NORMAL
+                                }
+                                
+                                // Texto adaptado según nivel de prioridad
+                                val priorityText = when (message.priority) {
+                                    MessagePriority.HIGH -> "Alta"
+                                    MessagePriority.URGENT -> "Urgente"
+                                    else -> "Normal"
+                                }
+                                
                                 Card(
                                     colors = CardDefaults.cardColors(
-                                        containerColor = when(message.priority) {
-                                            com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority.HIGH -> Color(0xFFF57C00)
-                                            com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority.URGENT -> Color(0xFFD32F2F)
-                                            else -> MaterialTheme.colorScheme.primary
-                                        }
+                                        containerColor = backgroundColor
                                     ),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
                                     Text(
-                                        text = when(message.priority) {
-                                            com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority.HIGH -> "Prioritario"
-                                            com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority.URGENT -> "Urgente"
-                                            else -> ""
-                                        },
+                                        text = priorityText,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                         color = Color.White,
                                         style = MaterialTheme.typography.labelMedium
@@ -344,6 +354,24 @@ fun MessageDetailScreen(
                         )
                         
                         Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Mostrar tipo de mensaje
+                        Text(
+                            text = when(message.type) {
+                                MessageType.CHAT -> "Mensaje de chat"
+                                MessageType.NOTIFICATION -> "Notificación"
+                                MessageType.ANNOUNCEMENT -> "Comunicado oficial"
+                                MessageType.INCIDENT -> "Reporte de incidencia"
+                                MessageType.ATTENDANCE -> "Notificación de asistencia"
+                                MessageType.DAILY_RECORD -> "Registro diario"
+                                MessageType.SYSTEM -> "Mensaje del sistema"
+                            },
+                            style = MaterialTheme.typography.labelMedium
+                        )
+
+                        // Mostrar icono específico según tipo
+                        val isImportantType = message.type == MessageType.INCIDENT || 
+                                             message.type == MessageType.ANNOUNCEMENT
                         
                         // Contenido del mensaje
                         Text(

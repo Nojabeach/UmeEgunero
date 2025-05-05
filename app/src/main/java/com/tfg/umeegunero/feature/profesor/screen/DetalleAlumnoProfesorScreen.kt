@@ -50,6 +50,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import timber.log.Timber
+import androidx.compose.material.icons.filled.Accessible
+import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.MonitorHeart
 
 /**
  * Pantalla de detalle de un alumno para profesores
@@ -263,6 +268,8 @@ private fun DetalleAlumnoContent(
          }
          item { InformacionCard(title = "Necesidades Especiales", icon = Icons.Default.Accessible, content = alumno.necesidadesEspeciales.takeIf { it.isNotEmpty() } ?: "Ninguna especificada") }
          item { InformacionCard(title = "Observaciones Médicas", icon = Icons.Default.MedicalServices, content = alumno.observacionesMedicas.takeIf { it.isNotEmpty() } ?: "Ninguna especificada") }
+         item { InformacionCard(title = "Número de Seguridad Social", icon = Icons.Default.HealthAndSafety, content = alumno.numeroSS.takeIf { it.isNotEmpty() } ?: "No especificado") }
+         item { InformacionCard(title = "Condiciones Médicas", icon = Icons.Default.MonitorHeart, content = alumno.condicionesMedicas.takeIf { it.isNotEmpty() } ?: "Ninguna especificada") }
 
         item {
             Column {

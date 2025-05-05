@@ -467,6 +467,14 @@ sealed class AppScreens(val route: String) {
         ) = "registro_diario/$alumnoId/$claseId/$profesorId/$alumnoNombre/$claseNombre"
     }
     
+    /** 
+     * Histórico de registros diarios para profesores
+     * Permite ver el historial completo de registros de los alumnos de sus clases
+     */
+    object HistoricoRegistroDiario : AppScreens("historico_registro_diario") {
+        fun createRoute() = "historico_registro_diario"
+    }
+    
     /**
      * Consulta del historial de registros diarios
      * @param alumnoId Identificador del alumno
@@ -666,9 +674,16 @@ sealed class AppScreens(val route: String) {
         )
     }
     
-    /** Listado previo al registro diario del profesor */
+    /**
+     * Pantalla de listado previo para registro diario
+     */
     object ListadoPreRegistroDiario : AppScreens("listado_pre_registro_diario") {
-        fun createRoute() = "listado_pre_registro_diario"
+        /**
+         * Crea una ruta con parámetros para incluir el ID del profesor
+         */
+        fun createRouteWithParams(profesorId: String): String {
+            return "$route?profesorId=$profesorId"
+        }
     }
     
     /** Gestión de alumnos asignados al profesor */

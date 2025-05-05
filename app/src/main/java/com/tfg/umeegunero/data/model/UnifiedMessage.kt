@@ -1,42 +1,8 @@
-package com.tfg.umeegunero.feature.common.comunicacion.model
+package com.tfg.umeegunero.data.model
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import java.util.UUID
-
-/**
- * Tipo de mensaje unificado en el sistema
- */
-enum class MessageType {
-    CHAT,               // Mensajes de chat entre usuarios
-    NOTIFICATION,       // Notificaciones del sistema
-    ANNOUNCEMENT,       // Comunicados/anuncios oficiales
-    INCIDENT,           // Incidencias reportadas
-    ATTENDANCE,         // Notificaciones de asistencia/ausencia
-    DAILY_RECORD,       // Actualizaciones de registro diario
-    SYSTEM              // Mensajes del sistema
-}
-
-/**
- * Nivel de prioridad para mensajes
- */
-enum class MessagePriority {
-    LOW,
-    NORMAL,
-    HIGH,
-    URGENT
-}
-
-/**
- * Estado del mensaje
- */
-enum class MessageStatus {
-    UNREAD,
-    READ,
-    PENDING,
-    DELIVERED,
-    FAILED
-}
 
 /**
  * Modelo unificado de mensaje para el sistema de comunicación
@@ -203,50 +169,6 @@ data class UnifiedMessage(
                 conversationId = data["conversationId"] as? String ?: "",
                 replyToId = data["replyToId"] as? String ?: ""
             )
-        }
-    }
-}
-
-/**
- * Clase que representa una acción disponible para un mensaje
- */
-data class MessageAction(
-    val id: String = UUID.randomUUID().toString(),
-    val label: String = "",
-    val actionType: String = "",
-    val data: Map<String, String> = emptyMap(),
-    val requiresConfirmation: Boolean = false,
-    val confirmationMessage: String = ""
-) {
-    /**
-     * Convierte la acción a un mapa para Firestore
-     */
-    fun toMap(): Map<String, Any?> = mapOf(
-        "id" to id,
-        "label" to label,
-        "actionType" to actionType,
-        "data" to data,
-        "requiresConfirmation" to requiresConfirmation,
-        "confirmationMessage" to confirmationMessage
-    )
-    
-    companion object {
-        /**
-         * Crea una acción a partir de un mapa de datos
-         */
-        fun fromMap(data: Map<String, Any?>): MessageAction? {
-            return try {
-                MessageAction(
-                    id = data["id"] as? String ?: UUID.randomUUID().toString(),
-                    label = data["label"] as? String ?: "",
-                    actionType = data["actionType"] as? String ?: "",
-                    data = (data["data"] as? Map<String, String>) ?: emptyMap(),
-                    requiresConfirmation = data["requiresConfirmation"] as? Boolean ?: false,
-                    confirmationMessage = data["confirmationMessage"] as? String ?: ""
-                )
-            } catch (e: Exception) {
-                null
-            }
         }
     }
 } 

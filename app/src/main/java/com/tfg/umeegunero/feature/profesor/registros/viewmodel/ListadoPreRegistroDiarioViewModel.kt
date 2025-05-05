@@ -496,4 +496,80 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
             emptyList()
         }
     }
+
+    /**
+     * Establece el ID del profesor manualmente 
+     * (útil cuando se navega desde otra pantalla)
+     */
+    fun setProfessorId(profesorId: String) {
+        Timber.d("Estableciendo profesorId: $profesorId")
+        
+        // Guardar el ID del profesor para usarlo en las operaciones
+        viewModelScope.launch {
+            try {
+                // Buscar el profesor por su DNI (que suele ser el ID de usuario)
+                val profesor = profesorRepository.getProfesorPorDni(profesorId)
+                
+                if (profesor != null) {
+                    Timber.d("Profesor encontrado: ${profesor.nombre}")
+                    
+                    // Cargar datos específicos para este profesor
+                    val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
+                    if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
+                        val clase = clasesResult.data.first()
+                        
+                        // Obtener alumnos de la clase
+                        val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
+                        val alumnos = if (alumnosResult is Result.Success) alumnosResult.data else emptyList()
+                        
+                        // Actualizar el estado con los datos cargados
+                        _uiState.update { 
+                            it.copy(
+                                nombreClase = clase.nombre,
+                                alumnos = alumnos,
+                                alumnosFiltrados = if (it.mostrarSoloPresentes) alumnos.filter { a -> a.presente } else alumnos,
+                                totalAlumnos = alumnos.size,
+                                alumnosPresentes = alumnos.count { a -> a.presente },
+                                isLoading = false
+                            )
+                        }
+                        
+                        // Actualizar registros existentes para la fecha actual
+                        val registros = getRegistrosDiariosPorFechaYClase(
+                            _uiState.value.fechaSeleccionada.toString(),
+                            clase.id
+                        )
+                        
+                        // Actualizar alumnos con registro
+                        val alumnosConRegistro = registros.map { it.alumnoId }.toSet()
+                        _uiState.update { it.copy(alumnosConRegistro = alumnosConRegistro) }
+                    } else {
+                        Timber.e("No se encontraron clases asignadas al profesor")
+                        _uiState.update { 
+                            it.copy(
+                                error = "No se encontraron clases asignadas al profesor",
+                                isLoading = false
+                            )
+                        }
+                    }
+                } else {
+                    Timber.e("No se encontró un profesor con ID: $profesorId")
+                    _uiState.update { 
+                        it.copy(
+                            error = "No se encontró el profesor",
+                            isLoading = false
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar datos del profesor con ID: $profesorId")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar datos del profesor: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
 } 

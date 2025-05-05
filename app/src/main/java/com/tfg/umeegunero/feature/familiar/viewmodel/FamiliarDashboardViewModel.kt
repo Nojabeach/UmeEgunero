@@ -215,33 +215,165 @@ class FamiliarDashboardViewModel @Inject constructor(
      * @param familiarId ID del familiar
      */
     private suspend fun cargarHijosVinculados(familiarId: String) {
-        when (val result = alumnoRepository.getAlumnosByFamiliarId(familiarId)) {
-            is Result.Success -> {
-                val hijos = result.data.sortedBy { it.nombre }
-                val primerHijo = hijos.firstOrNull()
-                
-                _uiState.update { 
-                    it.copy(
-                        hijos = hijos,
-                        hijoSeleccionado = primerHijo,
-                        isLoading = false
-                    )
+        Timber.d("Cargando hijos vinculados para familiar ID: $familiarId")
+        
+        try {
+            // Estrategia 1: Obtener alumnos directamente por el ID del familiar
+            val result = alumnoRepository.getAlumnosByFamiliarId(familiarId)
+            
+            when (result) {
+                is Result.Success -> {
+                    val hijos = result.data.sortedBy { it.nombre }
+                    Timber.d("Estrategia 1 - Encontrados ${hijos.size} hijos vinculados directamente al familiar (hijosIds)")
+                    
+                    // Si no hay hijos por el método principal, intentamos métodos alternativos
+                    if (hijos.isEmpty()) {
+                        Timber.d("No se encontraron hijos por el método principal, intentando métodos alternativos")
+                        obtenerHijosPorMetodosAlternativos(familiarId)
+                    } else {
+                        actualizarEstadoConHijos(hijos)
+                    }
                 }
-                
-                // Si hay un hijo seleccionado, cargar sus registros
-                primerHijo?.let { alumno ->
-                    cargarRegistrosActividad(alumno.dni)
+                is Result.Error -> {
+                    Timber.e(result.exception, "Error al cargar hijos directamente: ${result.exception?.message}")
+                    obtenerHijosPorMetodosAlternativos(familiarId)
+                }
+                else -> { 
+                    Timber.d("Estado de carga en curso para cargar hijos")
+                    obtenerHijosPorMetodosAlternativos(familiarId)
                 }
             }
-            is Result.Error -> {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Error al cargar hijos: ${result.exception?.message}"
-                    )
+        } catch (e: Exception) {
+            Timber.e(e, "Excepción al cargar hijos vinculados: ${e.message}")
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = "Error al cargar hijos: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Intenta obtener los hijos vinculados al familiar mediante métodos alternativos
+     * cuando la estrategia principal falla
+     * 
+     * @param familiarId ID del familiar
+     */
+    private suspend fun obtenerHijosPorMetodosAlternativos(familiarId: String) {
+        // Método alternativo 1: Buscar en el campo familiarIds de los alumnos
+        Timber.d("Estrategia 2 - Buscando alumnos que tengan al familiar en su lista de familiarIds")
+        val alumnosAlternativos = alumnoRepository.getAlumnosWithFamiliarId(familiarId)
+        
+        if (alumnosAlternativos is Result.Success && alumnosAlternativos.data.isNotEmpty()) {
+            val hijosAlternativos = alumnosAlternativos.data.sortedBy { it.nombre }
+            Timber.d("Estrategia 2 - Encontrados ${hijosAlternativos.size} hijos por método alternativo (familiarIds)")
+            actualizarEstadoConHijos(hijosAlternativos)
+            return
+        }
+        
+        // Método alternativo 2: Buscar directamente en el documento del familiar
+        Timber.d("Estrategia 2b - Buscando IDs de hijos directamente en el documento del familiar")
+        val idsHijos = familiarRepository.obtenerHijosIdsPorFamiliarId(familiarId)
+        if (idsHijos != null && idsHijos.isNotEmpty()) {
+            Timber.d("Estrategia 2b - Encontrados ${idsHijos.size} IDs de hijos en documento familiar")
+            val alumnos = mutableListOf<Alumno>()
+            
+            for (hijoId in idsHijos) {
+                try {
+                    val alumnoResult = alumnoRepository.getAlumnoByDni(hijoId)
+                    if (alumnoResult is Result.Success) {
+                        alumnos.add(alumnoResult.data)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al cargar alumno por DNI: $hijoId")
                 }
             }
-            else -> { /* No hacer nada en caso de loading */ }
+            
+            if (alumnos.isNotEmpty()) {
+                Timber.d("Estrategia 2b - Cargados ${alumnos.size} alumnos directamente del documento familiar")
+                actualizarEstadoConHijos(alumnos)
+                return
+            }
+        }
+        
+        // Método alternativo 3: Verificar si el familiar es en realidad un usuario que podría tener roles múltiples
+        Timber.d("Estrategia 3 - Verificando si el familiar es un usuario que pudiera tener otro tipo de información")
+        val usuarioResult = usuarioRepository.getUsuarioById(familiarId)
+        if (usuarioResult is Result.Success) {
+            val usuario = usuarioResult.data
+            Timber.d("Estrategia 3 - Usuario encontrado: ${usuario.nombre} ${usuario.apellidos}, buscando vínculos...")
+            
+            // Verificar si el usuario tiene alguna estructura que podría contener IDs de alumnos
+            // Intentar extraer IDs de otras fuentes de datos
+            val posiblesIds = obtenerPosiblesIdsDeAlumnos(usuario)
+            
+            if (posiblesIds.isNotEmpty()) {
+                Timber.d("Estrategia 3 - Se encontraron ${posiblesIds.size} posibles IDs de alumnos")
+                val alumnos = mutableListOf<Alumno>()
+                
+                for (hijoId in posiblesIds) {
+                    try {
+                        val alumnoResult = alumnoRepository.getAlumnoByDni(hijoId)
+                        if (alumnoResult is Result.Success) {
+                            alumnos.add(alumnoResult.data)
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al cargar alumno por DNI: $hijoId")
+                    }
+                }
+                
+                if (alumnos.isNotEmpty()) {
+                    Timber.d("Estrategia 3 - Cargados ${alumnos.size} alumnos a partir de IDs extraídos")
+                    actualizarEstadoConHijos(alumnos)
+                    return
+                }
+            }
+            
+            // Verificar perfiles del usuario
+            Timber.d("Estrategia 4 - Verificando perfiles del usuario: ${usuario.perfiles.size} perfiles encontrados")
+            
+            // Los perfiles podrían contener información sobre alumnos asociados
+            for (perfil in usuario.perfiles) {
+                // Extraer IDs de alumnos del campo alumnos del perfil
+                if (perfil.tipo == TipoUsuario.FAMILIAR && perfil.alumnos.isNotEmpty()) {
+                    Timber.d("Encontrados ${perfil.alumnos.size} alumnos en perfil FAMILIAR")
+                    for (alumnoId in perfil.alumnos) {
+                        posiblesIds.add(alumnoId)
+                    }
+                }
+            }
+        }
+        
+        // Si llegamos aquí, no se encontraron hijos por ningún método
+        Timber.w("No se encontraron hijos vinculados al familiar $familiarId por ningún método")
+        _uiState.update { 
+            it.copy(
+                hijos = emptyList(),
+                hijoSeleccionado = null,
+                isLoading = false
+            )
+        }
+    }
+    
+    /**
+     * Actualiza el estado con la lista de hijos encontrados
+     */
+    private suspend fun actualizarEstadoConHijos(hijos: List<Alumno>) {
+        val primerHijo = hijos.firstOrNull()
+        
+        _uiState.update { 
+            it.copy(
+                hijos = hijos,
+                hijoSeleccionado = primerHijo,
+                isLoading = false
+            )
+        }
+        
+        // Si hay un hijo seleccionado, cargar sus registros
+        primerHijo?.let { alumno ->
+            Timber.d("Cargando registros para hijo: ${alumno.nombre}")
+            cargarRegistrosActividad(alumno.dni)
         }
     }
 
@@ -513,5 +645,31 @@ class FamiliarDashboardViewModel @Inject constructor(
                 alumnoNombre = "${alumno.nombre} ${alumno.apellidos}"
             )
         )
+    }
+
+    /**
+     * Extrae posibles IDs de alumnos de diferentes propiedades de un usuario
+     * 
+     * @param usuario El usuario del que extraer información
+     * @return Lista mutable de posibles IDs de alumnos
+     */
+    private fun obtenerPosiblesIdsDeAlumnos(usuario: Usuario): MutableList<String> {
+        // Si el usuario tiene un nombreAlumno, registrarlo para depuración
+        usuario.nombreAlumno?.let { nombre ->
+            Timber.d("El usuario tiene un nombreAlumno: $nombre, podría estar relacionado con un alumno")
+        }
+        
+        // Creamos una lista mutable para poder añadir elementos
+        val posiblesIds = mutableListOf<String>()
+        
+        // Añadimos los IDs de alumnos de los perfiles de tipo FAMILIAR
+        usuario.perfiles
+            .filter { it.tipo == TipoUsuario.FAMILIAR && it.alumnos.isNotEmpty() }
+            .forEach { perfil -> 
+                Timber.d("Encontrados ${perfil.alumnos.size} alumnos en perfil FAMILIAR")
+                posiblesIds.addAll(perfil.alumnos)
+            }
+            
+        return posiblesIds
     }
 }

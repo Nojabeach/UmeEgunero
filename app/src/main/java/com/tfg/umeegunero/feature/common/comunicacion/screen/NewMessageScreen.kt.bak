@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -80,11 +79,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tfg.umeegunero.data.model.MessagePriority
-import com.tfg.umeegunero.data.model.MessageType
-import com.tfg.umeegunero.data.model.RecipientGroupType
-import com.tfg.umeegunero.data.model.RecipientGroup
-import com.tfg.umeegunero.feature.common.comunicacion.ui.CommunicationIcons
+import com.tfg.umeegunero.feature.common.comunicacion.model.MessagePriority
+import com.tfg.umeegunero.feature.common.comunicacion.model.MessageType
+import com.tfg.umeegunero.feature.common.comunicacion.model.RecipientGroupType
+import com.tfg.umeegunero.feature.common.comunicacion.model.RecipientGroup
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.NewMessageUiState
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.NewMessageViewModel
 import kotlinx.coroutines.launch
@@ -554,12 +552,12 @@ fun NewMessageScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         val icon = when(type) {
-                                            RecipientGroupType.CENTER -> CommunicationIcons.Business
-                                            RecipientGroupType.COURSE -> CommunicationIcons.Book
-                                            RecipientGroupType.CLASS -> CommunicationIcons.Group
-                                            RecipientGroupType.TEACHER -> CommunicationIcons.School
-                                            RecipientGroupType.PARENT -> CommunicationIcons.People
-                                            RecipientGroupType.USER -> CommunicationIcons.Person
+                                            RecipientGroupType.CENTER -> Icons.Default.Business
+                                            RecipientGroupType.COURSE -> Icons.Default.Book
+                                            RecipientGroupType.CLASS -> Icons.Default.Group
+                                            RecipientGroupType.TEACHER -> Icons.Default.School
+                                            RecipientGroupType.PARENT -> Icons.Default.People
+                                            else -> Icons.Default.Person
                                         }
                                         
                                         Icon(

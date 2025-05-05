@@ -48,6 +48,23 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.ViewModel
 import com.tfg.umeegunero.feature.profesor.registros.viewmodel.ListadoPreRegistroDiarioUiState
+import java.time.ZoneId
+import java.util.Date
+import timber.log.Timber
+
+/**
+ * Extensión para convertir LocalDate a Date
+ */
+fun LocalDate.toDate(): Date {
+    return Date.from(this.atStartOfDay(ZoneId.systemDefault()).toInstant())
+}
+
+/**
+ * Extensión para convertir Date a LocalDate
+ */
+fun Date.toLocalDate(): LocalDate {
+    return this.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+}
 
 /**
  * Pantalla de listado de alumnos para registro diario
@@ -66,13 +83,22 @@ import com.tfg.umeegunero.feature.profesor.registros.viewmodel.ListadoPreRegistr
 @Composable
 fun ListadoPreRegistroDiarioScreen(
     navController: NavController,
-    viewModel: ListadoPreRegistroDiarioViewModel = hiltViewModel()
+    viewModel: ListadoPreRegistroDiarioViewModel = hiltViewModel(),
+    profesorId: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     
     // Estado para el diálogo de confirmación
     var mostrarDialogoConfirmacion by remember { mutableStateOf(false) }
+    
+    // Pasar el profesorId al ViewModel cuando se proporciona
+    LaunchedEffect(profesorId) {
+        if (!profesorId.isNullOrEmpty()) {
+            Timber.d("Profesor ID recibido: $profesorId")
+            viewModel.setProfessorId(profesorId)
+        }
+    }
     
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
@@ -414,8 +440,10 @@ fun SelectorFecha(
             
             // Selector de fecha
             DateSelector(
-                selectedDate = fechaSeleccionada,
-                onDateSelected = onFechaSeleccionada,
+                selectedDate = fechaSeleccionada.toDate(),
+                onDateSelected = { fecha -> 
+                    onFechaSeleccionada(fecha.toLocalDate())
+                },
                 buttonColors = ButtonDefaults.buttonColors(
                     containerColor = if (esFestivo)
                         MaterialTheme.colorScheme.error

@@ -1,11 +1,18 @@
-package com.tfg.umeegunero.feature.common.comunicacion.model
+package com.tfg.umeegunero.data.repository
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.tfg.umeegunero.data.model.Conversation
+import com.tfg.umeegunero.data.model.MessageAction
+import com.tfg.umeegunero.data.model.MessagePriority
+import com.tfg.umeegunero.data.model.MessageStatus
+import com.tfg.umeegunero.data.model.MessageType
+import com.tfg.umeegunero.data.model.ParticipantDetail
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
@@ -148,53 +155,176 @@ class UnifiedMessageRepository @Inject constructor(
         try {
             emit(Result.Loading())
             
-            val currentUser = authRepository.getCurrentUser()
-            if (currentUser == null) {
+            val currentUser = authRepository.getCurrentUser() ?: run {
                 emit(Result.Error("Usuario no autenticado"))
                 return@flow
             }
             
-            // Emitir el resultado de getMessagesForUser
-            getMessagesForUser(currentUser.dni).collect { result ->
-                emit(result)
+            val userId = currentUser.dni
+            
+            try {
+                // Intentamos primero con la consulta combinada original
+                val combinedMessages = mutableListOf<UnifiedMessage>()
+                
+                // 1. Consulta para mensajes donde el usuario es destinatario directo
+                val receiverQuery = firestore.collection(MESSAGES_COLLECTION)
+                    .whereEqualTo("receiverId", userId)
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    
+                combinedMessages.addAll(
+                    receiverQuery.get().await().documents
+                        .mapNotNull { createMessageFromDocument(it) }
+                )
+                
+                // 2. Consulta para mensajes donde el usuario está en la lista de destinatarios
+                val receiversQuery = firestore.collection(MESSAGES_COLLECTION)
+                    .whereArrayContains("receiversIds", userId)
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                
+                combinedMessages.addAll(
+                    receiversQuery.get().await().documents
+                        .mapNotNull { createMessageFromDocument(it) }
+                )
+                
+                // Ordenar todos los mensajes por timestamp
+                val sortedMessages = combinedMessages
+                    .sortedByDescending { it.timestamp.seconds }
+                
+                emit(Result.Success(sortedMessages))
+            } catch (e: Exception) {
+                Timber.e(e, "Error en consulta con índice: ${e.message}")
+                
+                if (e.message?.contains("FAILED_PRECONDITION") == true && 
+                    e.message?.contains("requires an index") == true) {
+                    
+                    // Si el error es por falta de índice, usamos un enfoque alternativo
+                    Timber.w("Se requiere crear un índice en Firestore. Usando consulta alternativa.")
+                    
+                    // Consulta alternativa: Obtener todos los mensajes y filtrar en memoria
+                    val allMessagesQuery = firestore.collection(MESSAGES_COLLECTION)
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .get()
+                        .await()
+                        
+                    val filteredMessages = allMessagesQuery.documents
+                        .mapNotNull { createMessageFromDocument(it) }
+                        .filter { message -> 
+                            message.receiverId == userId || message.receiversIds.contains(userId)
+                        }
+                        .sortedByDescending { it.timestamp.seconds }
+                        
+                    emit(Result.Success(filteredMessages))
+                } else {
+                    // Si es otro tipo de error, lo propagamos
+                    throw e
+                }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener bandeja de entrada del usuario actual")
-            emit(Result.Error(e.message ?: "Error al obtener bandeja de entrada"))
+            val errorMsg = when {
+                e.message?.contains("FAILED_PRECONDITION") == true && 
+                e.message?.contains("requires an index") == true -> 
+                    "Se requiere crear un índice en Firestore. Contacte al administrador."
+                    
+                e.message?.contains("PERMISSION_DENIED") == true ->
+                    "No tiene permisos para acceder a los mensajes."
+                    
+                e.message?.contains("UNAVAILABLE") == true || 
+                e.message?.contains("network") == true ->
+                    "Error de conexión. Compruebe su conexión a Internet."
+                    
+                else -> "Error al obtener mensajes para usuario actual: ${e.message}"
+            }
+            
+            Timber.e(e, "Error al obtener mensajes para usuario actual: $errorMsg")
+            emit(Result.Error(errorMsg))
         }
     }
     
     /**
-     * Obtiene mensajes filtrados por tipo
+     * Obtiene los mensajes de un usuario filtrados por tipo
      */
     fun getMessagesByType(userId: String, type: MessageType): Flow<Result<List<UnifiedMessage>>> = flow {
         try {
             emit(Result.Loading())
             
-            val receiverQuery = firestore.collection(MESSAGES_COLLECTION)
-                .whereEqualTo("receiverId", userId)
-                .whereEqualTo("type", type.name)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
+            try {
+                // Intentamos primero con la consulta combinada original
+                val combinedMessages = mutableListOf<UnifiedMessage>()
                 
-            val receiversQuery = firestore.collection(MESSAGES_COLLECTION)
-                .whereArrayContains("receiversIds", userId)
-                .whereEqualTo("type", type.name)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-            
-            val receiverMessages = receiverQuery.get().await().documents
-                .mapNotNull { createMessageFromDocument(it) }
+                // 1. Consulta para mensajes donde el usuario es destinatario directo
+                val receiverQuery = firestore.collection(MESSAGES_COLLECTION)
+                    .whereEqualTo("receiverId", userId)
+                    .whereEqualTo("type", type.name)
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    
+                combinedMessages.addAll(
+                    receiverQuery.get().await().documents
+                        .mapNotNull { createMessageFromDocument(it) }
+                )
                 
-            val receiversMessages = receiversQuery.get().await().documents
-                .mapNotNull { createMessageFromDocument(it) }
+                // 2. Consulta para mensajes donde el usuario está en la lista de destinatarios
+                val receiversQuery = firestore.collection(MESSAGES_COLLECTION)
+                    .whereArrayContains("receiversIds", userId)
+                    .whereEqualTo("type", type.name)
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
                 
-            // Combinar y ordenar por timestamp
-            val allMessages = (receiverMessages + receiversMessages)
-                .sortedByDescending { it.timestamp.seconds }
+                combinedMessages.addAll(
+                    receiversQuery.get().await().documents
+                        .mapNotNull { createMessageFromDocument(it) }
+                )
                 
-            emit(Result.Success(allMessages))
+                // Ordenar todos los mensajes por timestamp
+                val sortedMessages = combinedMessages
+                    .sortedByDescending { it.timestamp.seconds }
+                
+                emit(Result.Success(sortedMessages))
+            } catch (e: Exception) {
+                Timber.e(e, "Error en consulta con índice para tipo $type: ${e.message}")
+                
+                if (e.message?.contains("FAILED_PRECONDITION") == true && 
+                    e.message?.contains("requires an index") == true) {
+                    
+                    // Si el error es por falta de índice, usamos un enfoque alternativo
+                    Timber.w("Se requiere crear un índice en Firestore para tipo $type. Usando consulta alternativa.")
+                    
+                    // Consulta alternativa: Obtener todos los mensajes del tipo y filtrar en memoria
+                    val allMessagesQuery = firestore.collection(MESSAGES_COLLECTION)
+                        .whereEqualTo("type", type.name)
+                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                        .get()
+                        .await()
+                        
+                    val filteredMessages = allMessagesQuery.documents
+                        .mapNotNull { createMessageFromDocument(it) }
+                        .filter { message -> 
+                            message.receiverId == userId || message.receiversIds.contains(userId)
+                        }
+                        .sortedByDescending { it.timestamp.seconds }
+                        
+                    emit(Result.Success(filteredMessages))
+                } else {
+                    // Si es otro tipo de error, lo propagamos
+                    throw e
+                }
+            }
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener mensajes por tipo: $type para usuario: $userId")
-            emit(Result.Error(e.message ?: "Error al obtener mensajes"))
+            val errorMsg = when {
+                e.message?.contains("FAILED_PRECONDITION") == true && 
+                e.message?.contains("requires an index") == true -> 
+                    "Se requiere crear un índice en Firestore para tipo $type. Contacte al administrador."
+                    
+                e.message?.contains("PERMISSION_DENIED") == true ->
+                    "No tiene permisos para acceder a los mensajes."
+                    
+                e.message?.contains("UNAVAILABLE") == true || 
+                e.message?.contains("network") == true ->
+                    "Error de conexión. Compruebe su conexión a Internet."
+                    
+                else -> "Error al obtener mensajes de tipo $type: ${e.message}"
+            }
+            
+            Timber.e(e, "Error al obtener mensajes por tipo: $type para usuario: $userId - $errorMsg")
+            emit(Result.Error(errorMsg))
         }
     }
     

@@ -18,7 +18,7 @@ import com.tfg.umeegunero.data.repository.LocalRegistroActividadRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.TareaRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
-import com.tfg.umeegunero.feature.common.comunicacion.model.UnifiedMessageRepository
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import com.tfg.umeegunero.data.repository.SolicitudRepository
 import com.tfg.umeegunero.notification.AppNotificationManager
 import com.tfg.umeegunero.data.service.NotificationService

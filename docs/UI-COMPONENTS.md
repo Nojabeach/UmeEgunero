@@ -1,6 +1,6 @@
-# Guía de Componentes UI para UmeEgunero
+# Componentes UI de UmeEgunero - Guía de Referencia
 
-Este documento describe los componentes UI reutilizables creados para facilitar el desarrollo de interfaces coherentes en la aplicación UmeEgunero.
+Este documento sirve como referencia oficial para los componentes UI reutilizables creados para UmeEgunero. Todos los desarrolladores deben seguir estas guías para mantener la coherencia en la interfaz de usuario.
 
 ## Componentes de Estado
 

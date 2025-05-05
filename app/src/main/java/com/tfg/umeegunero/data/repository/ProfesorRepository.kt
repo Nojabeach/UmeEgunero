@@ -230,6 +230,88 @@ class ProfesorRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Busca un profesor por su DNI (que puede ser el mismo que el usuarioId)
+     *
+     * @param dni DNI o identificador del profesor a buscar
+     * @return El profesor si existe, null en caso contrario
+     */
+    suspend fun buscarProfesorPorDni(dni: String): Profesor? {
+        return try {
+            // Primero intentamos buscar por usuarioId como lo haríamos normalmente
+            val profesorPorUsuarioId = getProfesorPorUsuarioId(dni)
+            if (profesorPorUsuarioId != null) {
+                return profesorPorUsuarioId
+            }
+            
+            // Si no funciona, intentamos buscar directamente por dni o por id
+            val querySnapshot = profesoresCollection
+                .whereEqualTo("dni", dni)
+                .get()
+                .await()
+            
+            if (!querySnapshot.isEmpty) {
+                val documento = querySnapshot.documents.first()
+                return Profesor(
+                    id = documento.id,
+                    usuarioId = documento.getString("usuarioId") ?: "",
+                    nombre = documento.getString("nombre") ?: "",
+                    apellidos = documento.getString("apellidos") ?: "",
+                    claseId = documento.getString("claseId") ?: "",
+                    centroId = documento.getString("centroId") ?: "",
+                    especialidad = documento.getString("especialidad") ?: "",
+                    activo = documento.getBoolean("activo") ?: true
+                )
+            }
+            
+            // Como último recurso, intentar con el ID del documento directamente
+            val documento = profesoresCollection.document(dni).get().await()
+            if (documento.exists()) {
+                return Profesor(
+                    id = documento.id,
+                    usuarioId = documento.getString("usuarioId") ?: "",
+                    nombre = documento.getString("nombre") ?: "",
+                    apellidos = documento.getString("apellidos") ?: "",
+                    claseId = documento.getString("claseId") ?: "",
+                    centroId = documento.getString("centroId") ?: "",
+                    especialidad = documento.getString("especialidad") ?: "",
+                    activo = documento.getBoolean("activo") ?: true
+                )
+            }
+            
+            Timber.d("No se encontró profesor con DNI: $dni después de múltiples intentos")
+            null
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar profesor por DNI: $dni")
+            null
+        }
+    }
+
+    /**
+     * Obtiene un profesor por su DNI
+     * @param dni DNI del profesor a buscar
+     * @return Objeto Profesor o null si no se encuentra
+     */
+    suspend fun getProfesorPorDni(dni: String): Profesor? {
+        return try {
+            val query = firestore.collection("profesores")
+                .whereEqualTo("dni", dni)
+                .limit(1)
+                .get()
+                .await()
+                
+            if (!query.isEmpty) {
+                val profesor = query.documents.first().toObject(Profesor::class.java)
+                profesor
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            timber.log.Timber.e(e, "Error al obtener profesor por DNI: $dni")
+            null
+        }
+    }
 }
 
 /**
