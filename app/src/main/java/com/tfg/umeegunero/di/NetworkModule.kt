@@ -95,4 +95,16 @@ object NetworkModule {
             // Logging omitido por ahora para simplificar
         }
     }
+    
+    /**
+     * Proporciona el cliente de ImgBB para subir imágenes como alternativa a Firebase Storage.
+     * 
+     * @param context Contexto de la aplicación
+     * @return Instancia del cliente ImgBBClient
+     */
+    @Provides
+    @Singleton
+    fun provideImgBBClient(@dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context): com.tfg.umeegunero.network.ImgBBClient {
+        return com.tfg.umeegunero.network.ImgBBClient(context)
+    }
 } 

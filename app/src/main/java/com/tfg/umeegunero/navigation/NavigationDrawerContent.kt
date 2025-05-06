@@ -124,13 +124,6 @@ fun NavigationDrawerContent(
                 )
                 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.AutoMirrored.Filled.Assignment, contentDescription = "Tareas") },
-                    label = { Text("Tareas") },
-                    selected = false,
-                    onClick = { onItemClick(AppScreens.TareasProfesor.route) }
-                )
-                
-                NavigationDrawerItem(
                     icon = { Icon(Icons.AutoMirrored.Filled.Message, contentDescription = "Mensajes") },
                     label = { Text("Mensajes") },
                     selected = false,

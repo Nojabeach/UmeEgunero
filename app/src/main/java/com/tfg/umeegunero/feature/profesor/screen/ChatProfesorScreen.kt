@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bookmark
@@ -1482,7 +1483,7 @@ fun ChatProfesorScreen(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             StatItem(
-                                icon = Icons.Default.Send,
+                                icon = Icons.AutoMirrored.Filled.Send,
                                 value = sentMessages.toString(),
                                 label = "Enviados"
                             )

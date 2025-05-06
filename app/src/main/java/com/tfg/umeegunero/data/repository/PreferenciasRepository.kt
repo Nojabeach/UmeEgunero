@@ -60,7 +60,6 @@ class PreferenciasRepository @Inject constructor(
 ) {
     private val temaKey = stringPreferencesKey("tema_preferencia")
     private val tokenFcmKey = stringPreferencesKey("fcm_token")
-    private val notificacionesTareasKey = booleanPreferencesKey("notificaciones_tareas")
     private val notificacionesGeneralKey = booleanPreferencesKey("notificaciones_general")
 
     /**
@@ -100,28 +99,6 @@ class PreferenciasRepository @Inject constructor(
         .map { preferences ->
             preferences[tokenFcmKey] ?: ""
         }
-    
-    /**
-     * Configura las preferencias de notificaciones para tareas
-     */
-    suspend fun setNotificacionesTareas(habilitadas: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[notificacionesTareasKey] = habilitadas
-        }
-    }
-    
-    /**
-     * Obtiene la configuración de notificaciones para tareas
-     */
-    val notificacionesTareasFlow: Flow<Boolean> = context.dataStore.data
-        .map { preferences ->
-            preferences[notificacionesTareasKey] ?: true // Habilitado por defecto
-        }
-    
-    /**
-     * Alias para compatibilidad con código existente
-     */
-    val notificacionesTareasHabilitadas: Flow<Boolean> = notificacionesTareasFlow
     
     /**
      * Configura las preferencias de notificaciones generales

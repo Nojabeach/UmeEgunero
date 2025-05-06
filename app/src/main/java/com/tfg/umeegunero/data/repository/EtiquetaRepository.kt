@@ -15,7 +15,7 @@ import javax.inject.Singleton
  *
  * Esta clase proporciona métodos para crear, recuperar, actualizar y eliminar
  * etiquetas que pueden ser utilizadas para categorizar y organizar diferentes
- * elementos dentro del sistema educativo, como actividades, tareas, registros
+ * elementos dentro del sistema educativo, como actividades, registros
  * y otros recursos.
  *
  * Características principales:
@@ -27,7 +27,7 @@ import javax.inject.Singleton
  *
  * El repositorio permite:
  * - Crear etiquetas para clasificar recursos
- * - Asociar etiquetas a actividades y tareas
+ * - Asociar etiquetas a actividades
  * - Gestionar un sistema de categorización
  * - Facilitar la búsqueda y organización de contenido
  * - Personalizar la experiencia de usuario

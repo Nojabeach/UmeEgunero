@@ -92,6 +92,9 @@ import androidx.compose.material.icons.filled.Announcement
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Announcement
 
 /**
  * Pantalla unificada de bandeja de entrada para todos los tipos de comunicaciones
@@ -281,9 +284,9 @@ fun MessageList(
                 onClick = { onMessageClick(message) },
                 onDeleteClick = { onDeleteClick(message) }
             )
-            Divider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
             )
         }
     }
@@ -455,8 +458,8 @@ fun getMessageTypeColor(type: MessageType): Color {
 private fun getIconForMessageType(type: MessageType?): @Composable () -> Unit = {
     when (type) {
         MessageType.CHAT -> Icon(
-            imageVector = Icons.Default.Message,
-            contentDescription = "Mensaje",
+            imageVector = Icons.AutoMirrored.Filled.Message,
+            contentDescription = "Mensajes",
             tint = MaterialTheme.colorScheme.primary
         )
         MessageType.NOTIFICATION -> Icon(
@@ -465,8 +468,8 @@ private fun getIconForMessageType(type: MessageType?): @Composable () -> Unit = 
             tint = MaterialTheme.colorScheme.primary
         )
         MessageType.ANNOUNCEMENT -> Icon(
-            imageVector = Icons.Default.Announcement,
-            contentDescription = "Comunicado",
+            imageVector = Icons.AutoMirrored.Filled.Announcement,
+            contentDescription = "Comunicados",
             tint = MaterialTheme.colorScheme.primary
         )
         MessageType.INCIDENT -> Icon(

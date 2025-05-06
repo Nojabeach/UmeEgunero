@@ -16,7 +16,6 @@ import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.EstadisticasRepository
 import com.tfg.umeegunero.data.repository.LocalRegistroActividadRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
-import com.tfg.umeegunero.data.repository.TareaRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import com.tfg.umeegunero.data.repository.SolicitudRepository
@@ -25,6 +24,9 @@ import com.tfg.umeegunero.data.service.NotificationService
 import com.tfg.umeegunero.data.service.EmailNotificationService
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.StorageRepository
+import com.tfg.umeegunero.data.repository.EtiquetaRepository
+import com.tfg.umeegunero.network.ImgBBClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -69,12 +71,6 @@ object RepositoryModule {
         firestore: FirebaseFirestore
     ): AlumnoRepository {
         return AlumnoRepositoryImpl(firestore)
-    }
-
-    @Provides
-    @Singleton
-    fun provideTareaRepository(firestore: FirebaseFirestore): TareaRepository {
-        return TareaRepository(firestore)
     }
     
     /**
@@ -200,5 +196,21 @@ object RepositoryModule {
             emailNotificationService,
             unifiedMessageRepository
         )
+    }
+
+    @Provides
+    @Singleton
+    fun provideStorageRepository(
+        @ApplicationContext context: Context,
+        storage: FirebaseStorage,
+        imgBBClient: ImgBBClient
+    ): StorageRepository {
+        return StorageRepository(context, storage, imgBBClient)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideEtiquetaRepository(firestore: FirebaseFirestore): EtiquetaRepository {
+        return EtiquetaRepository(firestore)
     }
 } 

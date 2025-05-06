@@ -70,6 +70,7 @@ import com.tfg.umeegunero.ui.components.ErrorContent
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla de detalle de mensaje unificado
@@ -347,10 +348,10 @@ fun MessageDetailScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                         
                         // Separador
-                        Divider(
-                            color = MaterialTheme.colorScheme.outlineVariant,
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
                             thickness = 1.dp,
-                            modifier = Modifier.fillMaxWidth()
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
                         
                         Spacer(modifier = Modifier.height(24.dp))
@@ -386,10 +387,10 @@ fun MessageDetailScreen(
                             Spacer(modifier = Modifier.height(24.dp))
                             
                             // Separador
-                            Divider(
-                                color = MaterialTheme.colorScheme.outlineVariant,
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
                                 thickness = 1.dp,
-                                modifier = Modifier.fillMaxWidth()
+                                color = MaterialTheme.colorScheme.outlineVariant
                             )
                             
                             Spacer(modifier = Modifier.height(16.dp))

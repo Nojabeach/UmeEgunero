@@ -66,7 +66,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 
 /**
  * Pantalla principal para el chat entre usuarios
@@ -458,7 +459,7 @@ fun MensajeInputBar(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Enviar mensaje"
                     )
                 }
@@ -498,7 +499,7 @@ fun AdjuntosPreview(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.InsertDriveFile,
+                    imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -612,7 +613,7 @@ fun ChatBottomBar(
                 enabled = value.isNotBlank()
             ) {
                 Icon(
-                    imageVector = Icons.Default.Send,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Enviar mensaje"
                 )
             }

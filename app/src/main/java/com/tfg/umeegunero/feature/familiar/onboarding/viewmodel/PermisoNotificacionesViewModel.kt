@@ -65,7 +65,6 @@ class PermisoNotificacionesViewModel @Inject constructor(
                 val token = notificationManager.registerDeviceToken()
                 
                 // Guardar preferencia local
-                preferenciasRepository.setNotificacionesTareas(true)
                 preferenciasRepository.setNotificacionesGeneral(true)
                 
                 if (token.isNotEmpty()) {
@@ -104,7 +103,6 @@ class PermisoNotificacionesViewModel @Inject constructor(
             
             try {
                 // Guardar preferencia local
-                preferenciasRepository.setNotificacionesTareas(false)
                 preferenciasRepository.setNotificacionesGeneral(false)
                 
                 // Registrar en Firestore a través de Cloud Function

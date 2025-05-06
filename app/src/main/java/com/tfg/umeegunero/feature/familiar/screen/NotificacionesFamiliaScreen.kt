@@ -214,10 +214,6 @@ fun NotificacionesFamiliaScreen(
                                             val profesorId = accionId.removePrefix("chat_")
                                             navController.navigate("${AppScreens.ChatFamilia.route}/$profesorId")
                                         }
-                                        TipoNotificacion.TAREA -> {
-                                            val alumnoId = notificacion.alumnoId ?: return@let
-                                            navController.navigate("${AppScreens.TareasFamilia.route}/$alumnoId")
-                                        }
                                         TipoNotificacion.EVENTO -> {
                                             navController.navigate(AppScreens.CalendarioFamilia.route)
                                         }
@@ -227,6 +223,9 @@ fun NotificacionesFamiliaScreen(
                                         }
                                         TipoNotificacion.GENERAL -> {
                                             // No hacer nada o navegar a una pantalla general
+                                        }
+                                        else -> {
+                                            // Para cualquier otro tipo de notificación
                                         }
                                     }
                                 }
@@ -459,10 +458,6 @@ enum class FiltroNotificacion {
 object AppScreens {
     object ChatFamilia {
         const val route = "chat_familia"
-    }
-    
-    object TareasFamilia {
-        const val route = "tareas_familia"
     }
     
     object CalendarioFamilia {

@@ -55,10 +55,11 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 
 /**
  * Pantalla de estadísticas para el administrador del sistema.
@@ -423,7 +424,7 @@ fun EstadisticasScreen(
                                 }
                             }
                             
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 8.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
@@ -650,7 +651,7 @@ fun StatCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.TrendingUp,
+                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                                 contentDescription = null,
                                 tint = Color.Green,
                                 modifier = Modifier.size(12.dp)

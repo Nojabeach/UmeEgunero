@@ -80,15 +80,6 @@ fun NotificacionesScreen(
                     style = MaterialTheme.typography.titleLarge
                 )
                 
-                // Notificaciones de tareas
-                PreferenciaNotificacion(
-                    icon = Icons.Filled.NotificationsActive,
-                    titulo = "Notificaciones de tareas",
-                    descripcion = "Recibe alertas sobre tareas pendientes, nuevas asignaciones y calificaciones.",
-                    habilitada = uiState.notificacionesTareasHabilitadas,
-                    onCambiarEstado = { viewModel.setNotificacionesTareas(it) }
-                )
-                
                 // Notificaciones generales
                 PreferenciaNotificacion(
                     icon = Icons.Filled.Notifications,

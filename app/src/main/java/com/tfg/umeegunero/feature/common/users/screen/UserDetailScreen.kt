@@ -222,7 +222,7 @@ private fun SectionTitle(title: String) {
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(vertical = 8.dp)
     )
-    Divider(modifier = Modifier.padding(bottom = 12.dp))
+    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable

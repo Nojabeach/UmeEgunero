@@ -336,7 +336,6 @@ erDiagram
     PROFESOR ||--o{ CLASE : enseña
     ALUMNO }|--o{ FAMILIAR : vinculado
     ALUMNO ||--o{ REGISTRO_DIARIO : tiene
-    ALUMNO ||--o{ TAREA : asignado
     CONVERSATION ||--o{ UNIFIED_MESSAGE : contiene
     
     CENTRO {
@@ -481,17 +480,7 @@ A continuación se presenta la estructura de datos anterior adaptada a un modelo
    - Clave primaria: (ConversaciónID, UsuarioID)
    - Claves foráneas: ConversaciónID -> Conversación.ID, UsuarioID -> Usuario.ID
 
-10. **Tarea**
-    - Atributos: ID, Título, Descripción, FechaAsignación, FechaVencimiento, ProfesorID, ClaseID
-    - Clave primaria: ID
-    - Claves foráneas: ProfesorID -> Usuario.ID, ClaseID -> Clase.ID
-
-11. **EntregaTarea**
-    - Atributos: ID, TareaID, AlumnoID, FechaEntrega, Comentarios, Archivos
-    - Clave primaria: ID
-    - Claves foráneas: TareaID -> Tarea.ID, AlumnoID -> Alumno.ID
-
-12. **ActividadPreescolar**
+10. **ActividadPreescolar**
     - Atributos: ID, Título, Descripción, Tipo, Edad, Duración, Materiales, Objetivos
     - Clave primaria: ID
 

@@ -185,7 +185,7 @@ fun DetalleEventoScreen(
                     contenido = formatearFecha(evento.fecha)
                 )
                 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 
                 // Sección de descripción
                 ItemInfoEvento(
@@ -195,7 +195,7 @@ fun DetalleEventoScreen(
                 )
                 
                 if (evento.ubicacion.isNotEmpty()) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                     
                     // Sección de ubicación
                     ItemInfoEvento(
@@ -206,7 +206,7 @@ fun DetalleEventoScreen(
                 }
                 
                 if (evento.recordatorio) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                     
                     // Sección de recordatorio
                     ItemInfoEvento(
@@ -544,7 +544,7 @@ private fun DialogoEdicionEvento(
 private fun formatearFecha(timestamp: Timestamp): String {
     val date = timestamp.toDate()
     val formatoFecha = SimpleDateFormat("EEEE, d 'de' MMMM 'de' yyyy 'a las' HH:mm", Locale("es", "ES"))
-    return formatoFecha.format(date).capitalize()
+    return formatoFecha.format(date).replaceFirstChar { it.uppercase() }
 }
 
 /**

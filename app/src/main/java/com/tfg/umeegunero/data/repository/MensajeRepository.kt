@@ -262,11 +262,13 @@ class MensajeRepository @Inject constructor(
     }
     
     /**
-     * Marca un mensaje como leído
+     * Marca un mensaje como leído y devuelve el mensaje actualizado
+     * 
      * @param mensajeId ID del mensaje
+     * @return Mensaje actualizado o null si ocurre un error
      */
-    suspend fun marcarMensajeComoLeido(mensajeId: String) {
-        try {
+    suspend fun marcarMensajeComoLeido(mensajeId: String): Mensaje? {
+        return try {
             val updateData = mapOf(
                 "leido" to true,
                 "fechaLeido" to Timestamp.now()
@@ -276,26 +278,34 @@ class MensajeRepository @Inject constructor(
                 .document(mensajeId)
                 .update(updateData)
                 .await()
+            
+            // Obtener el mensaje actualizado
+            getMensaje(mensajeId)
         } catch (e: Exception) {
-            Timber.e(e, "Error al marcar mensaje como leído")
-            throw e
+            Timber.e(e, "Error al marcar mensaje como leído: $mensajeId")
+            null
         }
     }
     
     /**
-     * Destaca/desmarca un mensaje
+     * Cambia el estado destacado de un mensaje y devuelve el mensaje actualizado
+     * 
      * @param mensajeId ID del mensaje
-     * @param destacado Indica si se debe destacar o desmarcar
+     * @param destacado Nuevo estado destacado
+     * @return Mensaje actualizado o null si ocurre un error
      */
-    suspend fun toggleMensajeDestacado(mensajeId: String, destacado: Boolean) {
-        try {
+    suspend fun toggleMensajeDestacado(mensajeId: String, destacado: Boolean): Mensaje? {
+        return try {
             firestore.collection(COLLECTION_MENSAJES)
                 .document(mensajeId)
                 .update("destacado", destacado)
                 .await()
+            
+            // Obtener el mensaje actualizado
+            getMensaje(mensajeId)
         } catch (e: Exception) {
-            Timber.e(e, "Error al actualizar estado destacado del mensaje")
-            throw e
+            Timber.e(e, "Error al cambiar estado destacado del mensaje: $mensajeId")
+            null
         }
     }
     

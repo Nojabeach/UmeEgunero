@@ -23,9 +23,6 @@ import com.tfg.umeegunero.feature.common.support.screen.FAQScreen
 import com.tfg.umeegunero.feature.common.support.screen.TechnicalSupportScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeScreen
 import com.tfg.umeegunero.feature.common.welcome.screen.WelcomeUserType
-import com.tfg.umeegunero.feature.profesor.screen.TareasScreen
-import com.tfg.umeegunero.feature.profesor.screen.DetalleTareaScreen
-import com.tfg.umeegunero.feature.profesor.screen.EvaluacionScreen
 import com.tfg.umeegunero.feature.common.academico.screen.CalendarioScreen
 import com.tfg.umeegunero.feature.common.academico.screen.DetalleEventoScreen
 import com.tfg.umeegunero.feature.common.academico.screen.DetalleClaseScreen
@@ -405,11 +402,10 @@ fun Navigation(
             )
         }
         
-        // Pantalla de estadísticas
+        // PANTALLAS DE ESTADÍSTICAS
         composable(route = AppScreens.Estadisticas.route) {
             com.tfg.umeegunero.feature.admin.screen.EstadisticasScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
+                navController = navController
             )
         }
 
@@ -435,9 +431,9 @@ fun Navigation(
         
         // Pantalla de comunicados para familiares
         composable(route = AppScreens.ComunicadosFamilia.route) {
-            com.tfg.umeegunero.feature.familiar.screen.ComunicadosFamiliaScreen(
-                viewModel = hiltViewModel(),
-                navController = navController
+            ComunicadosFamiliaScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
             )
         }
         
@@ -454,10 +450,14 @@ fun Navigation(
 
         // Ruta para la evaluación académica
         composable(route = AppScreens.Evaluacion.route) {
-            EvaluacionScreen(
-                navController = navController,
-                alumnos = emptyList()
-            )
+            // La pantalla de evaluación ha sido eliminada
+            // Redirigir a otra pantalla o mostrar un mensaje
+            androidx.compose.foundation.layout.Box(
+                modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                androidx.compose.material3.Text("Pantalla de evaluación no disponible")
+            }
         }
         
         // PANTALLAS DE CALENDARIO Y EVENTOS
@@ -544,28 +544,6 @@ fun Navigation(
         }
 
         // PANTALLAS DE TAREAS
-        
-        // Pantalla de tareas
-        composable(route = AppScreens.Tareas.route) {
-            TareasScreen(
-                navController = navController
-            )
-        }
-        
-        // Pantalla de detalle de tarea
-        composable(
-            route = AppScreens.DetalleTarea.route,
-            arguments = listOf(
-                navArgument("tareaId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val tareaId = backStackEntry.arguments?.getString("tareaId") ?: ""
-            
-            DetalleTareaScreen(
-                tareaId = tareaId,
-                navController = navController
-            )
-        }
         
         // Pantalla de gestión de profesores
         composable(

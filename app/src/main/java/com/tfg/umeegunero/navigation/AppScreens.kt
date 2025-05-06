@@ -420,9 +420,6 @@ sealed class AppScreens(val route: String) {
     /** Sección de asistencia en el dashboard del profesor */
     object ProfesorAsistencia : AppScreens("profesor_asistencia")
     
-    /** Sección de tareas en el dashboard del profesor */
-    object ProfesorTareas : AppScreens("profesor_tareas")
-    
     /** Sección de calendario en el dashboard del profesor */
     object ProfesorCalendario : AppScreens("profesor_calendario")
 
@@ -537,25 +534,6 @@ sealed class AppScreens(val route: String) {
     /** Gestión de actividades preescolares para profesores */
     object ActividadesPreescolarProfesor : AppScreens("actividades_preescolar_profesor")
     
-    /**
-     * Sección: Tareas académicas
-     */
-    /** 
-     * Detalles de una tarea para profesores, muestra entregas de alumnos 
-     * @param tareaId Identificador único de la tarea
-     */
-    object DetalleTareaProfesor : AppScreens("detalle_tarea_profesor/{tareaId}") {
-        fun createRoute(tareaId: String) = "detalle_tarea_profesor/$tareaId"
-    }
-    
-    /**
-     * Detalles de una tarea para alumnos, muestra información de la tarea para entregar
-     * @param tareaId Identificador único de la tarea
-     */
-    object DetalleTareaAlumno : AppScreens("detalle_tarea_alumno/{tareaId}") {
-        fun createRoute(tareaId: String) = "detalle_tarea_alumno/$tareaId"
-    }
-
     /**
      * Pantalla genérica para pruebas y desarrollo
      * @param title Título a mostrar en la pantalla

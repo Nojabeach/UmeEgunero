@@ -35,12 +35,25 @@ data class MessageAction(
                     id = data["id"] as? String ?: UUID.randomUUID().toString(),
                     label = data["label"] as? String ?: "",
                     actionType = data["actionType"] as? String ?: "",
-                    data = (data["data"] as? Map<String, String>) ?: emptyMap(),
+                    data = getActionData(data["data"]),
                     requiresConfirmation = data["requiresConfirmation"] as? Boolean ?: false,
                     confirmationMessage = data["confirmationMessage"] as? String ?: ""
                 )
             } catch (e: Exception) {
                 null
+            }
+        }
+        
+        /**
+         * Obtiene los datos de acción de forma segura, evitando el unchecked cast
+         */
+        private fun getActionData(rawData: Any?): Map<String, String> {
+            return try {
+                @Suppress("UNCHECKED_CAST")
+                rawData as? Map<String, String> ?: emptyMap()
+            } catch (e: Exception) {
+                // Si la conversión falla, devolvemos un mapa vacío
+                emptyMap()
             }
         }
     }

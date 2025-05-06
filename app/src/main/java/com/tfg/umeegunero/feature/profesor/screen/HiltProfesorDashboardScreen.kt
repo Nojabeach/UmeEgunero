@@ -39,7 +39,6 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorDashboardViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
-import com.tfg.umeegunero.util.TestUtils
 import kotlinx.coroutines.flow.collect
 
 /**
@@ -52,7 +51,6 @@ import kotlinx.coroutines.flow.collect
  * El diseño está optimizado para proporcionar acceso rápido a:
  * - Gestión de alumnos
  * - Control de asistencia
- * - Administración de tareas
  * - Comunicación con familias
  * - Gestión de eventos y calendario
  * - Creación de registros de actividad
@@ -279,24 +277,12 @@ fun ProfesorDashboardContent(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             InfoCard(
-                title = "Tareas",
-                value = "2 Pendientes",
-                icon = Icons.Default.Assignment,
-                color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        navController.navigate(AppScreens.TareasProfesor.route)
-                    }
-            )
-            
-            InfoCard(
                 title = "Eventos",
                 value = "Próximamente",
                 icon = Icons.Default.CalendarToday,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clickable {
                         navController.navigate(AppScreens.CalendarioProfesor.route)
                     }
@@ -341,7 +327,7 @@ fun ProfesorDashboardContent(
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Próximas tareas/eventos (placeholder para futuras implementaciones)
+        // Próximos eventos (placeholder para futuras implementaciones)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(

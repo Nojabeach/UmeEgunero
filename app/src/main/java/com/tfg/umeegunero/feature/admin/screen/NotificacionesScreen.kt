@@ -247,7 +247,6 @@ private fun NotificacionItem(notificacion: Notificacion) {
                         TipoNotificacion.MENSAJE -> Icons.Default.Notifications
                         TipoNotificacion.GENERAL -> Icons.Default.Notifications
                         TipoNotificacion.ANUNCIO -> Icons.Default.Campaign
-                        TipoNotificacion.TAREA -> Icons.Default.Assignment
                         TipoNotificacion.URGENTE -> Icons.Default.PriorityHigh
                         TipoNotificacion.ACADEMICO -> Icons.Default.School
                         TipoNotificacion.ALERTA -> Icons.Default.Warning

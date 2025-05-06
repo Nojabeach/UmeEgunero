@@ -31,6 +31,16 @@ import timber.log.Timber
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.padding
+import com.google.firebase.messaging.FirebaseMessaging
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+/**
+ * Clase simple para representar datos de notificación
+ */
+data class NotificationData(
+    val tipo: String,
+    val data: Map<String, String> = emptyMap()
+)
 
 /**
  * Actividad principal de la aplicación UmeEgunero.
@@ -59,6 +69,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var preferenciasRepository: PreferenciasRepository
     
+    // Instancia de FirebaseAuth
+    private lateinit var auth: FirebaseAuth
+    
     /**
      * Método de inicialización de la actividad.
      * 
@@ -71,14 +84,53 @@ class MainActivity : ComponentActivity() {
      * @param savedInstanceState Estado guardado de la actividad
      */
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splashScreen = installSplashScreen()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
+        
+        // Inicializar auth
+        auth = FirebaseAuth.getInstance()
+        
+        // Inicializamos Firebase Messaging
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                Timber.d("FCM Token: $token")
+                // Guardar token en Firestore de forma segura
+                guardarTokenDeFormaSegura(token)
+            } else {
+                Timber.e(task.exception, "No se pudo obtener el token de FCM")
+            }
+        }
+        
+        // Configuramos el servicio de notificaciones
+        val intent = intent
+        if (intent.extras != null) {
+            for (key in intent.extras!!.keySet()) {
+                val value = intent.extras?.getString(key) ?: intent.extras?.getInt(key)?.toString()
+                ?: intent.extras?.getBoolean(key)?.toString() ?: "valor no obtenible"
+                Timber.d("Key: $key Value: $value")
+            }
+            
+            // Redirigir a la pantalla de notificaciones si fue abierto desde una notificación
+            if (intent.hasExtra("tipo")) {
+                val tipo = intent.getStringExtra("tipo")
+                if (tipo == "MENSAJE") {
+                    val mensajeId = intent.getStringExtra("mensajeId")
+                    if (mensajeId != null) {
+                        // Almacenamos la información para procesarla cuando sea necesario
+                        val notificationData = NotificationData(
+                            tipo = tipo,
+                            data = mapOf("mensajeId" to mensajeId)
+                        )
+                        // La información se almacenará para ser procesada por el componente correspondiente
+                        Timber.d("Notificación recibida: $notificationData")
+                    }
+                }
+            }
+        }
         
         // Manejar posibles errores durante la inicialización de Firebase
         checkFirebaseInitialization()
-        
-        // Usamos WindowCompat en lugar de enableEdgeToEdge
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         
         setContent {
             val isDarkTheme = rememberDarkThemeState(preferenciasRepository)
@@ -116,6 +168,28 @@ class MainActivity : ComponentActivity() {
     }
     
     /**
+     * Guarda el token del dispositivo de forma segura
+     */
+    private fun guardarTokenDeFormaSegura(token: String) {
+        if (auth.currentUser != null) {
+            // Guardar el token en Firestore
+            val userId = auth.currentUser?.uid
+            if (userId != null) {
+                FirebaseFirestore.getInstance()
+                    .collection("usuarios")
+                    .document(userId)
+                    .update("fcmToken", token)
+                    .addOnSuccessListener {
+                        Timber.d("Token guardado correctamente")
+                    }
+                    .addOnFailureListener { e ->
+                        Timber.e(e, "Error al guardar token")
+                    }
+            }
+        }
+    }
+    
+    /**
      * Verifica que Firebase esté correctamente inicializado.
      * Si hay problemas, intenta una reinicialización con configuración mínima.
      */
@@ -135,9 +209,10 @@ class MainActivity : ComponentActivity() {
             
             // Verificar que Auth y Firestore están disponibles
             try {
-                val auth = FirebaseAuth.getInstance()
-                val firestore = FirebaseFirestore.getInstance()
-                Timber.d("Servicios Firebase disponibles: Auth=${auth != null}, Firestore=${firestore != null}")
+                // Solo verificamos que podemos obtener las instancias sin asignarlas a variables
+                FirebaseAuth.getInstance()
+                FirebaseFirestore.getInstance()
+                Timber.d("Servicios Firebase disponibles")
             } catch (e: Exception) {
                 Timber.e(e, "Error al acceder a servicios Firebase en MainActivity")
                 showErrorToast("Error al inicializar componentes de la aplicación. Por favor, reiníciela.")

@@ -31,7 +31,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -88,6 +88,7 @@ import com.tfg.umeegunero.feature.common.comunicacion.ui.CommunicationIcons
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.NewMessageUiState
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.NewMessageViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Pantalla para crear un nuevo mensaje unificado
@@ -180,7 +181,7 @@ fun NewMessageScreen(
                         enabled = uiState.canSendMessage && !uiState.isSending
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Send,
+                            imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Enviar"
                         )
                     }
@@ -232,7 +233,7 @@ fun NewMessageScreen(
                                 modifier = Modifier.size(20.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
+                                    imageVector = Icons.Filled.Close,
                                     contentDescription = "Quitar respuesta",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -318,7 +319,7 @@ fun NewMessageScreen(
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { 
                         Icon(
-                            imageVector = Icons.Default.Search,
+                            imageVector = Icons.Filled.Search,
                             contentDescription = "Buscar"
                         )
                     },
@@ -326,7 +327,7 @@ fun NewMessageScreen(
                         if (uiState.searchQuery.isNotEmpty()) {
                             IconButton(onClick = { viewModel.updateSearchQuery("") }) {
                                 Icon(
-                                    imageVector = Icons.Default.Clear,
+                                    imageVector = Icons.Filled.Clear,
                                     contentDescription = "Limpiar"
                                 )
                             }
@@ -372,7 +373,7 @@ fun NewMessageScreen(
                                             modifier = Modifier.size(16.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Cancel,
+                                                imageVector = Icons.Filled.Cancel,
                                                 contentDescription = "Eliminar",
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -415,20 +416,23 @@ fun NewMessageScreen(
                                     
                                     if (uiState.recipients.any { it.id == user.id }) {
                                         Icon(
-                                            imageVector = Icons.Default.Check,
+                                            imageVector = Icons.Filled.Check,
                                             contentDescription = "Seleccionado",
                                             tint = MaterialTheme.colorScheme.primary
                                         )
                                     } else {
                                         Icon(
-                                            imageVector = Icons.Default.Add,
+                                            imageVector = Icons.Filled.Add,
                                             contentDescription = "Añadir",
                                             tint = MaterialTheme.colorScheme.primary
                                         )
                                     }
                                 }
                                 
-                                Divider()
+                                HorizontalDivider(
+                                    thickness = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant
+                                )
                             }
                         }
                     }
@@ -443,7 +447,7 @@ fun NewMessageScreen(
                     onClick = { viewModel.toggleGroupSelection() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
+                    Icon(Icons.Filled.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Añadir grupo de destinatarios")
                 }
@@ -497,7 +501,7 @@ fun NewMessageScreen(
                                             modifier = Modifier.size(16.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Cancel,
+                                                imageVector = Icons.Filled.Cancel,
                                                 contentDescription = "Eliminar grupo",
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -576,7 +580,10 @@ fun NewMessageScreen(
                                         )
                                     }
                                     
-                                    Divider()
+                                    HorizontalDivider(
+                                        thickness = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
                                 }
                                 
                                 // Si se ha seleccionado un tipo que requiere más selección
@@ -611,7 +618,10 @@ fun NewMessageScreen(
                                                     )
                                                 }
                                                 
-                                                Divider()
+                                                HorizontalDivider(
+                                                    thickness = 1.dp,
+                                                    color = MaterialTheme.colorScheme.outlineVariant
+                                                )
                                             }
                                         }
                                     }
@@ -644,7 +654,10 @@ fun NewMessageScreen(
                                                     )
                                                 }
                                                 
-                                                Divider()
+                                                HorizontalDivider(
+                                                    thickness = 1.dp,
+                                                    color = MaterialTheme.colorScheme.outlineVariant
+                                                )
                                             }
                                         }
                                         
@@ -678,7 +691,10 @@ fun NewMessageScreen(
                                                         )
                                                     }
                                                     
-                                                    Divider()
+                                                    HorizontalDivider(
+                                                        thickness = 1.dp,
+                                                        color = MaterialTheme.colorScheme.outlineVariant
+                                                    )
                                                 }
                                             }
                                         }
@@ -712,7 +728,10 @@ fun NewMessageScreen(
                                                     )
                                                 }
                                                 
-                                                Divider()
+                                                HorizontalDivider(
+                                                    thickness = 1.dp,
+                                                    color = MaterialTheme.colorScheme.outlineVariant
+                                                )
                                             }
                                         }
                                         
@@ -745,7 +764,10 @@ fun NewMessageScreen(
                                                         )
                                                     }
                                                     
-                                                    Divider()
+                                                    HorizontalDivider(
+                                                        thickness = 1.dp,
+                                                        color = MaterialTheme.colorScheme.outlineVariant
+                                                    )
                                                 }
                                             }
                                         }
@@ -780,7 +802,10 @@ fun NewMessageScreen(
                                                         )
                                                     }
                                                     
-                                                    Divider()
+                                                    HorizontalDivider(
+                                                        thickness = 1.dp,
+                                                        color = MaterialTheme.colorScheme.outlineVariant
+                                                    )
                                                 }
                                             }
                                         }

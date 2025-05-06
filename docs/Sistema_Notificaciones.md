@@ -19,7 +19,6 @@ flowchart TD
         D & E & F & G & H & U --> I[AppNotificationManager]
         
         I --> J1[Canal General]
-        I --> J2[Canal Tareas]
         I --> J3[Canal Solicitudes]
         I --> J4[Canal Incidencias]
         I --> J5[Canal Asistencia]
@@ -41,7 +40,7 @@ flowchart TD
         P3[Administrador]
     end
     
-    J1 & J2 & J3 & J4 & J5 & J6 --> P1 & P2 & P3
+    J1 & J3 & J4 & J5 & J6 --> P1 & P2 & P3
     
     style A fill:#ff9900,stroke:#ff6600,stroke-width:2px
     style I fill:#4285F4,stroke:#0066cc,stroke-width:2px
@@ -94,7 +93,6 @@ UmeEgunero implementa un sistema de canales que categoriza las notificaciones se
 | Canal | Importancia | Descripción | Usos |
 |-------|-------------|-------------|------|
 | General | Default | Notificaciones generales y chat | Mensajes, comunicados generales |
-| Tareas | High | Registro diario y tareas | Actualizaciones de registro, tareas |
 | Solicitudes | High | Solicitudes de vinculación | Peticiones nuevo alumno-familiar |
 | Incidencias | Max | Alertas de alta prioridad | Incidencias urgentes, emergencias |
 | Asistencia | High | Control de asistencia | Retrasos, ausencias, recogidas tempranas |
@@ -309,7 +307,6 @@ private fun procesarNotificacionUnificada(data: Map<String, String>) {
             MessageType.CHAT.name -> AppNotificationManager.CHANNEL_ID_GENERAL
             MessageType.INCIDENT.name -> AppNotificationManager.CHANNEL_ID_INCIDENCIAS
             MessageType.ATTENDANCE.name -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
-            MessageType.DAILY_RECORD.name -> AppNotificationManager.CHANNEL_ID_TAREAS
             MessageType.SYSTEM.name -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
             else -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
         }

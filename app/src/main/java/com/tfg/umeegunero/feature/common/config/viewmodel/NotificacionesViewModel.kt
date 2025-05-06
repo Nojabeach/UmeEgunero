@@ -18,7 +18,6 @@ import javax.inject.Inject
  * Estado de la UI para la pantalla de configuración de notificaciones
  */
 data class NotificacionesUiState(
-    val notificacionesTareasHabilitadas: Boolean = true,
     val notificacionesGeneralHabilitadas: Boolean = true,
     val fcmToken: String = "",
     val isLoading: Boolean = false,
@@ -53,17 +52,6 @@ class NotificacionesViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar token FCM")
-            }
-        }
-        
-        viewModelScope.launch {
-            try {
-                // Recoger preferencias de notificaciones de tareas
-                preferenciasRepository.notificacionesTareasHabilitadas.collectLatest { habilitadas ->
-                    _uiState.update { it.copy(notificacionesTareasHabilitadas = habilitadas) }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cargar preferencias de notificaciones de tareas")
             }
         }
         
@@ -113,32 +101,6 @@ class NotificacionesViewModel @Inject constructor(
                         mensaje = "Error al registrar dispositivo: ${e.message}",
                         isLoading = false
                     ) 
-                }
-            }
-        }
-    }
-    
-    /**
-     * Configura las notificaciones de tareas
-     * @param habilitadas true para habilitar, false para deshabilitar
-     */
-    fun setNotificacionesTareas(habilitadas: Boolean) {
-        viewModelScope.launch {
-            try {
-                preferenciasRepository.setNotificacionesTareas(habilitadas)
-                _uiState.update { 
-                    it.copy(
-                        notificacionesTareasHabilitadas = habilitadas,
-                        mensaje = if (habilitadas) 
-                            "Notificaciones de tareas habilitadas" 
-                        else 
-                            "Notificaciones de tareas deshabilitadas"
-                    ) 
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al configurar notificaciones de tareas")
-                _uiState.update { 
-                    it.copy(mensaje = "Error al guardar preferencia: ${e.message}") 
                 }
             }
         }

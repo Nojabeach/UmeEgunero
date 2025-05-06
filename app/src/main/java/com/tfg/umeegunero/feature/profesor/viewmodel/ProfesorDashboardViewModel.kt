@@ -43,7 +43,7 @@ import com.tfg.umeegunero.navigation.AppScreens
  * @property claseActual Clase seleccionada actualmente para mostrar sus detalles
  * @property claseInfo Texto descriptivo de la clase/alumnos a cargo
  * @property alumnos Lista de alumnos de la clase actualmente seleccionada
- * @property alumnosPendientes Alumnos que requieren atención o tienen tareas pendientes
+ * @property alumnosPendientes Alumnos que requieren atención o registro diario pendiente
  * @property esFestivoHoy Booleano que indica si el día actual es festivo
  * @property registrosActividad Registros de actividad relacionados con la clase actual
  * @property mensajesNoLeidos Mensajes sin leer dirigidos al profesor

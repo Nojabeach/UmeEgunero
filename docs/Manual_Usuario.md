@@ -191,7 +191,6 @@ flowchart TD
     ComUnificada --> Nuevo[Nuevo Mensaje]
     
     GestionPlanif --> MisAlumnos[Mis Alumnos]
-    GestionPlanif --> Tareas[Tareas y Actividades]
     GestionPlanif --> Calendario[Calendario]
     GestionPlanif --> ActividadesPreescolar[Actividades Preescolar]
     
@@ -221,12 +220,9 @@ flowchart TD
     
     Seguimiento --> HistorialReg[Historial de Registros]
     Seguimiento --> Calendario[Calendario]
-    Seguimiento --> Tareas[Tareas]
     Seguimiento --> Actividades[Actividades]
     
     HistorialReg --> DetalleHistorial[Detalle Historial]
-    Tareas --> DetalleTarea[Detalle Tarea]
-    Tareas --> EntregaTarea[Entrega Tarea]
 ```
 
 ## Módulos Principales

@@ -7,6 +7,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
 import com.tfg.umeegunero.data.model.InfoArchivo
+import com.tfg.umeegunero.network.ImgBBClient
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +55,8 @@ import javax.inject.Singleton
 @Singleton
 class StorageRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val storage: FirebaseStorage
+    private val storage: FirebaseStorage,
+    internal val imgBBClient: ImgBBClient
 ) {
     private val storageRef: StorageReference = storage.reference
     
@@ -329,6 +331,31 @@ class StorageRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener URL de descarga")
             throw e
+        }
+    }
+    
+    /**
+     * Verifica si el uso de Firebase Storage está cerca del límite gratuito
+     * @return true si está cerca del límite, false en caso contrario
+     */
+    suspend fun estaEnLimiteStorage(): Boolean {
+        // El límite gratuito de Firebase Storage es de 5GB
+        // Esta es una implementación simplificada que debería mejorarse 
+        // con datos reales del uso actual
+        
+        try {
+            // Esta implementación debería ser reemplazada con una verificación real
+            // del uso de almacenamiento, posiblemente mediante Firebase Functions
+            // o alguna API administrativa de Firebase
+            
+            // Por ahora, usaremos una comprobación estática basada en preferencias
+            val prefsKey = "storage_near_limit"
+            val prefs = context.getSharedPreferences("storage_prefs", Context.MODE_PRIVATE)
+            return prefs.getBoolean(prefsKey, false)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al verificar límite de almacenamiento")
+            // En caso de error, asumimos que no estamos en el límite
+            return false
         }
     }
 } 

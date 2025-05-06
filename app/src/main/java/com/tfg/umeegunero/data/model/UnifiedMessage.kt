@@ -157,18 +157,54 @@ data class UnifiedMessage(
                 senderId = data["senderId"] as? String ?: "",
                 senderName = data["senderName"] as? String ?: "",
                 receiverId = data["receiverId"] as? String ?: "",
-                receiversIds = (data["receiversIds"] as? List<String>) ?: emptyList(),
+                receiversIds = getStringList(data["receiversIds"]),
                 timestamp = data["timestamp"] as? Timestamp ?: Timestamp.now(),
                 status = try { MessageStatus.valueOf(statusStr) } catch (e: Exception) { MessageStatus.UNREAD },
                 readTimestamp = data["readTimestamp"] as? Timestamp,
-                metadata = (data["metadata"] as? Map<String, String>) ?: emptyMap(),
+                metadata = getStringMap(data["metadata"]),
                 relatedEntityId = data["relatedEntityId"] as? String ?: "",
                 relatedEntityType = data["relatedEntityType"] as? String ?: "",
-                attachments = (data["attachments"] as? List<Map<String, String>>) ?: emptyList(),
+                attachments = getMapList(data["attachments"]),
                 actions = actions,
                 conversationId = data["conversationId"] as? String ?: "",
                 replyToId = data["replyToId"] as? String ?: ""
             )
+        }
+        
+        /**
+         * Convierte de forma segura un Any? a List<String>
+         */
+        private fun getStringList(data: Any?): List<String> {
+            return try {
+                @Suppress("UNCHECKED_CAST")
+                data as? List<String> ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+        
+        /**
+         * Convierte de forma segura un Any? a Map<String, String>
+         */
+        private fun getStringMap(data: Any?): Map<String, String> {
+            return try {
+                @Suppress("UNCHECKED_CAST")
+                data as? Map<String, String> ?: emptyMap()
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        }
+        
+        /**
+         * Convierte de forma segura un Any? a List<Map<String, String>>
+         */
+        private fun getMapList(data: Any?): List<Map<String, String>> {
+            return try {
+                @Suppress("UNCHECKED_CAST")
+                data as? List<Map<String, String>> ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
         }
     }
 } 

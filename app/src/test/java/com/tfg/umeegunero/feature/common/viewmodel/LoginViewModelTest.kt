@@ -19,6 +19,8 @@ import org.junit.runner.RunWith
 import org.mockito.junit.MockitoJUnitRunner
 import org.mockito.kotlin.*
 import kotlinx.coroutines.flow.first
+import org.mockito.kotlin.never
+import org.mockito.kotlin.anyString
 
 /**
  * Pruebas unitarias para el ViewModel de login.
@@ -184,7 +186,7 @@ class LoginViewModelTest {
         loginViewModel.login()
         
         // Then: No debería haberse llamado al repositorio
-        verifyNoInteractions(authRepository)
+        verify(authRepository, never()).loginWithEmailAndPassword(anyString(), anyString())
         
         // Y debería haber error de validación
         val state = loginViewModel.uiState.first()

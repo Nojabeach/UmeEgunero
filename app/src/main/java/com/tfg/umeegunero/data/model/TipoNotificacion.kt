@@ -6,7 +6,6 @@ package com.tfg.umeegunero.data.model
 enum class TipoNotificacion {
     GENERAL,     // Notificaciones generales
     ANUNCIO,     // Anuncios específicos
-    TAREA,       // Tareas asignadas
     EVENTO,      // Eventos del calendario, fechas importantes
     URGENTE,     // Notificaciones urgentes
     SISTEMA,     // Notificaciones del sistema (actualizaciones, mantenimiento, etc.)
