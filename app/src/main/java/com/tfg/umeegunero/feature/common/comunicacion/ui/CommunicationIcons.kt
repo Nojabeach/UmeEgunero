@@ -7,7 +7,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.ImageVector
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * Clase de utilidad que proporciona acceso a los iconos para la comunicación
