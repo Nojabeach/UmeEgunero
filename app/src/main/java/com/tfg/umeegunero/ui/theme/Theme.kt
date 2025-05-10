@@ -40,22 +40,24 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = AppColors.PurpleGrey80,
-    onPrimary = AppColors.PurplePrimary,
+    primary = AppColors.DarkPrimary,
+    onPrimary = AppColors.Black,
     primaryContainer = AppColors.PurplePrimary,
-    onPrimaryContainer = AppColors.White,
-    secondary = AppColors.Pink80,
-    onSecondary = AppColors.PurpleSecondary,
+    onPrimaryContainer = AppColors.PurpleGrey80,
+    secondary = AppColors.DarkSecondary,
+    onSecondary = AppColors.Black,
     secondaryContainer = AppColors.PurpleSecondary,
-    onSecondaryContainer = AppColors.White,
+    onSecondaryContainer = AppColors.Pink80,
     tertiary = AppColors.Pink40,
     onTertiary = AppColors.White,
-    background = AppColors.DarkGrey,
+    background = AppColors.DarkBackground,
     onBackground = AppColors.White,
-    surface = AppColors.NearBlack,
+    surface = AppColors.DarkSurface,
     onSurface = AppColors.White,
-    error = AppColors.Error,
-    onError = AppColors.White
+    error = AppColors.DarkError,
+    onError = AppColors.Black,
+    surfaceVariant = AppColors.NearBlack,
+    onSurfaceVariant = AppColors.PurpleGrey80
 )
 
 @Composable

@@ -83,6 +83,7 @@ import androidx.lifecycle.ViewModel
 import com.tfg.umeegunero.feature.profesor.viewmodel.MisAlumnosUiState
 import androidx.compose.material3.HorizontalDivider
 import timber.log.Timber
+import com.tfg.umeegunero.util.performHapticFeedbackSafely
 
 /**
  * Pantalla que muestra la lista de alumnos del profesor
@@ -257,11 +258,7 @@ fun MisAlumnosProfesorScreen(
                             AlumnoCard(
                                 alumno = alumno,
                                 onClick = {
-                                    try {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Error al realizar feedback háptico")
-                                    }
+                                    haptic.performHapticFeedbackSafely()
                                     navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.id))
                                 },
                                 haptic = haptic
@@ -293,11 +290,7 @@ fun AlumnoCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { 
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
+                haptic.performHapticFeedbackSafely()
                 onClick() 
             },
         elevation = CardDefaults.cardElevation(
@@ -382,11 +375,7 @@ fun AlumnoCard(
                 // Botón para expandir información de familiares
                 IconButton(
                     onClick = { 
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
+                        haptic.performHapticFeedbackSafely()
                         expandedState = !expandedState 
                     }
                 ) {

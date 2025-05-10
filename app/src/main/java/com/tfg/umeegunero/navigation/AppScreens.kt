@@ -655,15 +655,8 @@ sealed class AppScreens(val route: String) {
     /**
      * Pantalla de listado previo para registro diario
      */
-    object ListadoPreRegistroDiario : AppScreens("listado_pre_registro_diario") {
-        /**
-         * Crea una ruta con parámetros para incluir el ID del profesor
-         */
-        fun createRouteWithParams(profesorId: String): String {
-            return "$route?profesorId=$profesorId"
-        }
-    }
-    
+    object ListadoPreRegistroDiario : AppScreens("listado_pre_registro_diario")
+
     /** Gestión de alumnos asignados al profesor */
     object MisAlumnosProfesor : AppScreens("mis_alumnos_profesor")
 
@@ -681,12 +674,8 @@ sealed class AppScreens(val route: String) {
     /** Pantalla para crear un nuevo comunicado */
     object CrearComunicado : AppScreens("crear_comunicado")
 
-    /**
-     * Pantalla unificada de bandeja de mensajes
-     */
-    object UnifiedInbox : AppScreens("unified_inbox") {
-        fun createRoute() = "unified_inbox"
-    }
+    /** Pantalla de bandeja de entrada unificada */
+    object UnifiedInbox : AppScreens("unified_inbox")
 
     /**
      * Detalle de mensaje unificado

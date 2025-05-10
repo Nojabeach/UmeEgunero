@@ -165,7 +165,10 @@ fun ListAlumnosScreen(
                     AlumnoListItem(
                         alumno = alumno,
                         onItemClick = {
-                            navController.navigate(AppScreens.StudentDetail.createRoute(alumno.dni))
+                            navController.navigate(AppScreens.DetalleAlumno.createRoute(alumno.dni)) {
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         },
                         onEditClick = {
                             navController.navigate(AppScreens.AddUser.createRoute(
@@ -174,7 +177,9 @@ fun ListAlumnosScreen(
                                 centroId = centroId,
                                 centroBloqueado = true,
                                 dniUsuario = alumno.dni
-                            ))
+                            )) {
+                                launchSingleTop = true
+                            }
                         },
                         onDeleteClick = {
                             selectedAlumno = alumno

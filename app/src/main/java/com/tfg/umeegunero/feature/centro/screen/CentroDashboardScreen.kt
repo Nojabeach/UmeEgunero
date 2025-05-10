@@ -769,8 +769,7 @@ fun CentroDashboardScreen(
                                         icono = Icons.Filled.School,
                                         color = CentroColor,
                                         onClick = {},
-                                        iconTint = Color.White,
-                                        border = true
+                                        iconTint = Color.White
                                     ),
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp, max = 100.dp)
                                 )
@@ -795,7 +794,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.AutoMirrored.Filled.MenuBook,
                                     color = CentroColor,
                                     iconTint = AppColors.PurplePrimary,
-                                    border = true,
                                     onClick = onNavigateToListaCursos,
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -807,7 +805,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.Class,
                                     color = CentroColor,
                                     iconTint = AppColors.PurpleSecondary,
-                                    border = true,
                                     onClick = onNavigateToListaClases,
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -819,7 +816,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.DateRange,
                                     color = CentroColor,
                                     iconTint = AppColors.PurpleTertiary,
-                                    border = true,
                                     onClick = onNavigateToCalendario,
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -846,7 +842,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.Face,
                                     color = CentroColor,
                                     iconTint = AppColors.Pink80,
-                                    border = true,
                                     onClick = onNavigateToGestionAlumnos,
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -858,7 +853,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.SupervisorAccount,
                                     color = CentroColor,
                                     iconTint = AppColors.Green500,
-                                    border = true,
                                     onClick = onNavigateToGestionProfesores,
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -870,7 +864,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.People,
                                     color = CentroColor,
                                     iconTint = AppColors.Red500,
-                                    border = true,
                                     onClick = onNavigateToVincularFamiliar,
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -882,9 +875,8 @@ fun CentroDashboardScreen(
                                     icono = Icons.AutoMirrored.Filled.Assignment,
                                     color = CentroColor,
                                     iconTint = AppColors.PurpleTertiary,
-                                    border = true,
                                     onClick = onNavigateToVincularProfesorClase,
-                                    modifier = Modifier.padding(4.dp) // Quitado fillMaxWidth para que quepa en la grid
+                                    modifier = Modifier.padding(4.dp)
                                 )
                             }
                            
@@ -910,7 +902,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.Notifications,
                                     color = CentroColor,
                                     iconTint = AppColors.GradientEnd,
-                                    border = true,
                                     onClick = onNavigateToNotificaciones,
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -922,7 +913,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.People,
                                     color = CentroColor,
                                     iconTint = AppColors.Pink80,
-                                    border = true,
                                     onClick = { mostrarDialogoSolicitudes = true },
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -934,7 +924,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.History,
                                     color = CentroColor,
                                     iconTint = AppColors.PurplePrimary,
-                                    border = true,
                                     onClick = { navController.navigate(AppScreens.HistorialSolicitudes.route) },
                                     modifier = Modifier.padding(4.dp)
                                 )
@@ -946,7 +935,6 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.Email,
                                     color = CentroColor,
                                     iconTint = AppColors.Blue500,
-                                    border = true,
                                     onClick = { 
                                         try {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)

@@ -114,6 +114,7 @@ open class UsuarioRepository @Inject constructor(
                 override suspend fun getCurrentCentroId(): String = ""
                 override suspend fun getCurrentUserId(): String? = null
                 override suspend fun deleteUserByEmail(email: String): Result<Unit> = Result.Success(Unit)
+                override suspend fun loginWithEmailAndPassword(email: String, password: String): Result<String> = Result.Success("")
             }
             
             return repo

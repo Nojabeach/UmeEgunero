@@ -155,6 +155,15 @@ interface AuthRepository {
      * @return Resultado de la operación
      */
     suspend fun deleteUserByEmail(email: String): Result<Unit>
+
+    /**
+     * Inicia sesión con email y contraseña.
+     * 
+     * @param email Email del usuario
+     * @param password Contraseña del usuario
+     * @return Resultado encapsulado que contiene el ID del usuario si el login es exitoso
+     */
+    suspend fun loginWithEmailAndPassword(email: String, password: String): Result<String>
 }
 
 /**
@@ -502,6 +511,42 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al ejecutar la función para eliminar usuario: ${e.message}")
             return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Inicia sesión con email y contraseña utilizando Firebase Auth.
+     * 
+     * Este método maneja el proceso de autenticación con Firebase, incluyendo:
+     * - Validación de credenciales
+     * - Manejo de errores específicos de Firebase Auth
+     * - Logging para depuración
+     * 
+     * @param email Email del usuario
+     * @param password Contraseña del usuario
+     * @return Resultado encapsulado que contiene el ID del usuario si el login es exitoso
+     */
+    override suspend fun loginWithEmailAndPassword(email: String, password: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            val user = result.user
+            
+            if (user != null) {
+                Timber.d("Login exitoso para el usuario: ${user.email}")
+                Result.Success(user.uid)
+            } else {
+                Timber.e("Login fallido: usuario nulo después de autenticación")
+                Result.Error(Exception("Error de autenticación"))
+            }
+        } catch (e: FirebaseAuthInvalidUserException) {
+            Timber.e(e, "Usuario no encontrado o deshabilitado")
+            Result.Error(Exception("Usuario no encontrado"))
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Timber.e(e, "Credenciales inválidas")
+            Result.Error(Exception("Credenciales inválidas"))
+        } catch (e: Exception) {
+            Timber.e(e, "Error durante el login")
+            Result.Error(e)
         }
     }
 } 

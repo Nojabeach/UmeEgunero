@@ -730,6 +730,21 @@ fun Navigation(
             )
         }
 
+        // Pantalla de detalle de alumno
+        composable(
+            route = AppScreens.DetalleAlumno.route,
+            arguments = listOf(
+                navArgument("alumnoId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            com.tfg.umeegunero.feature.common.users.screen.DetalleAlumnoScreen(
+                navController = navController,
+                alumnoId = alumnoId,
+                viewModel = hiltViewModel()
+            )
+        }
+
         // Nueva navegación para gestor académico
         composable(
             route = "gestor_academico/{modo}?centroId={centroId}&cursoId={cursoId}&selectorCentroBloqueado={selectorCentroBloqueado}&selectorCursoBloqueado={selectorCursoBloqueado}&perfilUsuario={perfilUsuario}",

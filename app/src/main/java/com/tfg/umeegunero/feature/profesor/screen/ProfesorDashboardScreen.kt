@@ -96,6 +96,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.tfg.umeegunero.util.performHapticFeedbackSafely
 
 /**
  * Componente para mostrar una tarjeta en el dashboard con título, descripción e icono
@@ -235,11 +236,6 @@ fun ProfesorDashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
                         showLogoutDialog = false
                         viewModel.logout()
                     }
@@ -264,20 +260,23 @@ fun ProfesorDashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
                         showRegistroDiarioDialog = false
                         // Usar profesorId del estado para pasarlo como parámetro a la pantalla
-                        val profesorId = uiState.profesor?.dni ?: ""
-                        if (profesorId.isNotEmpty()) {
-                            navController.navigate(AppScreens.ListadoPreRegistroDiario.createRouteWithParams(profesorId))
-                            Timber.d("Navegando a ListadoPreRegistroDiario con profesorId: $profesorId")
-                        } else {
-                            Timber.e("No se pudo navegar a ListadoPreRegistroDiario: profesorId vacío")
-                            // Podríamos mostrar un mensaje de error aquí
+                        val profesorId = uiState.profesor?.dni ?: return@TextButton
+                        val nombreProfesor = uiState.profesor?.nombre ?: return@TextButton
+                        val nombreClase = uiState.claseInfo ?: return@TextButton
+
+                        try {
+                            navController.navigate(AppScreens.RegistroDiario.createRoute(
+                                alumnoId = profesorId,
+                                claseId = "", // TODO: Proporcionar el id real de la clase si es necesario
+                                profesorId = profesorId,
+                                alumnoNombre = nombreProfesor,
+                                claseNombre = nombreClase
+                            ))
+                            Timber.d("Navegando a Registro Diario con profesorId: $profesorId")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Registro Diario")
                         }
                     },
                     enabled = !uiState.esFestivoHoy
@@ -302,11 +301,6 @@ fun ProfesorDashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
                         showChatFamiliasDialog = false
                         try {
                             navController.navigate(AppScreens.UnifiedInbox.route)
@@ -336,11 +330,6 @@ fun ProfesorDashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
                         showComunicadosDialog = false
                         try {
                             navController.navigate(AppScreens.UnifiedInbox.route)
@@ -370,11 +359,6 @@ fun ProfesorDashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
                         showMisAlumnosDialog = false
                         try {
                             navController.navigate(AppScreens.MisAlumnosProfesor.route)
@@ -404,11 +388,6 @@ fun ProfesorDashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
                         showCalendarioDialog = false
                         try {
                             navController.navigate(AppScreens.ProfesorCalendario.route)
@@ -438,11 +417,6 @@ fun ProfesorDashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
                         showPerfilDialog = false
                         navController.navigate(AppScreens.Perfil.route)
                     }
@@ -520,14 +494,7 @@ private fun ProfesorDashboardTopBar(
         ),
         actions = {
             // Icono de perfil
-            IconButton(onClick = { 
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
-                onProfileClick() 
-            }) {
+            IconButton(onClick = { onProfileClick() }) {
                 Icon(
                     imageVector = Icons.Default.Face, // Icono más representativo para perfil
                     contentDescription = "Ver Perfil",
@@ -536,14 +503,7 @@ private fun ProfesorDashboardTopBar(
             }
             
             // Botón de cerrar sesión
-            IconButton(onClick = { 
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
-                onLogoutClick() 
-            }) {
+            IconButton(onClick = { onLogoutClick() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                     contentDescription = "Cerrar sesión",
@@ -595,11 +555,7 @@ fun ProfesorDashboardContent(
             icono = Icons.AutoMirrored.Filled.ListAlt,
             color = ProfesorColor,
             onClick = { 
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
+                haptic.performHapticFeedbackSafely()
                 onRegistroDiarioClick()
             }
         )
@@ -611,11 +567,7 @@ fun ProfesorDashboardContent(
             icono = Icons.AutoMirrored.Filled.Chat,
             color = ProfesorColor,
             onClick = { 
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
+                haptic.performHapticFeedbackSafely()
                 navController.navigate(AppScreens.UnifiedInbox.route)
             }
         ),
@@ -625,11 +577,7 @@ fun ProfesorDashboardContent(
             icono = Icons.AutoMirrored.Filled.SpeakerNotes,
             color = ProfesorColor,
             onClick = { 
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
+                haptic.performHapticFeedbackSafely()
                 navController.navigate(AppScreens.NewMessage.createRoute())
             }
         )
@@ -641,11 +589,7 @@ fun ProfesorDashboardContent(
             icono = Icons.Default.ChildCare,
             color = ProfesorColor,
             onClick = { 
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
+                haptic.performHapticFeedbackSafely()
                 onMisAlumnosClick()
             }
         ),
@@ -655,11 +599,7 @@ fun ProfesorDashboardContent(
             icono = Icons.Default.CalendarMonth,
             color = ProfesorColor,
             onClick = { 
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
+                haptic.performHapticFeedbackSafely()
                 onCalendarioClick()
             }
         )
@@ -697,11 +637,7 @@ fun ProfesorDashboardContent(
                         icono = Icons.AutoMirrored.Filled.ListAlt,
                         color = ProfesorColor,
                         onClick = {
-                            try {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error al realizar feedback háptico")
-                            }
+                            haptic.performHapticFeedbackSafely()
                             navController.navigate(AppScreens.ListadoPreRegistroDiario.route)
                         },
                         modifier = Modifier.weight(1f)
@@ -714,11 +650,7 @@ fun ProfesorDashboardContent(
                         icono = Icons.Default.History,
                         color = ProfesorColor,
                         onClick = {
-                            try {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error al realizar feedback háptico")
-                            }
+                            haptic.performHapticFeedbackSafely()
                             navController.navigate(AppScreens.HistoricoRegistroDiario.route)
                         },
                         modifier = Modifier.weight(1f)
@@ -805,7 +737,7 @@ fun ProfesorDashboardContent(
                          alumno = alumno,
                          onClick = {
                              try {
-                                 navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.id))
+                                 navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.dni))
                                  Timber.d("Navegando a Detalle de Alumno: ${alumno.nombre}")
                              } catch (e: Exception) {
                                  Timber.e(e, "Error al navegar a Detalle de Alumno: ${alumno.nombre}")
@@ -962,11 +894,6 @@ private fun AlumnoPendienteCard(
             }
             Button(
                 onClick = {
-                    try {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al realizar feedback háptico")
-                    }
                     onClick()
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -990,7 +917,7 @@ fun ProfesorDashboardPreview() {
         val previewState = ProfesorDashboardUiState(
             profesorNombre = "Ainhoa Martinez",
             claseInfo = "Infantil 2B - 15 alumnos",
-            alumnosPendientes = List(3) { Alumno(id = "$it", nombre = "Alumno $it") },
+            alumnosPendientes = List(3) { Alumno(dni = "$it", nombre = "Alumno $it") },
             esFestivoHoy = false
         )
         Box(modifier = Modifier.padding(8.dp)) {

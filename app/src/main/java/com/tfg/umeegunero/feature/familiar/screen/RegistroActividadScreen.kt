@@ -33,6 +33,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.tfg.umeegunero.util.performHapticFeedbackSafely
 
 /**
  * Pantalla para que los familiares vean el historial de registros de actividad de sus hijos.
@@ -113,11 +114,7 @@ fun RegistroActividadScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { 
-                                        try {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        } catch (e: Exception) {
-                                            Timber.e(e, "Error al realizar feedback háptico")
-                                        }
+                                        haptic.performHapticFeedbackSafely()
                                         
                                         try {
                                             navController.navigate(AppScreens.DetalleRegistro.createRoute(registro.id))

@@ -46,10 +46,10 @@ object AppColors {
     val PurpleTertiary = Color(0xFF7D5260)
     val PurpleError = Color(0xFFB3261E)
 
-    val PurpleGrey80 = Color(0xFFCCC2DC)
-    val Pink80 = Color(0xFFEFB8C8)
-    val PurpleGrey40 = Color(0xFF625b71)
-    val Pink40 = Color(0xFF7D5260)
+    val PurpleGrey80 = Color(0xFFE6E1F9)
+    val Pink80 = Color(0xFFFFC4D6)
+    val PurpleGrey40 = Color(0xFF938F99)
+    val Pink40 = Color(0xFFD14D72)
     
     // Color faltante
     val Purple200 = Color(0xFFBB86FC)
@@ -57,8 +57,8 @@ object AppColors {
     val White = Color.White
     val Black = Color.Black
     val LightGrey = Color(0xFFF5F5F5)
-    val DarkGrey = Color(0xFF1C1B1F)
-    val NearBlack = Color(0xFF202124) // Un gris muy oscuro para fondos oscuros
+    val DarkGrey = Color(0xFF121212)
+    val NearBlack = Color(0xFF1C1C1E)
 
     // Función para obtener color de usuario
     fun getUserColor(tipo: com.tfg.umeegunero.data.model.TipoUsuario?): Color = when (tipo) {
@@ -79,4 +79,11 @@ object AppColors {
             blue = (hash and 0x0000FF) / 255f
         )
     }
+
+    // Colores específicos para modo oscuro
+    val DarkSurface = Color(0xFF1C1C1E)
+    val DarkBackground = Color(0xFF121212)
+    val DarkPrimary = Color(0xFFBB86FC)    // Color primario más claro para modo oscuro
+    val DarkSecondary = Color(0xFF03DAC6)  // Color secundario más claro para modo oscuro
+    val DarkError = Color(0xFFCF6679)      // Error más visible en modo oscuro
 } 

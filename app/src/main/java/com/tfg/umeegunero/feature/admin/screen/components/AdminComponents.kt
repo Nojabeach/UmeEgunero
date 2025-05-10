@@ -26,6 +26,7 @@ import com.tfg.umeegunero.ui.theme.AdminColor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -37,6 +38,9 @@ import androidx.compose.ui.unit.Dp
 import com.tfg.umeegunero.ui.components.CategoriaCardData
 import androidx.compose.ui.graphics.graphicsLayer
 import timber.log.Timber
+import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.util.performHapticFeedbackSafely
+import androidx.compose.material.icons.filled.Info
 
 @Composable
 fun SectionHeader(
@@ -113,11 +117,7 @@ fun CategoriaCard(
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
+                haptic.performHapticFeedbackSafely()
                 onClick()
             },
         colors = CardDefaults.cardColors(
@@ -207,11 +207,7 @@ fun BotonAccion(
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                try {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al realizar feedback háptico")
-                }
+                haptic.performHapticFeedbackSafely()
                 onClick()
             },
         colors = CardDefaults.cardColors(
@@ -350,21 +346,14 @@ fun DashboardItem(
 
 @Composable
 fun CategoriaCardBienvenida(
-    titulo: String,
-    descripcion: String,
-    icono: ImageVector,
-    color: Color,
-    iconTint: Color,
-    modifier: Modifier = Modifier,
-    borderColor: Color = color,
-    borderWidth: Dp = 1.dp, // Más estrecho que CategoriaCard
-    content: @Composable (() -> Unit)? = null
+    data: CategoriaCardData,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.then(data.modifier),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(borderWidth, borderColor),
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.10f)),
+        border = BorderStroke(1.dp, data.color),
+        colors = CardDefaults.cardColors(containerColor = data.color.copy(alpha = 0.10f)),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
@@ -378,29 +367,28 @@ fun CategoriaCardBienvenida(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = titulo,
+                    text = data.titulo,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = color
+                    color = data.color
                 )
                 Text(
-                    text = descripcion,
+                    text = data.descripcion,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                content?.invoke()
             }
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(color),
+                    .background(data.color),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = icono,
+                    imageVector = data.icono,
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = data.iconTint ?: Color.White,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -408,27 +396,110 @@ fun CategoriaCardBienvenida(
     }
 }
 
-/**
- * Permite crear una CategoriaCardBienvenida directamente desde un objeto CategoriaCardData.
- * Así se facilita la integración y la reutilización en los dashboards.
- */
 @Composable
-fun CategoriaCardBienvenida(
-    data: CategoriaCardData,
-    modifier: Modifier = Modifier,
-    borderColor: Color = data.borderColor ?: data.color,
-    borderWidth: Dp = if (data.borderWidth != Dp.Unspecified) data.borderWidth else 1.dp,
-    content: @Composable (() -> Unit)? = data.extraContent
+fun AdminOptionCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    CategoriaCardBienvenida(
-        titulo = data.titulo,
-        descripcion = data.descripcion,
-        icono = data.icono,
-        color = data.color,
-        iconTint = data.iconTint ?: Color.White,
-        modifier = modifier.then(data.modifier),
-        borderColor = borderColor,
-        borderWidth = borderWidth,
-        content = content
-    )
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = color,
+                modifier = Modifier.size(32.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Ir a $title",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlumnoPendienteCard(
+    alumno: Alumno,
+    onClick: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "${alumno.nombre} sin registro hoy",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+            Button(
+                onClick = {
+                    haptic.performHapticFeedbackSafely()
+                    onClick()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text("Registrar", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
 } 
