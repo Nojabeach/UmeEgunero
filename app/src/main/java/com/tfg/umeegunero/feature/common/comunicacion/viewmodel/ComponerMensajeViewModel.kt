@@ -6,7 +6,7 @@ import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.TipoDestinatario
 import com.tfg.umeegunero.data.model.Usuario
-import com.tfg.umeegunero.data.repository.MensajeRepository
+import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import com.tfg.umeegunero.data.model.toEntity
 
 /**
  * Estado para la pantalla de componer mensaje
@@ -43,7 +44,7 @@ data class ComponerMensajeUiState(
  */
 @HiltViewModel
 class ComponerMensajeViewModel @Inject constructor(
-    private val mensajeRepository: MensajeRepository,
+    private val chatRepository: ChatRepository,
     private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
     
@@ -340,7 +341,7 @@ class ComponerMensajeViewModel @Inject constructor(
                             respuestaA = state.mensajeRespuesta?.id
                         )
                         
-                        mensajeRepository.enviarMensaje(mensaje)
+                        chatRepository.enviarMensaje(mensaje.toEntity())
                     }
                     TipoDestinatario.GRUPO -> {
                         // Enviar un mensaje a cada destinatario
@@ -358,7 +359,7 @@ class ComponerMensajeViewModel @Inject constructor(
                                 respuestaA = state.mensajeRespuesta?.id
                             )
                             
-                            mensajeRepository.enviarMensaje(mensaje)
+                            chatRepository.enviarMensaje(mensaje.toEntity())
                         }
                     }
                     TipoDestinatario.CLASE, TipoDestinatario.CENTRO -> {

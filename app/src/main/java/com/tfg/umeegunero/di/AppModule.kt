@@ -91,21 +91,6 @@ object AppModule {
     fun provideConversacionDao(database: AppDatabase): ConversacionDao {
         return database.conversacionDao()
     }
-    
-    /**
-     * Proporciona el repositorio de chat.
-     */
-    @Provides
-    @Singleton
-    fun provideChatRepository(
-        chatMensajeDao: ChatMensajeDao,
-        conversacionDao: ConversacionDao,
-        firestore: FirebaseFirestore,
-        storage: FirebaseStorage,
-        authRepository: AuthRepository
-    ): ChatRepository {
-        return ChatRepository(chatMensajeDao, conversacionDao, firestore, storage, authRepository)
-    }
 }
 
 @Module

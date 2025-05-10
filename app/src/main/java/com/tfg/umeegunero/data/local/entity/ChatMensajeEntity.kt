@@ -23,5 +23,6 @@ data class ChatMensajeEntity(
     val interaccionEstado: String = "NONE",
     val estaTraducido: Boolean = false,
     val textoOriginal: String? = null,
-    val sincronizado: Boolean = false
+    val sincronizado: Boolean = false,
+    val destacado: Boolean = false
 ) 

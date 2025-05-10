@@ -27,6 +27,9 @@ import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.StorageRepository
 import com.tfg.umeegunero.data.repository.EtiquetaRepository
 import com.tfg.umeegunero.network.ImgBBClient
+import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
+import com.tfg.umeegunero.data.local.dao.ConversacionDao
+import com.tfg.umeegunero.data.repository.ChatRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -212,5 +215,28 @@ object RepositoryModule {
     @Singleton
     fun provideEtiquetaRepository(firestore: FirebaseFirestore): EtiquetaRepository {
         return EtiquetaRepository(firestore)
+    }
+
+    /**
+     * Proporciona una instancia del repositorio de chat.
+     * Este repositorio maneja todas las operaciones relacionadas con mensajes y conversaciones.
+     *
+     * @param chatMensajeDao DAO para operaciones con mensajes
+     * @param conversacionDao DAO para operaciones con conversaciones
+     * @param firestore Instancia de FirebaseFirestore
+     * @param storage Instancia de FirebaseStorage
+     * @param authRepository Repositorio de autenticación
+     * @return Instancia de ChatRepository
+     */
+    @Provides
+    @Singleton
+    fun provideChatRepository(
+        chatMensajeDao: ChatMensajeDao,
+        conversacionDao: ConversacionDao,
+        firestore: FirebaseFirestore,
+        storage: FirebaseStorage,
+        authRepository: AuthRepository
+    ): ChatRepository {
+        return ChatRepository(chatMensajeDao, conversacionDao, firestore, storage, authRepository)
     }
 } 

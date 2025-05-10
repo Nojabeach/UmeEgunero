@@ -60,6 +60,22 @@ import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import java.text.SimpleDateFormat
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import android.os.Build
+import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Insights
+import com.tfg.umeegunero.data.model.ActividadReciente
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.lifecycle.ViewModel
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Login
 
 /**
  * Pantalla de estadísticas para el administrador del sistema.
@@ -102,6 +118,46 @@ fun EstadisticasScreen(
     val context = LocalContext.current
     var showUpdateMessage by remember { mutableStateOf(false) }
     
+    // Solicitud de permisos de almacenamiento para Android 9 y anteriores
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permiso concedido, descargar informe
+            viewModel.descargarInforme(context)
+        } else {
+            // Permiso denegado, mostrar mensaje
+            Toast.makeText(
+                context,
+                "Permiso de almacenamiento necesario para descargar informes",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+    
+    // Función para comprobar y solicitar permisos antes de descargar
+    val checkAndRequestPermissions = {
+        // Para Android 10 y superior no necesitamos permisos para descargar
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Ya tenemos el permiso, descargar directamente
+                    viewModel.descargarInforme(context)
+                }
+                else -> {
+                    // Solicitar el permiso
+                    requestPermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }
+        } else {
+            // Android 10+ no necesita permisos para la carpeta de descargas
+            viewModel.descargarInforme(context)
+        }
+    }
+    
     // Estado para mostrar/ocultar el diálogo de selección de período
     val mostrarDialogoPeriodo = remember { mutableStateOf(false) }
     
@@ -117,51 +173,159 @@ fun EstadisticasScreen(
         }
     }
     
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Estadísticas del Sistema") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { mostrarDialogoPeriodo.value = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = "Seleccionar período"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(16.dp)
+            ) {
+                // Resumen General
+                ResumenGeneralCard(
+                    totalCentros = uiState.totalCentros,
+                    totalUsuarios = uiState.totalUsuarios,
+                    nuevosCentros = uiState.nuevosCentros,
+                    nuevosUsuarios = uiState.nuevosProfesores + uiState.nuevosAlumnos + uiState.nuevosFamiliares,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Distribución de Usuarios
+                DistribucionUsuariosCard(
+                    profesores = uiState.totalProfesores,
+                    alumnos = uiState.totalAlumnos,
+                    familiares = uiState.totalFamiliares,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Actividad Reciente
+                ActividadRecienteCard(
+                    actividades = uiState.actividadesRecientes,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Botones de Acción
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = { viewModel.generarInforme() },
+                        enabled = !uiState.isLoading
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Generar Informe")
+                    }
+                    
+                    Button(
+                        onClick = { checkAndRequestPermissions() },
+                        enabled = uiState.informeGenerado && !uiState.isLoading
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Descargar")
+                    }
+                }
+            }
+            
+            // Indicador de carga
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            
+            // Mensaje de actualización
+            AnimatedVisibility(
+                visible = showUpdateMessage,
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut()
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Datos actualizados: ${uiState.fechaActualizacion}",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+    }
+    
     // Diálogo de selección de período
     if (mostrarDialogoPeriodo.value) {
         AlertDialog(
             onDismissRequest = { mostrarDialogoPeriodo.value = false },
-            title = { Text("Seleccionar período") },
+            title = { Text("Seleccionar Período") },
             text = {
                 Column {
-                    Text(
-                        "Elige el período para el que quieres ver las estadísticas",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    
                     periodos.forEach { periodo ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    // Llamar al método correspondiente del viewModel
-                                    when (periodo) {
-                                        "Última semana" -> viewModel.cargarEstadisticasPorPeriodo(7)
-                                        "Último mes" -> viewModel.cargarEstadisticasPorPeriodo(30)
-                                        "Último trimestre" -> viewModel.cargarEstadisticasPorPeriodo(90)
-                                        "Último año" -> viewModel.cargarEstadisticasPorPeriodo(365)
-                                        else -> viewModel.cargarEstadisticas()
-                                    }
-                                    mostrarDialogoPeriodo.value = false
-                                    Toast.makeText(context, "Cargando estadísticas para: $periodo", Toast.LENGTH_SHORT).show()
+                        TextButton(
+                            onClick = {
+                                when (periodo) {
+                                    "Última semana" -> viewModel.cargarEstadisticasPorPeriodo(7)
+                                    "Último mes" -> viewModel.cargarEstadisticasPorPeriodo(30)
+                                    "Último trimestre" -> viewModel.cargarEstadisticasPorPeriodo(90)
+                                    "Último año" -> viewModel.cargarEstadisticasPorPeriodo(365)
+                                    "Todo" -> viewModel.cargarEstadisticas()
                                 }
-                                .padding(vertical = 12.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                mostrarDialogoPeriodo.value = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
-                            Text(
-                                text = periodo,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            Text(periodo)
                         }
                     }
                 }
@@ -174,430 +338,18 @@ fun EstadisticasScreen(
         )
     }
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Estadísticas del Sistema") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { mostrarDialogoPeriodo.value = true },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = "Seleccionar Período",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
+    // Mostrar mensajes de éxito o error
+    LaunchedEffect(uiState.informeGenerado, uiState.informeDescargado, uiState.error) {
+        if (uiState.informeGenerado) {
+            Toast.makeText(context, "Informe generado correctamente", Toast.LENGTH_SHORT).show()
         }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Cargando estadísticas...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                        .verticalScroll(scrollState),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Sección de resumen
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = "Resumen de Estadísticas",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            FechaActualizacionBadge(fechaActualizacion = uiState.fechaActualizacion)
-                            
-                            Button(
-                                onClick = { 
-                                    viewModel.recargarEstadisticas() 
-                                    Toast.makeText(context, "Actualizando estadísticas...", Toast.LENGTH_SHORT).show()
-                                },
-                                modifier = Modifier.height(32.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Actualizar estadísticas",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                
-                                Spacer(modifier = Modifier.width(4.dp))
-                                
-                                Text(
-                                    text = "Actualizar",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Gráfico de distribución de usuarios
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Distribución de Usuarios",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            
-                            // Calcular porcentajes
-                            val totalUsuarios = uiState.totalUsuarios.coerceAtLeast(1)
-                            val porcentajeProfesores = (uiState.totalProfesores.toFloat() / totalUsuarios) * 100
-                            val porcentajeAlumnos = (uiState.totalAlumnos.toFloat() / totalUsuarios) * 100
-                            val porcentajeFamiliares = (uiState.totalFamiliares.toFloat() / totalUsuarios) * 100
-                            
-                            // Barras de distribución
-                            UserTypeBar(
-                                label = "Profesores",
-                                count = uiState.totalProfesores,
-                                percentage = porcentajeProfesores,
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            UserTypeBar(
-                                label = "Alumnos",
-                                count = uiState.totalAlumnos,
-                                percentage = porcentajeAlumnos,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            UserTypeBar(
-                                label = "Familiares",
-                                count = uiState.totalFamiliares,
-                                percentage = porcentajeFamiliares,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                    }
-                    
-                    // Mostrar tarjetas de resumen
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        StatCard(
-                            title = "Centros",
-                            value = uiState.totalCentros.toString(),
-                            icon = Icons.Default.Business,
-                            color = MaterialTheme.colorScheme.primary,
-                            trend = if (uiState.nuevosCentros > 0) "+" else "",
-                            trendValue = if (uiState.nuevosCentros > 0) uiState.nuevosCentros.toString() else "",
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        StatCard(
-                            title = "Usuarios",
-                            value = uiState.totalUsuarios.toString(),
-                            icon = Icons.Default.Group,
-                            color = MaterialTheme.colorScheme.secondary,
-                            trend = if (uiState.nuevosProfesores + uiState.nuevosAlumnos + uiState.nuevosFamiliares > 0) "+" else "",
-                            trendValue = if (uiState.nuevosProfesores + uiState.nuevosAlumnos + uiState.nuevosFamiliares > 0) 
-                                (uiState.nuevosProfesores + uiState.nuevosAlumnos + uiState.nuevosFamiliares).toString() else "",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        StatCard(
-                            title = "Profesores",
-                            value = uiState.totalProfesores.toString(),
-                            icon = Icons.Default.School,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            trend = if (uiState.nuevosProfesores > 0) "+" else "",
-                            trendValue = if (uiState.nuevosProfesores > 0) uiState.nuevosProfesores.toString() else "",
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        StatCard(
-                            title = "Alumnos",
-                            value = uiState.totalAlumnos.toString(),
-                            icon = Icons.Default.Person,
-                            color = MaterialTheme.colorScheme.error,
-                            trend = if (uiState.nuevosAlumnos > 0) "+" else "",
-                            trendValue = if (uiState.nuevosAlumnos > 0) uiState.nuevosAlumnos.toString() else "",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    
-                    // Sección de actividad
-                    Text(
-                        text = "Actividad Reciente",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                    )
-                    
-                    Card(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Nuevos registros (últimos 7 días)",
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                
-                                IconButton(
-                                    onClick = { 
-                                        viewModel.recargarEstadisticas() 
-                                        Toast.makeText(context, "Actualizando datos recientes...", Toast.LENGTH_SHORT).show()
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = "Actualizar estadísticas",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant
-                            )
-                            
-                            ActivityItem(
-                                title = "Nuevos centros",
-                                value = uiState.nuevosCentros,
-                                trend = if (uiState.nuevosCentros > 0) "↑" else "→",
-                                trendColor = if (uiState.nuevosCentros > 0) Color.Green else Color.Gray
-                            )
-                            
-                            ActivityItem(
-                                title = "Nuevos profesores",
-                                value = uiState.nuevosProfesores,
-                                trend = if (uiState.nuevosProfesores > 0) "↑" else "→",
-                                trendColor = if (uiState.nuevosProfesores > 0) Color.Green else Color.Gray
-                            )
-                            
-                            ActivityItem(
-                                title = "Nuevos alumnos",
-                                value = uiState.nuevosAlumnos,
-                                trend = if (uiState.nuevosAlumnos > 0) "↑" else "→",
-                                trendColor = if (uiState.nuevosAlumnos > 0) Color.Green else Color.Gray
-                            )
-                            
-                            ActivityItem(
-                                title = "Nuevos familiares",
-                                value = uiState.nuevosFamiliares,
-                                trend = if (uiState.nuevosFamiliares > 0) "↑" else "→",
-                                trendColor = if (uiState.nuevosFamiliares > 0) Color.Green else Color.Gray
-                            )
-                        }
-                    }
-                    
-                    // Sección de acciones
-                    Text(
-                        text = "Acciones Rápidas",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                    
-                    Text(
-                        text = "Estas acciones te permiten generar informes detallados y exportar los datos del sistema para su análisis externo",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                ActionButton(
-                                    text = "Informe Detallado",
-                                    icon = Icons.Default.Assessment,
-                                    description = "Genera un informe completo con todos los datos del sistema",
-                                    onClick = { viewModel.generarInforme() },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                
-                                ActionButton(
-                                    text = "Exportar Datos",
-                                    icon = Icons.Default.Download,
-                                    description = "Exporta los datos en formato CSV para análisis",
-                                    onClick = { viewModel.exportarDatos() },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                    
-                    if (uiState.informeGenerado) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    
-                                    Text(
-                                        text = "Informe Generado",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = "El informe ha sido generado correctamente y está disponible para su descarga.",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Button(
-                                    onClick = { viewModel.descargarInforme() },
-                                    modifier = Modifier.align(Alignment.End)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.FileDownload,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Descargar")
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Espacio adicional al final
-                    Spacer(modifier = Modifier.height(80.dp))
-                }
-            }
-            
-            // Mensaje de actualización
-            AnimatedVisibility(
-                visible = showUpdateMessage,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Estadísticas actualizadas correctamente",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-            }
+        
+        if (uiState.informeDescargado) {
+            Toast.makeText(context, "Informe descargado a la carpeta Descargas", Toast.LENGTH_SHORT).show()
+        }
+        
+        if (uiState.error.isNotEmpty()) {
+            Toast.makeText(context, uiState.error, Toast.LENGTH_LONG).show()
         }
     }
 }
@@ -959,5 +711,336 @@ fun IndicadorProgressPreview() {
                 fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+
+@Composable
+fun ActividadRecienteCard(
+    actividades: List<ActividadReciente>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Actividad Reciente",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            if (actividades.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No hay actividad reciente",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                Column {
+                    actividades.forEach { actividad ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = when (actividad.tipo) {
+                                    "LOGIN" -> Icons.AutoMirrored.Filled.Login
+                                    "REGISTRO" -> Icons.Default.PersonAdd
+                                    "ASISTENCIA" -> Icons.Default.CheckCircle
+                                    "MENSAJE" -> Icons.AutoMirrored.Filled.Message
+                                    else -> Icons.Default.Info
+                                },
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = actividad.descripcion,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES")).format(actividad.fecha),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        if (actividad != actividades.lastOrNull()) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tarjeta que muestra el resumen general de estadísticas
+ */
+@Composable
+fun ResumenGeneralCard(
+    totalCentros: Int,
+    totalUsuarios: Int,
+    nuevosCentros: Int,
+    nuevosUsuarios: Int,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Resumen General",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Icon(
+                    imageVector = Icons.Default.Insights,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Business,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    
+                    Text(
+                        text = totalCentros.toString(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Text(
+                        text = "Centros",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    if (nuevosCentros > 0) {
+                        Text(
+                            text = "+$nuevosCentros",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+                
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Group,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    
+                    Text(
+                        text = totalUsuarios.toString(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Text(
+                        text = "Usuarios",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    if (nuevosUsuarios > 0) {
+                        Text(
+                            text = "+$nuevosUsuarios",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tarjeta que muestra la distribución de usuarios
+ */
+@Composable
+fun DistribucionUsuariosCard(
+    profesores: Int,
+    alumnos: Int,
+    familiares: Int,
+    modifier: Modifier = Modifier
+) {
+    val totalUsuarios = profesores + alumnos + familiares
+    
+    // Calcular porcentajes
+    val porcentajeProfesores = if (totalUsuarios > 0) (profesores.toFloat() / totalUsuarios) * 100 else 0f
+    val porcentajeAlumnos = if (totalUsuarios > 0) (alumnos.toFloat() / totalUsuarios) * 100 else 0f
+    val porcentajeFamiliares = if (totalUsuarios > 0) (familiares.toFloat() / totalUsuarios) * 100 else 0f
+    
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Distribución de Usuarios",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Icon(
+                    imageVector = Icons.Default.PieChart,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Barra de profesores
+            BarraProgreso(
+                label = "Profesores",
+                valor = profesores,
+                porcentaje = porcentajeProfesores,
+                color = MaterialTheme.colorScheme.tertiary
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Barra de alumnos
+            BarraProgreso(
+                label = "Alumnos",
+                valor = alumnos,
+                porcentaje = porcentajeAlumnos,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Barra de familiares
+            BarraProgreso(
+                label = "Familiares",
+                valor = familiares,
+                porcentaje = porcentajeFamiliares,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
+    }
+}
+
+/**
+ * Barra de progreso para representar un valor y su porcentaje
+ */
+@Composable
+fun BarraProgreso(
+    label: String,
+    valor: Int,
+    porcentaje: Float,
+    color: Color
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Text(
+                text = "$valor (${porcentaje.toInt()}%)",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        LinearProgressIndicator(
+            progress = { porcentaje / 100f },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp)),
+            color = color,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     }
 } 

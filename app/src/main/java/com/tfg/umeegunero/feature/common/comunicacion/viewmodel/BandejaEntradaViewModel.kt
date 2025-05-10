@@ -3,8 +3,9 @@ package com.tfg.umeegunero.feature.common.comunicacion.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Mensaje
-import com.tfg.umeegunero.data.repository.MensajeRepository
+import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.model.toMensaje
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,7 +45,7 @@ enum class TipoBandeja {
  */
 @HiltViewModel
 class BandejaEntradaViewModel @Inject constructor(
-    private val mensajeRepository: MensajeRepository,
+    private val chatRepository: ChatRepository,
     private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
     
@@ -74,40 +75,15 @@ class BandejaEntradaViewModel @Inject constructor(
             
             when (_uiState.value.bandejaActiva) {
                 TipoBandeja.RECIBIDOS -> {
-                    mensajeRepository.getMensajesRecibidos(usuarioId!!).collect { mensajes ->
-                        _uiState.update { 
-                            it.copy(
-                                mensajes = mensajes,
-                                mensajesFiltrados = filtrarMensajes(mensajes, it.busqueda),
-                                cargando = false,
-                                error = null
-                            ) 
-                        }
-                    }
+                    cargarMensajesRecibidos(usuarioId!!)
                 }
                 TipoBandeja.ENVIADOS -> {
-                    mensajeRepository.getMensajesEnviados(usuarioId!!).collect { mensajes ->
-                        _uiState.update { 
-                            it.copy(
-                                mensajes = mensajes,
-                                mensajesFiltrados = filtrarMensajes(mensajes, it.busqueda),
-                                cargando = false,
-                                error = null
-                            ) 
-                        }
-                    }
+                    // TODO: Implementar carga de mensajes enviados usando ChatRepository
+                    _uiState.update { it.copy(mensajes = emptyList(), mensajesFiltrados = emptyList(), cargando = false) }
                 }
                 TipoBandeja.DESTACADOS -> {
-                    mensajeRepository.getMensajesDestacados(usuarioId!!).collect { mensajes ->
-                        _uiState.update { 
-                            it.copy(
-                                mensajes = mensajes,
-                                mensajesFiltrados = filtrarMensajes(mensajes, it.busqueda),
-                                cargando = false,
-                                error = null
-                            ) 
-                        }
-                    }
+                    // TODO: Implementar carga de mensajes destacados usando ChatRepository
+                    _uiState.update { it.copy(mensajes = emptyList(), mensajesFiltrados = emptyList(), cargando = false) }
                 }
             }
         }
@@ -156,7 +132,7 @@ class BandejaEntradaViewModel @Inject constructor(
             if (!mensaje.leido && _uiState.value.bandejaActiva == TipoBandeja.RECIBIDOS) {
                 try {
                     // Marcar mensaje como leído
-                    mensajeRepository.toggleMensajeDestacado(mensaje.id, mensaje.destacado)
+                    toggleMensajeDestacado(mensaje)
                     
                     // Actualizar UI inmediatamente
                     _uiState.update { state ->
@@ -195,7 +171,7 @@ class BandejaEntradaViewModel @Inject constructor(
     fun toggleDestacado(mensaje: Mensaje) {
         viewModelScope.launch {
             try {
-                mensajeRepository.toggleMensajeDestacado(mensaje.id, !mensaje.destacado)
+                toggleMensajeDestacado(mensaje)
             } catch (e: Exception) {
                 Timber.e(e, "Error al actualizar estado destacado del mensaje")
                 _uiState.update { it.copy(error = "Error al actualizar estado destacado") }
@@ -235,7 +211,7 @@ class BandejaEntradaViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                mensajeRepository.eliminarMensaje(mensaje.id)
+                eliminarMensaje(mensaje)
                 _uiState.update { 
                     it.copy(
                         mensajeParaEliminar = null,
@@ -260,5 +236,32 @@ class BandejaEntradaViewModel @Inject constructor(
      */
     fun limpiarError() {
         _uiState.update { it.copy(error = null) }
+    }
+    
+    fun cargarMensajesRecibidos(usuarioId: String) {
+        viewModelScope.launch {
+            val mensajesEntity = chatRepository.getMensajesByConversacionId(usuarioId)
+            val mensajes = mensajesEntity.map { it.toMensaje() }
+            _uiState.update {
+                it.copy(
+                    mensajes = mensajes,
+                    mensajesFiltrados = filtrarMensajes(mensajes, it.busqueda),
+                    cargando = false,
+                    error = null
+                )
+            }
+        }
+    }
+    
+    fun toggleMensajeDestacado(mensaje: Mensaje) {
+        viewModelScope.launch {
+            chatRepository.toggleMensajeDestacado(mensaje.id, !mensaje.destacado)
+        }
+    }
+    
+    fun eliminarMensaje(mensaje: Mensaje) {
+        viewModelScope.launch {
+            chatRepository.eliminarMensaje(mensaje.id)
+        }
     }
 } 

@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import androidx.room.Delete
 import com.tfg.umeegunero.data.local.entity.ChatMensajeEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -36,6 +37,12 @@ interface ChatMensajeDao {
     suspend fun updateMensaje(mensaje: ChatMensajeEntity)
     
     /**
+     * Elimina un mensaje.
+     */
+    @Delete
+    suspend fun deleteMensaje(mensaje: ChatMensajeEntity)
+    
+    /**
      * Obtiene un mensaje específico por su ID.
      */
     @Query("SELECT * FROM chat_mensajes WHERE id = :mensajeId")
@@ -61,44 +68,26 @@ interface ChatMensajeDao {
     suspend fun marcarComoLeido(mensajeId: String, timestamp: Long)
     
     /**
-     * Marca todos los mensajes de una conversación como leídos.
+     * Obtiene el número de mensajes no leídos para un usuario en una conversación.
+     */
+    @Query("SELECT COUNT(*) FROM chat_mensajes WHERE conversacionId = :conversacionId AND receptorId = :usuarioId AND leido = 0")
+    suspend fun getMensajesNoLeidos(conversacionId: String, usuarioId: String): Int
+    
+    /**
+     * Marca todos los mensajes de una conversación como leídos para un usuario.
      */
     @Query("UPDATE chat_mensajes SET leido = 1, fechaLeido = :timestamp WHERE conversacionId = :conversacionId AND receptorId = :usuarioId AND leido = 0")
     suspend fun marcarTodosComoLeidos(conversacionId: String, usuarioId: String, timestamp: Long)
     
     /**
-     * Obtiene el número de mensajes no leídos de todas las conversaciones para un usuario.
-     */
-    @Query("SELECT COUNT(*) FROM chat_mensajes WHERE receptorId = :usuarioId AND leido = 0")
-    fun getMensajesNoLeidosCount(usuarioId: String): Flow<Int>
-    
-    /**
-     * Obtiene el número de mensajes no leídos para una conversación específica.
-     */
-    @Query("SELECT COUNT(*) FROM chat_mensajes WHERE conversacionId = :conversacionId AND receptorId = :usuarioId AND leido = 0")
-    fun getMensajesNoLeidosCountPorConversacion(conversacionId: String, usuarioId: String): Flow<Int>
-    
-    /**
-     * Actualiza el estado de interacción de un mensaje.
-     */
-    @Query("UPDATE chat_mensajes SET interaccionEstado = :estado WHERE id = :mensajeId")
-    suspend fun actualizarEstadoInteraccion(mensajeId: String, estado: String)
-    
-    /**
      * Elimina todos los mensajes de una conversación.
      */
     @Query("DELETE FROM chat_mensajes WHERE conversacionId = :conversacionId")
-    suspend fun eliminarMensajesDeConversacion(conversacionId: String)
+    suspend fun eliminarMensajesConversacion(conversacionId: String)
     
     /**
-     * Obtiene mensajes que necesitan ser sincronizados.
+     * Obtiene el último mensaje de una conversación.
      */
-    @Query("SELECT * FROM chat_mensajes WHERE sincronizado = 0")
-    suspend fun getMensajesNoSincronizados(): List<ChatMensajeEntity>
-    
-    /**
-     * Marca mensajes como sincronizados.
-     */
-    @Query("UPDATE chat_mensajes SET sincronizado = 1 WHERE id = :mensajeId")
-    suspend fun marcarComoSincronizado(mensajeId: String)
+    @Query("SELECT * FROM chat_mensajes WHERE conversacionId = :conversacionId ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getUltimoMensaje(conversacionId: String): ChatMensajeEntity?
 } 

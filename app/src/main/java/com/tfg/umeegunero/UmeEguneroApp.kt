@@ -45,12 +45,11 @@ class UmeEguneroApp : Application(), Configuration.Provider {
     @Inject
     lateinit var debugUtils: DebugUtils
     
-    override fun getWorkManagerConfiguration(): Configuration {
-        return Configuration.Builder()
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
-    }
 
     override fun onCreate() {
         super.onCreate()

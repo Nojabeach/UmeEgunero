@@ -566,19 +566,6 @@ class ChatProfesorViewModel @Inject constructor(
     }
     
     /**
-     * Actualiza el estado de interacción de un mensaje.
-     */
-    fun actualizarEstadoInteraccion(mensajeId: String, estado: InteractionStatus) {
-        viewModelScope.launch {
-            try {
-                chatRepository.actualizarEstadoInteraccion(mensajeId, estado)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error al actualizar estado de interacción", e)
-            }
-        }
-    }
-    
-    /**
      * Simula cambios en el estado de "typing" del familiar.
      */
     fun simularTyping(isTyping: Boolean) {

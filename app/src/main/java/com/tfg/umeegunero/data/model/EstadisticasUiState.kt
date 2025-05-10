@@ -1,5 +1,7 @@
 package com.tfg.umeegunero.data.model
 
+import java.util.Date
+
 /**
  * Modelo de estado para la pantalla de estadísticas
  */
@@ -15,6 +17,22 @@ data class EstadisticasUiState(
     val nuevosProfesores: Int = 0,
     val nuevosAlumnos: Int = 0,
     val nuevosFamiliares: Int = 0,
+    val nuevosRegistros: Int = 0,
     val informeGenerado: Boolean = false,
-    val fechaActualizacion: String = "No disponible"
+    val informeDescargado: Boolean = false,
+    val informeContenido: String = "",
+    val fechaActualizacion: String = "No disponible",
+    val actividadesRecientes: List<ActividadReciente> = emptyList()
+)
+
+/**
+ * Modelo para representar una actividad reciente en el sistema
+ */
+data class ActividadReciente(
+    val id: String,
+    val tipo: String,
+    val descripcion: String,
+    val fecha: Date,
+    val usuarioId: String,
+    val detalles: String
 ) 

@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import java.io.Serializable
+import com.tfg.umeegunero.data.model.local.MensajeEntity
 
 /**
  * Representa un mensaje en el sistema de comunicación de UmeEgunero.
@@ -140,4 +141,36 @@ enum class TipoDestinatario {
     GRUPO,        // Mensaje a un grupo (ej: todos los profesores de un centro)
     CLASE,        // Mensaje a una clase (ej: todos los alumnos/familias de una clase)
     CENTRO        // Mensaje a todo el centro
+}
+
+fun Mensaje.toEntity(): MensajeEntity {
+    return MensajeEntity(
+        id = id,
+        emisorId = emisorId.ifEmpty { remitente },
+        receptorId = receptorId.ifEmpty { destinatarioId },
+        timestamp = fechaEnvio.seconds * 1000, // Timestamp a millis
+        texto = if (texto.isNotEmpty()) texto else contenido,
+        leido = leido,
+        fechaLeido = fechaLeido?.seconds?.times(1000),
+        conversacionId = conversacionId,
+        alumnoId = alumnoId,
+        tipoAdjunto = tipoMensaje,
+        adjuntos = adjuntos ?: emptyList()
+    )
+}
+
+fun MensajeEntity.toMensaje(): Mensaje {
+    return Mensaje(
+        id = id,
+        emisorId = emisorId,
+        receptorId = receptorId,
+        timestamp = com.google.firebase.Timestamp(timestamp / 1000, 0),
+        texto = texto,
+        leido = leido,
+        fechaLeido = fechaLeido?.let { com.google.firebase.Timestamp(it / 1000, 0) },
+        conversacionId = conversacionId,
+        alumnoId = alumnoId,
+        tipoMensaje = tipoAdjunto ?: "TEXTO",
+        adjuntos = adjuntos
+    )
 } 

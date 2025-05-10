@@ -298,43 +298,70 @@ class ChatRepository @Inject constructor(
     }
     
     /**
-     * Marca un mensaje como leído.
+     * Marca un mensaje como leído
      */
-    suspend fun marcarMensajeComoLeido(mensajeId: String): Result<Unit> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val timestamp = System.currentTimeMillis()
-                
-                // Actualizar en Room
-                chatMensajeDao.marcarComoLeido(mensajeId, timestamp)
-                
-                // Obtener mensaje para conocer la conversación
-                val mensaje = chatMensajeDao.getMensajeById(mensajeId)
-                mensaje?.let {
-                    // Actualizar contadores
-                    if (it.receptorId == it.conversacionId) {
-                        conversacionDao.resetearNoLeidosP1(it.conversacionId, it.receptorId)
-                    } else {
-                        conversacionDao.resetearNoLeidosP2(it.conversacionId, it.receptorId)
-                    }
-                    
-                    // Actualizar en Firestore
-                    val updateMap = mapOf(
+    suspend fun marcarMensajeComoLeido(mensajeId: String) {
+        try {
+            // Actualizar en Room
+            chatMensajeDao.marcarComoLeido(mensajeId, System.currentTimeMillis())
+            
+            // Actualizar en Firestore
+            firestore.collection("mensajes")
+                .document(mensajeId)
+                .update(
+                    mapOf(
                         "leido" to true,
-                        "fechaLeido" to Timestamp(java.util.Date(timestamp))
+                        "fechaLeido" to Timestamp.now()
                     )
-                    
-                    firestore.collection("mensajes")
-                        .document(mensajeId)
-                        .update(updateMap)
-                        .await()
-                }
-                
-                Result.Success(Unit)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error al marcar mensaje como leído", e)
-                Result.Error(Exception(e.message ?: "Error al marcar mensaje como leído"))
+                )
+                .await()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al marcar mensaje como leído: $mensajeId")
+            throw e
+        }
+    }
+    
+    /**
+     * Cambia el estado destacado de un mensaje
+     */
+    suspend fun toggleMensajeDestacado(mensajeId: String, destacado: Boolean) {
+        try {
+            // Actualizar en Room
+            val mensaje = chatMensajeDao.getMensajeById(mensajeId)
+            mensaje?.let {
+                chatMensajeDao.updateMensaje(it.copy(destacado = destacado))
             }
+            
+            // Actualizar en Firestore
+            firestore.collection("mensajes")
+                .document(mensajeId)
+                .update("destacado", destacado)
+                .await()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cambiar estado destacado del mensaje: $mensajeId")
+            throw e
+        }
+    }
+    
+    /**
+     * Elimina un mensaje
+     */
+    suspend fun eliminarMensaje(mensajeId: String) {
+        try {
+            // Eliminar en Room
+            val mensaje = chatMensajeDao.getMensajeById(mensajeId)
+            mensaje?.let {
+                chatMensajeDao.deleteMensaje(it)
+            }
+            
+            // Eliminar en Firestore
+            firestore.collection("mensajes")
+                .document(mensajeId)
+                .delete()
+                .await()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar mensaje: $mensajeId")
+            throw e
         }
     }
     
@@ -390,21 +417,6 @@ class ChatRepository @Inject constructor(
     }
     
     /**
-     * Actualiza el estado de interacción de un mensaje.
-     */
-    suspend fun actualizarEstadoInteraccion(mensajeId: String, estado: InteractionStatus): Result<Unit> {
-        return withContext(Dispatchers.IO) {
-            try {
-                chatMensajeDao.actualizarEstadoInteraccion(mensajeId, estado.name)
-                Result.Success(Unit)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error al actualizar estado de interacción", e)
-                Result.Error(Exception(e.message ?: "Error al actualizar estado de interacción"))
-            }
-        }
-    }
-    
-    /**
      * Desactiva una conversación.
      */
     suspend fun desactivarConversacion(conversacionId: String): Result<Unit> {
@@ -437,46 +449,11 @@ class ChatRepository @Inject constructor(
     suspend fun sincronizarConversaciones() {
         withContext(Dispatchers.IO) {
             try {
-                // Sincronizar mensajes no sincronizados a Firestore
-                val mensajesNoSincronizados = chatMensajeDao.getMensajesNoSincronizados()
-                
-                if (mensajesNoSincronizados.isNotEmpty()) {
-                    val batch = firestore.batch()
-                    
-                    mensajesNoSincronizados.forEach { mensaje ->
-                        val mensajeRef = firestore.collection("mensajes").document(mensaje.id)
-                        
-                        val mensajeMap = mapOf(
-                            "id" to mensaje.id,
-                            "emisorId" to mensaje.emisorId,
-                            "receptorId" to mensaje.receptorId,
-                            "timestamp" to Timestamp(java.util.Date(mensaje.timestamp)),
-                            "texto" to mensaje.texto,
-                            "leido" to mensaje.leido,
-                            "fechaLeido" to mensaje.fechaLeido?.let { Timestamp(java.util.Date(it)) },
-                            "conversacionId" to mensaje.conversacionId,
-                            "tipoAdjunto" to mensaje.tipoAdjunto,
-                            "urlAdjunto" to mensaje.urlAdjunto
-                        )
-                        
-                        batch.set(mensajeRef, mensajeMap)
-                        
-                        // Marcar como sincronizado
-                        chatMensajeDao.marcarComoSincronizado(mensaje.id)
-                    }
-                    
-                    batch.commit().await()
-                }
-                
-                // Sincronizar conversaciones no sincronizadas a Firestore
                 val conversacionesNoSincronizadas = conversacionDao.getConversacionesNoSincronizadas()
-                
                 if (conversacionesNoSincronizadas.isNotEmpty()) {
                     val batch = firestore.batch()
-                    
                     conversacionesNoSincronizadas.forEach { conversacion ->
                         val conversacionRef = firestore.collection("conversaciones").document(conversacion.id)
-                        
                         val conversacionMap = mapOf(
                             "id" to conversacion.id,
                             "participante1Id" to conversacion.participante1Id,
@@ -488,76 +465,13 @@ class ChatRepository @Inject constructor(
                             "alumnoId" to conversacion.alumnoId,
                             "activa" to conversacion.activa
                         )
-                        
                         batch.set(conversacionRef, conversacionMap)
-                        
-                        // Marcar como sincronizada
                         conversacionDao.marcarComoSincronizada(conversacion.id)
                     }
-                    
                     batch.commit().await()
-                }
-                
-                // Traer nuevos mensajes de Firestore
-                firestore.collection("mensajes")
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .limit(50) // Limitar la cantidad de mensajes por vez
-                    .get()
-                    .await()
-                    .documents.forEach { doc ->
-                        val data = doc.data
-                        data?.let {
-                            val entity = ChatMensajeEntity(
-                                id = doc.id,
-                                emisorId = it["emisorId"] as String? ?: "",
-                                receptorId = it["receptorId"] as String? ?: "",
-                                timestamp = (it["timestamp"] as? Timestamp)?.toDate()?.time ?: System.currentTimeMillis(),
-                                texto = it["texto"] as String? ?: "",
-                                leido = it["leido"] as Boolean? ?: false,
-                                fechaLeido = (it["fechaLeido"] as? Timestamp)?.toDate()?.time,
-                                conversacionId = it["conversacionId"] as String? ?: "",
-                                alumnoId = it["alumnoId"] as String?,
-                                tipoAdjunto = it["tipoAdjunto"] as String?,
-                                urlAdjunto = it["urlAdjunto"] as String?,
-                                sincronizado = true
-                            )
-                            chatMensajeDao.insertMensaje(entity)
-                        }
-                    }
-                
-                // Actualizar contadores de no leídos
-                val conversaciones = conversacionDao.getConversacionesNoSincronizadas()
-                conversaciones.forEach { conversacion ->
-                    // Contar mensajes no leídos para participante1
-                    val noLeidosP1 = firestore.collection("mensajes")
-                        .whereEqualTo("conversacionId", conversacion.id)
-                        .whereEqualTo("receptorId", conversacion.participante1Id)
-                        .whereEqualTo("leido", false)
-                        .get()
-                        .await()
-                        .documents.size
-                    
-                    // Contar mensajes no leídos para participante2
-                    val noLeidosP2 = firestore.collection("mensajes")
-                        .whereEqualTo("conversacionId", conversacion.id)
-                        .whereEqualTo("receptorId", conversacion.participante2Id)
-                        .whereEqualTo("leido", false)
-                        .get()
-                        .await()
-                        .documents.size
-                    
-                    // Actualizar en Room
-                    conversacionDao.actualizarContadorNoLeidos(
-                        conversacionId = conversacion.id, 
-                        usuarioId = conversacion.participante1Id, 
-                        contador = noLeidosP1
-                    )
-                    
-                    conversacionDao.actualizarContadorNoLeidos(
-                        conversacionId = conversacion.id, 
-                        usuarioId = conversacion.participante2Id, 
-                        contador = noLeidosP2
-                    )
+                } else {
+                    // No hay conversaciones para sincronizar
+                    Timber.d("No hay conversaciones para sincronizar")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error al sincronizar conversaciones", e)

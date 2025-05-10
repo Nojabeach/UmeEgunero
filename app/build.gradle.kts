@@ -6,22 +6,20 @@ plugins {
     id("kotlin-parcelize")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.23"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22"
 }
 
-// Añadir esta configuración para que Gradle no rastree el estado de las tareas de Hilt
+// Configuración para evitar deprecaciones
 tasks.withType<JavaCompile>().configureEach {
     options.isFork = true
     options.isIncremental = false
+    options.compilerArgs.addAll(listOf("-Xlint:deprecation"))
 }
 
-// Actualizar la configuración para evitar deprecaciones
 configurations.all {
-    // Reemplazar uso de fileCollection con artifactView
     resolutionStrategy {
-        // Forzar versiones coherentes para las dependencias
-        force("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
-        force("org.jetbrains.kotlin:kotlin-stdlib-common:1.9.0")
+        force("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
+        force("org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22")
     }
 }
 
@@ -122,20 +120,20 @@ android {
 
 dependencies {
     // Core Android libraries
-    implementation("androidx.core:core-ktx:1.10.1")
+    implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
-    implementation("androidx.activity:activity-compose:1.7.2")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.1")
-    implementation("androidx.navigation:navigation-compose:2.7.0")
-    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     
     // Material Design
-    implementation("com.google.android.material:material:1.9.0")
+    implementation("com.google.android.material:material:1.11.0")
     
     // Compose BOM (Bill of Materials)
-    val composeBom = platform("androidx.compose:compose-bom:2023.10.01")
+    val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
     
@@ -146,15 +144,15 @@ dependencies {
     
     // Material 3
     implementation("androidx.compose.material3:material3:1.2.0")
-    implementation("androidx.compose.material:material:1.6.0")
-    implementation("androidx.compose.material:material-icons-extended:1.6.0")
+    implementation("androidx.compose.material:material:1.6.1")
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
     
     // Compose Runtime
-    implementation("androidx.compose.runtime:runtime:1.5.4")
-    implementation("androidx.compose.runtime:runtime-livedata:1.5.4")
-    implementation("androidx.compose.runtime:runtime-rxjava2:1.5.4")
-    implementation("androidx.compose.foundation:foundation:1.5.4")
-    implementation("androidx.compose.animation:animation:1.5.4")
+    implementation("androidx.compose.runtime:runtime:1.6.1")
+    implementation("androidx.compose.runtime:runtime-livedata:1.6.1")
+    implementation("androidx.compose.runtime:runtime-rxjava2:1.6.1")
+    implementation("androidx.compose.foundation:foundation:1.6.1")
+    implementation("androidx.compose.animation:animation:1.6.1")
     
     // Ktor Client
     implementation("io.ktor:ktor-client-core:2.3.10")
@@ -195,11 +193,11 @@ dependencies {
     kapt("com.google.dagger:hilt-android-compiler:2.48")
     
     // Anotación para Hilt Work Manager
-    implementation("androidx.hilt:hilt-work:1.0.0")
-    kapt("androidx.hilt:hilt-compiler:1.0.0")
+    implementation("androidx.hilt:hilt-work:1.1.0")
+    kapt("androidx.hilt:hilt-compiler:1.1.0")
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
     implementation("com.google.firebase:firebase-analytics-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
@@ -215,72 +213,42 @@ dependencies {
     // Retrofit and Network
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.11.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     
     // GSon para serialización
     implementation("com.google.code.gson:gson:2.10.1")
     
     // Maps & Location
-    implementation("com.google.maps.android:maps-compose:2.11.4")
-    implementation("com.google.android.gms:play-services-maps:18.1.0")
-    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.maps.android:maps-compose:2.15.0")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-location:21.1.0")
     
     // Work Manager
-    implementation("androidx.work:work-runtime-ktx:2.8.1")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
     
     // Timber para logging
     implementation("com.jakewharton.timber:timber:5.0.1")
     
     // Paging 3
-    implementation("androidx.paging:paging-runtime-ktx:3.2.0")
-    implementation("androidx.paging:paging-compose:3.2.0")
+    implementation("androidx.paging:paging-runtime-ktx:3.2.1")
+    implementation("androidx.paging:paging-compose:3.2.1")
 
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     
     // ExoPlayer
-    implementation("androidx.media3:media3-exoplayer:1.2.0")
-    implementation("androidx.media3:media3-exoplayer-dash:1.2.0")
-    implementation("androidx.media3:media3-ui:1.2.0")
+    implementation("androidx.media3:media3-exoplayer:1.2.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.2.1")
+    implementation("androidx.media3:media3-ui:1.2.1")
     
     // ThreeTenABP para compatibilidad Java 8 Time API en API < 26
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
     
     // Accompanist
-    implementation("com.google.accompanist:accompanist-pager:0.32.0")
-    implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
-    
-    // Core y Activity (para enableEdgeToEdge)
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.activity:activity-ktx:1.8.2")
-    implementation("androidx.activity:activity-compose:1.8.2")
 
-    // Testing
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.mockito:mockito-core:5.10.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-    testImplementation("androidx.arch.core:core-testing:2.2.0")
-    testImplementation("app.cash.turbine:turbine:1.0.0")
-    testImplementation("io.mockk:mockk:1.13.9")
-    testImplementation("com.google.truth:truth:1.4.1")
-    
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
-
-    // Lifecycle Service
+    // LifecycleService
     implementation("androidx.lifecycle:lifecycle-service:2.7.0")
-
-    // Dependencias para exportación de datos
-    implementation("com.itextpdf:itext7-core:7.2.5")
-    implementation("org.apache.poi:poi:5.2.3")
-    implementation("org.apache.poi:poi-ooxml:5.2.3")
-    implementation("org.apache.commons:commons-csv:1.10.0")
-
-    // Dependencias de Google Play Services
-    implementation("com.google.android.gms:play-services-auth:21.1.1")
 }

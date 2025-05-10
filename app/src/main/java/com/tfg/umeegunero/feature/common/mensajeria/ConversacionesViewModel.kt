@@ -7,7 +7,6 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.ChatRepository
-import com.tfg.umeegunero.data.repository.MensajeRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,10 +53,9 @@ data class ConversacionesUiState(
  */
 @HiltViewModel
 class ConversacionesViewModel @Inject constructor(
-    private val mensajeRepository: MensajeRepository,
+    private val chatRepository: ChatRepository,
     private val usuarioRepository: UsuarioRepository,
-    private val alumnoRepository: AlumnoRepository,
-    private val chatRepository: ChatRepository
+    private val alumnoRepository: AlumnoRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ConversacionesUiState())
@@ -302,51 +300,25 @@ class ConversacionesViewModel @Inject constructor(
      */
     fun marcarConversacionComoLeida(conversacionId: String) {
         viewModelScope.launch {
-            try {
-                mensajeRepository.marcarConversacionComoLeida(conversacionId)
-                
-                // Actualizar estado local
-                val conversacionesActualizadas = _uiState.value.conversaciones.map { conversacion ->
-                    if (conversacion.id == conversacionId) {
-                        conversacion.copy(mensajesNoLeidos = 0)
-                    } else {
-                        conversacion
-                    }
-                }
-                
-                _uiState.update { it.copy(conversaciones = conversacionesActualizadas) }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error al marcar conversación como leída: ${e.message}"
-                    )
-                }
-            }
+            chatRepository.marcarTodosComoLeidos(conversacionId, /*usuarioId*/ "")
         }
     }
     
     /**
      * Crear una nueva conversación
      */
-    fun crearConversacion(participanteId: String, alumnoId: String? = null) {
+    fun crearConversacion(participanteId: String, nombreParticipante: String) {
         viewModelScope.launch {
-            try {
-                val usuario = _uiState.value.usuario ?: throw Exception("Usuario no disponible")
-                
-                val conversacionId = mensajeRepository.crearConversacion(
-                    usuarioId = usuario.dni,
-                    participanteId = participanteId,
-                    alumnoId = alumnoId
+            val usuario = _uiState.value.usuario
+            if (usuario != null) {
+                chatRepository.getOrCreateConversacion(
+                    usuario1Id = usuario.dni,
+                    usuario2Id = participanteId,
+                    nombreUsuario1 = usuario.nombre,
+                    nombreUsuario2 = nombreParticipante
                 )
-                
-                // Recargar conversaciones para incluir la nueva
-                cargarConversaciones()
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error al crear conversación: ${e.message}"
-                    )
-                }
+            } else {
+                // TODO: Manejar el caso en que no hay usuario actual
             }
         }
     }
@@ -356,22 +328,7 @@ class ConversacionesViewModel @Inject constructor(
      */
     fun eliminarConversacion(conversacionId: String) {
         viewModelScope.launch {
-            try {
-                mensajeRepository.eliminarConversacion(conversacionId)
-                
-                // Actualizar estado local
-                val conversacionesActualizadas = _uiState.value.conversaciones.filter { 
-                    it.id != conversacionId 
-                }
-                
-                _uiState.update { it.copy(conversaciones = conversacionesActualizadas) }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error al eliminar conversación: ${e.message}"
-                    )
-                }
-            }
+            chatRepository.desactivarConversacion(conversacionId)
         }
     }
     

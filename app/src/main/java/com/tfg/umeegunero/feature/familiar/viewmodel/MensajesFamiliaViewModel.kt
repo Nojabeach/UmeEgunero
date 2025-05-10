@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.repository.MensajeRepository
+import com.tfg.umeegunero.data.repository.ChatRepository
+import com.tfg.umeegunero.data.model.toMensaje
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MensajesFamiliaViewModel @Inject constructor(
-    private val mensajeRepository: MensajeRepository,
+    private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -36,12 +37,17 @@ class MensajesFamiliaViewModel @Inject constructor(
             try {
                 val usuarioActual = authRepository.getUsuarioActual()
                 if (usuarioActual != null) {
-                    val mensajes = mensajeRepository.getMensajesForUsuario(usuarioActual.dni)
-                    _uiState.update { it.copy(
-                        mensajes = mensajes.filterNotNull(),
-                        isLoading = false,
-                        error = null
-                    ) }
+                    val conversaciones = chatRepository.getConversaciones(usuarioActual.dni)
+                    conversaciones.collect { conversacionesList ->
+                        val mensajes = conversacionesList.flatMap { conversacion ->
+                            chatRepository.getMensajesByConversacionId(conversacion.id).map { it.toMensaje() }
+                        }
+                        _uiState.update { it.copy(
+                            mensajes = mensajes,
+                            isLoading = false,
+                            error = null
+                        ) }
+                    }
                 } else {
                     _uiState.update { it.copy(
                         isLoading = false,
@@ -67,19 +73,16 @@ class MensajesFamiliaViewModel @Inject constructor(
                 try {
                     val usuarioActual = authRepository.getUsuarioActual()
                     if (usuarioActual != null) {
-                        val mensajeActualizado = mensajeRepository.marcarMensajeComoLeido(
-                            mensajeId = mensaje.id,
-                            usuarioDni = usuarioActual.dni
-                        )
+                        chatRepository.marcarMensajeComoLeido(mensaje.id)
                         
                         // Actualizamos la lista de mensajes
                         _uiState.update { 
                             val mensajesActualizados = it.mensajes.map { m ->
-                                if (m.id == mensaje.id) mensajeActualizado ?: m else m
+                                if (m.id == mensaje.id) m.copy(leido = true) else m
                             }
                             it.copy(
                                 mensajes = mensajesActualizados,
-                                mensajeSeleccionado = mensajeActualizado
+                                mensajeSeleccionado = mensaje.copy(leido = true)
                             )
                         }
                     }
@@ -114,21 +117,17 @@ class MensajesFamiliaViewModel @Inject constructor(
                 val usuarioActual = authRepository.getUsuarioActual()
                 if (usuarioActual != null) {
                     val nuevoEstado = !mensaje.destacado
-                    val mensajeActualizado = mensajeRepository.toggleMensajeDestacado(
-                        mensajeId = mensaje.id,
-                        usuarioDni = usuarioActual.dni,
-                        destacado = nuevoEstado
-                    )
+                    chatRepository.toggleMensajeDestacado(mensaje.id, nuevoEstado)
                     
                     // Actualizamos la lista de mensajes
                     _uiState.update { 
                         val mensajesActualizados = it.mensajes.map { m ->
-                            if (m.id == mensaje.id) mensajeActualizado ?: m else m
+                            if (m.id == mensaje.id) m.copy(destacado = nuevoEstado) else m
                         }
                         it.copy(
                             mensajes = mensajesActualizados,
                             mensajeSeleccionado = if (it.mensajeSeleccionado?.id == mensaje.id) 
-                                mensajeActualizado else it.mensajeSeleccionado
+                                it.mensajeSeleccionado.copy(destacado = nuevoEstado) else it.mensajeSeleccionado
                         )
                     }
                 }
@@ -164,32 +163,22 @@ class MensajesFamiliaViewModel @Inject constructor(
             try {
                 val usuarioActual = authRepository.getUsuarioActual()
                 if (usuarioActual != null) {
-                    val exito = mensajeRepository.eliminarMensaje(
-                        mensajeId = mensajeParaEliminar.id,
-                        usuarioDni = usuarioActual.dni
-                    )
+                    chatRepository.eliminarMensaje(mensajeParaEliminar.id)
                     
-                    if (exito) {
-                        // Actualizamos la lista de mensajes
-                        _uiState.update { 
-                            val mensajesActualizados = it.mensajes.filter { m ->
-                                m.id != mensajeParaEliminar.id
-                            }
-                            it.copy(
-                                mensajes = mensajesActualizados,
-                                mensajeParaEliminar = null,
-                                // Si el mensaje eliminado era el seleccionado, cerramos el detalle
-                                mostrarDetalle = if (it.mensajeSeleccionado?.id == mensajeParaEliminar.id) 
-                                    false else it.mostrarDetalle,
-                                mensajeSeleccionado = if (it.mensajeSeleccionado?.id == mensajeParaEliminar.id) 
-                                    null else it.mensajeSeleccionado
-                            )
+                    // Actualizamos la lista de mensajes
+                    _uiState.update { 
+                        val mensajesActualizados = it.mensajes.filter { m ->
+                            m.id != mensajeParaEliminar.id
                         }
-                    } else {
-                        _uiState.update { it.copy(
-                            error = "No se ha podido eliminar el mensaje",
-                            mensajeParaEliminar = null
-                        ) }
+                        it.copy(
+                            mensajes = mensajesActualizados,
+                            mensajeParaEliminar = null,
+                            // Si el mensaje eliminado era el seleccionado, cerramos el detalle
+                            mostrarDetalle = if (it.mensajeSeleccionado?.id == mensajeParaEliminar.id) 
+                                false else it.mostrarDetalle,
+                            mensajeSeleccionado = if (it.mensajeSeleccionado?.id == mensajeParaEliminar.id) 
+                                null else it.mensajeSeleccionado
+                        )
                     }
                 }
             } catch (e: Exception) {
