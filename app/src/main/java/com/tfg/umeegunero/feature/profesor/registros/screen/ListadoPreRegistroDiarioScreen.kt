@@ -96,7 +96,7 @@ fun ListadoPreRegistroDiarioScreen(
     LaunchedEffect(profesorId) {
         if (!profesorId.isNullOrEmpty()) {
             Timber.d("Profesor ID recibido: $profesorId")
-            viewModel.setProfessorId(profesorId)
+            viewModel.setProfesorId(profesorId)
         }
     }
     
@@ -118,7 +118,24 @@ fun ListadoPreRegistroDiarioScreen(
         if (uiState.navegarARegistroDiario && uiState.alumnosSeleccionados.isNotEmpty()) {
             val alumnosIds = uiState.alumnosSeleccionados.joinToString(",") { it.id }
             val fecha = uiState.fechaSeleccionada.toString()
-            navController.navigate(AppScreens.RegistroDiarioProfesor.createRouteWithParams(alumnosIds, fecha))
+            // Log detallado ANTES de navegar
+            Timber.d("ListadoPreRegistroDiarioScreen: Intentando navegar a RegistroDiarioProfesor.")
+            Timber.d("ListadoPreRegistroDiarioScreen: alumnosSeleccionados: ${uiState.alumnosSeleccionados.map { "ID: " + it.id + " Nombre: " + it.nombre }}")
+            Timber.d("ListadoPreRegistroDiarioScreen: alumnosIds para la ruta: '$alumnosIds'")
+            Timber.d("ListadoPreRegistroDiarioScreen: fecha para la ruta: '$fecha'")
+
+            if (alumnosIds.isBlank()) {
+                Timber.e("ListadoPreRegistroDiarioScreen: alumnosIds está vacío. No se puede navegar. Revisar lógica de selección o IDs de alumnos.")
+                // Podrías mostrar un Snackbar de error aquí
+                viewModel.limpiarError() // Limpia cualquier error anterior
+                viewModel.mostrarError("No se pudo iniciar el registro: ID de alumno no válido.")
+                viewModel.resetearNavegacion() // Resetea el flag de navegación
+                return@LaunchedEffect // No navegar
+            }
+
+            val route = AppScreens.RegistroDiarioProfesor.createRouteWithParams(alumnosIds, fecha)
+            Timber.d("ListadoPreRegistroDiarioScreen: Ruta construida: '$route'")
+            navController.navigate(route)
             viewModel.resetearNavegacion()
         }
     }

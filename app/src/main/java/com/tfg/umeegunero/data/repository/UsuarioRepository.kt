@@ -521,33 +521,51 @@ open class UsuarioRepository @Inject constructor(
      */
     suspend fun getAlumnosByClase(claseId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
         try {
+            Timber.d("UsuarioRepository: Iniciando getAlumnosByClase para claseId: $claseId") // Log de inicio
             // Primero obtenemos la clase para tener la lista de IDs de alumnos
             val claseDoc = clasesCollection.document(claseId).get().await()
 
             if (!claseDoc.exists()) {
+                Timber.w("UsuarioRepository: La clase con ID '$claseId' no existe.")
                 return@withContext Result.Error(Exception("La clase no existe"))
             }
 
             val clase = claseDoc.toObject(Clase::class.java)
             val alumnoIds = clase?.alumnosIds ?: emptyList()
+            Timber.d("UsuarioRepository: IDs de alumnos en clase '$claseId': $alumnoIds")
+
 
             if (alumnoIds.isEmpty()) {
+                Timber.d("UsuarioRepository: No hay IDs de alumno en la clase '$claseId'. Retornando lista vacía.")
                 return@withContext Result.Success(emptyList())
             }
 
             // Obtenemos los datos de cada alumno
             val alumnos = mutableListOf<Alumno>()
 
-            for (alumnoId in alumnoIds) {
-                val alumnoDoc = alumnosCollection.document(alumnoId).get().await()
+            for (alumnoIdInList in alumnoIds) { // Renombrada la variable para evitar confusión
+                Timber.d("UsuarioRepository: Buscando alumno con ID/DNI: '$alumnoIdInList' (desde alumnosIds de la clase '$claseId')")
+                // Asumimos que alumnoIdInList es el DNI que se usa como ID del documento en la colección 'alumnos'
+                val alumnoDoc = alumnosCollection.document(alumnoIdInList).get().await()
                 if (alumnoDoc.exists()) {
                     val alumno = alumnoDoc.toObject(Alumno::class.java)
-                    alumno?.let { alumnos.add(it) }
+                    if (alumno != null) {
+                        // Asignar el DNI (que es el ID del documento) al campo 'id' del objeto Alumno
+                        val alumnoConIdCorrecto = alumno.copy(id = alumnoDoc.id) 
+                        // Log detallado del alumno recuperado
+                        Timber.d("UsuarioRepository: Alumno encontrado: ID='${alumnoConIdCorrecto.id}', Nombre='${alumnoConIdCorrecto.nombre}', Apellidos='${alumnoConIdCorrecto.apellidos}', Presente='${alumnoConIdCorrecto.presente}', DNI (del objeto)='${alumnoConIdCorrecto.dni}'")
+                        alumnos.add(alumnoConIdCorrecto)
+                    } else {
+                        Timber.w("UsuarioRepository: Alumno con ID '${alumnoDoc.id}' encontrado pero no se pudo convertir a objeto Alumno.")
+                    }
+                } else {
+                    Timber.w("UsuarioRepository: No se encontró alumno con ID/DNI: '$alumnoIdInList' en la colección 'alumnos' (listado en clase '$claseId').")
                 }
             }
-
+            Timber.d("UsuarioRepository: Total de alumnos recuperados para clase '$claseId': ${alumnos.size}")
             return@withContext Result.Success(alumnos)
         } catch (e: Exception) {
+            Timber.e(e, "UsuarioRepository: Error en getAlumnosByClase para claseId: $claseId")
             return@withContext Result.Error(e)
         }
     }
@@ -2529,6 +2547,51 @@ open class UsuarioRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al buscar usuarios por perfil: $tipo")
             return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Registra el último acceso del usuario actual en la base de datos.
+     * Actualiza el campo 'ultimoAcceso' con la fecha y hora actuales.
+     * 
+     * @return Resultado que indica éxito o error en la operación
+     */
+    suspend fun registrarUltimoAcceso(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Obtener el usuario actual de Firebase Auth
+            val firebaseUser = firebaseAuth.currentUser
+            if (firebaseUser == null) {
+                Timber.e("No hay usuario autenticado para registrar último acceso")
+                return@withContext Result.Error(Exception("No hay usuario autenticado"))
+            }
+            
+            // Buscar el documento del usuario en Firestore por email
+            val email = firebaseUser.email
+            if (email.isNullOrEmpty()) {
+                Timber.e("El usuario autenticado no tiene email")
+                return@withContext Result.Error(Exception("Usuario sin email"))
+            }
+            
+            val userQuery = usuariosCollection
+                .whereEqualTo("email", email)
+                .limit(1)
+                .get()
+                .await()
+            
+            if (userQuery.isEmpty) {
+                Timber.e("No se encontró usuario en Firestore con email: $email")
+                return@withContext Result.Error(Exception("Usuario no encontrado en la base de datos"))
+            }
+            
+            // Actualizar último acceso
+            val userDoc = userQuery.documents.first()
+            userDoc.reference.update("ultimoAcceso", Timestamp.now()).await()
+            
+            Timber.d("Último acceso actualizado para usuario: ${userDoc.id}")
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al registrar último acceso: ${e.message}")
+            Result.Error(e)
         }
     }
 }

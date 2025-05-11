@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -234,20 +236,11 @@ fun MessageListScreen(
                         }
                     }
                     else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = paddingValues
-                        ) {
-                            items(uiState.filteredMessages) { message ->
-                                MessageItem(
-                                    message = message,
-                                    onClick = { 
-                                        navController.navigate(AppScreens.MessageDetail.createRoute(message.id))
-                                    }
-                                )
-                            }
-                        }
+                        MessageList(
+                            messages = uiState.filteredMessages,
+                            navController = navController,
+                            paddingValues = paddingValues
+                        )
                     }
                 }
             }
@@ -266,16 +259,11 @@ fun MessageItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
+            .clickable {
+                onClick()
+            },
         shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (message.status == MessageStatus.UNREAD) 
-                MaterialTheme.colorScheme.surfaceVariant 
-            else 
-                MaterialTheme.colorScheme.surface
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -283,37 +271,38 @@ fun MessageItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Indicador de prioridad
+            // Indicador de estado en forma circular
             Box(
                 modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
+                    .size(12.dp)
                     .background(
-                        when (message.priority) {
-                            MessagePriority.HIGH -> MaterialTheme.colorScheme.primary
-                            MessagePriority.URGENT -> MaterialTheme.colorScheme.error
-                            else -> Color.Transparent
-                        }
+                        when (message.status) {
+                            MessageStatus.UNREAD -> MaterialTheme.colorScheme.primary
+                            MessageStatus.READ -> Color.Transparent
+                            MessageStatus.PENDING -> MaterialTheme.colorScheme.secondary
+                            MessageStatus.DELIVERED -> MaterialTheme.colorScheme.secondary
+                            MessageStatus.FAILED -> MaterialTheme.colorScheme.error
+                        },
+                        shape = CircleShape
+                    )
+                    .then(
+                        if (message.status == MessageStatus.READ || 
+                            message.status == MessageStatus.DELIVERED || 
+                            message.status == MessageStatus.PENDING) {
+                            Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                        } else Modifier
                     )
             )
             
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             
-            // Icono según tipo de mensaje
+            // Icono según el tipo de mensaje
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
                     .background(
-                        when (message.type) {
-                            MessageType.NOTIFICATION -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                            MessageType.CHAT -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-                            MessageType.ANNOUNCEMENT -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
-                            MessageType.INCIDENT -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                            MessageType.ATTENDANCE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                            MessageType.DAILY_RECORD -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-                            MessageType.SYSTEM -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-                        }
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -346,47 +335,50 @@ fun MessageItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // Remitente y fecha
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = message.senderName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (message.status == MessageStatus.UNREAD) FontWeight.Bold else FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    Text(
-                        text = formatDate(message.timestamp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                // Título
                 Text(
-                    text = message.title,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = message.title.ifEmpty { 
+                        when (message.type) {
+                            MessageType.NOTIFICATION -> "Notificación"
+                            MessageType.CHAT -> "Mensaje de chat"
+                            MessageType.ANNOUNCEMENT -> "Comunicado"
+                            MessageType.INCIDENT -> "Incidencia"
+                            MessageType.ATTENDANCE -> "Asistencia"
+                            MessageType.DAILY_RECORD -> "Registro diario"
+                            MessageType.SYSTEM -> "Mensaje del sistema"
+                        }
+                    },
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (message.status == MessageStatus.UNREAD) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                // Contenido
                 Text(
                     text = message.content,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = formatDate(message.timestamp.toDate()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+            
+            if (message.priority == MessagePriority.HIGH) {
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Icon(
+                    imageVector = Icons.Default.ErrorOutline,
+                    contentDescription = "Alta prioridad",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -396,8 +388,7 @@ fun MessageItem(
 /**
  * Formatea la fecha para mostrarla
  */
-private fun formatDate(timestamp: Timestamp): String {
-    val date = timestamp.toDate()
+private fun formatDate(date: Date): String {
     val now = Date()
     val diffMillis = now.time - date.time
     val diffHours = diffMillis / (1000 * 60 * 60)
@@ -413,6 +404,37 @@ private fun formatDate(timestamp: Timestamp): String {
         }
         else -> {
             SimpleDateFormat("dd/MM/yy", Locale.getDefault()).format(date)
+        }
+    }
+}
+
+/**
+ * Lista de mensajes
+ */
+@Composable
+fun MessageList(
+    messages: List<UnifiedMessage>,
+    navController: NavController,
+    paddingValues: PaddingValues
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = paddingValues
+    ) {
+        items(messages) { message ->
+            MessageItem(
+                message = message,
+                onClick = { 
+                    if (message.type == MessageType.CHAT && message.conversationId.isNotEmpty()) {
+                        // Navegar a ChatScreen para mensajes de chat
+                        navController.navigate("chat/${message.conversationId}/${message.senderId}")
+                    } else {
+                        // Navegar a MessageDetail para otros tipos de mensaje
+                        navController.navigate(AppScreens.MessageDetail.createRoute(message.id))
+                    }
+                }
+            )
         }
     }
 } 

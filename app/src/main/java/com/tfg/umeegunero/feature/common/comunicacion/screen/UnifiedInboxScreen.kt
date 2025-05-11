@@ -118,86 +118,97 @@ fun UnifiedInboxScreen(
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Sistema de Comunicación Unificado") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showFilterMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filtrar"
-                        )
-                    }
-                    
-                    DropdownMenu(
-                        expanded = showFilterMenu,
-                        onDismissRequest = { showFilterMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Todos") },
-                            onClick = {
-                                viewModel.filterByType(null)
-                                showFilterMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Incidencias") },
-                            onClick = {
-                                viewModel.filterByType(MessageType.INCIDENT)
-                                showFilterMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Comunicados") },
-                            onClick = {
-                                viewModel.filterByType(MessageType.ANNOUNCEMENT)
-                                showFilterMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Chats") },
-                            onClick = {
-                                viewModel.filterByType(MessageType.CHAT)
-                                showFilterMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Asistencia") },
-                            onClick = {
-                                viewModel.filterByType(MessageType.ATTENDANCE)
-                                showFilterMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Registros diarios") },
-                            onClick = {
-                                viewModel.filterByType(MessageType.DAILY_RECORD)
-                                showFilterMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Notificaciones") },
-                            onClick = {
-                                viewModel.filterByType(MessageType.NOTIFICATION)
-                                showFilterMenu = false
-                            }
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+            Column {
+                TopAppBar(
+                    title = { 
+                        Column {
+                            Text("Sistema de Comunicación Unificado")
+                            Text(
+                                "Centro de mensajes y notificaciones",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Volver"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showFilterMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = "Filtrar"
+                            )
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showFilterMenu,
+                            onDismissRequest = { showFilterMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Todos") },
+                                onClick = {
+                                    viewModel.filterByType(null)
+                                    showFilterMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Incidencias") },
+                                onClick = {
+                                    viewModel.filterByType(MessageType.INCIDENT)
+                                    showFilterMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Comunicados") },
+                                onClick = {
+                                    viewModel.filterByType(MessageType.ANNOUNCEMENT)
+                                    showFilterMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Chats") },
+                                onClick = {
+                                    viewModel.filterByType(MessageType.CHAT)
+                                    showFilterMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Asistencia") },
+                                onClick = {
+                                    viewModel.filterByType(MessageType.ATTENDANCE)
+                                    showFilterMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Registros diarios") },
+                                onClick = {
+                                    viewModel.filterByType(MessageType.DAILY_RECORD)
+                                    showFilterMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Notificaciones") },
+                                onClick = {
+                                    viewModel.filterByType(MessageType.NOTIFICATION)
+                                    showFilterMenu = false
+                                }
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
-            )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(

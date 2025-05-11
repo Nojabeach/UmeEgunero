@@ -58,6 +58,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen
 
 /**
  * Navegación principal de la aplicación
@@ -880,6 +881,19 @@ fun Navigation(
             )
         }
 
+        // Pantalla de Registro Diario para el Profesor
+        composable(
+            route = AppScreens.RegistroDiarioProfesor.route,
+            arguments = AppScreens.RegistroDiarioProfesor.arguments
+        ) { backStackEntry ->
+            val alumnosIds = backStackEntry.arguments?.getString("alumnosIds") ?: ""
+            val fecha = backStackEntry.arguments?.getString("fecha")
+            
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Pantalla Registro Diario Profesor para: $alumnosIds, Fecha: $fecha")
+            }
+        }
+
         composable(route = AppScreens.HistoricoRegistroDiario.route) {
             com.tfg.umeegunero.feature.profesor.registros.screen.HistoricoRegistroDiarioScreen(
                 navController = navController,
@@ -891,6 +905,22 @@ fun Navigation(
             com.tfg.umeegunero.feature.profesor.screen.MisAlumnosProfesorScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantalla de detalle de alumno para profesor
+        composable(
+            route = AppScreens.DetalleAlumnoProfesor.route,
+            arguments = listOf(
+                navArgument("alumnoId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            DetalleAlumnoProfesorScreen(
+                navController = navController,
+                alumnoId = alumnoId
+                // Asume que DetalleAlumnoProfesorScreen tiene un ViewModel que se inyecta con hiltViewModel()
+                // o que no necesita uno explícitamente aquí.
             )
         }
 
@@ -926,6 +956,23 @@ fun Navigation(
         composable(route = AppScreens.NotificacionesFamilia.route) {
             com.tfg.umeegunero.feature.familiar.screen.NotificacionesFamiliaScreen(
                 navController = navController
+            )
+        }
+        
+        // Añadir ruta para pantalla de nuevo mensaje
+        composable(
+            route = AppScreens.NewMessage.route,
+            arguments = AppScreens.NewMessage.arguments
+        ) { backStackEntry ->
+            val receiverId = backStackEntry.arguments?.getString("receiverId")
+            val messageType = backStackEntry.arguments?.getString("messageType")
+            
+            com.tfg.umeegunero.feature.common.comunicacion.screen.NewMessageScreen(
+                receiverId = receiverId,
+                messageType = messageType,
+                onBack = { navController.popBackStack() },
+                onMessageSent = { navController.popBackStack() },
+                viewModel = hiltViewModel()
             )
         }
     }

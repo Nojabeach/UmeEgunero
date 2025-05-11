@@ -28,6 +28,7 @@ import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.HttpsCallableResult
 import com.google.firebase.functions.FirebaseFunctionsException
 import timber.log.Timber
+import com.tfg.umeegunero.data.model.TipoUsuario
 
 // Definir las clases de enumeración que faltan
 enum class Alimentacion {
@@ -86,6 +87,9 @@ data class RegistroDiarioUiState(
     val showSuccessDialog: Boolean = false
 )
 
+/**
+ * ViewModel para la pantalla de registro diario
+ */
 @HiltViewModel
 class RegistroDiarioViewModel @Inject constructor(
     private val registroDiarioRepository: RegistroDiarioRepository,
@@ -103,7 +107,8 @@ class RegistroDiarioViewModel @Inject constructor(
      * Carga un registro diario existente o crea uno nuevo si no existe
      */
     fun cargarRegistroDiario(alumnoId: String, claseId: String, profesorId: String, fecha: Date = Date()) {
-        _uiState.update { it.copy(isLoading = true, error = null, alumnoId = alumnoId, claseId = claseId) }
+        _uiState.update { it.copy(isLoading = true, error = null, alumnoId = alumnoId, claseId = claseId, fechaSeleccionada = fecha) }
+        Timber.d("RegistroDiarioViewModel: Iniciando cargarRegistroDiario. AlumnoID: '$alumnoId', ClaseID (inicial): '$claseId', ProfesorID: '$profesorId', Fecha: $fecha")
         
         viewModelScope.launch {
             try {
@@ -119,26 +124,27 @@ class RegistroDiarioViewModel @Inject constructor(
                         return@launch
                     }
                     
-                    // Intentar obtener el ID del profesor desde la colección de profesores
-                    val profesor = profesorRepository.getProfesorPorUsuarioId(usuario.dni)
-                    if (profesor == null) {
+                    // Intentar obtener el usuario con perfil de profesor desde la colección de usuarios
+                    val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni)
+                    if (usuarioProfesor == null) {
                         Timber.e("No se encontró información de profesor para usuario con DNI: ${usuario.dni}")
                         
                         // Intento alternativo: buscar directamente por DNI
-                        val profesorPorDni = profesorRepository.buscarProfesorPorDni(usuario.dni)
-                        if (profesorPorDni == null) {
+                        val usuarioProfesorPorDni = profesorRepository.getUsuarioProfesorByDni(usuario.dni)
+                        if (usuarioProfesorPorDni == null) {
                             _uiState.update { it.copy(
                                 error = "No se encontró información del profesor. Por favor, contacte al administrador.",
                                 isLoading = false
                             ) }
                             return@launch
                         } else {
-                            profesorIdActual = profesorPorDni.id
-                            Timber.d("Se encontró profesor mediante búsqueda alternativa: ${profesorPorDni.id}")
+                            // Usar el DNI como ID del profesor
+                            profesorIdActual = usuarioProfesorPorDni.dni
+                            Timber.d("Se encontró profesor mediante búsqueda alternativa: ${usuarioProfesorPorDni.dni}")
                         }
                     } else {
-                        profesorIdActual = profesor.id
-                        Timber.d("Profesor identificado normalmente: $profesorIdActual (${profesor.nombre} ${profesor.apellidos})")
+                        profesorIdActual = usuarioProfesor.dni
+                        Timber.d("Profesor identificado normalmente: $profesorIdActual (${usuarioProfesor.nombre} ${usuarioProfesor.apellidos})")
                     }
                 }
                 
@@ -154,18 +160,21 @@ class RegistroDiarioViewModel @Inject constructor(
                 val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
                 if (alumnoResult is Result.Success) {
                     val alumno = alumnoResult.data
+                    // Log ANTES de actualizar el nombre del alumno en el estado
+                    Timber.d("RegistroDiarioViewModel: Alumno recuperado: ID='${alumno.id}', Nombre='${alumno.nombre}', Apellidos='${alumno.apellidos}', Clase (del objeto Alumno)='${alumno.clase}', ClaseId (del objeto Alumno)='${alumno.claseId}'")
                     _uiState.update { it.copy(alumnoNombre = "${alumno.nombre} ${alumno.apellidos}") }
-                    Timber.d("Alumno cargado: ${alumno.nombre} ${alumno.apellidos}")
+                    Timber.d("RegistroDiarioViewModel: AlumnoNombre actualizado en UIState: ${uiState.value.alumnoNombre}")
                 } else {
-                    Timber.e("No se pudo cargar la información del alumno: $alumnoId")
+                    Timber.e("RegistroDiarioViewModel: No se pudo cargar la información del alumno: $alumnoId. Error: ${(alumnoResult as? Result.Error)?.exception?.message ?: "Desconocido"}")
+                    _uiState.update { it.copy(alumnoNombre = "?") } // Indicar que el nombre no se pudo cargar
                 }
                 
                 // Determinar la clase (usar la proporcionada o buscar la del alumno)
                 var claseIdAUsar = claseId
                 if (claseIdAUsar.isEmpty() && alumnoResult is Result.Success) {
                     // Intentar obtener la clase del alumno
-                    claseIdAUsar = alumnoResult.data.clase
-                    Timber.d("Usando claseId del alumno: $claseIdAUsar")
+                    claseIdAUsar = alumnoResult.data.claseId
+                    Timber.d("Usando claseId del alumno (campo claseId): $claseIdAUsar")
                 }
                 
                 // Si aún no tenemos clase, intentar obtenerla del profesor
@@ -180,26 +189,18 @@ class RegistroDiarioViewModel @Inject constructor(
                     val claseResult = claseRepository.getClaseById(claseIdAUsar)
                     if (claseResult is Result.Success) {
                         val clase = claseResult.data
+                        // Log ANTES de actualizar el nombre de la clase en el estado
+                        Timber.d("RegistroDiarioViewModel: Clase recuperada: ID='${clase.id}', Nombre='${clase.nombre}'")
                         _uiState.update { it.copy(claseNombre = clase.nombre, claseId = claseIdAUsar) }
-                        Timber.d("Clase cargada: ${clase.nombre}")
+                        Timber.d("RegistroDiarioViewModel: ClaseNombre actualizado en UIState: ${uiState.value.claseNombre}")
                     } else {
-                        Timber.e("No se pudo cargar la información de la clase: $claseIdAUsar")
+                        Timber.e("RegistroDiarioViewModel: No se pudo cargar la información de la clase: $claseIdAUsar. Error: ${(claseResult as? Result.Error)?.exception?.message ?: "Desconocido"}")
+                        _uiState.update { it.copy(claseNombre = "?") } // Indicar que el nombre de clase no se pudo cargar
                     }
                 } else {
-                    Timber.e("No se pudo determinar la clase del alumno")
-                    
-                    // Cargamos las clases del profesor para seleccionar
-                    val clasesResult = claseRepository.getClasesByProfesor(profesorIdActual)
-                    if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
-                        val primeraClase = clasesResult.data.first()
-                        _uiState.update { 
-                            it.copy(
-                                claseNombre = primeraClase.nombre,
-                                claseId = primeraClase.id
-                            )
-                        }
-                        Timber.d("Se seleccionó automáticamente la primera clase del profesor: ${primeraClase.nombre}")
-                    }
+                    // Este bloque se añadió antes, si claseIdAUsar sigue vacío aquí, es un problema
+                    Timber.w("RegistroDiarioViewModel: claseIdAUsar está vacío después de intentar obtenerla del alumno. No se cargará el nombre de la clase.")
+                    _uiState.update { it.copy(claseNombre = "? (No encontrada)") }
                 }
                 
                 // Obtener o crear el registro diario
@@ -522,5 +523,27 @@ class RegistroDiarioViewModel @Inject constructor(
      */
     fun limpiarError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Obtiene el ID del usuario actual (profesor) y lo devuelve a través de un callback
+     */
+    fun obtenerIdUsuarioActual(callback: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val usuario = authRepository.getCurrentUser()
+                if (usuario != null) {
+                    val profesorId = usuario.dni
+                    Timber.d("ID de usuario actual obtenido: $profesorId")
+                    callback(profesorId)
+                } else {
+                    Timber.e("No se pudo obtener el usuario actual")
+                    callback(null)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener ID del usuario actual")
+                callback(null)
+            }
+        }
     }
 } 

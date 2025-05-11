@@ -202,4 +202,65 @@ class MessageDetailViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Inicia una nueva conversación con el remitente del mensaje
+     */
+    fun startNewConversation(remitentId: String) {
+        viewModelScope.launch {
+            try {
+                // Implementar la navegación a la pantalla de nuevo mensaje
+                // con el remitente preseleccionado
+                Timber.d("Iniciando nueva conversación con remitente: $remitentId")
+                
+                // Esta funcionalidad se completará en la capa de UI
+                // ya que requiere navegación
+            } catch (e: Exception) {
+                Timber.e(e, "Error al iniciar nueva conversación")
+                _uiState.update {
+                    it.copy(error = "Error al iniciar conversación: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Abre un archivo adjunto
+     */
+    fun openAttachment(attachment: Map<String, Any>) {
+        viewModelScope.launch {
+            try {
+                val url = attachment["url"] as? String
+                if (url.isNullOrEmpty()) {
+                    _uiState.update {
+                        it.copy(error = "URL de archivo no válida")
+                    }
+                    return@launch
+                }
+                
+                Timber.d("Abriendo adjunto: $url")
+                
+                // La apertura real del adjunto se hará desde la capa de UI
+                // ya que requiere abrir una aplicación externa o mostrar un visualizador
+                
+            } catch (e: Exception) {
+                Timber.e(e, "Error al abrir adjunto")
+                _uiState.update {
+                    it.copy(error = "Error al abrir adjunto: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Formatea el tamaño de un archivo a una cadena legible
+     */
+    fun formatFileSize(size: Long): String {
+        return when {
+            size < 1024 -> "$size B"
+            size < 1024 * 1024 -> "${size / 1024} KB"
+            size < 1024 * 1024 * 1024 -> "${size / (1024 * 1024)} MB"
+            else -> "${size / (1024 * 1024 * 1024)} GB"
+        }
+    }
 } 

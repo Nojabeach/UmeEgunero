@@ -7,6 +7,7 @@ import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -184,5 +185,67 @@ class UnifiedInboxViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Configura la verificación periódica de nuevos mensajes
+     */
+    fun setupPeriodicMessageCheck() {
+        viewModelScope.launch {
+            while (true) {
+                // Verificar nuevos mensajes cada 60 segundos
+                delay(60000)
+                try {
+                    // Usar un flag para evitar mostrar la UI de carga
+                    refreshMessagesBackground()
+                    Timber.d("Verificación periódica de mensajes completada")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al verificar periódicamente los mensajes")
+                }
+            }
+        }
+    }
+
+    /**
+     * Refresca los mensajes en segundo plano sin mostrar indicadores de carga
+     */
+    private suspend fun refreshMessagesBackground() {
+        try {
+            val currentFilter = _uiState.value.selectedFilter
+            
+            // Adaptar a la API real del repositorio
+            messageRepository.getCurrentUserInbox().collect { result ->
+                when (result) {
+                    is Result.Success -> {
+                        val messages = result.data
+                        // Aplicar filtro si es necesario
+                        val filteredMessages = if (currentFilter != null) {
+                            messages.filter { it.type == currentFilter }
+                        } else {
+                            messages
+                        }
+                        
+                        _uiState.update { it.copy(
+                            messages = messages,
+                            filteredMessages = filteredMessages,
+                            error = null
+                        )}
+                    }
+                    is Result.Error -> {
+                        // No actualizar el estado de error en verificaciones de fondo
+                        Timber.e(result.exception, "Error en verificación de fondo")
+                    }
+                    is Result.Loading -> {
+                        // No hacemos nada en segundo plano con los estados de carga
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error en refreshMessagesBackground")
+        }
+    }
+
+    init {
+        setupPeriodicMessageCheck()
     }
 } 

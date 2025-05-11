@@ -24,6 +24,7 @@ import java.time.LocalDate
 import java.util.Date
 import javax.inject.Inject
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.TipoUsuario
 
 /**
  * Enumeración para los posibles estados de asistencia de un alumno
@@ -52,6 +53,7 @@ enum class Asistencia {
  * @property mensajeExito Mensaje de éxito (si existe)
  * @property isLoading Indica si está cargando datos
  * @property navegarARegistroDiario Indica si debe navegar a la pantalla de registro
+ * @property profesorId ID del profesor (cuando se recibe desde otra pantalla)
  */
 data class ListadoPreRegistroDiarioUiState(
     val alumnos: List<Alumno> = emptyList(),
@@ -67,7 +69,8 @@ data class ListadoPreRegistroDiarioUiState(
     val error: String? = null,
     val mensajeExito: String? = null,
     val isLoading: Boolean = true,
-    val navegarARegistroDiario: Boolean = false
+    val navegarARegistroDiario: Boolean = false,
+    val profesorId: String = ""
 )
 
 /**
@@ -110,9 +113,9 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // Obtener datos del profesor
-                val profesor = profesorRepository.getProfesorPorUsuarioId(usuario.dni)
-                if (profesor == null) {
+                // Obtener datos del profesor (ahora es un objeto Usuario con perfil de PROFESOR)
+                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni)
+                if (usuarioProfesor == null) {
                     _uiState.update { it.copy(
                         error = "No se encontró información del profesor",
                         isLoading = false
@@ -120,8 +123,20 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     return@launch
                 }
                 
+                // Obtener el perfil de profesor y el ID del centro
+                val perfilProfesor = usuarioProfesor.perfiles.firstOrNull { it.tipo == TipoUsuario.PROFESOR }
+                if (perfilProfesor == null) {
+                    _uiState.update { it.copy(
+                        error = "El usuario no tiene perfil de profesor",
+                        isLoading = false
+                    ) }
+                    return@launch
+                }
+                
+                val centroId = perfilProfesor.centroId
+                
                 // Obtener clases asignadas al profesor
-                val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
                 if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
                     _uiState.update { it.copy(
                         error = "No hay clases asignadas a este profesor",
@@ -132,10 +147,11 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 
                 // Por simplicidad, trabajamos con la primera clase
                 val clase = clasesResult.data.first()
+                Timber.d("Llamando a getAlumnosByClase con clase.id: ${clase.id} (nombre: ${clase.nombre})")
                 
-                // Obtener alumnos de la clase
-                val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
+                val alumnosResult = usuarioRepository.getAlumnosByClase(clase.id)
                 val alumnos = if (alumnosResult is Result.Success) alumnosResult.data else emptyList()
+                Timber.d("ListadoPreRegistroDiarioViewModel (cargarDatosPreRegistro): Alumnos recibidos: ${alumnos.joinToString { it.nombre + " (ID: " + it.id + ", DNI: " + it.dni + ", Presente: " + it.presente + ")" }}")
                 
                 // Obtener registros existentes para la fecha actual
                 val fechaActual = _uiState.value.fechaSeleccionada
@@ -226,13 +242,14 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 
                 // Obtener usuario y profesor
                 val usuario = authRepository.getCurrentUser() ?: return@launch
-                val profesor = profesorRepository.getProfesorPorUsuarioId(usuario.dni) ?: return@launch
+                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni) ?: return@launch
                 
                 // Obtener clases del profesor
-                val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
                 if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) return@launch
                 
                 val clase = clasesResult.data.first()
+                Timber.d("Llamando a getAlumnosByClase en seleccionarFecha con clase.id: ${clase.id} (nombre: ${clase.nombre})")
                 
                 // Obtener registros para esta fecha
                 val registros = getRegistrosDiariosPorFechaYClase(
@@ -365,8 +382,8 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     return@launch
                 }
                 
-                val profesor = profesorRepository.getProfesorPorUsuarioId(usuario.dni)
-                if (profesor == null) {
+                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni)
+                if (usuarioProfesor == null) {
                     _uiState.update { it.copy(
                         error = "No se encontró información del profesor",
                         isLoading = false
@@ -375,7 +392,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 }
                 
                 // Obtener clase
-                val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
                 if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
                     _uiState.update { it.copy(
                         error = "No hay clases asignadas a este profesor",
@@ -385,6 +402,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 }
                 
                 val clase = clasesResult.data.first()
+                Timber.d("Llamando a getAlumnosByClase en completarAutomaticamente con clase.id: ${clase.id} (nombre: ${clase.nombre})")
                 
                 // Crear registros automáticos para cada alumno presente
                 val fecha = _uiState.value.fechaSeleccionada.toString()
@@ -399,7 +417,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     val resultado = crearRegistroAutomatico(
                         alumnoId = alumno.id,
                         claseId = clase.id,
-                        profesorId = profesor.id,
+                        profesorId = usuarioProfesor.dni,
                         fecha = fecha
                     )
                     
@@ -483,6 +501,13 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
     }
 
     /**
+     * Muestra un mensaje de error en la UI.
+     */
+    fun mostrarError(mensaje: String) {
+        _uiState.update { it.copy(error = mensaje) }
+    }
+
+    /**
      * Obtiene los registros diarios por fecha y clase
      * Método provisional mientras se completa la implementación en el repositorio
      */
@@ -498,71 +523,81 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
     }
 
     /**
-     * Establece el ID del profesor manualmente 
-     * (útil cuando se navega desde otra pantalla)
+     * Establece el ID del profesor actual
+     * 
+     * @param profesorId ID del profesor
      */
-    fun setProfessorId(profesorId: String) {
+    fun setProfesorId(profesorId: String) {
         Timber.d("Estableciendo profesorId: $profesorId")
+        _uiState.update { it.copy(profesorId = profesorId) }
         
-        // Guardar el ID del profesor para usarlo en las operaciones
+        // Cargar datos con el nuevo profesorId
         viewModelScope.launch {
             try {
-                // Buscar el profesor por su DNI (que suele ser el ID de usuario)
-                val profesor = profesorRepository.getProfesorPorDni(profesorId)
+                _uiState.update { it.copy(isLoading = true) }
                 
-                if (profesor != null) {
-                    Timber.d("Profesor encontrado: ${profesor.nombre}")
-                    
-                    // Cargar datos específicos para este profesor
-                    val clasesResult = claseRepository.getClasesByProfesor(profesor.id)
-                    if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
-                        val clase = clasesResult.data.first()
-                        
-                        // Obtener alumnos de la clase
-                        val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
-                        val alumnos = if (alumnosResult is Result.Success) alumnosResult.data else emptyList()
-                        
-                        // Actualizar el estado con los datos cargados
-                        _uiState.update { 
-                            it.copy(
-                                nombreClase = clase.nombre,
-                                alumnos = alumnos,
-                                alumnosFiltrados = if (it.mostrarSoloPresentes) alumnos.filter { a -> a.presente } else alumnos,
-                                totalAlumnos = alumnos.size,
-                                alumnosPresentes = alumnos.count { a -> a.presente },
-                                isLoading = false
-                            )
-                        }
-                        
-                        // Actualizar registros existentes para la fecha actual
-                        val registros = getRegistrosDiariosPorFechaYClase(
-                            _uiState.value.fechaSeleccionada.toString(),
-                            clase.id
-                        )
-                        
-                        // Actualizar alumnos con registro
-                        val alumnosConRegistro = registros.map { it.alumnoId }.toSet()
-                        _uiState.update { it.copy(alumnosConRegistro = alumnosConRegistro) }
-                    } else {
-                        Timber.e("No se encontraron clases asignadas al profesor")
-                        _uiState.update { 
-                            it.copy(
-                                error = "No se encontraron clases asignadas al profesor",
-                                isLoading = false
-                            )
-                        }
-                    }
-                } else {
-                    Timber.e("No se encontró un profesor con ID: $profesorId")
-                    _uiState.update { 
-                        it.copy(
-                            error = "No se encontró el profesor",
-                            isLoading = false
-                        )
-                    }
+                // Obtener usuario profesor
+                val usuario = usuarioRepository.getUsuarioPorDni(profesorId)
+                if (usuario !is Result.Success || usuario.data == null) {
+                    _uiState.update { it.copy(
+                        error = "No se encontró información del profesor",
+                        isLoading = false
+                    ) }
+                    return@launch
                 }
+                
+                val usuarioProfesor = usuario.data
+                
+                // Verificar que tiene perfil de profesor
+                val perfilProfesor = usuarioProfesor.perfiles.find { perfil -> perfil.tipo == TipoUsuario.PROFESOR }
+                if (perfilProfesor == null) {
+                    _uiState.update { it.copy(
+                        error = "El usuario no tiene perfil de profesor",
+                        isLoading = false
+                    ) }
+                    return@launch
+                }
+                
+                // Obtener clases del profesor
+                val clasesResult = claseRepository.getClasesByProfesor(profesorId)
+                if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
+                    _uiState.update { it.copy(
+                        error = "No hay clases asignadas a este profesor",
+                        isLoading = false
+                    ) }
+                    return@launch
+                }
+                
+                val clase = clasesResult.data.first()
+                Timber.d("Llamando a getAlumnosByClase en setProfesorId con clase.id: ${clase.id} (nombre: ${clase.nombre})")
+                
+                val alumnosResult = usuarioRepository.getAlumnosByClase(clase.id)
+                val alumnos = if (alumnosResult is Result.Success) alumnosResult.data else emptyList()
+                Timber.d("ListadoPreRegistroDiarioViewModel (setProfesorId): Alumnos recibidos: ${alumnos.joinToString { it.nombre + " (ID: " + it.id + ", DNI: " + it.dni + ", Presente: " + it.presente + ")" }}")
+                
+                _uiState.update { 
+                    it.copy(
+                        nombreClase = clase.nombre,
+                        alumnos = alumnos,
+                        alumnosFiltrados = if (it.mostrarSoloPresentes) alumnos.filter { a -> a.presente } else alumnos,
+                        totalAlumnos = alumnos.size,
+                        alumnosPresentes = alumnos.count { a -> a.presente },
+                        isLoading = false
+                    )
+                }
+                
+                // Actualizar registros existentes para la fecha actual
+                val registros = getRegistrosDiariosPorFechaYClase(
+                    _uiState.value.fechaSeleccionada.toString(),
+                    clase.id
+                )
+                
+                // Actualizar alumnos con registro
+                val alumnosConRegistro = registros.map { it.alumnoId }.toSet()
+                _uiState.update { it.copy(alumnosConRegistro = alumnosConRegistro) }
+                
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar datos del profesor con ID: $profesorId")
+                Timber.e(e, "Error al cargar datos del profesor: ${e.message}")
                 _uiState.update { 
                     it.copy(
                         error = "Error al cargar datos del profesor: ${e.message}",

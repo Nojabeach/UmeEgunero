@@ -2,6 +2,7 @@ package com.tfg.umeegunero.feature.common.comunicacion.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Delete
@@ -188,17 +190,35 @@ fun MessageDetailScreen(
                             expanded = showOptions,
                             onDismissRequest = { showOptions = false }
                         ) {
+                            // Añadir opción para iniciar nueva conversación con el remitente
+                            if (uiState.message?.senderId != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Nueva conversación") },
+                                    onClick = {
+                                        viewModel.startNewConversation(uiState.message?.senderId ?: "")
+                                        showOptions = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.Message,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                                HorizontalDivider(thickness = 0.5.dp)
+                            }
+                            
                             DropdownMenuItem(
                                 text = { Text("Marcar como leído") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.MarkEmailRead,
-                                        contentDescription = "Marcar como leído"
-                                    )
-                                },
                                 onClick = {
                                     viewModel.markAsRead()
                                     showOptions = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.MarkEmailRead,
+                                        contentDescription = null
+                                    )
                                 }
                             )
                             
@@ -450,10 +470,91 @@ fun MessageDetailScreen(
                             }
                         }
                         
+                        // Visualización mejorada para adjuntos
+                        if (message.attachments.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            
+                            Text(
+                                text = "Archivos adjuntos",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Lista de adjuntos
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                message.attachments.forEach { attachment ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp)
+                                            .clickable { 
+                                                val url = attachment["url"] as? String
+                                                if (!url.isNullOrEmpty()) {
+                                                    viewModel.openAttachment(attachment) 
+                                                }
+                                            },
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                        )
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AttachFile,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            
+                                            Column(
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text(
+                                                    text = (attachment["name"] as? String) ?: "Archivo adjunto",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                
+                                                val size = (attachment["size"] as? Number)?.toLong()
+                                                if (size != null) {
+                                                    Text(
+                                                        text = formatFileSize(size),
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
                         Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Formatea el tamaño de un archivo a una cadena legible
+ */
+private fun formatFileSize(size: Long): String {
+    return when {
+        size < 1024 -> "$size B"
+        size < 1024 * 1024 -> "${(size / 1024.0).toInt()} KB"
+        size < 1024 * 1024 * 1024 -> "${(size / (1024.0 * 1024.0)).toInt()} MB"
+        else -> "${(size / (1024.0 * 1024.0 * 1024.0)).toInt()} GB"
     }
 } 

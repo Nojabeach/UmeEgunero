@@ -3,6 +3,7 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Familiar
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
@@ -54,9 +55,9 @@ class MisAlumnosProfesorViewModel @Inject constructor(
     }
 
     /**
-     * Carga la lista de alumnos asignados al profesor actual
+     * Carga los alumnos asignados al profesor actual
      */
-    private fun cargarAlumnos() {
+    fun cargarAlumnos() {
         viewModelScope.launch {
             try {
                 _uiState.value = MisAlumnosUiState(isLoading = true)
@@ -73,48 +74,33 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                 
                 Timber.d("Cargando alumnos para usuario con DNI: ${usuario.dni}")
                 
-                // Obtener datos del profesor
-                val profesor = profesorRepository.getProfesorPorUsuarioId(usuario.dni)
-                if (profesor == null) {
-                    Timber.e("No se encontró información de profesor para usuario con DNI: ${usuario.dni}")
-                    
-                    // Intento alternativo: buscar directamente por DNI
-                    val profesorPorDni = profesorRepository.buscarProfesorPorDni(usuario.dni)
-                    if (profesorPorDni == null) {
-                        _uiState.value = MisAlumnosUiState(
-                            isLoading = false,
-                            error = "No se encontró información del profesor. Por favor, contacte al administrador."
-                        )
-                        return@launch
-                    } else {
-                        Timber.d("Se encontró profesor mediante búsqueda alternativa: ${profesorPorDni.id}")
-                    }
-                }
-                
-                // Obtener el profesor, ya sea por el método principal o alternativo
-                val profesorActual = profesor ?: profesorRepository.buscarProfesorPorDni(usuario.dni)
-                if (profesorActual == null) {
+                // Obtener el perfil de profesor del usuario
+                val perfilProfesor = usuario.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
+                if (perfilProfesor == null) {
                     _uiState.value = MisAlumnosUiState(
                         isLoading = false,
-                        error = "No se pudo identificar al profesor"
+                        error = "El usuario no tiene perfil de profesor"
                     )
                     return@launch
                 }
                 
-                Timber.d("Profesor encontrado con ID: ${profesorActual.id}, nombre: ${profesorActual.nombre}")
+                val centroId = perfilProfesor.centroId
+                val profesorId = usuario.dni
+                
+                Timber.d("Profesor identificado. DNI: $profesorId, Centro: $centroId")
                 
                 // Lista para almacenar todos los alumnos
                 val todosLosAlumnos = mutableListOf<Alumno>()
                 var nombreClase = ""
                 
                 // 1. Obtener alumnos donde este profesor es el asignado directamente
-                Timber.d("Buscando alumnos con profesor asignado: ${profesorActual.id}")
-                val alumnosDirectos = alumnoRepository.getAlumnosForProfesor(profesorActual.id)
+                Timber.d("Buscando alumnos con profesor asignado: $profesorId")
+                val alumnosDirectos = alumnoRepository.getAlumnosForProfesor(profesorId)
                 todosLosAlumnos.addAll(alumnosDirectos)
                 Timber.d("Encontrados ${alumnosDirectos.size} alumnos asignados directamente")
                 
                 // 2. Obtener clases asignadas al profesor
-                val clasesResult = claseRepository.getClasesByProfesor(profesorActual.id)
+                val clasesResult = claseRepository.getClasesByProfesor(profesorId)
                 if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
                     Timber.d("Encontradas ${clasesResult.data.size} clases para el profesor")
                     
@@ -162,30 +148,38 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                         }
                     }
                 } else {
-                    // 3. Intentar con claseId del profesor
-                    if (profesorActual.claseId.isNotEmpty()) {
-                        Timber.d("Probando con claseId del profesor: ${profesorActual.claseId}")
-                        val alumnosClase = alumnoRepository.getAlumnosByClaseId(profesorActual.claseId) 
-                        if (alumnosClase is Result.Success) {
-                            todosLosAlumnos.addAll(alumnosClase.data)
-                            Timber.d("Encontrados ${alumnosClase.data.size} alumnos por claseId del profesor")
+                    // Intentamos buscar clases asignadas al profesor directamente en la base de datos
+                    Timber.d("No se encontraron clases asignadas a este profesor en la búsqueda principal")
+                    
+                    // Intentar buscar por el ID del profesor en caso de que no esté correctamente mapeado
+                    val clasesResultDirecto = claseRepository.getClasesByProfesorId(profesorId)
+                    if (clasesResultDirecto is Result.Success && clasesResultDirecto.data.isNotEmpty()) {
+                        val clases = clasesResultDirecto.data
+                        Timber.d("Encontradas ${clases.size} clases mediante búsqueda directa por ID")
+                        
+                        for (clase in clases) {
+                            // Guardamos el nombre de la primera clase
+                            if (nombreClase.isEmpty()) {
+                                nombreClase = clase.nombre
+                            }
                             
-                            // Intentar cargar el nombre de la clase
-                            val claseResult = claseRepository.getClaseById(profesorActual.claseId)
-                            if (claseResult is Result.Success) {
-                                nombreClase = claseResult.data.nombre
+                            // Obtener alumnos de la clase
+                            val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
+                            if (alumnosResult is Result.Success) {
+                                todosLosAlumnos.addAll(alumnosResult.data)
+                                Timber.d("Añadidos ${alumnosResult.data.size} alumnos de clase ${clase.nombre}")
                             }
                         }
                     } else {
-                        Timber.d("No hay clases asignadas al profesor ${profesorActual.id}")
+                        Timber.d("No hay clases asignadas al profesor $profesorId")
                     }
                 }
                 
-                // 4. Buscar por centro educativo
-                if (profesorActual.centroId.isNotEmpty() && todosLosAlumnos.isEmpty()) {
-                    Timber.d("Buscando alumnos por centroId: ${profesorActual.centroId}")
+                // 4. Buscar por centro educativo si no se encontraron alumnos
+                if (centroId.isNotEmpty() && todosLosAlumnos.isEmpty()) {
+                    Timber.d("Buscando alumnos por centroId: $centroId")
                     try {
-                        val alumnosDelCentro = cargarAlumnosPorCentro(profesorActual.centroId)
+                        val alumnosDelCentro = cargarAlumnosPorCentro(centroId)
                         if (alumnosDelCentro.isNotEmpty()) {
                             Timber.d("Encontrados ${alumnosDelCentro.size} alumnos del centro")
                             todosLosAlumnos.addAll(alumnosDelCentro)

@@ -100,6 +100,11 @@ interface ClaseRepository {
      * @return Resultado con la lista de clases
      */
     suspend fun getClasesPorCurso(cursoId: String): Result<List<Clase>>
+
+    /**
+     * Obtiene las clases de un profesor por su ID (alias para getClasesByProfesor)
+     */
+    suspend fun getClasesByProfesorId(profesorId: String): Result<List<Clase>>
 }
 
 /**
@@ -305,52 +310,43 @@ class ClaseRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun getClasesByProfesor(profesorId: String): Result<List<Clase>> {
-        return try {
-            // Obtenemos clases donde el profesor es el profesor principal (nuevo campo)
-            val snapshotPrincipal = clasesCollection
+    override suspend fun getClasesByProfesor(profesorId: String): Result<List<Clase>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando clases para profesor: $profesorId")
+            val querySnapshot = clasesCollection
                 .whereEqualTo("profesorId", profesorId)
-                .whereEqualTo("activo", true)
                 .get()
                 .await()
-            
-            val clasesPrincipal = snapshotPrincipal.documents.mapNotNull { doc ->
-                val clase = doc.toObject<Clase>()
-                clase?.copy(id = doc.id)
-            }
-            
-            // Obtenemos clases donde el profesor es titular
-            val snapshotTitular = clasesCollection
+                
+            // También buscar en profesorTitularId y profesoresAuxiliaresIds
+            val queryProfTitular = clasesCollection
                 .whereEqualTo("profesorTitularId", profesorId)
-                .whereEqualTo("activo", true)
                 .get()
                 .await()
-            
-            val clasesTitular = snapshotTitular.documents.mapNotNull { doc ->
-                val clase = doc.toObject<Clase>()
-                clase?.copy(id = doc.id)
-            }
-            
-            // Obtenemos clases donde el profesor es auxiliar
-            val snapshotAuxiliar = clasesCollection
+                
+            val queryAuxiliares = clasesCollection
                 .whereArrayContains("profesoresAuxiliaresIds", profesorId)
-                .whereEqualTo("activo", true)
                 .get()
                 .await()
-            
-            val clasesAuxiliar = snapshotAuxiliar.documents.mapNotNull { doc ->
-                val clase = doc.toObject<Clase>()
-                clase?.copy(id = doc.id)
+                
+            // Combinar resultados y eliminar duplicados
+            val documentos = (querySnapshot.documents + 
+                             queryProfTitular.documents +
+                             queryAuxiliares.documents).distinctBy { it.id }
+                
+            val clases = documentos.mapNotNull { document ->
+                try {
+                    document.toObject(Clase::class.java)?.copy(id = document.id)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al convertir documento a Clase: ${document.id}")
+                    null
+                }
             }
             
-            // Combinamos los resultados, eliminando duplicados
-            val todasLasClases = (clasesPrincipal + clasesTitular + clasesAuxiliar).distinctBy { it.id }
-            
-            Timber.d("Encontradas ${todasLasClases.size} clases para el profesor $profesorId")
-            
-            Result.Success(todasLasClases)
+            Timber.d("Encontradas ${clases.size} clases para el profesor $profesorId")
+            Result.Success(clases)
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener clases del profesor $profesorId")
+            Timber.e(e, "Error al obtener clases para el profesor $profesorId: ${e.message}")
             Result.Error(e)
         }
     }
@@ -497,5 +493,15 @@ class ClaseRepositoryImpl @Inject constructor(
      */
     override suspend fun getClasesPorCurso(cursoId: String): Result<List<Clase>> {
         return getClasesByCursoId(cursoId)
+    }
+
+    /**
+     * Obtiene las clases asignadas a un profesor (método alternativo)
+     * 
+     * @param profesorId ID del profesor
+     * @return Lista de clases asignadas al profesor
+     */
+    override suspend fun getClasesByProfesorId(profesorId: String): Result<List<Clase>> {
+        return getClasesByProfesor(profesorId)
     }
 }

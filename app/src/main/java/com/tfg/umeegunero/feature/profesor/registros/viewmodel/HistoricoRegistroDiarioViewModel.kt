@@ -5,11 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.ProfesorRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,7 +50,8 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
     private val profesorRepository: ProfesorRepository,
     private val claseRepository: ClaseRepository,
     private val alumnoRepository: AlumnoRepository,
-    private val registroDiarioRepository: RegistroDiarioRepository
+    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HistoricoRegistroUiState())
@@ -69,6 +72,7 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
                 // Obtener usuario actual
                 val usuario = authRepository.getCurrentUser()
                 if (usuario == null) {
+                    Timber.e("No se pudo obtener el usuario actual")
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
@@ -78,12 +82,17 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // Buscar el profesor
-                var profesorId = ""
-                val profesor = profesorRepository.getProfesorPorUsuarioId(usuario.dni) 
-                    ?: profesorRepository.buscarProfesorPorDni(usuario.dni)
+                Timber.d("Usuario autenticado: ${usuario.dni}, nombre: ${usuario.nombre}")
                 
-                if (profesor == null) {
+                // Buscar el profesor - intentamos varias estrategias
+                var usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni)
+                if (usuarioProfesor == null) {
+                    Timber.d("No se encontró profesor por usuarioId, intentando buscar por DNI")
+                    usuarioProfesor = profesorRepository.getUsuarioProfesorByDni(usuario.dni)
+                }
+                
+                if (usuarioProfesor == null) {
+                    Timber.e("No se pudo encontrar información del profesor para usuario: ${usuario.dni}")
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
@@ -93,29 +102,57 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
                     return@launch
                 }
                 
-                profesorId = profesor.id
-                Timber.d("Profesor identificado: $profesorId")
+                // Verificar que el usuario tiene perfil de PROFESOR
+                val perfilProfesor = usuarioProfesor.perfiles.firstOrNull { it.tipo == TipoUsuario.PROFESOR }
+                if (perfilProfesor == null) {
+                    Timber.e("El usuario no tiene perfil de PROFESOR")
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            error = "El usuario no tiene perfil de profesor"
+                        )
+                    }
+                    return@launch
+                }
+                
+                // Usar el DNI como profesorId
+                val profesorId = usuarioProfesor.dni
+                Timber.d("Profesor identificado: $profesorId, nombre: ${usuarioProfesor.nombre}")
                 
                 // Cargar clases del profesor
-                val clasesResult = claseRepository.getClasesByProfesor(profesorId)
+                var clasesResult = claseRepository.getClasesByProfesor(profesorId)
+                
+                // Si no se obtuvieron clases, intentar con el ID de usuario directamente
+                if (clasesResult is Result.Success && clasesResult.data.isEmpty()) {
+                    Timber.d("No se encontraron clases con profesorId: $profesorId, intentando con usuarioId: ${usuario.dni}")
+                    clasesResult = claseRepository.getClasesByProfesor(usuario.dni)
+                }
+                
                 if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
                     val clases = clasesResult.data
                     val claseSeleccionada = clases.firstOrNull()
+                    
+                    Timber.d("Se encontraron ${clases.size} clases para el profesor")
+                    clases.forEach { clase ->
+                        Timber.d("Clase: ${clase.id} - ${clase.nombre}")
+                    }
                     
                     _uiState.update { 
                         it.copy(
                             clases = clases,
                             claseSeleccionada = claseSeleccionada,
-                            profesorId = profesorId
+                            profesorId = profesorId,
+                            isLoading = false
                         )
                     }
                     
                     // Si hay una clase seleccionada, cargar sus alumnos
                     claseSeleccionada?.let { clase ->
+                        Timber.d("Cargando alumnos para la clase: ${clase.id} - ${clase.nombre}")
                         cargarAlumnosPorClase(clase.id)
                     }
                 } else {
-                    Timber.d("No se encontraron clases para el profesor: $profesorId")
+                    Timber.e("No se encontraron clases para el profesor: $profesorId")
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
@@ -144,7 +181,8 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true, alumnos = emptyList(), alumnoSeleccionado = null) }
                 
-                val alumnosResult = alumnoRepository.getAlumnosByClaseId(claseId)
+                val alumnosResult = usuarioRepository.getAlumnosByClase(claseId)
+                
                 if (alumnosResult is Result.Success && alumnosResult.data.isNotEmpty()) {
                     val alumnos = alumnosResult.data
                     val alumnoSeleccionado = alumnos.firstOrNull()

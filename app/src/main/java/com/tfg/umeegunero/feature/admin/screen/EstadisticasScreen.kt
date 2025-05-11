@@ -10,10 +10,12 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,7 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -50,6 +56,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tfg.umeegunero.feature.admin.viewmodel.EstadisticasViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.AccesoPorCentro
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
@@ -114,63 +121,24 @@ fun EstadisticasScreen(
     viewModel: EstadisticasViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val accesosPorCentro by viewModel.accesosPorCentro.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     var showUpdateMessage by remember { mutableStateOf(false) }
     
-    // Solicitud de permisos de almacenamiento para Android 9 y anteriores
-    val requestPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
+    // Solicitud de permisos de almacenamiento
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            // Permiso concedido, descargar informe
             viewModel.descargarInforme(context)
         } else {
-            // Permiso denegado, mostrar mensaje
-            Toast.makeText(
-                context,
-                "Permiso de almacenamiento necesario para descargar informes",
-                Toast.LENGTH_LONG
-            ).show()
+            // Mostrar mensaje de que se necesitan permisos
         }
     }
     
-    // Función para comprobar y solicitar permisos antes de descargar
-    val checkAndRequestPermissions = {
-        // Para Android 10 y superior no necesitamos permisos para descargar
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    // Ya tenemos el permiso, descargar directamente
-                    viewModel.descargarInforme(context)
-                }
-                else -> {
-                    // Solicitar el permiso
-                    requestPermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                }
-            }
-        } else {
-            // Android 10+ no necesita permisos para la carpeta de descargas
-            viewModel.descargarInforme(context)
-        }
-    }
-    
-    // Estado para mostrar/ocultar el diálogo de selección de período
-    val mostrarDialogoPeriodo = remember { mutableStateOf(false) }
-    
-    // Lista de períodos disponibles
-    val periodos = listOf("Última semana", "Último mes", "Último trimestre", "Último año", "Todo")
-    
-    // Efecto para mostrar mensaje cuando se actualicen los datos
-    LaunchedEffect(uiState.fechaActualizacion) {
-        if (!uiState.isLoading && uiState.fechaActualizacion != "No disponible") {
-            showUpdateMessage = true
-            delay(3000)
-            showUpdateMessage = false
-        }
+    LaunchedEffect(Unit) {
+        viewModel.cargarEstadisticas()
     }
     
     Scaffold(
@@ -178,7 +146,7 @@ fun EstadisticasScreen(
             TopAppBar(
                 title = { Text("Estadísticas del Sistema") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -186,170 +154,199 @@ fun EstadisticasScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { mostrarDialogoPeriodo.value = true }) {
+                    IconButton(onClick = { viewModel.cargarEstadisticas() }) {
                         Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = "Seleccionar período"
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Actualizar estadísticas"
+                        )
+                    }
+                    IconButton(onClick = { viewModel.generarInforme() }) {
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = "Generar informe"
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                viewModel.descargarInforme(context)
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = "Descargar informe"
                         )
                     }
                 }
             )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(paddingValues)
                     .verticalScroll(scrollState)
-                    .padding(16.dp)
             ) {
-                // Resumen General
-                ResumenGeneralCard(
+                // Encabezado con fecha de actualización
+                Text(
+                    text = "Última actualización: ${uiState.fechaActualizacion}",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                
+                // Tarjetas de resumen
+                ResumenEstadisticasCard(
                     totalCentros = uiState.totalCentros,
                     totalUsuarios = uiState.totalUsuarios,
                     nuevosCentros = uiState.nuevosCentros,
                     nuevosUsuarios = uiState.nuevosProfesores + uiState.nuevosAlumnos + uiState.nuevosFamiliares,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.padding(16.dp)
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Distribución de Usuarios
+                // Tarjeta de distribución de usuarios
                 DistribucionUsuariosCard(
-                    profesores = uiState.totalProfesores,
-                    alumnos = uiState.totalAlumnos,
-                    familiares = uiState.totalFamiliares,
-                    modifier = Modifier.fillMaxWidth()
+                    totalProfesores = uiState.totalProfesores,
+                    totalAlumnos = uiState.totalAlumnos,
+                    totalFamiliares = uiState.totalFamiliares,
+                    totalAdministradores = uiState.totalAdministradores,
+                    modifier = Modifier.padding(16.dp)
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                // Tarjeta de accesos por centro
+                AccesosPorCentroCard(
+                    accesosPorCentro = accesosPorCentro,
+                    modifier = Modifier.padding(16.dp)
+                )
                 
-                // Actividad Reciente
+                // Actividad reciente
                 ActividadRecienteCard(
                     actividades = uiState.actividadesRecientes,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.padding(16.dp)
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Botones de Acción
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Button(
-                        onClick = { viewModel.generarInforme() },
-                        enabled = !uiState.isLoading
+                // Mensajes de estado
+                if (uiState.informeGenerado) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Description,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Generar Informe")
-                    }
-                    
-                    Button(
-                        onClick = { checkAndRequestPermissions() },
-                        enabled = uiState.informeGenerado && !uiState.isLoading
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Descargar")
-                    }
-                }
-            }
-            
-            // Indicador de carga
-            if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-            
-            // Mensaje de actualización
-            AnimatedVisibility(
-                visible = showUpdateMessage,
-                enter = slideInVertically() + fadeIn(),
-                exit = slideOutVertically() + fadeOut()
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "Datos actualizados: ${uiState.fechaActualizacion}",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-        }
-    }
-    
-    // Diálogo de selección de período
-    if (mostrarDialogoPeriodo.value) {
-        AlertDialog(
-            onDismissRequest = { mostrarDialogoPeriodo.value = false },
-            title = { Text("Seleccionar Período") },
-            text = {
-                Column {
-                    periodos.forEach { periodo ->
-                        TextButton(
-                            onClick = {
-                                when (periodo) {
-                                    "Última semana" -> viewModel.cargarEstadisticasPorPeriodo(7)
-                                    "Último mes" -> viewModel.cargarEstadisticasPorPeriodo(30)
-                                    "Último trimestre" -> viewModel.cargarEstadisticasPorPeriodo(90)
-                                    "Último año" -> viewModel.cargarEstadisticasPorPeriodo(365)
-                                    "Todo" -> viewModel.cargarEstadisticas()
-                                }
-                                mostrarDialogoPeriodo.value = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
                         ) {
-                            Text(periodo)
+                            Text(
+                                text = "Informe generado correctamente",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "Descarga el informe usando el botón de descarga en la barra superior.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { mostrarDialogoPeriodo.value = false }) {
-                    Text("Cancelar")
+                
+                if (uiState.error.isNotEmpty()) {
+                    Text(
+                        text = uiState.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                
+                // Mensaje de éxito al descargar
+                if (uiState.informeDescargado && showUpdateMessage) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            Text(
+                                text = "Informe descargado correctamente",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                    
+                    // Ocultar mensaje después de 3 segundos
+                    LaunchedEffect(uiState.informeDescargado) {
+                        showUpdateMessage = true
+                        delay(3000)
+                        showUpdateMessage = false
+                    }
                 }
             }
-        )
+        }
     }
-    
-    // Mostrar mensajes de éxito o error
-    LaunchedEffect(uiState.informeGenerado, uiState.informeDescargado, uiState.error) {
-        if (uiState.informeGenerado) {
-            Toast.makeText(context, "Informe generado correctamente", Toast.LENGTH_SHORT).show()
-        }
+}
+
+/**
+ * Componente de leyenda para gráficos
+ */
+@Composable
+fun LeyendaItem(
+    color: Color,
+    texto: String,
+    valor: Int
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, CircleShape)
+        )
         
-        if (uiState.informeDescargado) {
-            Toast.makeText(context, "Informe descargado a la carpeta Descargas", Toast.LENGTH_SHORT).show()
-        }
+        Spacer(modifier = Modifier.width(4.dp))
         
-        if (uiState.error.isNotEmpty()) {
-            Toast.makeText(context, uiState.error, Toast.LENGTH_LONG).show()
+        Column {
+            Text(
+                text = texto,
+                style = MaterialTheme.typography.bodySmall
+            )
+            
+            Text(
+                text = valor.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -771,18 +768,35 @@ fun ActividadRecienteCard(
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = when (actividad.tipo) {
-                                    "LOGIN" -> Icons.AutoMirrored.Filled.Login
-                                    "REGISTRO" -> Icons.Default.PersonAdd
-                                    "ASISTENCIA" -> Icons.Default.CheckCircle
-                                    "MENSAJE" -> Icons.AutoMirrored.Filled.Message
-                                    else -> Icons.Default.Info
-                                },
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
+                            // Icono según tipo de actividad
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when (actividad.tipo) {
+                                            "LOGIN" -> Color(0xFF4CAF50) // Verde
+                                            "REGISTRO" -> Color(0xFF2196F3) // Azul
+                                            "ASISTENCIA" -> Color(0xFFFF9800) // Naranja
+                                            "MENSAJE" -> Color(0xFF9C27B0) // Púrpura
+                                            else -> Color(0xFF607D8B) // Gris
+                                        }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = when (actividad.tipo) {
+                                        "LOGIN" -> Icons.AutoMirrored.Filled.Login
+                                        "REGISTRO" -> Icons.Default.PersonAdd
+                                        "ASISTENCIA" -> Icons.Default.CheckCircle
+                                        "MENSAJE" -> Icons.AutoMirrored.Filled.Message
+                                        else -> Icons.Default.Info
+                                    },
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                             
                             Spacer(modifier = Modifier.width(16.dp))
                             
@@ -793,11 +807,33 @@ fun ActividadRecienteCard(
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Text(
-                                    text = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES")).format(actividad.fecha),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES")).format(actividad.fecha),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    
+                                    if (actividad.detalles.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "•",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = actividad.detalles,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
                             }
                         }
                         
@@ -815,10 +851,10 @@ fun ActividadRecienteCard(
 }
 
 /**
- * Tarjeta que muestra el resumen general de estadísticas
+ * Tarjeta de resumen de estadísticas
  */
 @Composable
-fun ResumenGeneralCard(
+fun ResumenEstadisticasCard(
     totalCentros: Int,
     totalUsuarios: Int,
     nuevosCentros: Int,
@@ -826,7 +862,7 @@ fun ResumenGeneralCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -846,7 +882,7 @@ fun ResumenGeneralCard(
                 )
                 
                 Icon(
-                    imageVector = Icons.Default.Insights,
+                    imageVector = Icons.Default.Assessment,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -856,68 +892,50 @@ fun ResumenGeneralCard(
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Centros
                 Column(
+                    modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Business,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    
-                    Text(
-                        text = totalCentros.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
                     Text(
                         text = "Centros",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
                     )
-                    
-                    if (nuevosCentros > 0) {
-                        Text(
-                            text = "+$nuevosCentros",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                }
-                
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Group,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    
                     Text(
-                        text = totalUsuarios.toString(),
+                        text = "$totalCentros",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    
+                    Text(
+                        text = "+$nuevosCentros nuevos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                // Usuarios
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
                         text = "Usuarios",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
                     )
-                    
-                    if (nuevosUsuarios > 0) {
-                        Text(
-                            text = "+$nuevosUsuarios",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
+                    Text(
+                        text = "$totalUsuarios",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "+$nuevosUsuarios nuevos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
@@ -929,17 +947,19 @@ fun ResumenGeneralCard(
  */
 @Composable
 fun DistribucionUsuariosCard(
-    profesores: Int,
-    alumnos: Int,
-    familiares: Int,
+    totalProfesores: Int,
+    totalAlumnos: Int,
+    totalFamiliares: Int,
+    totalAdministradores: Int,
     modifier: Modifier = Modifier
 ) {
-    val totalUsuarios = profesores + alumnos + familiares
+    val totalUsuarios = totalProfesores + totalAlumnos + totalFamiliares + totalAdministradores
     
     // Calcular porcentajes
-    val porcentajeProfesores = if (totalUsuarios > 0) (profesores.toFloat() / totalUsuarios) * 100 else 0f
-    val porcentajeAlumnos = if (totalUsuarios > 0) (alumnos.toFloat() / totalUsuarios) * 100 else 0f
-    val porcentajeFamiliares = if (totalUsuarios > 0) (familiares.toFloat() / totalUsuarios) * 100 else 0f
+    val porcentajeProfesores = if (totalUsuarios > 0) (totalProfesores.toFloat() / totalUsuarios) * 100 else 0f
+    val porcentajeAlumnos = if (totalUsuarios > 0) (totalAlumnos.toFloat() / totalUsuarios) * 100 else 0f
+    val porcentajeFamiliares = if (totalUsuarios > 0) (totalFamiliares.toFloat() / totalUsuarios) * 100 else 0f
+    val porcentajeAdministradores = if (totalUsuarios > 0) (totalAdministradores.toFloat() / totalUsuarios) * 100 else 0f
     
     Card(
         modifier = modifier,
@@ -973,7 +993,7 @@ fun DistribucionUsuariosCard(
             // Barra de profesores
             BarraProgreso(
                 label = "Profesores",
-                valor = profesores,
+                valor = totalProfesores,
                 porcentaje = porcentajeProfesores,
                 color = MaterialTheme.colorScheme.tertiary
             )
@@ -983,7 +1003,7 @@ fun DistribucionUsuariosCard(
             // Barra de alumnos
             BarraProgreso(
                 label = "Alumnos",
-                valor = alumnos,
+                valor = totalAlumnos,
                 porcentaje = porcentajeAlumnos,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -993,9 +1013,19 @@ fun DistribucionUsuariosCard(
             // Barra de familiares
             BarraProgreso(
                 label = "Familiares",
-                valor = familiares,
+                valor = totalFamiliares,
                 porcentaje = porcentajeFamiliares,
                 color = MaterialTheme.colorScheme.secondary
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Barra de administradores (nueva)
+            BarraProgreso(
+                label = "Administradores",
+                valor = totalAdministradores,
+                porcentaje = porcentajeAdministradores,
+                color = Color(0xFF9C27B0) // Púrpura para administradores
             )
         }
     }
@@ -1040,6 +1070,371 @@ fun BarraProgreso(
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp)),
             color = color,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    }
+}
+
+/**
+ * Componente para mostrar un gráfico de barras
+ */
+@Composable
+fun BarChart(
+    data: List<Float>,
+    labels: List<String>,
+    color: Color,
+    modifier: Modifier = Modifier,
+    axisColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+    showLabels: Boolean = true,
+    maxValue: Float? = null
+) {
+    val maxValueCalculated = maxValue ?: (data.maxOrNull() ?: 0f) * 1.2f
+    
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.dp,
+                color = axisColor,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(
+                start = if (showLabels) 32.dp else 8.dp,
+                end = 8.dp,
+                top = 16.dp,
+                bottom = if (showLabels) 32.dp else 8.dp
+            )
+    ) {
+        // Dibujar ejes
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            // Eje Y
+            drawLine(
+                color = axisColor,
+                start = Offset(0f, 0f),
+                end = Offset(0f, size.height),
+                strokeWidth = 1.5f
+            )
+            
+            // Eje X
+            drawLine(
+                color = axisColor,
+                start = Offset(0f, size.height),
+                end = Offset(size.width, size.height),
+                strokeWidth = 1.5f
+            )
+        }
+        
+        // Dibujar barras
+        if (data.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                data.forEachIndexed { index, value ->
+                    val heightPercentage = if (maxValueCalculated > 0) value / maxValueCalculated else 0f
+                    
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(horizontal = 4.dp)
+                                .padding(bottom = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(heightPercentage)
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    .background(color)
+                            )
+                        }
+                        
+                        if (showLabels && index < labels.size) {
+                            Text(
+                                text = labels[index],
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Componente para mostrar un gráfico de líneas
+ */
+@Composable
+fun LineChart(
+    data: List<Float>,
+    labels: List<String>,
+    lineColor: Color,
+    fillColor: Color,
+    modifier: Modifier = Modifier,
+    axisColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+    showLabels: Boolean = true,
+    maxValue: Float? = null
+) {
+    val maxValueCalculated = maxValue ?: (data.maxOrNull() ?: 0f) * 1.2f
+    
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.dp,
+                color = axisColor,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(
+                start = if (showLabels) 32.dp else 8.dp,
+                end = 8.dp,
+                top = 16.dp,
+                bottom = if (showLabels) 32.dp else 8.dp
+            )
+    ) {
+        if (data.isNotEmpty()) {
+            Canvas(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val strokePath = androidx.compose.ui.graphics.Path()
+                val fillPath = androidx.compose.ui.graphics.Path()
+                
+                val horizontalStep = size.width / (data.size - 1)
+                
+                // Iniciar los paths
+                data.forEachIndexed { index, value ->
+                    val heightRatio = if (maxValueCalculated > 0) {
+                        value / maxValueCalculated
+                    } else 0f
+                    
+                    val x = index * horizontalStep
+                    val y = size.height - (heightRatio * size.height)
+                    
+                    if (index == 0) {
+                        strokePath.moveTo(x, y)
+                        fillPath.moveTo(x, y)
+                    } else {
+                        strokePath.lineTo(x, y)
+                        fillPath.lineTo(x, y)
+                    }
+                }
+                
+                // Completar el path de relleno
+                fillPath.lineTo(size.width, size.height)
+                fillPath.lineTo(0f, size.height)
+                fillPath.close()
+                
+                // Dibujar el relleno
+                drawPath(
+                    path = fillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            fillColor.copy(alpha = 0.5f),
+                            fillColor.copy(alpha = 0.0f)
+                        )
+                    )
+                )
+                
+                // Dibujar la línea
+                drawPath(
+                    path = strokePath,
+                    color = lineColor,
+                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+                
+                // Dibujar puntos
+                data.forEachIndexed { index, value ->
+                    val heightRatio = if (maxValueCalculated > 0) {
+                        value / maxValueCalculated
+                    } else 0f
+                    
+                    val x = index * horizontalStep
+                    val y = size.height - (heightRatio * size.height)
+                    
+                    drawCircle(
+                        color = lineColor,
+                        radius = 4.dp.toPx(),
+                        center = Offset(x, y)
+                    )
+                }
+                
+                // Dibujar ejes
+                drawLine(
+                    color = axisColor,
+                    start = Offset(0f, 0f),
+                    end = Offset(0f, size.height),
+                    strokeWidth = 1.5f
+                )
+                
+                drawLine(
+                    color = axisColor,
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 1.5f
+                )
+            }
+        }
+        
+        // Etiquetas del eje X
+        if (showLabels) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                labels.forEach { label ->
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Componente para mostrar un gráfico circular
+ */
+@Composable
+fun PieChart(
+    values: List<Float>,
+    colors: List<Color>,
+    modifier: Modifier = Modifier
+) {
+    val total = values.sum()
+    val proportions = values.map { 
+        if (total > 0) it / total else 0f 
+    }
+    val sweepAngles = proportions.map { prop -> prop * 360f }
+    
+    Canvas(
+        modifier = modifier
+    ) {
+        var startAngle = 0f
+        
+        sweepAngles.forEachIndexed { index, sweepAngle ->
+            val color = colors.getOrElse(index) { Color.Gray }
+            
+            drawArc(
+                color = color,
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                useCenter = true,
+                size = Size(size.width, size.height)
+            )
+            
+            startAngle += sweepAngle
+        }
+    }
+}
+
+/**
+ * Tarjeta que muestra la distribución de accesos por centro
+ */
+@Composable
+fun AccesosPorCentroCard(
+    accesosPorCentro: List<AccesoPorCentro>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Porcentaje de Uso por Centro",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            if (accesosPorCentro.isEmpty()) {
+                Text(
+                    text = "No hay datos de acceso disponibles",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                // Mostrar porcentaje de uso por centro como barras horizontales
+                accesosPorCentro.forEach { centro ->
+                    AccesoCentroItem(centro)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Item individual para mostrar el acceso de un centro
+ */
+@Composable
+fun AccesoCentroItem(centro: AccesoPorCentro) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = centro.nombreCentro,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Text(
+                text = "${centro.porcentajeUso.toInt()}% (${centro.numeroAccesos})",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Barra de progreso horizontal
+        LinearProgressIndicator(
+            progress = { (centro.porcentajeUso / 100f).coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp)),
+            color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
     }

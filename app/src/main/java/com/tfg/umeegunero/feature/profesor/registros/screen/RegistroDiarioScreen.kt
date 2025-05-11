@@ -84,6 +84,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.tfg.umeegunero.feature.profesor.registros.viewmodel.RegistroDiarioUiState
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -597,38 +598,74 @@ fun HiltRegistroDiarioScreen(
     navController: NavController,
     viewModel: RegistroDiarioViewModel = hiltViewModel()
 ) {
-    // Parse alumnosIds
-    val listaAlumnosIds = alumnosIds.split(",")
-    val fechaSeleccionada = fecha?.let {
-        try {
-            LocalDate.parse(it)
-        } catch (e: Exception) {
-            LocalDate.now()
-        }
-    }
-    
-    LaunchedEffect(alumnosIds) {
-        if (listaAlumnosIds.isNotEmpty()) {
-            // TODO: Por ahora solo trabajamos con el primer alumno
-            // En futuras versiones se podría implementar un sistema de pestañas o selección
-            // para gestionar múltiples alumnos a la vez
-            val alumnoId = listaAlumnosIds.first()
-            viewModel.cargarRegistroDiario(
-                alumnoId = alumnoId,
-                claseId = "", // Se cargará en el ViewModel
-                profesorId = "", // Se obtendrá del usuario autenticado
-                fecha = fechaSeleccionada?.let { Date.from(it.atStartOfDay(ZoneId.systemDefault()).toInstant()) } ?: Date()
-            )
-        }
-    }
-    
     val uiState by viewModel.uiState.collectAsState()
-    
+
+    // Obtener ID del profesor desde el ViewModel
+    var currentUserId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.obtenerIdUsuarioActual { userId ->
+            currentUserId = userId
+            if (userId == null) {
+                Timber.e("HiltRegistroDiarioScreen: currentUserId es null después de obtenerIdUsuarioActual.")
+                // Considerar que el ViewModel actualice el uiState.error aquí.
+            }
+        }
+    }
+
+    LaunchedEffect(alumnosIds, currentUserId, fecha) {
+        if (currentUserId == null) {
+            Timber.d("HiltRegistroDiarioScreen: Esperando por currentUserId.")
+            // El ViewModel debería manejar este estado, quizás mostrando un loader o mensaje.
+            return@LaunchedEffect // Don't proceed until currentUserId is available
+        }
+
+        if (alumnosIds.isBlank()) {
+            Timber.e("HiltRegistroDiarioScreen: alumnosIds está vacío o es blanco. No se puede cargar el registro.")
+            // El ViewModel debería ser notificado para mostrar un error en la UI.
+            // Ejemplo: viewModel.mostrarError("No se ha especificado ningún alumno.")
+            return@LaunchedEffect
+        }
+
+        val listaAlumnosIdsFiltrados = alumnosIds.split(',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+        if (listaAlumnosIdsFiltrados.isEmpty()) {
+            Timber.e("HiltRegistroDiarioScreen: No hay IDs de alumno válidos después de filtrar. Original: '$alumnosIds'")
+            // El ViewModel debería ser notificado para mostrar un error en la UI.
+            // Ejemplo: viewModel.mostrarError("No se ha especificado ningún alumno válido.")
+            return@LaunchedEffect
+        }
+
+        // TODO: Por ahora solo trabajamos con el primer alumno válido
+        // En futuras versiones se podría implementar un sistema de pestañas o selección
+        // para gestionar múltiples alumnos a la vez.
+        val alumnoId = listaAlumnosIdsFiltrados.first()
+        Timber.d("HiltRegistroDiarioScreen: Cargando registro. Alumno ID: '$alumnoId', Profesor ID: '$currentUserId', Fecha str: '$fecha'")
+
+        val fechaLocalDate = fecha?.let { fStr ->
+            try {
+                LocalDate.parse(fStr)
+            } catch (e: Exception) {
+                Timber.w(e, "HiltRegistroDiarioScreen: Error al parsear la fecha '$fStr'. Usando fecha actual.")
+                LocalDate.now() // Fallback to current date
+            }
+        } ?: LocalDate.now() // Fallback if fecha string is null
+
+        viewModel.cargarRegistroDiario(
+            alumnoId = alumnoId,
+            claseId = "", // Según el código existente, el ViewModel maneja la obtención de claseId.
+            profesorId = currentUserId!!, // currentUserId se verifica que no es null antes de este punto.
+            fecha = Date.from(fechaLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant())
+        )
+    }
+
     RegistroDiarioScreen(
         viewModel = viewModel,
         onNavigateBack = { navController.popBackStack() },
-        alumnoNombre = uiState.alumnoNombre ?: "",
-        claseNombre = uiState.claseNombre ?: ""
+        alumnoNombre = uiState.alumnoNombre ?: "Cargando...", // Usar uiState recolectado
+        claseNombre = uiState.claseNombre ?: "Cargando..."  // Usar uiState recolectado
     )
 }
 

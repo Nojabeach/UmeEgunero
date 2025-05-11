@@ -17,6 +17,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import org.json.JSONObject
+import com.google.firebase.Timestamp
 
 /**
  * Interfaz que define las operaciones relacionadas con la autenticación de usuarios.
@@ -533,6 +534,7 @@ class AuthRepositoryImpl @Inject constructor(
             
             if (user != null) {
                 Timber.d("Login exitoso para el usuario: ${user.email}")
+                
                 Result.Success(user.uid)
             } else {
                 Timber.e("Login fallido: usuario nulo después de autenticación")

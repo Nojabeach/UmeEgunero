@@ -184,19 +184,29 @@ class AlumnoRepositoryImpl @Inject constructor(
         private const val COLLECTION_ALUMNOS = "alumnos"
     }
 
-    override suspend fun getAlumnoById(alumnoId: String): Result<Alumno> {
-        // Implementación de prueba que devuelve un alumno ficticio
-        return Result.Success(
-            Alumno(
-                id = alumnoId,
-                dni = "12345678A",
-                nombre = "Alumno de prueba",
-                apellidos = "Apellidos de prueba",
-                centroId = "centro_prueba",
-                aulaId = "aula_prueba", // Reemplazado claseId por aulaId según el modelo
-                fechaNacimiento = "01/01/2015"
-            )
-        )
+    override suspend fun getAlumnoById(alumnoId: String): Result<Alumno> = withContext(Dispatchers.IO) {
+        try {
+            val documento = firestore.collection(COLLECTION_ALUMNOS)
+                .document(alumnoId) // Asume que alumnoId es el DNI/ID del documento
+                .get()
+                .await()
+
+            if (documento.exists()) {
+                val alumno = documento.toObject(Alumno::class.java)
+                if (alumno != null) {
+                    return@withContext Result.Success(alumno)
+                } else {
+                    Timber.e("Error al convertir el documento del alumno a objeto: $alumnoId")
+                    return@withContext Result.Error(Exception("Error al convertir datos del alumno."))
+                }
+            } else {
+                Timber.w("No se encontró el alumno con ID: $alumnoId")
+                return@withContext Result.Error(Exception("Alumno no encontrado."))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener alumno por ID: $alumnoId")
+            return@withContext Result.Error(e)
+        }
     }
     
     override suspend fun getAlumnosByCentro(centroId: String): Result<List<Alumno>> {
@@ -463,7 +473,7 @@ class AlumnoRepositoryImpl @Inject constructor(
      */
     override suspend fun getAlumnosPorClase(claseId: String): List<Alumno> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Buscando alumnos para la clase: $claseId")
+            Timber.d("AlumnoRepositoryImpl: getAlumnosPorClase recibió claseId: $claseId")
             
             // 1. Buscar alumnos por aulaId (nueva estructura)
             val queryAula = firestore.collection(COLLECTION_ALUMNOS)
@@ -487,14 +497,16 @@ class AlumnoRepositoryImpl @Inject constructor(
             val alumnosDesdeClase = try {
                 val claseDoc = firestore.collection("clases").document(claseId).get().await()
                 if (claseDoc.exists()) {
+                    Timber.d("AlumnoRepositoryImpl: Documento de clase $claseId encontrado.")
                     val alumnosIds = claseDoc.get("alumnosIds") as? List<String> ?: emptyList()
-                    Timber.d("La clase tiene ${alumnosIds.size} alumnos listados en alumnosIds")
+                    Timber.d("AlumnoRepositoryImpl: La clase $claseId tiene los siguientes alumnosIds: $alumnosIds")
                     
                     if (alumnosIds.isNotEmpty()) {
                         // Obtener alumnos por sus IDs
                         val alumnos = mutableListOf<Alumno>()
                         for (id in alumnosIds) {
                             try {
+                                Timber.d("AlumnoRepositoryImpl: Buscando alumno con DNI: $id (desde alumnosIds de la clase $claseId)")
                                 val alumnoQuery = firestore.collection(COLLECTION_ALUMNOS)
                                     .whereEqualTo("dni", id)
                                     .limit(1)
@@ -504,22 +516,29 @@ class AlumnoRepositoryImpl @Inject constructor(
                                 if (!alumnoQuery.isEmpty) {
                                     val alumno = alumnoQuery.documents.first().toObject(Alumno::class.java)
                                     if (alumno != null) {
+                                        Timber.d("AlumnoRepositoryImpl: Encontrado alumno: ${alumno.nombre} ${alumno.apellidos} con DNI $id")
                                         alumnos.add(alumno)
+                                    } else {
+                                        Timber.w("AlumnoRepositoryImpl: Alumno con DNI $id encontrado pero no se pudo convertir a objeto.")
                                     }
+                                } else {
+                                    Timber.w("AlumnoRepositoryImpl: No se encontró alumno con DNI: $id (listado en clase $claseId)")
                                 }
                             } catch (e: Exception) {
-                                Timber.e(e, "Error al obtener alumno con ID $id")
+                                Timber.e(e, "AlumnoRepositoryImpl: Error al obtener alumno con DNI $id")
                             }
                         }
                         alumnos
                     } else {
+                        Timber.d("AlumnoRepositoryImpl: La clase $claseId no tiene alumnosIds.")
                         emptyList()
                     }
                 } else {
+                    Timber.w("AlumnoRepositoryImpl: No se encontró el documento de la clase con ID: $claseId")
                     emptyList()
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al obtener alumnos desde la clase")
+                Timber.e(e, "AlumnoRepositoryImpl: Error al obtener alumnos desde la clase $claseId")
                 emptyList()
             }
 

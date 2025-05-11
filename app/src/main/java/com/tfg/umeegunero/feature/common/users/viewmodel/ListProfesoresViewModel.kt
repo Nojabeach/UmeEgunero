@@ -116,10 +116,8 @@ class ListProfesoresViewModel @Inject constructor(
     /**
      * Elimina un profesor completamente del sistema
      * 
-     * Este método realiza la eliminación en dos pasos:
-     * 1. Primero busca y elimina el documento del profesor en la colección 'profesores'
-     *    y actualiza todas las referencias en clases y alumnos.
-     * 2. Luego elimina el usuario asociado al profesor de la colección 'usuarios'
+     * Este método realiza la eliminación del usuario con rol de profesor:
+     * 1. Elimina el usuario asociado al profesor de la colección 'usuarios'
      *    y de Firebase Authentication.
      * 
      * @param profesorId ID del profesor a eliminar (DNI)
@@ -131,29 +129,7 @@ class ListProfesoresViewModel @Inject constructor(
             try {
                 Timber.d("Iniciando proceso de eliminación del profesor: $profesorId")
                 
-                // 1. Buscar primero el documento del profesor en la colección 'profesores'
-                var profesorDocId = ""
-                
-                // Intentar encontrar el documento del profesor por su usuarioId
-                val profesor = profesorRepository.getProfesorPorUsuarioId(profesorId)
-                if (profesor != null) {
-                    profesorDocId = profesor.id
-                    Timber.d("Profesor encontrado en colección 'profesores': $profesorDocId")
-                    
-                    // 2. Eliminar el profesor de la colección 'profesores' y actualizar referencias
-                    val profesorResult = profesorRepository.eliminarProfesor(profesorDocId)
-                    
-                    if (profesorResult is Result.Error) {
-                        Timber.e(profesorResult.exception, "Error al eliminar profesor de la colección 'profesores'")
-                        // Continuamos con el proceso aunque falle este paso
-                    } else {
-                        Timber.d("Profesor eliminado correctamente de la colección 'profesores'")
-                    }
-                } else {
-                    Timber.w("No se encontró el profesor en la colección 'profesores'")
-                }
-                
-                // 3. Eliminar el usuario asociado al profesor
+                // Eliminar el usuario asociado al profesor
                 when (val result = usuarioRepository.borrarUsuarioByDni(profesorId)) {
                     is Result.Success -> {
                         // Actualización local de la lista después de eliminar
