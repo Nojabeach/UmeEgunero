@@ -94,6 +94,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.MarkEmailUnread
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material3.HorizontalDivider
 
 /**
  * Componente que muestra un mensaje cuando no hay contenido para mostrar.
@@ -731,7 +732,7 @@ fun ComunicadoDetalleDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 

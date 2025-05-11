@@ -1065,7 +1065,7 @@ fun ChatProfesorScreen(
                                 }
                                 
                                 if (messageTemplates.indexOf(template) < messageTemplates.size - 1) {
-                                    Divider(
+                                    HorizontalDivider(
                                         modifier = Modifier.padding(vertical = 4.dp),
                                         color = MaterialTheme.colorScheme.outlineVariant
                                     )

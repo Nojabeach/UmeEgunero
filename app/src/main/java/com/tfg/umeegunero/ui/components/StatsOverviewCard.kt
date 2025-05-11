@@ -73,7 +73,7 @@ fun StatsOverviewCard(
     Card(
         modifier = modifier
             .accessibleClickable(
-                description = accessibilityDescription,
+                onClickLabel = accessibilityDescription,
                 onClick = onClick
             ),
         colors = CardDefaults.cardColors(

@@ -236,7 +236,7 @@ fun CentroItem(
         modifier = Modifier
             .fillMaxWidth()
             .accessibleClickable(
-                description = accessibilityDescription,
+                onClickLabel = accessibilityDescription,
                 onClick = onClick
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)

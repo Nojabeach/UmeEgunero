@@ -523,7 +523,7 @@ enum class TipoEvento(val color: Color, val icon: ImageVector) {
 }
 
 // Extensión para capitalizar la primera letra
-private fun String.capitalize(): String {
+private fun String.capitalizeFirst(): String {
     return if (isNotEmpty()) {
         this[0].uppercase() + substring(1)
     } else {

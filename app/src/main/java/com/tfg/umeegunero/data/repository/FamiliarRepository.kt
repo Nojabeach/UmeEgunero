@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.data.repository
 
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObject
 import com.tfg.umeegunero.data.model.Alumno
@@ -100,6 +101,14 @@ interface FamiliarRepository {
      * @return Lista de IDs de hijos o null si hay error o no existen
      */
     suspend fun obtenerHijosIdsPorFamiliarId(familiarId: String): List<String>?
+    
+    /**
+     * Busca directamente en la colección vinculaciones_familiar_alumno
+     * 
+     * @param familiarId ID del familiar
+     * @return Resultado con la lista de IDs de alumnos vinculados
+     */
+    suspend fun getAlumnoIdsByVinculaciones(familiarId: String): Result<List<String>>
 }
 
 /**
@@ -402,6 +411,70 @@ class FamiliarRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener hijos IDs para familiar: $familiarId")
             return@withContext null
+        }
+    }
+
+    override suspend fun getAlumnoIdsByVinculaciones(familiarId: String): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando vinculaciones directamente para el familiar: $familiarId")
+            
+            val query = vinculacionesCollection
+                .whereEqualTo("familiarId", familiarId)
+                .get()
+                .await()
+            
+            if (query.isEmpty) {
+                // También probar buscando por documentos que empiecen con el ID del familiar
+                Timber.d("No se encontraron vinculaciones por campo 'familiarId', probando por ID del documento")
+                
+                // Buscar documentos cuyo ID empiece con el familiarId seguido de guion bajo
+                val directQuery = vinculacionesCollection
+                    .whereGreaterThanOrEqualTo(FieldPath.documentId(), familiarId + "_")
+                    .whereLessThanOrEqualTo(FieldPath.documentId(), familiarId + "_\uf8ff")
+                    .get()
+                    .await()
+                
+                if (directQuery.isEmpty) {
+                    Timber.d("No se encontraron vinculaciones para el familiar: $familiarId")
+                    return@withContext Result.Success(emptyList())
+                }
+                
+                val alumnosIds = directQuery.documents.mapNotNull { doc ->
+                    // El ID debería tener el formato "familiarId_alumnoId"
+                    try {
+                        val idParts = doc.id.split("_")
+                        if (idParts.size == 2) {
+                            val alumnoId = idParts[1]
+                            Timber.d("Encontrada vinculación por ID: ${doc.id}, alumnoId: $alumnoId")
+                            alumnoId
+                        } else {
+                            // Intentar obtener el alumnoId del campo en el documento
+                            doc.getString("alumnoId")?.also {
+                                Timber.d("Encontrada vinculación con campo alumnoId: $it")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al procesar vinculación ${doc.id}")
+                        null
+                    }
+                }
+                
+                Timber.d("Encontrados ${alumnosIds.size} alumnos por ID de vinculación")
+                return@withContext Result.Success(alumnosIds)
+            }
+            
+            // Procesamos los resultados de la consulta por campo familiarId
+            val alumnosIds = query.documents.mapNotNull { doc ->
+                doc.getString("alumnoId")?.also {
+                    Timber.d("Encontrada vinculación con campo alumnoId: $it")
+                }
+            }
+            
+            Timber.d("Encontrados ${alumnosIds.size} alumnos vinculados por familiarId")
+            return@withContext Result.Success(alumnosIds)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar vinculaciones: ${e.message}")
+            return@withContext Result.Error(e)
         }
     }
 } 

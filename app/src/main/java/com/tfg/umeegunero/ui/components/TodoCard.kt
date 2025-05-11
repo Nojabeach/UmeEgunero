@@ -64,7 +64,7 @@ fun TodoCard(
         modifier = modifier
             .fillMaxWidth()
             .accessibleClickable(
-                description = accessibilityDescription,
+                onClickLabel = accessibilityDescription,
                 onClick = onClick
             ),
         colors = CardDefaults.cardColors(

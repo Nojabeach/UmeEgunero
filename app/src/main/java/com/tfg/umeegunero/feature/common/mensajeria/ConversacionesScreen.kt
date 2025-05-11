@@ -334,9 +334,9 @@ fun esAyer(fecha: Date): Boolean {
 }
 
 /**
- * Extensión para capitalizar strings
+ * Extensión para capitalizar strings usando el método recomendado
  */
-private fun String.capitalize(): String {
+private fun String.capitalizeFirst(): String {
     return this.replaceFirstChar { 
         if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
     }

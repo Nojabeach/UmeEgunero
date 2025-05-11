@@ -201,6 +201,14 @@ fun ProfesorDashboardScreen(
         // viewModel.cargarDatosDashboard()
     }
 
+    // Efecto para mostrar mensajes de error en el snackbar
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(message = error)
+            viewModel.clearError()
+        }
+    }
+
     // Efecto para manejar la navegación al cerrar sesión
     LaunchedEffect(uiState.navigateToWelcome) {
         if (uiState.navigateToWelcome) {
@@ -638,7 +646,14 @@ fun ProfesorDashboardContent(
                         color = ProfesorColor,
                         onClick = {
                             haptic.performHapticFeedbackSafely()
-                            navController.navigate(AppScreens.ListadoPreRegistroDiario.route)
+                            try {
+                                // Primero navegamos a la pantalla de listado y envolvemos en un try-catch para manejar errores
+                                navController.navigate(AppScreens.ListadoPreRegistroDiario.route)
+                                Timber.d("Navegación a Listado Pre-Registro Diario exitosa")
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al navegar a Listado Pre-Registro Diario")
+                                viewModel.showSnackbarMessage("Error al navegar a Registro Diario")
+                            }
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -651,7 +666,14 @@ fun ProfesorDashboardContent(
                         color = ProfesorColor,
                         onClick = {
                             haptic.performHapticFeedbackSafely()
-                            navController.navigate(AppScreens.HistoricoRegistroDiario.route)
+                            try {
+                                // Navegación directa envuelta en try-catch
+                                navController.navigate(AppScreens.HistoricoRegistroDiario.route)
+                                Timber.d("Navegación a Histórico Registro Diario exitosa")
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al navegar a Histórico Registro Diario")
+                                viewModel.showSnackbarMessage("Error al navegar al historial de registros")
+                            }
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -680,7 +702,23 @@ fun ProfesorDashboardContent(
                                 color = card.color,
                                 iconTint = card.iconTint,
                                 border = true,
-                                onClick = card.onClick
+                                onClick = {
+                                    haptic.performHapticFeedbackSafely()
+                                    try {
+                                        // Esta navegación debe ir al inbox unificado
+                                        if (card.titulo == "Mensajes") {
+                                            // Navegando explícitamente al Inbox y no usando el callback
+                                            navController.navigate(AppScreens.UnifiedInbox.route)
+                                            Timber.d("Navegación a Inbox Unificado exitosa")
+                                        } else {
+                                            // Navegación a nuevo mensaje
+                                            card.onClick()
+                                        }
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al navegar desde tarjeta de comunicación: ${card.titulo}")
+                                        viewModel.showSnackbarMessage("Error al navegar a ${card.titulo}")
+                                    }
+                                }
                             )
                         }
                     }
@@ -700,7 +738,7 @@ fun ProfesorDashboardContent(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Primera card - 50% del ancho
+                    // Primera card - 50% del ancho - Mis Alumnos
                     Box(modifier = Modifier.weight(1f)) {
                         CategoriaCard(
                             titulo = gestionPlanificacionCards[0].titulo,
@@ -709,10 +747,20 @@ fun ProfesorDashboardContent(
                             color = gestionPlanificacionCards[0].color,
                             iconTint = gestionPlanificacionCards[0].iconTint,
                             border = true,
-                            onClick = gestionPlanificacionCards[0].onClick
+                            onClick = {
+                                haptic.performHapticFeedbackSafely()
+                                try {
+                                    // Navegando explícitamente a Mis Alumnos y no usando el callback
+                                    navController.navigate(AppScreens.MisAlumnosProfesor.route)
+                                    Timber.d("Navegación a Mis Alumnos Profesor exitosa")
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a Mis Alumnos Profesor")
+                                    viewModel.showSnackbarMessage("Error al navegar a Mis Alumnos")
+                                }
+                            }
                         )
                     }
-                    // Segunda card - 50% del ancho
+                    // Segunda card - 50% del ancho - Calendario
                     Box(modifier = Modifier.weight(1f)) {
                         CategoriaCard(
                             titulo = gestionPlanificacionCards[1].titulo,
@@ -721,7 +769,17 @@ fun ProfesorDashboardContent(
                             color = gestionPlanificacionCards[1].color,
                             iconTint = gestionPlanificacionCards[1].iconTint,
                             border = true,
-                            onClick = gestionPlanificacionCards[1].onClick
+                            onClick = {
+                                haptic.performHapticFeedbackSafely()
+                                try {
+                                    // Navegando explícitamente a Calendario
+                                    navController.navigate(AppScreens.ProfesorCalendario.route)
+                                    Timber.d("Navegación a Calendario Profesor exitosa")
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a Calendario Profesor")
+                                    viewModel.showSnackbarMessage("Error al navegar al Calendario")
+                                }
+                            }
                         )
                     }
                 }

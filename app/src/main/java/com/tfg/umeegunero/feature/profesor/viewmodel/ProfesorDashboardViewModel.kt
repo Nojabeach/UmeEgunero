@@ -387,6 +387,14 @@ class ProfesorDashboardViewModel @Inject constructor(
     }
 
     /**
+     * Muestra un mensaje en el Snackbar
+     * @param mensaje El mensaje a mostrar
+     */
+    fun showSnackbarMessage(mensaje: String) {
+        _uiState.update { it.copy(error = mensaje) }
+    }
+
+    /**
      * Navega a la pantalla de registro diario de un alumno
      * NOTA: Esta función es un helper de navegación, está bien aquí o en un Navigator dedicado.
      */

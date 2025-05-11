@@ -297,6 +297,36 @@ class FamiliarDashboardViewModel @Inject constructor(
             }
         }
         
+        // NUEVA ESTRATEGIA: Buscar directamente en la colección vinculaciones_familiar_alumno
+        Timber.d("Estrategia 2c - Buscando vinculaciones directamente en la colección vinculaciones_familiar_alumno")
+        try {
+            val vinculacionesResult = familiarRepository.getAlumnoIdsByVinculaciones(familiarId)
+            if (vinculacionesResult is Result.Success && vinculacionesResult.data.isNotEmpty()) {
+                Timber.d("Estrategia 2c - Encontradas ${vinculacionesResult.data.size} vinculaciones para el familiar $familiarId")
+                
+                val alumnosVinculados = mutableListOf<Alumno>()
+                for (alumnoId in vinculacionesResult.data) {
+                    try {
+                        val alumnoResult = alumnoRepository.getAlumnoByDni(alumnoId)
+                        if (alumnoResult is Result.Success) {
+                            alumnosVinculados.add(alumnoResult.data)
+                            Timber.d("Estrategia 2c - Encontrado alumno: ${alumnoResult.data.nombre} ${alumnoResult.data.apellidos}")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al cargar alumno por DNI: $alumnoId")
+                    }
+                }
+                
+                if (alumnosVinculados.isNotEmpty()) {
+                    Timber.d("Estrategia 2c - Cargados ${alumnosVinculados.size} alumnos desde vinculaciones")
+                    actualizarEstadoConHijos(alumnosVinculados)
+                    return
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al buscar vinculaciones para familiar: $familiarId")
+        }
+        
         // Método alternativo 3: Verificar si el familiar es en realidad un usuario que podría tener roles múltiples
         Timber.d("Estrategia 3 - Verificando si el familiar es un usuario que pudiera tener otro tipo de información")
         val usuarioResult = usuarioRepository.getUsuarioById(familiarId)

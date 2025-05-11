@@ -738,9 +738,9 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
-            com.tfg.umeegunero.feature.common.users.screen.DetalleAlumnoScreen(
+            com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
                 navController = navController,
-                alumnoId = alumnoId,
+                userId = alumnoId,
                 viewModel = hiltViewModel()
             )
         }
@@ -870,6 +870,63 @@ fun Navigation(
         composable(route = AppScreens.VinculacionFamiliar.route) {
             // Redirigir a la implementación real sin complicaciones
             navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
+        }
+
+        // Pantallas específicas de profesor
+        composable(route = AppScreens.ListadoPreRegistroDiario.route) {
+            com.tfg.umeegunero.feature.profesor.registros.screen.ListadoPreRegistroDiarioScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.HistoricoRegistroDiario.route) {
+            com.tfg.umeegunero.feature.profesor.registros.screen.HistoricoRegistroDiarioScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.MisAlumnosProfesor.route) {
+            com.tfg.umeegunero.feature.profesor.screen.MisAlumnosProfesorScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.UnifiedInbox.route) {
+            com.tfg.umeegunero.feature.common.comunicacion.screen.UnifiedInboxScreen(
+                onNavigateToMessage = { messageId ->
+                    navController.navigate("mensaje_detalle/$messageId")
+                },
+                onNavigateToNewMessage = {
+                    navController.navigate(AppScreens.NewMessage.createRoute())
+                },
+                onBack = {
+                    navController.popBackStack()
+                },
+                viewModel = hiltViewModel()
+            )
+        }
+
+        composable(route = AppScreens.ProfesorCalendario.route) {
+            com.tfg.umeegunero.feature.profesor.screen.CalendarioProfesorScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantallas específicas de familiar
+        composable(route = AppScreens.CalendarioFamilia.route) {
+            com.tfg.umeegunero.feature.familiar.screen.CalendarioFamiliaScreen(
+                navController = navController
+            )
+        }
+
+        composable(route = AppScreens.NotificacionesFamilia.route) {
+            com.tfg.umeegunero.feature.familiar.screen.NotificacionesFamiliaScreen(
+                navController = navController
+            )
         }
     }
 } 
