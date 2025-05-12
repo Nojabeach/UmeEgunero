@@ -20,6 +20,7 @@ import com.tfg.umeegunero.data.model.TipoObservacion
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.PlantillaRegistroRepository
+import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +58,10 @@ data class RegistroActividadUiState(
     val nuevoObservacionMensaje: String = "",
     val nuevoObservacionTipo: TipoObservacion = TipoObservacion.OTRO,
     
+    // Campos específicos para simplificar el acceso desde la UI
+    val haHechoCaca: Boolean = false,
+    val numeroCacas: Int = 0,
+    
     // Nuevos campos para plantillas
     val plantillasDisponibles: List<PlantillaRegistroActividad> = emptyList(),
     val mostrarSelectorPlantillas: Boolean = false,
@@ -65,7 +70,9 @@ data class RegistroActividadUiState(
     val nombreNuevaPlantilla: String = "",
     val descripcionNuevaPlantilla: String = "",
     val etiquetasNuevaPlantilla: String = "",
-    val tipoActividadNuevaPlantilla: TipoActividad = TipoActividad.GENERAL
+    val tipoActividadNuevaPlantilla: TipoActividad = TipoActividad.GENERAL,
+    val mensajeExito: String? = null,
+    val registroEliminado: Boolean = false
 )
 
 // ViewModel para la pantalla donde los profes registran actividades de los niños
@@ -73,6 +80,7 @@ data class RegistroActividadUiState(
 class RegistroActividadViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val plantillaRepository: PlantillaRegistroRepository,
+    private val registroDiarioRepository: RegistroDiarioRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -220,11 +228,15 @@ class RegistroActividadViewModel @Inject constructor(
      */
     fun updateNecesidadesFisiologicas(caca: Boolean, pipi: Boolean, observaciones: String = "") {
         _uiState.update {
-            it.copy(necesidadesFisiologicas = it.necesidadesFisiologicas.copy(
-                caca = caca,
-                pipi = pipi,
-                observaciones = observaciones
-            ))
+            it.copy(
+                necesidadesFisiologicas = it.necesidadesFisiologicas.copy(
+                    caca = caca,
+                    pipi = pipi,
+                    observaciones = observaciones
+                ),
+                haHechoCaca = caca,
+                numeroCacas = if (caca && it.numeroCacas <= 0) 1 else it.numeroCacas
+            )
         }
     }
 
@@ -327,12 +339,16 @@ class RegistroActividadViewModel @Inject constructor(
                     alumnoNombre = alumnoNombre,
                     fecha = Timestamp.now(),
                     profesorId = profesorId,
-                    comida = comida,
-                    siesta = _uiState.value.siesta,
-                    cacaControl = cacaControl,
-                    observaciones = observacionesTexto,
                     comidas = _uiState.value.comidas,
-                    necesidadesFisiologicas = cacaControl
+                    observacionesComida = _uiState.value.comidas.primerPlato.descripcion,
+                    haSiestaSiNo = _uiState.value.siesta != null,
+                    horaInicioSiesta = _uiState.value.siesta?.let { formatTime(it.inicio ?: Timestamp.now()) } ?: "",
+                    horaFinSiesta = _uiState.value.siesta?.let { formatTime(it.fin ?: Timestamp.now()) } ?: "",
+                    observacionesSiesta = _uiState.value.siesta?.observaciones ?: "",
+                    haHechoCaca = _uiState.value.necesidadesFisiologicas.caca,
+                    numeroCacas = if (_uiState.value.necesidadesFisiologicas.caca) 1 else 0,
+                    observacionesCaca = _uiState.value.necesidadesFisiologicas.observaciones,
+                    observacionesGenerales = _uiState.value.nuevoObservacionMensaje
                 )
 
                 // Simulación:
@@ -558,5 +574,71 @@ class RegistroActividadViewModel @Inject constructor(
                 Timber.e(e, "Error al clonar registro anterior")
             }
         }
+    }
+
+    /**
+     * Elimina un registro de actividad
+     */
+    fun eliminarRegistro(registroId: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Llamar al repositorio para eliminar el registro
+                val resultado = registroDiarioRepository.eliminarRegistroDiario(registroId)
+                
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                mensajeExito = "Registro eliminado correctamente",
+                                registroEliminado = true
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                error = "Error al eliminar el registro: ${resultado.exception?.message ?: "Error desconocido"}"
+                            )
+                        }
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al eliminar registro: ${e.message}")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al eliminar el registro: ${e.message ?: "Error desconocido"}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Resetea el estado de eliminación
+     */
+    fun resetearEstadoEliminacion() {
+        _uiState.update { it.copy(registroEliminado = false) }
+    }
+
+    /**
+     * Limpia el error actual
+     */
+    fun limpiarError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Limpia el mensaje de éxito
+     */
+    fun limpiarMensajeExito() {
+        _uiState.update { it.copy(mensajeExito = null) }
     }
 }

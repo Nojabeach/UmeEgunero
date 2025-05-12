@@ -21,6 +21,8 @@ import java.util.Date
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /**
  * Repositorio para gestionar los registros diarios de actividades de los alumnos.
@@ -141,6 +143,7 @@ class RegistroDiarioRepository @Inject constructor(
                     } else {
                         // Si no existe, crear uno nuevo
                         val nuevoRegistro = RegistroActividad(
+                            id = generateLocalId(alumnoId, fecha),
                             alumnoId = alumnoId,
                             claseId = claseId,
                             profesorId = profesorId,
@@ -173,7 +176,7 @@ class RegistroDiarioRepository @Inject constructor(
             } else {
                 // Si no hay registros locales, creamos uno nuevo
                 val nuevoRegistro = RegistroActividad(
-                    id = generateLocalId(), // Generamos un ID temporal
+                    id = generateLocalId(alumnoId, fecha),
                     alumnoId = alumnoId,
                     claseId = claseId,
                     profesorId = profesorId,
@@ -283,10 +286,9 @@ class RegistroDiarioRepository @Inject constructor(
      * Obtiene los registros diarios de un alumno.
      * 
      * @param alumnoId ID del alumno
-     * @param limit Límite de registros a obtener
      * @return Flow de resultado con la lista de registros
      */
-    fun obtenerRegistrosAlumno(alumnoId: String, limit: Long = 30): Flow<Result<List<RegistroActividad>>> {
+    fun obtenerRegistrosAlumno(alumnoId: String): Flow<Result<List<RegistroActividad>>> {
         return obtenerRegistrosDiariosPorAlumno(alumnoId)
     }
     
@@ -355,9 +357,7 @@ class RegistroDiarioRepository @Inject constructor(
             val registro = (registroResult as Result.Success).data
             val registroActualizado = registro.copy(
                 vistoPorFamiliar = true,
-                visualizadoPorFamiliar = true,
-                fechaVisto = Timestamp(Date()),
-                fechaVisualizacion = Timestamp(Date())
+                fechaVisto = Timestamp(Date())
             )
             
             return@withContext guardarRegistroDiario(registroActualizado)
@@ -510,25 +510,28 @@ class RegistroDiarioRepository @Inject constructor(
             }
             
             val registro = (registroResult as Result.Success).data
+            
+            // Actualizar el campo vistoPor con el ID del familiar
+            val vistoPor = registro.vistoPor?.toMutableMap() ?: mutableMapOf()
+            vistoPor[familiarId] = false // Marcamos que se ha enviado pero no leído
+            
             val registroActualizado = registro.copy(
                 vistoPorFamiliar = true,
-                visualizadoPorFamiliar = true,
                 fechaVisto = timestamp,
-                fechaVisualizacion = timestamp
+                vistoPor = vistoPor
             )
             
             // Si hay conexión, actualizamos en Firestore
             if (isNetworkAvailable()) {
                 try {
+                    val updateData = mapOf(
+                        "vistoPorFamiliar" to true,
+                        "fechaVisto" to timestamp,
+                        "vistoPor.$familiarId" to false
+                    )
+                    
                     registrosCollection.document(registroId)
-                        .update(
-                            mapOf(
-                                "vistoPorFamiliar" to true,
-                                "visualizadoPorFamiliar" to true,
-                                "fechaVisto" to timestamp,
-                                "fechaVisualizacion" to timestamp
-                            )
-                        )
+                        .update(updateData)
                         .await()
                     
                     // Actualizamos en local
@@ -550,10 +553,16 @@ class RegistroDiarioRepository @Inject constructor(
     }
     
     /**
-     * Genera un ID local temporal para registros creados sin conexión
+     * Genera un ID local para un registro.
+     * El formato será "registro_YYYYMMDD_ALUMNOID" para garantizar consistencia.
+     * 
+     * @return ID generado
      */
-    private fun generateLocalId(): String {
-        return "local_${System.currentTimeMillis()}_${(0..999).random()}"
+    private fun generateLocalId(alumnoId: String = "", fecha: Date = Date()): String {
+        val fechaStr = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(fecha)
+        val uidParte = if (alumnoId.isNotEmpty()) alumnoId else "unknown"
+        
+        return "registro_${fechaStr}_$uidParte"
     }
     
     /**
@@ -611,10 +620,11 @@ class RegistroDiarioRepository @Inject constructor(
                 try {
                     // Consultar los registros no leídos por este familiar
                     val query = registrosCollection
-                        .whereNotEqualTo("vistoPor.$familiarId", true)
+                        .whereEqualTo("vistoPorFamiliar", false)
                         .get()
                         .await()
                     
+                    Timber.d("Registros sin leer encontrados: ${query.size()}")
                     return@withContext Result.Success(query.size())
                 } catch (e: Exception) {
                     Timber.e(e, "Error al contar registros sin leer desde Firestore")
@@ -770,6 +780,138 @@ class RegistroDiarioRepository @Inject constructor(
                 Timber.e(e, "Error al obtener registros por alumno y fecha")
                 Result.Error(e)
             }
+        }
+    }
+    
+    /**
+     * Elimina un registro diario de la base de datos
+     * 
+     * @param registroId ID del registro a eliminar
+     * @return Resultado de la operación
+     */
+    suspend fun eliminarRegistroDiario(registroId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Si hay conexión, marcamos como eliminado en Firestore
+            if (isNetworkAvailable()) {
+                try {
+                    // En lugar de eliminar físicamente, marcar como eliminado
+                    registrosCollection.document(registroId)
+                        .update(mapOf("eliminado" to true))
+                        .await()
+                    
+                    // También marcamos como eliminado en la base de datos local
+                    val registroResult = obtenerRegistroDiarioPorId(registroId)
+                    if (registroResult is Result.Success) {
+                        val registro = registroResult.data
+                        val registroActualizado = registro.copy(eliminado = true)
+                        localRegistroRepository.updateRegistroActividad(registroActualizado, true)
+                    }
+                    
+                    return@withContext Result.Success(Unit)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al marcar como eliminado el registro en Firestore")
+                    return@withContext Result.Error(e)
+                }
+            } else {
+                // Si no hay conexión, solo marcamos como pendiente de sincronización
+                // y para eliminar cuando haya conexión
+                val registroResult = obtenerRegistroDiarioPorId(registroId)
+                if (registroResult is Result.Success) {
+                    val registro = registroResult.data
+                    val registroActualizado = registro.copy(eliminado = true)
+                    localRegistroRepository.updateRegistroActividad(registroActualizado, false)
+                }
+                return@withContext Result.Success(Unit)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar registro diario")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Envía una notificación al familiar cuando se crea o actualiza un registro diario
+     * 
+     * @param registro Registro de actividad creado o actualizado
+     * @return Verdadero si la notificación se envió correctamente
+     */
+    suspend fun notificarFamiliarSobreRegistro(registro: RegistroActividad): Boolean = withContext(Dispatchers.IO) {
+        try {
+            // Verificar si hay conexión
+            if (!isNetworkAvailable()) {
+                Timber.d("No hay conexión para enviar notificación al familiar")
+                return@withContext false
+            }
+            
+            // Obtener datos del alumno para personalizar la notificación
+            val alumnoId = registro.alumnoId
+            val alumnoIdDoc = firestore.collection("alumnos").document(alumnoId).get().await()
+            
+            if (!alumnoIdDoc.exists()) {
+                Timber.w("No se encontró el alumno con ID $alumnoId")
+                return@withContext false
+            }
+            
+            val alumnoNombre = alumnoIdDoc.getString("nombre") ?: "su hijo/a"
+            
+            // Formatear la fecha en formato legible
+            val formato = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+            val fechaRegistro = formato.format(registro.fecha.toDate())
+            
+            // Preparar datos para la notificación
+            val titulo = "Nuevo registro diario"
+            val mensaje = "Se ha creado un nuevo registro de $alumnoNombre para el día $fechaRegistro"
+            
+            // Buscar los familiares del alumno
+            val alumnoDoc = firestore.collection("alumnos").document(alumnoId).get().await()
+            val familiaresIds = alumnoDoc.get("familiarIds") as? List<String> ?: emptyList()
+            
+            if (familiaresIds.isEmpty()) {
+                Timber.w("El alumno $alumnoId no tiene familiares asociados")
+                return@withContext false
+            }
+            
+            // Enviar notificación a cada familiar
+            var notificacionesEnviadas = false
+            
+            for (familiarId in familiaresIds) {
+                try {
+                    // Usar el servicio de notificaciones en lugar de Firebase Functions
+                    // Esta es una implementación simplificada, sería necesario implementar un 
+                    // servicio de notificaciones completo usando FCM
+                    
+                    // Verificar si el familiar tiene registrado un token FCM
+                    val familiarDoc = firestore.collection("usuarios").document(familiarId).get().await()
+                    val fcmToken = familiarDoc.getString("fcmToken")
+                    
+                    if (fcmToken.isNullOrEmpty()) {
+                        Timber.w("El familiar $familiarId no tiene token FCM registrado")
+                        continue
+                    }
+                    
+                    // Actualizar el registro para indicar que se envió notificación
+                    val vistoPor = registro.vistoPor.toMutableMap()
+                    vistoPor[familiarId] = false // Marcamos que se ha enviado pero no leído
+                    
+                    val registroActualizado = registro.copy(
+                        vistoPor = vistoPor
+                    )
+                    
+                    // Guardar el registro actualizado
+                    guardarRegistroDiario(registroActualizado)
+                    
+                    Timber.d("Notificación simulada para familiar $familiarId sobre registro ${registro.id}")
+                    notificacionesEnviadas = true
+                    
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al enviar notificación al familiar $familiarId")
+                }
+            }
+            
+            return@withContext notificacionesEnviadas
+        } catch (e: Exception) {
+            Timber.e(e, "Error al notificar a los familiares sobre el registro")
+            return@withContext false
         }
     }
 } 

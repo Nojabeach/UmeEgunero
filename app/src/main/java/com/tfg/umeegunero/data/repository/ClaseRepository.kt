@@ -336,7 +336,7 @@ class ClaseRepositoryImpl @Inject constructor(
                 
             val clases = documentos.mapNotNull { document ->
                 try {
-                    document.toObject(Clase::class.java)?.copy(id = document.id)
+                    document.toObject<Clase>()?.copy(id = document.id)
                 } catch (e: Exception) {
                     Timber.e(e, "Error al convertir documento a Clase: ${document.id}")
                     null

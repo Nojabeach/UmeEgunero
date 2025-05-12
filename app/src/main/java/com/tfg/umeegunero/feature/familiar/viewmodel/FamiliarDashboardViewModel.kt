@@ -155,42 +155,99 @@ class FamiliarDashboardViewModel @Inject constructor(
 
             try {
                 val usuarioId = authRepository.getCurrentUserId()
+                Timber.d("ID de usuario obtenido: $usuarioId")
+                
                 if (usuarioId != null) {
+                    // Intentar obtener el familiar directamente del repositorio de autenticación
+                    val usuario = authRepository.getCurrentUser()
+                    Timber.d("Usuario obtenido: ${usuario?.nombre}, DNI: ${usuario?.dni}")
+                    
+                    // Usar el DNI como ID del familiar (estrategia más confiable)
+                    val familiarId = usuario?.dni
+                    
+                    if (familiarId.isNullOrBlank()) {
+                        Timber.e("No se pudo obtener el DNI del usuario familiar")
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "No se pudo obtener la información de usuario"
+                            )
+                        }
+                        return@launch
+                    }
+                    
                     // Cargar datos del familiar
-                    val familiarResult = familiarRepository.getFamiliarByUsuarioId(usuarioId)
+                    val familiarResult = familiarRepository.getFamiliarByUsuarioId(familiarId)
                     if (familiarResult is Result.Success) {
                         val familiar = familiarResult.data
                         if (familiar != null) {
                             _uiState.update { it.copy(familiar = familiar) }
 
-                            // Cargar hijos vinculados
-                            cargarHijosVinculados(familiar.id)
+                            // Cargar hijos vinculados usando el DNI como ID familiar
+                            cargarHijosVinculados(familiarId)
                             
                             // Cargar solicitudes pendientes
-                            cargarSolicitudesPendientes(familiar.id)
+                            cargarSolicitudesPendientes(familiarId)
                             
                             // Cargar mensajes no leídos
-                            cargarTotalMensajesNoLeidos(familiar.id)
+                            cargarTotalMensajesNoLeidos(familiarId)
                             
                             // Cargar registros sin leer
-                            cargarRegistrosSinLeer(familiar.id)
+                            cargarRegistrosSinLeer(familiarId)
+                        } else {
+                            Timber.e("No se encontró información del familiar con ID: $familiarId")
+                            
+                            // Intentar crear objeto Familiar básico con los datos del usuario
+                            if (usuario != null) {
+                                val familiarBasico = Familiar(
+                                    id = usuario.dni,
+                                    nombre = usuario.nombre,
+                                    apellidos = usuario.apellidos ?: ""
+                                )
+                                _uiState.update { it.copy(familiar = familiarBasico) }
+                                
+                                // Cargar hijos vinculados con el DNI
+                                cargarHijosVinculados(usuario.dni)
+                                cargarSolicitudesPendientes(usuario.dni)
+                                cargarTotalMensajesNoLeidos(usuario.dni)
+                                cargarRegistrosSinLeer(usuario.dni)
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        error = "No se encontró información del familiar"
+                                    )
+                                }
+                            }
+                        }
+                    } else if (familiarResult is Result.Error) {
+                        Timber.e(familiarResult.exception, "Error al cargar datos del familiar: ${familiarResult.exception?.message}")
+                        
+                        // Intentar alternativa con objeto familiar básico
+                        if (usuario != null) {
+                            val familiarBasico = Familiar(
+                                id = usuario.dni,
+                                nombre = usuario.nombre,
+                                apellidos = usuario.apellidos ?: ""
+                            )
+                            _uiState.update { it.copy(familiar = familiarBasico) }
+                            
+                            // Cargar hijos vinculados con el DNI
+                            cargarHijosVinculados(usuario.dni)
+                            cargarSolicitudesPendientes(usuario.dni)
+                            cargarTotalMensajesNoLeidos(usuario.dni)
+                            cargarRegistrosSinLeer(usuario.dni)
                         } else {
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
-                                    error = "No se encontró información del familiar"
+                                    error = "Error al cargar datos: ${familiarResult.exception?.message}"
                                 )
                             }
                         }
-                    } else if (familiarResult is Result.Error) {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = "Error al cargar datos: ${familiarResult.exception?.message}"
-                            )
-                        }
                     }
                 } else {
+                    Timber.e("Usuario no identificado (ID nulo)")
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -199,6 +256,7 @@ class FamiliarDashboardViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Error inesperado: ${e.message}")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -232,7 +290,7 @@ class FamiliarDashboardViewModel @Inject constructor(
                         try {
                             // Asegurarse de que el alumnoId no esté vacío o sea nulo antes de buscar
                             if (alumnoId.isNotBlank()) {
-                                val alumnoResult = alumnoRepository.getAlumnoByDni(alumnoId) // Asumiendo que el ID almacenado es el DNI
+                                val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
                                 if (alumnoResult is Result.Success) {
                                     alumnosVinculados.add(alumnoResult.data)
                                     Timber.d("Alumno cargado desde vinculación: ${alumnoResult.data.nombre} ${alumnoResult.data.apellidos} (ID: $alumnoId)")

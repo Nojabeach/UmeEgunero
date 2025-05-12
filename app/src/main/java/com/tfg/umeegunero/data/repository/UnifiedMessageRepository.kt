@@ -149,94 +149,167 @@ class UnifiedMessageRepository @Inject constructor(
     }
     
     /**
-     * Obtiene la bandeja de entrada del usuario actual
+     * Obtiene todos los mensajes del usuario actual
      */
     fun getCurrentUserInbox(): Flow<Result<List<UnifiedMessage>>> = flow {
         try {
             emit(Result.Loading())
             
             val currentUser = authRepository.getCurrentUser() ?: run {
+                Timber.w("Usuario no autenticado al intentar obtener mensajes")
                 emit(Result.Error("Usuario no autenticado"))
                 return@flow
             }
             
             val userId = currentUser.dni
+            Timber.d("Obteniendo mensajes para usuario: $userId")
             
             try {
-                // Intentamos primero con la consulta combinada original
+                // 1. Obtener mensajes unificados
                 val combinedMessages = mutableListOf<UnifiedMessage>()
                 
-                // 1. Consulta para mensajes donde el usuario es destinatario directo
+                // Consulta para mensajes donde el usuario es destinatario directo
                 val receiverQuery = firestore.collection(MESSAGES_COLLECTION)
                     .whereEqualTo("receiverId", userId)
                     .orderBy("timestamp", Query.Direction.DESCENDING)
                     
-                combinedMessages.addAll(
-                    receiverQuery.get().await().documents
-                        .mapNotNull { createMessageFromDocument(it) }
-                )
+                val directMessages = receiverQuery.get().await().documents
+                    .mapNotNull { createMessageFromDocument(it) }
                 
-                // 2. Consulta para mensajes donde el usuario está en la lista de destinatarios
+                Timber.d("Mensajes directos encontrados: ${directMessages.size}")
+                combinedMessages.addAll(directMessages)
+                
+                // Consulta para mensajes donde el usuario está en la lista de destinatarios
                 val receiversQuery = firestore.collection(MESSAGES_COLLECTION)
                     .whereArrayContains("receiversIds", userId)
                     .orderBy("timestamp", Query.Direction.DESCENDING)
                 
-                combinedMessages.addAll(
-                    receiversQuery.get().await().documents
-                        .mapNotNull { createMessageFromDocument(it) }
-                )
+                val listMessages = receiversQuery.get().await().documents
+                    .mapNotNull { createMessageFromDocument(it) }
                 
-                // Ordenar todos los mensajes por timestamp
-                val sortedMessages = combinedMessages
-                    .sortedByDescending { it.timestamp.seconds }
+                Timber.d("Mensajes en lista de destinatarios encontrados: ${listMessages.size}")
+                combinedMessages.addAll(listMessages)
                 
-                emit(Result.Success(sortedMessages))
-            } catch (e: Exception) {
-                Timber.e(e, "Error en consulta con índice: ${e.message}")
-                
-                if (e.message?.contains("FAILED_PRECONDITION") == true && 
-                    e.message?.contains("requires an index") == true) {
-                    
-                    // Si el error es por falta de índice, usamos un enfoque alternativo
-                    Timber.w("Se requiere crear un índice en Firestore. Usando consulta alternativa.")
-                    
-                    // Consulta alternativa: Obtener todos los mensajes y filtrar en memoria
-                    val allMessagesQuery = firestore.collection(MESSAGES_COLLECTION)
-                        .orderBy("timestamp", Query.Direction.DESCENDING)
+                // 2. Obtener comunicados (colección antigua)
+                try {
+                    val comunicadosQuery = firestore.collection("comunicados")
+                        .whereEqualTo("activo", true)
                         .get()
                         .await()
-                        
-                    val filteredMessages = allMessagesQuery.documents
-                        .mapNotNull { createMessageFromDocument(it) }
-                        .filter { message -> 
-                            message.receiverId == userId || message.receiversIds.contains(userId)
+                    
+                    Timber.d("Encontrados ${comunicadosQuery.size()} comunicados activos")
+                    
+                    val comunicados = comunicadosQuery.documents.mapNotNull { doc ->
+                        try {
+                            if (!doc.exists()) return@mapNotNull null
+                            
+                            val data = doc.data ?: return@mapNotNull null
+                            val id = doc.id
+                            val titulo = data["titulo"] as? String ?: ""
+                            val mensaje = data["mensaje"] as? String ?: ""
+                            val remitente = data["remitente"] as? String ?: "Sistema"
+                            val timestamp = data["fechaCreacion"] as? Timestamp ?: Timestamp.now()
+                            val tiposDestinatarios = data["tiposDestinatarios"] as? List<String> ?: emptyList()
+                            
+                            Timber.d("Procesando comunicado ID: $id - Título: $titulo - Destinatarios: $tiposDestinatarios")
+                            
+                            // Verificar si el comunicado debe mostrarse a este usuario
+                            val mostrarComunicado = when {
+                                // Si tiposDestinatarios está vacío o contiene "TODOS", mostrar a todos
+                                tiposDestinatarios.isEmpty() || 
+                                tiposDestinatarios.any { it.equals("TODOS", ignoreCase = true) } -> true
+                                
+                                // Si el usuario tiene perfil FAMILIAR y el comunicado está dirigido a familiares
+                                currentUser.perfiles.any { it.tipo == TipoUsuario.FAMILIAR } &&
+                                tiposDestinatarios.any { it.equals("FAMILIAR", ignoreCase = true) } -> true
+                                
+                                // Si el usuario tiene perfil PROFESOR y el comunicado está dirigido a profesores
+                                currentUser.perfiles.any { it.tipo == TipoUsuario.PROFESOR } &&
+                                tiposDestinatarios.any { it.equals("PROFESOR", ignoreCase = true) } -> true
+                                
+                                // Si el usuario tiene perfil ADMIN y el comunicado está dirigido a admins
+                                currentUser.perfiles.any { it.tipo == TipoUsuario.ADMIN_APP } &&
+                                tiposDestinatarios.any { it.equals("ADMIN", ignoreCase = true) } -> true
+                                
+                                // En cualquier otro caso, no mostrar
+                                else -> false
+                            }
+                            
+                            if (mostrarComunicado) {
+                                Timber.d("Agregando comunicado ID: $id a la bandeja de entrada")
+                                
+                                // Verificar si el comunicado ha sido leído por este usuario
+                                val usuariosLeidos = data["usuariosLeidos"] as? List<String> ?: emptyList()
+                                val status = if (usuariosLeidos.contains(userId)) 
+                                    MessageStatus.READ else MessageStatus.UNREAD
+                                
+                                // Convertir el comunicado a formato UnifiedMessage
+                                UnifiedMessage(
+                                    id = "comunicado_$id",
+                                    title = titulo,
+                                    content = mensaje,
+                                    type = MessageType.ANNOUNCEMENT,
+                                    priority = MessagePriority.NORMAL,
+                                    senderId = "",
+                                    senderName = remitente,
+                                    receiversIds = listOf(userId),
+                                    timestamp = timestamp,
+                                    status = status
+                                )
+                            } else {
+                                Timber.d("Comunicado $id no es relevante para este usuario")
+                                null
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al procesar comunicado: ${doc.id}")
+                            null
                         }
+                    }
+                    
+                    Timber.d("Comunicados procesados: ${comunicados.size}")
+                    combinedMessages.addAll(comunicados)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener comunicados antiguos: ${e.message}")
+                    // Continuar aunque falle la carga de comunicados
+                }
+                
+                // Ordenar todos los mensajes por timestamp
+                val sortedMessages = combinedMessages.distinctBy { it.id }
+                    .sortedByDescending { it.timestamp.seconds }
+                
+                Timber.d("Total mensajes unificados: ${sortedMessages.size}")
+                emit(Result.Success(sortedMessages))
+                
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener mensajes combinados")
+                
+                // Intentamos con consultas individuales como fallback
+                try {
+                    val messages = mutableListOf<UnifiedMessage>()
+                    
+                    // Cargar sólo los mensajes directos como último recurso
+                    val directQuery = firestore.collection(MESSAGES_COLLECTION)
+                        .whereEqualTo("receiverId", userId)
+                        .limit(100)
+                        .get()
+                        .await()
+                    
+                    val directMessages = directQuery.documents
+                        .mapNotNull { createMessageFromDocument(it) }
                         .sortedByDescending { it.timestamp.seconds }
-                        
-                    emit(Result.Success(filteredMessages))
-                } else {
-                    // Si es otro tipo de error, lo propagamos
-                    throw e
+                    
+                    messages.addAll(directMessages)
+                    
+                    Timber.d("Fallback: Recuperados ${messages.size} mensajes directos")
+                    emit(Result.Success(messages))
+                } catch (fallbackEx: Exception) {
+                    Timber.e(fallbackEx, "Error en el fallback para recuperar mensajes")
+                    emit(Result.Error("Error al cargar mensajes: ${fallbackEx.message}"))
                 }
             }
         } catch (e: Exception) {
-            val errorMsg = when {
-                e.message?.contains("FAILED_PRECONDITION") == true && 
-                e.message?.contains("requires an index") == true -> 
-                    "Se requiere crear un índice en Firestore. Contacte al administrador."
-                    
-                e.message?.contains("PERMISSION_DENIED") == true ->
-                    "No tiene permisos para acceder a los mensajes."
-                    
-                e.message?.contains("UNAVAILABLE") == true || 
-                e.message?.contains("network") == true ->
-                    "Error de conexión. Compruebe su conexión a Internet."
-                    
-                else -> "Error al obtener mensajes para usuario actual: ${e.message}"
-            }
-            
-            Timber.e(e, "Error al obtener mensajes para usuario actual: $errorMsg")
-            emit(Result.Error(errorMsg))
+            Timber.e(e, "Error general al obtener mensajes del usuario")
+            emit(Result.Error("Error al cargar mensajes: ${e.message}"))
         }
     }
     

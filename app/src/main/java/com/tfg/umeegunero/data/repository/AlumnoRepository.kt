@@ -375,20 +375,25 @@ class AlumnoRepositoryImpl @Inject constructor(
             }
 
             // Asumiendo que el documento del familiar tiene un campo List<String> llamado "hijosIds"
-            val hijosIds = familiarDoc.get("hijosIds") as? List<String>
+            val hijosIds = familiarDoc.get("hijosIds")
+            val hijosIdsList = if (hijosIds is List<*>) {
+                hijosIds.filterIsInstance<String>()
+            } else {
+                emptyList()
+            }
 
-            if (hijosIds == null || hijosIds.isEmpty()) {
+            if (hijosIdsList.isEmpty()) {
                 Timber.i("Familiar con ID $familiarId no tiene hijos asociados.")
                 return@withContext Result.Success(emptyList())
             }
 
             // 2. Consultar los alumnos usando los IDs obtenidos (máximo 10 IDs por consulta 'in')
             // Firestore limita las consultas 'in' a 10 elementos. Si hay más hijos, hay que dividir la consulta.
-            if (hijosIds.size > 10) {
+            if (hijosIdsList.size > 10) {
                  Timber.w("La consulta 'in' de Firestore está limitada a 10 IDs. Se necesitan múltiples consultas para $familiarId.")
                  // Implementación simplificada: Por ahora, solo tomamos los primeros 10.
                  // Una implementación completa dividiría hijosIds en chunks de 10 y haría múltiples consultas.
-                 val primerosDiezIds = hijosIds.take(10)
+                 val primerosDiezIds = hijosIdsList.take(10)
                  val query = firestore.collection(COLLECTION_ALUMNOS)
                      .whereIn(com.google.firebase.firestore.FieldPath.documentId(), primerosDiezIds)
                      .get()
@@ -398,7 +403,7 @@ class AlumnoRepositoryImpl @Inject constructor(
 
             } else {
                  val query = firestore.collection(COLLECTION_ALUMNOS)
-                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), hijosIds)
+                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), hijosIdsList)
                     .get()
                     .await()
                  val alumnos = query.toObjects(Alumno::class.java)
@@ -430,20 +435,25 @@ class AlumnoRepositoryImpl @Inject constructor(
             }
 
             // Asumiendo que el documento del familiar tiene un campo List<String> llamado "hijosIds"
-            val hijosIds = familiarDoc.get("hijosIds") as? List<String>
+            val hijosIds = familiarDoc.get("hijosIds")
+            val hijosIdsList = if (hijosIds is List<*>) {
+                hijosIds.filterIsInstance<String>()
+            } else {
+                emptyList()
+            }
 
-            if (hijosIds == null || hijosIds.isEmpty()) {
+            if (hijosIdsList.isEmpty()) {
                 Timber.i("Familiar con ID $familiarId no tiene hijos asociados.")
                 return@withContext Result.Success(emptyList())
             }
 
             // 2. Consultar los alumnos usando los IDs obtenidos (máximo 10 IDs por consulta 'in')
             // Firestore limita las consultas 'in' a 10 elementos. Si hay más hijos, hay que dividir la consulta.
-            if (hijosIds.size > 10) {
+            if (hijosIdsList.size > 10) {
                  Timber.w("La consulta 'in' de Firestore está limitada a 10 IDs. Se necesitan múltiples consultas para $familiarId.")
                  // Implementación simplificada: Por ahora, solo tomamos los primeros 10.
                  // Una implementación completa dividiría hijosIds en chunks de 10 y haría múltiples consultas.
-                 val primerosDiezIds = hijosIds.take(10)
+                 val primerosDiezIds = hijosIdsList.take(10)
                  val query = firestore.collection(COLLECTION_ALUMNOS)
                      .whereIn(com.google.firebase.firestore.FieldPath.documentId(), primerosDiezIds)
                      .get()
@@ -453,7 +463,7 @@ class AlumnoRepositoryImpl @Inject constructor(
 
             } else {
                  val query = firestore.collection(COLLECTION_ALUMNOS)
-                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), hijosIds)
+                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), hijosIdsList)
                     .get()
                     .await()
                  val alumnos = query.toObjects(Alumno::class.java)
@@ -499,12 +509,17 @@ class AlumnoRepositoryImpl @Inject constructor(
                 if (claseDoc.exists()) {
                     Timber.d("AlumnoRepositoryImpl: Documento de clase $claseId encontrado.")
                     val alumnosIds = claseDoc.get("alumnosIds") as? List<String> ?: emptyList()
-                    Timber.d("AlumnoRepositoryImpl: La clase $claseId tiene los siguientes alumnosIds: $alumnosIds")
+                    val alumnosIdsList = if (alumnosIds is List<*>) {
+                        alumnosIds.filterIsInstance<String>()
+                    } else {
+                        emptyList()
+                    }
+                    Timber.d("AlumnoRepositoryImpl: La clase $claseId tiene los siguientes alumnosIds: $alumnosIdsList")
                     
-                    if (alumnosIds.isNotEmpty()) {
+                    if (alumnosIdsList.isNotEmpty()) {
                         // Obtener alumnos por sus IDs
                         val alumnos = mutableListOf<Alumno>()
-                        for (id in alumnosIds) {
+                        for (id in alumnosIdsList) {
                             try {
                                 Timber.d("AlumnoRepositoryImpl: Buscando alumno con DNI: $id (desde alumnosIds de la clase $claseId)")
                                 val alumnoQuery = firestore.collection(COLLECTION_ALUMNOS)
@@ -740,10 +755,15 @@ class AlumnoRepositoryImpl @Inject constructor(
                 val alumnosConFamiliar = todosLosAlumnos.documents.mapNotNull { document ->
                     try {
                         val alumno = document.toObject(Alumno::class.java)
-                        val familiares = document.get("familiares") as? List<Map<String, Any>> ?: emptyList()
+                        val familiares = document.get("familiares")
+                        val familiaresList = if (familiares is List<*>) {
+                            familiares.filterIsInstance<Map<String, Any>>()
+                        } else {
+                            emptyList()
+                        }
                         
                         // Comprobar si algún familiar tiene el ID buscado
-                        val tieneFamiliar = familiares.any { familiar ->
+                        val tieneFamiliar = familiaresList.any { familiar ->
                             val id = familiar["id"] as? String ?: ""
                             id == familiarId
                         }

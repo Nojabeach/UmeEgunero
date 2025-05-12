@@ -29,6 +29,12 @@ import com.google.firebase.functions.HttpsCallableResult
 import com.google.firebase.functions.FirebaseFunctionsException
 import timber.log.Timber
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Comidas
+import com.tfg.umeegunero.data.model.Plato
+import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
 // Definir las clases de enumeración que faltan
 enum class Alimentacion {
@@ -223,19 +229,15 @@ class RegistroDiarioViewModel @Inject constructor(
                                 registro = registro,
                                 
                                 // Actualizar los estados de UI con los datos del registro
-                                primerPlato = registro.primerPlato ?: EstadoComida.NO_SERVIDO,
-                                segundoPlato = registro.segundoPlato ?: EstadoComida.NO_SERVIDO,
-                                postre = registro.postre ?: EstadoComida.NO_SERVIDO,
-                                merienda = registro.merienda ?: EstadoComida.NO_SERVIDO,
+                                primerPlato = registro.comidas.primerPlato.estadoComida,
+                                segundoPlato = registro.comidas.segundoPlato.estadoComida,
+                                postre = registro.comidas.postre.estadoComida,
+                                merienda = EstadoComida.NO_SERVIDO,
                                 observacionesComida = registro.observacionesComida ?: "",
                                 
                                 haSiestaSiNo = registro.haSiestaSiNo,
-                                horaInicioSiesta = registro.horaInicioSiesta?.seconds?.let { 
-                                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it * 1000))
-                                } ?: "",
-                                horaFinSiesta = registro.horaFinSiesta?.seconds?.let {
-                                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it * 1000))
-                                } ?: "",
+                                horaInicioSiesta = registro.horaInicioSiesta ?: "",
+                                horaFinSiesta = registro.horaFinSiesta ?: "",
                                 observacionesSiesta = registro.observacionesSiesta ?: "",
                                 
                                 necesitaPanales = registro.necesitaPanales,
@@ -323,10 +325,14 @@ class RegistroDiarioViewModel @Inject constructor(
     }
     
     /**
-     * Actualiza el estado de las deposiciones
+     * Actualiza si el alumno ha hecho caca
      */
-    fun toggleCaca(haHechoCaca: Boolean) {
-        _uiState.update { it.copy(haHechoCaca = haHechoCaca) }
+    fun actualizarHaHechoCaca(value: Boolean) {
+        _uiState.update { it.copy(
+            haHechoCaca = value,
+            // Si el alumno ha hecho caca y el número de cacas es 0, establecer 1 por defecto
+            numeroCacas = if (value && it.numeroCacas <= 0) 1 else it.numeroCacas
+        ) }
     }
     
     /**
@@ -379,135 +385,192 @@ class RegistroDiarioViewModel @Inject constructor(
     }
     
     /**
-     * Guarda el registro con los datos actuales
+     * Obtiene el ID del usuario actual (profesor)
+     * @return ID del usuario o null si no se pudo obtener
      */
-    fun guardarRegistro(profesorId: String) {
-        val state = _uiState.value
-        
-        // Prepara las fechas para la siesta
-        val horaInicioSiesta = if (state.haSiestaSiNo && state.horaInicioSiesta.isNotEmpty()) {
-            try {
-                val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
-                Timestamp(formatoHora.parse(state.horaInicioSiesta) ?: Date())
-            } catch (e: Exception) {
+    suspend fun obtenerIdUsuarioActual(): String? {
+        return try {
+            val usuario = authRepository.getCurrentUser()
+            if (usuario != null) {
+                val profesorId = usuario.dni
+                Timber.d("ID de usuario actual obtenido: $profesorId")
+                profesorId
+            } else {
+                Timber.e("No se pudo obtener el usuario actual")
                 null
             }
-        } else null
-        
-        val horaFinSiesta = if (state.haSiestaSiNo && state.horaFinSiesta.isNotEmpty()) {
-            try {
-                val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
-                Timestamp(formatoHora.parse(state.horaFinSiesta) ?: Date())
-            } catch (e: Exception) {
-                null
-            }
-        } else null
-        
-        val registro = state.registro.copy(
-            alumnoId = state.alumnoId,
-            claseId = state.claseId,
-            profesorId = profesorId,
-            fecha = Timestamp(state.fechaSeleccionada),
-            primerPlato = state.primerPlato,
-            segundoPlato = state.segundoPlato,
-            postre = state.postre,
-            merienda = state.merienda,
-            observacionesComida = state.observacionesComida,
-            haSiestaSiNo = state.haSiestaSiNo,
-            horaInicioSiesta = horaInicioSiesta,
-            horaFinSiesta = horaFinSiesta,
-            observacionesSiesta = state.observacionesSiesta,
-            haHechoCaca = state.haHechoCaca,
-            numeroCacas = state.numeroCacas,
-            observacionesCaca = state.observacionesCaca,
-            necesitaPanales = state.necesitaPanales,
-            necesitaToallitas = state.necesitaToallitas,
-            necesitaRopaCambio = state.necesitaRopaCambio,
-            otroMaterialNecesario = state.otroMaterialNecesario,
-            observacionesGenerales = state.observacionesGenerales
-        )
-        
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener ID del usuario actual")
+            null
+        }
+    }
+    
+    /**
+     * Versión asíncrona con callback para obtenerIdUsuarioActual (para mantener compatibilidad)
+     */
+    fun obtenerIdUsuarioActual(callback: (String?) -> Unit) {
         viewModelScope.launch {
+            val resultado = obtenerIdUsuarioActual()
+            callback(resultado)
+        }
+    }
+    
+    /**
+     * Guarda el registro diario actual en Firestore
+     */
+    fun guardarRegistro(profesorId: String = "") {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
             try {
-                _uiState.update { it.copy(isLoading = true, error = null) }
+                var profesorIdActual = profesorId
                 
-                val result = registroDiarioRepository.actualizarRegistroDiario(registro)
+                // Si no se provee un profesorId, intentar obtenerlo del usuario actual
+                if (profesorIdActual.isEmpty()) {
+                    val profesorResult = obtenerIdUsuarioActual()
+                    if (profesorResult == null) {
+                        _uiState.update { it.copy(
+                            error = "No se pudo identificar al profesor actual",
+                            isLoading = false
+                        ) }
+                        return@launch
+                    }
+                    profesorIdActual = profesorResult
+                }
                 
-                when (result) {
+                val alumnoId = _uiState.value.alumnoId
+                if (alumnoId.isEmpty()) {
+                    _uiState.update { it.copy(
+                        error = "No se ha seleccionado ningún alumno",
+                        isLoading = false
+                    ) }
+                    return@launch
+                }
+                
+                // Aquí obtenemos la fecha actual
+                val fecha = Timestamp(Date())
+                
+                // Para evitar problemas con registros duplicados, verificamos si ya existe
+                val registroExistente = _uiState.value.registro
+                val registro = if (registroExistente == null) {
+                    // Crear un nuevo registro
+                    val nuevoRegistro = RegistroActividad(
+                        id = UUID.randomUUID().toString(),
+                        alumnoId = alumnoId,
+                        claseId = _uiState.value.claseId,
+                        profesorId = profesorIdActual,
+                        fecha = fecha,
+                        comidas = Comidas(
+                            primerPlato = Plato("", _uiState.value.primerPlato),
+                            segundoPlato = Plato("", _uiState.value.segundoPlato),
+                            postre = Plato("", _uiState.value.postre)
+                        ),
+                        observacionesComida = _uiState.value.observacionesComida,
+                        haSiestaSiNo = _uiState.value.haSiestaSiNo,
+                        horaInicioSiesta = _uiState.value.horaInicioSiesta,
+                        horaFinSiesta = _uiState.value.horaFinSiesta,
+                        observacionesSiesta = _uiState.value.observacionesSiesta,
+                        haHechoCaca = _uiState.value.haHechoCaca,
+                        numeroCacas = _uiState.value.numeroCacas,
+                        observacionesCaca = _uiState.value.observacionesCaca,
+                        necesitaPanales = _uiState.value.necesitaPanales,
+                        necesitaToallitas = _uiState.value.necesitaToallitas,
+                        necesitaRopaCambio = _uiState.value.necesitaRopaCambio,
+                        otroMaterialNecesario = _uiState.value.otroMaterialNecesario,
+                        observacionesGenerales = _uiState.value.observacionesGenerales,
+                        creadoPor = profesorIdActual,
+                        modificadoPor = profesorIdActual,
+                        ultimaModificacion = fecha
+                    )
+                    nuevoRegistro
+                } else {
+                    // Actualizar registro existente
+                    registroExistente.copy(
+                        comidas = Comidas(
+                            primerPlato = Plato("", _uiState.value.primerPlato),
+                            segundoPlato = Plato("", _uiState.value.segundoPlato),
+                            postre = Plato("", _uiState.value.postre)
+                        ),
+                        observacionesComida = _uiState.value.observacionesComida,
+                        haSiestaSiNo = _uiState.value.haSiestaSiNo,
+                        horaInicioSiesta = _uiState.value.horaInicioSiesta,
+                        horaFinSiesta = _uiState.value.horaFinSiesta,
+                        observacionesSiesta = _uiState.value.observacionesSiesta,
+                        haHechoCaca = _uiState.value.haHechoCaca,
+                        numeroCacas = _uiState.value.numeroCacas,
+                        observacionesCaca = _uiState.value.observacionesCaca,
+                        necesitaPanales = _uiState.value.necesitaPanales,
+                        necesitaToallitas = _uiState.value.necesitaToallitas,
+                        necesitaRopaCambio = _uiState.value.necesitaRopaCambio,
+                        otroMaterialNecesario = _uiState.value.otroMaterialNecesario,
+                        observacionesGenerales = _uiState.value.observacionesGenerales,
+                        modificadoPor = profesorIdActual,
+                        ultimaModificacion = fecha
+                    )
+                }
+                
+                // Guardar el registro en Firestore
+                val resultado = registroDiarioRepository.guardarRegistroDiario(registro)
+                
+                when (resultado) {
                     is Result.Success -> {
-                        _uiState.update { it.copy(isLoading = false, success = true, showSuccessDialog = true) }
+                        _uiState.update { it.copy(
+                            isLoading = false,
+                            registro = registro,
+                            showSuccessDialog = true
+                        ) }
                         
-                        // Enviar notificación a familiares solo si hay cambios importantes
-                        val cambiosImportantes = hayCambiosImportantes(registro)
-                        if (cambiosImportantes) {
-                            enviarNotificacionActualizacion(registro)
+                        // Enviar notificación al familiar
+                        viewModelScope.launch {
+                            try {
+                                val notificacionEnviada = registroDiarioRepository.notificarFamiliarSobreRegistro(registro)
+                                if (notificacionEnviada) {
+                                    Timber.d("Notificación enviada al familiar sobre el registro ${registro.id}")
+                                } else {
+                                    Timber.w("No se pudo enviar notificación al familiar sobre el registro ${registro.id}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al enviar notificación al familiar")
+                            }
                         }
                     }
                     is Result.Error -> {
-                        _uiState.update { it.copy(
-                            isLoading = false, 
-                            success = false, 
-                            error = result.exception?.message ?: "Error desconocido"
-                        ) }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Error al guardar el registro: ${resultado.exception?.message ?: "Error desconocido"}"
+                            )
+                        }
                     }
-                    is Result.Loading -> {
-                        // Ya estamos en estado de carga
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false) }
                     }
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Error al guardar registro diario: ${e.message}")
                 _uiState.update { it.copy(
-                    isLoading = false, 
-                    success = false, 
-                    error = "Error al guardar: ${e.message}"
+                    isLoading = false,
+                    error = "Error al guardar el registro: ${e.message ?: "Error desconocido"}"
                 ) }
             }
         }
     }
     
     /**
-     * Determina si hay cambios importantes que merezcan una notificación
+     * Convierte una hora en formato "HH:mm" a un Timestamp
      */
-    private fun hayCambiosImportantes(registro: RegistroActividad): Boolean {
-        // Consideramos cambios importantes:
-        // - Cambios en comidas (especialmente si no comió)
-        // - Cambios en el estado de ánimo
-        // - Cambios en actividades completadas
-        // - Adición de observaciones
-        
-        return (registro.primerPlato != EstadoComida.SIN_DATOS) ||
-               (registro.segundoPlato != EstadoComida.SIN_DATOS) ||
-               (registro.postre != EstadoComida.SIN_DATOS) ||
-               (registro.merienda != EstadoComida.SIN_DATOS) ||
-               registro.observacionesComida.isNotBlank() ||
-               registro.haSiestaSiNo ||
-               registro.haHechoCaca ||
-               registro.numeroCacas > 0 ||
-               registro.observacionesSiesta.isNotBlank() ||
-               registro.observacionesCaca.isNotBlank() ||
-               registro.observacionesGenerales.isNotBlank()
-    }
-    
-    /**
-     * Envía notificación a los familiares sobre la actualización del registro
-     */
-    private fun enviarNotificacionActualizacion(registro: RegistroActividad) {
-        viewModelScope.launch {
-            try {
-                val alumnoId = _uiState.value.alumnoId
-                val profesorId = registro.profesorId ?: ""
-                
-                // Usar el servicio de notificaciones en vez de Cloud Functions
-                notificationService.procesarActualizacionRegistroDiario(
-                    registroId = registro.id,
-                    alumnoId = alumnoId,
-                    profesorId = profesorId,
-                    cambiosImportantes = true
-                )
-                
-                Timber.d("Notificación de actualización de registro enviada para alumno $alumnoId")
-            } catch (e: Exception) {
-                Timber.e(e, "Error al enviar notificación de actualización de registro: ${e.message}")
+    private fun convertirHoraATimestamp(hora: String): Timestamp {
+        try {
+            val formato = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val parsedDate = formato.parse(hora)
+            return if (parsedDate != null) {
+                Timestamp(parsedDate)
+            } else {
+                Timestamp.now()
             }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al convertir hora a Timestamp: $hora")
+            return Timestamp.now()
         }
     }
     
@@ -523,27 +586,5 @@ class RegistroDiarioViewModel @Inject constructor(
      */
     fun limpiarError() {
         _uiState.update { it.copy(error = null) }
-    }
-
-    /**
-     * Obtiene el ID del usuario actual (profesor) y lo devuelve a través de un callback
-     */
-    fun obtenerIdUsuarioActual(callback: (String?) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val usuario = authRepository.getCurrentUser()
-                if (usuario != null) {
-                    val profesorId = usuario.dni
-                    Timber.d("ID de usuario actual obtenido: $profesorId")
-                    callback(profesorId)
-                } else {
-                    Timber.e("No se pudo obtener el usuario actual")
-                    callback(null)
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener ID del usuario actual")
-                callback(null)
-            }
-        }
     }
 } 

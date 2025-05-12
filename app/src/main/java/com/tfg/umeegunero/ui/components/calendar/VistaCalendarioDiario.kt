@@ -84,7 +84,7 @@ fun VistaCalendarioDiario(
             }
         }
         
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(vertical = 8.dp),
             thickness = 1.dp,
             color = MaterialTheme.colorScheme.outlineVariant
@@ -134,7 +134,7 @@ fun VistaCalendarioDiario(
                         )
                         
                         if (hora < 22) {
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 4.dp),
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -215,7 +215,13 @@ private fun FranjaHoraria(
                         onClick = { onClickEvento(evento) }
                     )
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
                 }
             }
         }

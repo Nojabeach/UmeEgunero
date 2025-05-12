@@ -40,16 +40,13 @@ data class RegistroActividadEntity(
     val profesorNombre: String? = null,
     
     // Datos de comidas
-    val primerPlato: String = EstadoComida.NO_SERVIDO.name,
-    val segundoPlato: String = EstadoComida.NO_SERVIDO.name,
-    val postre: String = EstadoComida.NO_SERVIDO.name,
-    val merienda: String = EstadoComida.NO_SERVIDO.name,
+    val comidasJson: String = "", // Comidas almacenado como JSON
     val observacionesComida: String = "",
     
     // Datos de siesta
     val haSiestaSiNo: Boolean = false,
-    val horaInicioSiestaTimestamp: Long? = null, // Timestamp almacenado como Long
-    val horaFinSiestaTimestamp: Long? = null,
+    val horaInicioSiesta: String = "", // Formato HH:mm
+    val horaFinSiesta: String = "", // Formato HH:mm
     val observacionesSiesta: String = "",
     
     // Datos de necesidades fisiológicas
@@ -64,7 +61,6 @@ data class RegistroActividadEntity(
     val otroMaterialNecesario: String = "",
     
     // Observaciones generales
-    val observaciones: String? = null,
     val observacionesGenerales: String = "",
     
     // Etiquetas - Nueva funcionalidad
@@ -73,21 +69,28 @@ data class RegistroActividadEntity(
     // Control de visualización
     val vistoPorFamiliar: Boolean = false,
     val fechaVistoTimestamp: Long? = null,
-    val visualizadoPorFamiliar: Boolean = false,
-    val fechaVisualizacionTimestamp: Long? = null,
+    val vistoPorJson: String = "{}", // Map<String, Boolean> como JSON
     
     // Metadatos
     val ultimaModificacionTimestamp: Long = Date().time,
     val creadoPor: String = "",
     val modificadoPor: String = "",
     
+    // Actividades
+    val actividades: List<String> = emptyList(),
+    
     // Plantilla - Nueva funcionalidad
     val plantillaId: String? = null,
+    
+    // Eliminación lógica
+    val eliminado: Boolean = false,
     
     // Campo para sincronización - Indica si el registro está sincronizado con el servidor
     val isSynced: Boolean = false
 ) {
     companion object {
+        private val gson = Gson()
+        
         /**
          * Convierte un modelo RegistroActividad a una entidad RegistroActividadEntity
          * 
@@ -104,32 +107,28 @@ data class RegistroActividadEntity(
                 fechaTimestamp = registro.fecha.seconds * 1000,
                 profesorId = registro.profesorId,
                 profesorNombre = registro.profesorNombre,
-                primerPlato = registro.comidas.primerPlato.estadoComida.name,
-                segundoPlato = registro.comidas.segundoPlato.estadoComida.name,
-                postre = registro.comidas.postre.estadoComida.name,
-                merienda = registro.comidas.primerPlato.estadoComida.name,
+                comidasJson = gson.toJson(registro.comidas),
                 observacionesComida = registro.observacionesComida,
-                haSiestaSiNo = registro.siesta != null,
-                horaInicioSiestaTimestamp = registro.siesta?.inicio?.seconds?.times(1000) ?: registro.horaInicioSiesta?.seconds?.times(1000),
-                horaFinSiestaTimestamp = registro.siesta?.fin?.seconds?.times(1000) ?: registro.horaFinSiesta?.seconds?.times(1000),
-                observacionesSiesta = registro.siesta?.observaciones ?: registro.observacionesSiesta,
-                haHechoCaca = registro.necesidadesFisiologicas.caca,
-                numeroCacas = if (registro.necesidadesFisiologicas.caca) 1 else 0,
-                observacionesCaca = registro.necesidadesFisiologicas.observaciones,
+                haSiestaSiNo = registro.haSiestaSiNo,
+                horaInicioSiesta = registro.horaInicioSiesta,
+                horaFinSiesta = registro.horaFinSiesta,
+                observacionesSiesta = registro.observacionesSiesta,
+                haHechoCaca = registro.haHechoCaca,
+                numeroCacas = registro.numeroCacas,
+                observacionesCaca = registro.observacionesCaca,
                 necesitaPanales = registro.necesitaPanales,
                 necesitaToallitas = registro.necesitaToallitas,
                 necesitaRopaCambio = registro.necesitaRopaCambio,
                 otroMaterialNecesario = registro.otroMaterialNecesario,
-                observaciones = registro.observaciones,
                 observacionesGenerales = registro.observacionesGenerales,
                 etiquetas = registro.etiquetas,
                 vistoPorFamiliar = registro.vistoPorFamiliar,
                 fechaVistoTimestamp = registro.fechaVisto?.seconds?.times(1000),
-                visualizadoPorFamiliar = registro.visualizadoPorFamiliar,
-                fechaVisualizacionTimestamp = registro.fechaVisualizacion?.seconds?.times(1000),
+                vistoPorJson = gson.toJson(registro.vistoPor),
                 ultimaModificacionTimestamp = registro.ultimaModificacion.seconds * 1000,
                 creadoPor = registro.creadoPor,
                 modificadoPor = registro.modificadoPor,
+                actividades = registro.actividades,
                 plantillaId = registro.plantillaId,
                 isSynced = isSynced
             )
@@ -142,50 +141,49 @@ data class RegistroActividadEntity(
      * @return Modelo de dominio
      */
     fun toRegistroActividad(): RegistroActividad {
+        val comidas = try {
+            gson.fromJson(comidasJson, Comidas::class.java) ?: Comidas()
+        } catch (e: Exception) {
+            Comidas()
+        }
+        
+        val vistoPor = try {
+            val type = object : TypeToken<Map<String, Boolean>>() {}.type
+            gson.fromJson<Map<String, Boolean>>(vistoPorJson, type) ?: emptyMap()
+        } catch (e: Exception) {
+            emptyMap<String, Boolean>()
+        }
+        
         return RegistroActividad(
             id = id,
             alumnoId = alumnoId,
             alumnoNombre = alumnoNombre,
             claseId = claseId,
             fecha = Timestamp(fechaTimestamp / 1000, 0),
-            profesorId = profesorId,
+            profesorId = profesorId ?: "",
             profesorNombre = profesorNombre,
-            comidas = Comidas(
-                primerPlato = com.tfg.umeegunero.data.model.Plato(
-                    "", EstadoComida.valueOf(primerPlato)
-                ),
-                segundoPlato = com.tfg.umeegunero.data.model.Plato(
-                    "", EstadoComida.valueOf(segundoPlato)
-                ),
-                postre = com.tfg.umeegunero.data.model.Plato(
-                    "", EstadoComida.valueOf(postre)
-                )
-            ),
-            siesta = Siesta(
-                duracion = 0,
-                inicio = horaInicioSiestaTimestamp?.let { Timestamp(it / 1000, 0) },
-                fin = horaFinSiestaTimestamp?.let { Timestamp(it / 1000, 0) },
-                observaciones = observacionesSiesta
-            ),
-            necesidadesFisiologicas = NecesidadesFisiologicas(
-                pipi = true,
-                caca = haHechoCaca,
-                observaciones = observacionesCaca
-            ),
+            comidas = comidas,
+            observacionesComida = observacionesComida,
+            haSiestaSiNo = haSiestaSiNo,
+            horaInicioSiesta = horaInicioSiesta,
+            horaFinSiesta = horaFinSiesta,
+            observacionesSiesta = observacionesSiesta,
+            haHechoCaca = haHechoCaca,
+            numeroCacas = numeroCacas,
+            observacionesCaca = observacionesCaca,
             necesitaPanales = necesitaPanales,
             necesitaToallitas = necesitaToallitas,
             necesitaRopaCambio = necesitaRopaCambio,
             otroMaterialNecesario = otroMaterialNecesario,
-            observaciones = observaciones,
             observacionesGenerales = observacionesGenerales,
             etiquetas = etiquetas,
             vistoPorFamiliar = vistoPorFamiliar,
             fechaVisto = fechaVistoTimestamp?.let { Timestamp(it / 1000, 0) },
-            visualizadoPorFamiliar = visualizadoPorFamiliar,
-            fechaVisualizacion = fechaVisualizacionTimestamp?.let { Timestamp(it / 1000, 0) },
+            vistoPor = vistoPor,
             ultimaModificacion = Timestamp(ultimaModificacionTimestamp / 1000, 0),
             creadoPor = creadoPor,
             modificadoPor = modificadoPor,
+            actividades = actividades,
             plantillaId = plantillaId
         )
     }

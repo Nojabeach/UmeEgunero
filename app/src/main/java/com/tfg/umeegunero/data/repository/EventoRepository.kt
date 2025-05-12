@@ -136,15 +136,21 @@ class EventoRepository @Inject constructor(
     /**
      * Crea un nuevo evento en Firestore
      * @param evento Objeto Evento a crear
-     * @return ID del evento creado
+     * @return Resultado con el ID del evento creado
      */
-    suspend fun crearEvento(evento: Evento): String {
+    suspend fun crearEvento(evento: Evento): com.tfg.umeegunero.util.Result<String> {
         return try {
-            val docRef = firestore.collection(COLLECTION_EVENTOS).add(evento.toMap()).await()
-            docRef.id
+            val nuevoEventoRef = firestore.collection(COLLECTION_EVENTOS).document()
+            val eventoId = nuevoEventoRef.id
+            
+            // Guardar el evento usando los datos del map
+            nuevoEventoRef.set(evento.toMap()).await()
+            
+            Timber.d("Evento creado con ID: $eventoId")
+            com.tfg.umeegunero.util.Result.Success(eventoId)
         } catch (e: Exception) {
             Timber.e(e, "Error al crear evento")
-            throw e
+            com.tfg.umeegunero.util.Result.Error(e)
         }
     }
 

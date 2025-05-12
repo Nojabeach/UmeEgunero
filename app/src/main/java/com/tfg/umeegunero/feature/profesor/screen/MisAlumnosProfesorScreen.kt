@@ -28,24 +28,35 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Person2
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -59,14 +70,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -76,14 +90,18 @@ import com.tfg.umeegunero.feature.profesor.viewmodel.MisAlumnosProfesorViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import androidx.lifecycle.ViewModel
 import com.tfg.umeegunero.feature.profesor.viewmodel.MisAlumnosUiState
 import androidx.compose.material3.HorizontalDivider
 import timber.log.Timber
 import com.tfg.umeegunero.util.performHapticFeedbackSafely
+import android.widget.Toast
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Pantalla que muestra la lista de alumnos del profesor
@@ -108,6 +126,10 @@ fun MisAlumnosProfesorScreen(
     var searchQuery by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     val haptic = LocalHapticFeedback.current
+
+    // Estado para el diálogo de programación de reunión
+    var mostrarDialogoReunion by remember { mutableStateOf(false) }
+    var alumnoSeleccionadoParaReunion by remember { mutableStateOf<Alumno?>(null) }
 
     Scaffold(
         topBar = {
@@ -134,6 +156,23 @@ fun MisAlumnosProfesorScreen(
                     navigationIconContentColor = Color.White
                 )
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    haptic.performHapticFeedbackSafely()
+                    // Llamar a la función del ViewModel para generar el informe
+                    // viewModel.generarInformeAlumnos() // Comentado temporalmente
+                    // TODO: Mostrar Snackbar o mensaje temporal indicando que la función no está implementada
+                },
+                containerColor = ProfesorColor,
+                contentColor = Color.White
+            ) {
+                Icon(
+                    imageVector = Icons.Default.GetApp,
+                    contentDescription = "Generar listado de alumnos"
+                )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -259,9 +298,20 @@ fun MisAlumnosProfesorScreen(
                                 alumno = alumno,
                                 onClick = {
                                     haptic.performHapticFeedbackSafely()
-                                    navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.id))
+                                    try {
+                                        // Usar la función createRoute de AppScreens
+                                        navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.id))
+                                        // Log del intento de navegación para depuración
+                                        Timber.d("Navegando a detalle de alumno: ${alumno.id}")
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al navegar a detalle de alumno")
+                                    }
                                 },
-                                haptic = haptic
+                                onProgramarReunion = {
+                                    haptic.performHapticFeedbackSafely()
+                                    alumnoSeleccionadoParaReunion = alumno
+                                    mostrarDialogoReunion = true
+                                }
                             )
                         }
                         
@@ -272,183 +322,260 @@ fun MisAlumnosProfesorScreen(
             }
         }
     }
+
+    // Diálogo para programar reunión
+    if (mostrarDialogoReunion && alumnoSeleccionadoParaReunion != null) {
+        ProgramarReunionDialog(
+            alumno = alumnoSeleccionadoParaReunion!!,
+            onDismiss = { 
+                mostrarDialogoReunion = false 
+                alumnoSeleccionadoParaReunion = null
+            },
+            onProgramar = { titulo, descripcion, fecha, hora ->
+                viewModel.programarReunion(
+                    alumnoSeleccionadoParaReunion!!.dni,
+                    titulo,
+                    fecha,
+                    hora,
+                    descripcion
+                )
+                mostrarDialogoReunion = false
+                alumnoSeleccionadoParaReunion = null
+            }
+        )
+    }
 }
 
 /**
- * Tarjeta para mostrar la información básica de un alumno
+ * Tarjeta que muestra la información de un alumno
  */
 @Composable
 fun AlumnoCard(
     alumno: Alumno,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback
+    onProgramarReunion: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var expandedState by remember { mutableStateOf(false) }
-    
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { 
-                haptic.performHapticFeedbackSafely()
-                onClick() 
-            },
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        ),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, ProfesorColor.copy(alpha = 0.3f))
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Información principal del alumno
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar del alumno
+                // Avatar / Inicial del alumno
                 Box(
                     modifier = Modifier
                         .size(50.dp)
                         .clip(CircleShape)
-                        .background(ProfesorColor),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = alumno.nombre.firstOrNull()?.toString() ?: "?",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge
+                        text = alumno.nombre.take(1).uppercase(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White
                     )
                 }
                 
                 Spacer(modifier = Modifier.width(16.dp))
                 
-                // Nombre y datos del alumno
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
                         text = "${alumno.nombre} ${alumno.apellidos}",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        fontWeight = FontWeight.Bold
                     )
-                    
-                    Text(
-                        text = alumno.clase,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+                }
+                
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    IconButton(
+                        onClick = onClick,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                shape = CircleShape
+                            )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PersonAdd,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = ProfesorColor
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "${alumno.familiares.size} familiar(es)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ProfesorColor
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Ver detalle",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                }
-                
-                // Indicador de estado activo
-                if (alumno.activo) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Alumno activo",
-                        tint = Color.Green,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                
-                // Botón para expandir información de familiares
-                IconButton(
-                    onClick = { 
-                        haptic.performHapticFeedbackSafely()
-                        expandedState = !expandedState 
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Botón para programar reunión
+                    IconButton(
+                        onClick = onProgramarReunion,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Event,
+                            contentDescription = "Programar reunión",
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
                     }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person2,
-                        contentDescription = "Ver familiares",
-                        tint = ProfesorColor
-                    )
                 }
             }
-            
-            // Sección expandible con familiares
-            AnimatedVisibility(
-                visible = expandedState,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+        }
+    }
+}
+
+/**
+ * Componente de diálogo para programar una reunión
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProgramarReunionDialog(
+    alumno: Alumno,
+    onDismiss: () -> Unit,
+    onProgramar: (titulo: String, descripcion: String, fecha: String, hora: String) -> Unit
+) {
+    val context = LocalContext.current
+    var titulo by remember { mutableStateOf("Reunión con familiar de ${alumno.nombre}") }
+    var descripcion by remember { mutableStateOf("") }
+    var fecha by remember { mutableStateOf(LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))) }
+    var hora by remember { mutableStateOf("16:00") }
+    
+    var mostrarDatePicker by remember { mutableStateOf(false) }
+    
+    // DatePicker para seleccionar la fecha
+    if (mostrarDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = LocalDate.now().plusDays(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        )
+        
+        DatePickerDialog(
+            onDismissRequest = { mostrarDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val fechaSeleccionada = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                            fecha = fechaSeleccionada.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        }
+                        mostrarDatePicker = false
+                    }
                 ) {
-                    if (alumno.familiares.isEmpty()) {
-                        Text(
-                            text = "No hay familiares vinculados",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                    } else {
-                        Text(
-                            text = "Familiares vinculados:",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = ProfesorColor
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        alumno.familiares.forEach { familiar ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = "${familiar.nombre} ${familiar.apellidos}",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Text(
-                                        text = familiar.parentesco,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            
-                            if (familiar != alumno.familiares.last()) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 4.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                                )
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDatePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Programar reunión",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                OutlinedTextField(
+                    value = titulo,
+                    onValueChange = { titulo = it },
+                    label = { Text("Título") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = fecha,
+                        onValueChange = { },
+                        label = { Text("Fecha") },
+                        readOnly = true,
+                        modifier = Modifier.weight(1f),
+                        trailingIcon = {
+                            IconButton(onClick = { mostrarDatePicker = true }) {
+                                Icon(Icons.Default.CalendarMonth, contentDescription = "Seleccionar fecha")
                             }
                         }
+                    )
+                    
+                    OutlinedTextField(
+                        value = hora,
+                        onValueChange = { hora = it },
+                        label = { Text("Hora") },
+                        modifier = Modifier.width(120.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = {
+                            onProgramar(titulo, descripcion, fecha, hora)
+                            Toast.makeText(context, "Reunión programada", Toast.LENGTH_SHORT).show()
+                        },
+                        enabled = titulo.isNotBlank()
+                    ) {
+                        Text("Programar")
                     }
                 }
             }

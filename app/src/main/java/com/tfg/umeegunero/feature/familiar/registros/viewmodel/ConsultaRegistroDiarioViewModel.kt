@@ -37,7 +37,7 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                registroDiarioRepository.obtenerRegistrosAlumno(alumnoId, limit)
+                registroDiarioRepository.obtenerRegistrosAlumno(alumnoId)
                     .collect { result ->
                         when (result) {
                             is Result.Success -> {
@@ -89,8 +89,7 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                             registros = state.registros.map { registro ->
                                 if (registro.id == registroId) {
                                     registro.copy(
-                                        vistoPorFamiliar = true,
-                                        visualizadoPorFamiliar = true
+                                        vistoPorFamiliar = true
                                     )
                                 } else {
                                     registro

@@ -54,6 +54,12 @@ import com.tfg.umeegunero.feature.profesor.registros.viewmodel.ListadoPreRegistr
 import java.time.ZoneId
 import java.util.Date
 import timber.log.Timber
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 
 /**
  * Extensión para convertir LocalDate a Date
@@ -91,6 +97,8 @@ fun ListadoPreRegistroDiarioScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     
     // Pasar el profesorId al ViewModel cuando se proporciona
     LaunchedEffect(profesorId) {
@@ -111,6 +119,21 @@ fun ListadoPreRegistroDiarioScreen(
         uiState.mensajeExito?.let { mensaje ->
             snackbarHostState.showSnackbar(mensaje)
             viewModel.limpiarMensajeExito()
+        }
+    }
+    
+    // Efecto para limpiar mensajes y errores cuando el composable se va
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.limpiarError()
+            viewModel.limpiarMensajeExito()
+        }
+    }
+
+    // Efecto para recargar datos cuando la pantalla se reanuda
+    LaunchedEffect(lifecycleOwner.lifecycle) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.cargarDatos() // Recargar datos al volver a la pantalla
         }
     }
     
@@ -458,39 +481,49 @@ fun AlumnoSelectionChip(
                         text = "${alumno.nombre} ${alumno.apellidos}",
                         style = MaterialTheme.typography.titleMedium,
                         color = if (tieneRegistro)
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         else
                             MaterialTheme.colorScheme.onSurface
                     )
+                    
+                    // Mensaje de estado
                     Text(
                         text = if (tieneRegistro) 
-                            "Registro ya completado" 
+                            "Ya registrado hoy • No seleccionable" 
                         else 
                             "DNI: ${alumno.dni}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (tieneRegistro)
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             
             // Icono de selección
-            Icon(
-                imageVector = when {
-                    tieneRegistro -> Icons.Default.Check
-                    isSelected -> Icons.Default.CheckCircle
-                    else -> Icons.Default.RadioButtonUnchecked
-                },
-                contentDescription = when {
-                    tieneRegistro -> "Registro completado"
-                    isSelected -> "Alumno seleccionado"
-                    else -> "Alumno no seleccionado"
-                },
-                tint = when {
-                    tieneRegistro -> Color.Gray
-                    isSelected -> ProfesorColor
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
+            if (tieneRegistro) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "Registro bloqueado",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            } else {
+                Icon(
+                    imageVector = when {
+                        isSelected -> Icons.Default.CheckCircle
+                        else -> Icons.Default.RadioButtonUnchecked
+                    },
+                    contentDescription = when {
+                        isSelected -> "Alumno seleccionado"
+                        else -> "Alumno no seleccionado"
+                    },
+                    tint = when {
+                        isSelected -> ProfesorColor
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
         }
     }
 }

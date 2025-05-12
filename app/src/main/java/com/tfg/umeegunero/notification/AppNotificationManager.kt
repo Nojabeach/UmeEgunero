@@ -1,14 +1,17 @@
 package com.tfg.umeegunero.notification
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessaging
@@ -250,7 +253,15 @@ class AppNotificationManager @Inject constructor(
                 
             // Mostrar la notificación
             with(NotificationManagerCompat.from(context)) {
-                notify(notificationId, notification)
+                // Verificar que tenemos permiso para mostrar notificaciones
+                if (ActivityCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED) {
+                    notify(notificationId, notification)
+                } else {
+                    Timber.w("Permiso de notificaciones no concedido")
+                }
             }
             
             Timber.d("Notificación mostrada: $title")

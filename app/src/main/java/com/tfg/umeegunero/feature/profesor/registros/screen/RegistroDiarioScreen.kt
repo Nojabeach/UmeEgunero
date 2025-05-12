@@ -49,6 +49,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -85,6 +87,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.tfg.umeegunero.feature.profesor.registros.viewmodel.RegistroDiarioUiState
 import timber.log.Timber
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Schedule
+import java.util.Calendar
+import android.app.TimePickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -219,25 +226,26 @@ fun RegistroDiarioScreen(
                 if (uiState.haSiestaSiNo) {
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Aquí iría un selector de tiempo para inicio y fin de siesta
-                    // Por ahora usamos campos de texto
+                    // Reemplazar los campos de texto con selectores de hora
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        OutlinedTextField(
-                            value = uiState.horaInicioSiesta,
-                            onValueChange = { viewModel.establecerHoraInicioSiesta(it) },
-                            label = { Text("Hora inicio") },
+                        // Botón selector para hora de inicio
+                        HoraSelectorButton(
+                            label = "Hora inicio",
+                            horaActual = uiState.horaInicioSiesta,
+                            onHoraSeleccionada = { viewModel.establecerHoraInicioSiesta(it) },
                             modifier = Modifier.weight(1f)
                         )
                         
                         Spacer(modifier = Modifier.width(8.dp))
                         
-                        OutlinedTextField(
-                            value = uiState.horaFinSiesta,
-                            onValueChange = { viewModel.establecerHoraFinSiesta(it) },
-                            label = { Text("Hora fin") },
+                        // Botón selector para hora de fin
+                        HoraSelectorButton(
+                            label = "Hora fin",
+                            horaActual = uiState.horaFinSiesta,
+                            onHoraSeleccionada = { viewModel.establecerHoraFinSiesta(it) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -259,17 +267,16 @@ fun RegistroDiarioScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Switch(
+                        checked = uiState.haHechoCaca,
+                        onCheckedChange = { viewModel.actualizarHaHechoCaca(it) }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "¿Ha hecho caca?",
                         style = MaterialTheme.typography.bodyLarge
-                    )
-                    
-                    Switch(
-                        checked = uiState.haHechoCaca,
-                        onCheckedChange = { viewModel.toggleCaca(it) }
                     )
                 }
                 
@@ -783,6 +790,77 @@ fun GuardarRegistroButton(
                 imageVector = Icons.Default.Save,
                 contentDescription = "Guardar registro",
                 tint = Color.White
+            )
+        }
+    }
+}
+
+/**
+ * Componente botón selector de hora que muestra un diálogo al hacer clic
+ */
+@Composable
+fun HoraSelectorButton(
+    label: String,
+    horaActual: String,
+    onHoraSeleccionada: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    var hora = 0
+    var minuto = 0
+    
+    // Si hay hora configurada, parsearla
+    if (horaActual.isNotEmpty()) {
+        try {
+            val partes = horaActual.split(":")
+            hora = partes[0].toInt()
+            minuto = partes[1].toInt()
+        } catch (e: Exception) {
+            // Si no se puede parsear, usar la hora actual
+            hora = calendar.get(Calendar.HOUR_OF_DAY)
+            minuto = calendar.get(Calendar.MINUTE)
+        }
+    } else {
+        // Si no hay hora, usar la hora actual
+        hora = calendar.get(Calendar.HOUR_OF_DAY)
+        minuto = calendar.get(Calendar.MINUTE)
+    }
+    
+    Button(
+        onClick = {
+            // Mostrar diálogo para seleccionar hora
+            val timePickerDialog = TimePickerDialog(
+                context,
+                { _, selectedHour, selectedMinute ->
+                    // Formatear la hora seleccionada como HH:mm
+                    val horaFormateada = String.format("%02d:%02d", selectedHour, selectedMinute)
+                    onHoraSeleccionada(horaFormateada)
+                },
+                hora,
+                minuto,
+                true // Formato 24 horas
+            )
+            timePickerDialog.show()
+        },
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = if (horaActual.isEmpty()) label else horaActual,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

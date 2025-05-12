@@ -122,9 +122,13 @@ fun UnifiedInboxScreen(
                 TopAppBar(
                     title = { 
                         Column {
-                            Text("Sistema de Comunicación Unificado")
                             Text(
-                                "Centro de mensajes y notificaciones",
+                                "Mensajes y Comunicados",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                "Centro de comunicaciones",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                             )

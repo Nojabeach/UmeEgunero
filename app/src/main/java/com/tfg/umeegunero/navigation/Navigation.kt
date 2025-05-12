@@ -59,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen
+import timber.log.Timber
 
 /**
  * Navegación principal de la aplicación
@@ -731,17 +732,18 @@ fun Navigation(
             )
         }
 
-        // Pantalla de detalle de alumno
+        // Pantalla de detalle de alumno para profesor
         composable(
-            route = AppScreens.DetalleAlumno.route,
+            route = AppScreens.DetalleAlumnoProfesor.route,
             arguments = listOf(
                 navArgument("alumnoId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
-            com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
+            Timber.d("Navegando a DetalleAlumnoProfesorScreen con alumnoId: $alumnoId")
+            com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen(
                 navController = navController,
-                userId = alumnoId,
+                alumnoId = alumnoId,
                 viewModel = hiltViewModel()
             )
         }
@@ -927,11 +929,11 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
-            DetalleAlumnoProfesorScreen(
+            Timber.d("Navegando a DetalleAlumnoProfesorScreen con alumnoId: $alumnoId")
+            com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen(
                 navController = navController,
-                alumnoId = alumnoId
-                // Asume que DetalleAlumnoProfesorScreen tiene un ViewModel que se inyecta con hiltViewModel()
-                // o que no necesita uno explícitamente aquí.
+                alumnoId = alumnoId,
+                viewModel = hiltViewModel()
             )
         }
 

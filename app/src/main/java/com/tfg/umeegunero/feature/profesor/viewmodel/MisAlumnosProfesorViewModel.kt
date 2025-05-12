@@ -11,6 +11,7 @@ import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.ProfesorRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import com.tfg.umeegunero.data.model.Evento
+import com.tfg.umeegunero.data.model.TipoEvento
+import java.util.Date
+import com.google.firebase.Timestamp
+import kotlinx.coroutines.delay
+import java.time.format.DateTimeFormatter
+import java.time.LocalDateTime
 
 /**
  * Estado UI para la pantalla "Mis Alumnos".
@@ -27,7 +38,8 @@ data class MisAlumnosUiState(
     val isLoading: Boolean = false,
     val alumnos: List<Alumno> = emptyList(),
     val error: String? = null,
-    val clase: String = ""
+    val clase: String = "",
+    val mensajeExito: String? = null
 )
 
 /**
@@ -44,7 +56,10 @@ class MisAlumnosProfesorViewModel @Inject constructor(
     private val alumnoRepository: AlumnoRepository,
     private val claseRepository: ClaseRepository,
     private val calendarioRepository: CalendarioRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val eventoRepository: EventoRepository,
+    // private val informeRepository: InformeRepository, // Comentado temporalmente
+    // private val fileSaverUtil: FileSaverUtil // Comentado temporalmente
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MisAlumnosUiState())
@@ -252,4 +267,162 @@ class MisAlumnosProfesorViewModel @Inject constructor(
     fun refrescarAlumnos() {
         cargarAlumnos()
     }
+
+    /**
+     * Programa una reunión con el familiar de un alumno
+     */
+    fun programarReunion(alumnoId: String, titulo: String, fecha: String, hora: String, descripcion: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+                
+                // Obtener datos del usuario actual (profesor)
+                val currentUser = authRepository.getCurrentUser()
+                if (currentUser == null) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Usuario no autenticado"
+                    )
+                    return@launch
+                }
+                
+                // Obtener datos del profesor
+                val profesorId = currentUser.dni
+                
+                try {
+                    // Manejar el resultado sin depender de tipos específicos
+                    val profesorResult = profesorRepository.getProfesorById(profesorId)
+                    
+                    // Variable para almacenar el centroId
+                    var centroId = ""
+                    
+                    // Obtener centroId de diferentes fuentes
+                    centroId = when {
+                        // Intento 1: Obtener del perfil del usuario actual (modo más seguro)
+                        currentUser.perfiles.any { it.tipo == TipoUsuario.PROFESOR && it.centroId.isNotEmpty() } -> 
+                            currentUser.perfiles.first { it.tipo == TipoUsuario.PROFESOR }.centroId
+                        
+                        // Intento 2: Obtener un valor por defecto si todo falla
+                        else -> ""
+                    }
+                    
+                    Timber.d("Programando reunión con centroId: $centroId")
+                    
+                    // Usar el modelo de Evento existente con los parámetros que acepta
+                    val evento = Evento(
+                        id = "",
+                        titulo = titulo,
+                        descripcion = "$descripcion\n\nFecha: $fecha\nHora: $hora",
+                        fecha = Timestamp.now(), // Usamos la fecha actual
+                        tipo = TipoEvento.REUNION,
+                        creadorId = profesorId,
+                        centroId = centroId,
+                        recordatorio = true,
+                        tiempoRecordatorioMinutos = 30,
+                        publico = false,
+                        destinatarios = listOf(alumnoId),
+                        ubicacion = "Centro educativo - Sala de reuniones"
+                    )
+                    
+                    // Guardar evento en Firestore
+                    val resultado = eventoRepository.crearEvento(evento)
+                    when (resultado) {
+                        is Result.Success -> {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                mensajeExito = "Reunión programada correctamente",
+                                error = null
+                            )
+                            
+                            // Limpiar mensaje de éxito después de unos segundos
+                            delay(3000)
+                            _uiState.value = _uiState.value.copy(mensajeExito = null)
+                        }
+                        is Result.Error -> {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                error = "Error al programar reunión: ${resultado.exception?.message}"
+                            )
+                        }
+                        else -> {
+                            _uiState.value = _uiState.value.copy(isLoading = false)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener profesor: ${e.message}")
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Error al obtener datos del profesor: ${e.message}"
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al programar reunión")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Error al programar reunión: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Genera un informe con el listado de alumnos y lo guarda localmente.
+     */
+    /* // Comentado temporalmente hasta que se implemente InformeRepository y FileSaverUtil
+    fun generarInformeAlumnos() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val alumnos = _uiState.value.alumnos
+                if (alumnos.isEmpty()) {
+                    _uiState.update { it.copy(isLoading = false, error = "No hay alumnos para generar el informe.") }
+                    return@launch
+                }
+
+                // Generar contenido del informe (ejemplo simple)
+                val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))
+                val nombreArchivo = "Informe_Alumnos_${System.currentTimeMillis()}.txt"
+                var contenido = "Informe de Alumnos Generado el $timestamp\\n"
+                contenido += "=============================================\\n\\n"
+                alumnos.forEachIndexed { index, alumno ->
+                    contenido += "${index + 1}. ${alumno.nombre} ${alumno.apellidos} (DNI: ${alumno.dni})\\n"
+                    // Aquí podrías añadir más detalles si los tuvieras en el modelo Alumno
+                }
+
+                // Crear objeto Informe (asumiendo su estructura)
+                val informe = Informe(
+                    id = "", // Se generará o no es necesario guardarlo aquí
+                    nombre = nombreArchivo,
+                    fechaGeneracion = Timestamp.now(),
+                    contenido = contenido
+                )
+
+                // 1. Guardar en Firestore (opcional, depende de tus requisitos)
+                // val saveResult = informeRepository.guardarInforme(informe)
+                // if (saveResult is Result.Error) {
+                //     _uiState.update { it.copy(isLoading = false, error = "Error al guardar informe en la base de datos: ${saveResult.exception?.message}") }
+                //      return@launch // O manejar de otra forma
+                // }
+
+                // 2. Guardar archivo localmente
+                // val fileSaveResult = fileSaverUtil.saveTextToFile(nombreArchivo, contenido)
+                // if (fileSaveResult is Result.Success) {
+                //     _uiState.update { it.copy(isLoading = false, mensajeExito = "Informe generado y guardado como '$nombreArchivo'") }
+                // } else if (fileSaveResult is Result.Error) {
+                //     _uiState.update { it.copy(isLoading = false, error = "Error al guardar el archivo local: ${fileSaveResult.exception?.message}") }
+                // }
+
+                 // Placeholder hasta tener FileSaverUtil
+                 _uiState.update { it.copy(isLoading = false, mensajeExito = "Informe generado (guardado local no implementado aún)") }
+                 delay(2000) // Simular proceso
+                 _uiState.update { it.copy(mensajeExito = null) }
+
+
+            } catch (e: Exception) {
+                Timber.e(e, "Error al generar el informe de alumnos")
+                _uiState.update { it.copy(isLoading = false, error = "Error inesperado al generar el informe: ${e.message}") }
+            }
+        }
+    }
+    */
 } 

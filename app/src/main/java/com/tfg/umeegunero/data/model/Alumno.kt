@@ -2,6 +2,7 @@ package com.tfg.umeegunero.data.model
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
+import java.util.*
 
 /**
  * Modelo que representa a un alumno en el sistema UmeEgunero.
@@ -39,6 +40,8 @@ import com.google.firebase.firestore.DocumentId
  * @property familiares Lista de objetos [Familiar] con información de contactos familiares.
  * @property presente Indica si el alumno está presente/asistió en una fecha determinada.
  * @property nombreCompleto Nombre completo del alumno (nombre + apellidos).
+ * @property asistenciaHoy Indica si el alumno está presente hoy.
+ * @property ultimaAsistencia Fecha de la última asistencia del alumno.
  *
  * @see Familiar
  */
@@ -67,7 +70,9 @@ data class Alumno(
     val condicionesMedicas: String = "",
     val observaciones: String = "",
     val familiares: List<Familiar> = emptyList(),
-    val presente: Boolean = false
+    val presente: Boolean = false,
+    val asistenciaHoy: Boolean? = null,
+    val ultimaAsistencia: Date? = null
 ) {
     // Propiedad computada para obtener el nombre completo
     val nombreCompleto: String

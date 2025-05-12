@@ -64,9 +64,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.Comida
+import com.tfg.umeegunero.data.model.Comidas
 import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.data.model.CacaControl
 import com.tfg.umeegunero.data.model.Actividad
+import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.feature.familiar.viewmodel.DetalleRegistroViewModel
 import com.tfg.umeegunero.ui.theme.FamiliarColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -75,31 +77,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Modelo que representa un registro de actividad diaria simplificado para la UI.
- * 
- * Este es un modelo que utiliza los tipos de datos del dominio pero está adaptado
- * para las necesidades de la pantalla de detalle de registro. Se utiliza para
- * simplificar la comunicación entre la capa de dominio y la UI.
- */
-data class RegistroModel(
-    val id: String,
-    val alumnoId: String,
-    val alumnoNombre: String,
-    val fecha: com.google.firebase.Timestamp,
-    val profesorId: String? = null,
-    val profesorNombre: String? = null,
-    val comida: Comida? = null,
-    val siesta: Siesta? = null,
-    val cacaControl: CacaControl? = null,
-    val actividades: Actividad? = null,
-    val observaciones: String? = null
-)
-
 data class DetalleRegistroUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val registro: RegistroModel? = null,
+    val registro: RegistroActividad? = null,
     val profesorNombre: String? = null
 )
 
@@ -283,7 +264,7 @@ fun DetalleRegistroScreen(
                     }
 
                     // Sección de alimentación
-                    if (registro.comida != null) {
+                    if (registro.comidas != null) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -316,7 +297,7 @@ fun DetalleRegistroScreen(
                                 
                                 // Detalles de la comida
                                 Column {
-                                    if (registro.comida?.consumoPrimero != null) {
+                                    if (registro.comidas.primerPlato.descripcion.isNotBlank()) {
                                         Text(
                                             text = "Primer plato",
                                             style = MaterialTheme.typography.titleSmall,
@@ -324,23 +305,14 @@ fun DetalleRegistroScreen(
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = registro.comida?.consumoPrimero ?: "No registrado",
+                                            text = registro.comidas.primerPlato.descripcion,
                                             style = MaterialTheme.typography.bodyMedium
                                         )
-                                        
-                                        if (registro.comida?.descripcionPrimero?.isNotBlank() == true) {
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = registro.comida?.descripcionPrimero ?: "",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
                                         
                                         Spacer(modifier = Modifier.height(12.dp))
                                     }
                                     
-                                    if (registro.comida?.consumoSegundo != null) {
+                                    if (registro.comidas.segundoPlato.descripcion.isNotBlank()) {
                                         Text(
                                             text = "Segundo plato",
                                             style = MaterialTheme.typography.titleSmall,
@@ -348,23 +320,14 @@ fun DetalleRegistroScreen(
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = registro.comida?.consumoSegundo ?: "No registrado",
+                                            text = registro.comidas.segundoPlato.descripcion,
                                             style = MaterialTheme.typography.bodyMedium
                                         )
-                                        
-                                        if (registro.comida?.descripcionSegundo?.isNotBlank() == true) {
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = registro.comida?.descripcionSegundo ?: "",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
                                         
                                         Spacer(modifier = Modifier.height(12.dp))
                                     }
                                     
-                                    if (registro.comida?.consumoPostre != null) {
+                                    if (registro.comidas.postre.descripcion.isNotBlank()) {
                                         Text(
                                             text = "Postre",
                                             style = MaterialTheme.typography.titleSmall,
@@ -372,18 +335,9 @@ fun DetalleRegistroScreen(
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = registro.comida?.consumoPostre ?: "No registrado",
+                                            text = registro.comidas.postre.descripcion,
                                             style = MaterialTheme.typography.bodyMedium
                                         )
-                                        
-                                        if (registro.comida?.descripcionPostre?.isNotBlank() == true) {
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = registro.comida?.descripcionPostre ?: "",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
                                     }
                                 }
                             }
@@ -391,7 +345,7 @@ fun DetalleRegistroScreen(
                     }
 
                     // Sección de Siesta
-                    registro.siesta?.let { siesta ->
+                    if (registro.haSiestaSiNo) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -413,7 +367,7 @@ fun DetalleRegistroScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 // Hora inicio
-                                siesta.inicio?.let { inicio ->
+                                registro.horaInicioSiesta.let { inicio ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -427,7 +381,7 @@ fun DetalleRegistroScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
 
                                         Text(
-                                            text = "Inicio: ${formatTime(inicio)}",
+                                            text = "Inicio: ${inicio}",
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                     }
@@ -436,7 +390,7 @@ fun DetalleRegistroScreen(
                                 }
 
                                 // Hora fin
-                                siesta.fin?.let { fin ->
+                                registro.horaFinSiesta.let { fin ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -450,7 +404,7 @@ fun DetalleRegistroScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
 
                                         Text(
-                                            text = "Fin: ${formatTime(fin)}",
+                                            text = "Fin: ${fin}",
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                     }
@@ -472,7 +426,7 @@ fun DetalleRegistroScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
 
                                     Text(
-                                        text = "Duración: ${formatDuracion(siesta.duracion)}",
+                                        text = "Duración: ${calcularDuracionSiesta(registro.horaInicioSiesta, registro.horaFinSiesta)} min",
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                 }
@@ -481,14 +435,7 @@ fun DetalleRegistroScreen(
                     }
 
                     // Sección de Necesidades Fisiológicas
-                    if (registro.cacaControl?.tipo1 != null ||
-                        registro.cacaControl?.tipo2 != null ||
-                        registro.cacaControl?.tipo3 != null ||
-                        registro.cacaControl?.hora != null ||
-                        registro.cacaControl?.cantidad != null ||
-                        registro.cacaControl?.tipo != null ||
-                        registro.cacaControl?.descripcion != null) {
-
+                    if (registro.haHechoCaca) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -509,7 +456,7 @@ fun DetalleRegistroScreen(
 
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                if (registro.cacaControl?.tipo1 == true) {
+                                if (registro.haHechoCaca) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -523,7 +470,7 @@ fun DetalleRegistroScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
 
                                         Text(
-                                            text = "Tipo 1",
+                                            text = "Ha hecho deposiciones",
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                     }
@@ -531,7 +478,7 @@ fun DetalleRegistroScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
 
-                                if (registro.cacaControl?.tipo2 == true) {
+                                if (registro.numeroCacas > 0) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -545,7 +492,7 @@ fun DetalleRegistroScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
 
                                         Text(
-                                            text = "Tipo 2",
+                                            text = "Número: ${registro.numeroCacas}",
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                     }
@@ -553,97 +500,9 @@ fun DetalleRegistroScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
 
-                                if (registro.cacaControl?.tipo3 == true) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.tertiary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Text(
-                                            text = "Tipo 3",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                if (registro.cacaControl?.hora != null) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Schedule,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.secondary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Text(
-                                            text = "Hora: ${registro.cacaControl?.hora}",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                if (registro.cacaControl?.cantidad != null) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.tertiary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Text(
-                                            text = "Cantidad: ${registro.cacaControl?.cantidad}",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                if (registro.cacaControl?.tipo != null) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.tertiary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Text(
-                                            text = "Tipo: ${registro.cacaControl?.tipo}",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                if (registro.cacaControl?.descripcion != null) {
+                                if (registro.observacionesCaca.isNotBlank()) {
                                     Text(
-                                        text = "Descripción: ${registro.cacaControl?.descripcion ?: "Sin descripción"}",
+                                        text = "Observaciones: ${registro.observacionesCaca}",
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                 }
@@ -652,7 +511,7 @@ fun DetalleRegistroScreen(
                     }
 
                     // Sección de Observaciones Generales
-                    if (registro.observaciones?.isNotBlank() == true) {
+                    if (registro.observacionesGenerales.isNotBlank()) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -674,7 +533,7 @@ fun DetalleRegistroScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 Text(
-                                    text = registro.observaciones ?: "No hay observaciones adicionales registradas",
+                                    text = registro.observacionesGenerales,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             }
@@ -1127,6 +986,29 @@ fun formatDuracion(minutos: Int): String {
     }
 }
 
+/**
+ * Calcula la duración en minutos entre dos horas en formato "HH:mm"
+ */
+fun calcularDuracionSiesta(horaInicio: String, horaFin: String): Int {
+    if (horaInicio.isBlank() || horaFin.isBlank()) return 0
+    
+    try {
+        val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val inicio = formatoHora.parse(horaInicio)
+        val fin = formatoHora.parse(horaFin)
+        
+        if (inicio != null && fin != null) {
+            // Calcular la diferencia en minutos
+            val diferenciaMillis = fin.time - inicio.time
+            return (diferenciaMillis / (1000 * 60)).toInt()
+        }
+    } catch (e: Exception) {
+        return 0
+    }
+    
+    return 0
+}
+
 fun nivelConsumoText(nivel: EstadoComida): String {
     return when (nivel) {
         EstadoComida.RECHAZADO -> "Nada"
@@ -1206,18 +1088,23 @@ fun DetalleRegistroScreenPreviewContent() {
         observaciones = "Se ha relacionado bien con sus compañeros."
     )
     
-    val registroMock = RegistroModel(
+    val registroMock = RegistroActividad(
         id = "registro1",
         alumnoId = "alumno1",
         alumnoNombre = alumnoNombre,
         fecha = Timestamp(Date()),
         profesorId = "maestro1", 
         profesorNombre = "Ana Martínez",
-        comida = comidaMock,
-        siesta = siestaMock,
-        cacaControl = cacaMock,
-        actividades = actividadesMock,
-        observaciones = "Hoy ha sido un día muy bueno para Martín. Ha estado participativo y alegre."
+        comidas = Comidas(),
+        observacionesComida = "Ha comido muy bien",
+        haSiestaSiNo = true,
+        horaInicioSiesta = "13:00",
+        horaFinSiesta = "14:45",
+        observacionesSiesta = "Ha dormido tranquilamente",
+        haHechoCaca = true,
+        numeroCacas = 1,
+        observacionesCaca = "Sin problemas",
+        observacionesGenerales = "Hoy ha sido un día muy bueno para Martín. Ha estado participativo y alegre."
     )
 
     Scaffold(
@@ -1628,7 +1515,7 @@ fun DetalleRegistroScreenPreviewContent() {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = registroMock.observaciones ?: "No hay observaciones adicionales registradas",
+                        text = registroMock.observacionesGenerales,
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }

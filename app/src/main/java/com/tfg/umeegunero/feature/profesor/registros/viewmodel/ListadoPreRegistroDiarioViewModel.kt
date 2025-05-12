@@ -26,6 +26,9 @@ import java.util.Date
 import javax.inject.Inject
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.TipoUsuario
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /**
  * Extensión para convertir LocalDate a Date
@@ -104,13 +107,12 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
     }
 
     /**
-     * Carga los datos iniciales: alumnos, asistencia, y estado de festivos
+     * Carga los datos iniciales: profesor, clase y alumnos asociados.
      */
-    private fun cargarDatos() {
+    fun cargarDatos() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                _uiState.update { it.copy(isLoading = true) }
-                
                 // Obtener usuario actual
                 val usuario = authRepository.getCurrentUser()
                 if (usuario == null) {
@@ -165,7 +167,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 // Obtener registros existentes para la fecha actual
                 val fechaActual = _uiState.value.fechaSeleccionada
                 val registros = getRegistrosDiariosPorFechaYClase(
-                    LocalDate.now().toString(),
+                    fechaActual.toString(),
                     clase.id
                 )
                 
@@ -313,11 +315,14 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
      */
     fun seleccionarAlumno(alumno: Alumno) {
         _uiState.update { currentState ->
-            if (!currentState.alumnosSeleccionados.contains(alumno)) {
+            // Verificar que el alumno no tenga registro previo
+            if (!currentState.alumnosConRegistro.contains(alumno.id) && 
+                !currentState.alumnosSeleccionados.contains(alumno)) {
                 currentState.copy(
                     alumnosSeleccionados = currentState.alumnosSeleccionados + alumno
                 )
             } else {
+                // Si ya tiene registro, no hacer nada
                 currentState
             }
         }
@@ -339,8 +344,13 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
      */
     fun seleccionarTodosLosAlumnos() {
         _uiState.update { currentState ->
+            // Filtrar alumnos que no tengan registro previo
+            val alumnosSinRegistro = currentState.alumnos.filter { 
+                !currentState.alumnosConRegistro.contains(it.id) 
+            }
+            
             currentState.copy(
-                alumnosSeleccionados = currentState.alumnos.toList()
+                alumnosSeleccionados = alumnosSinRegistro
             )
         }
     }
@@ -492,7 +502,22 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
      * Registra la asistencia de los alumnos seleccionados y luego navega a la pantalla de registro diario
      */
     fun iniciarRegistroDiario() {
-        if (_uiState.value.alumnosSeleccionados.isEmpty()) {
+        val alumnosSeleccionados = _uiState.value.alumnosSeleccionados
+        val alumnosConRegistro = _uiState.value.alumnosConRegistro
+        
+        // Verificar si hay alumnos seleccionados con registro previo
+        val alumnosYaRegistrados = alumnosSeleccionados.filter { alumno -> 
+            alumnosConRegistro.contains(alumno.id) 
+        }
+        
+        if (alumnosYaRegistrados.isNotEmpty()) {
+            _uiState.update { it.copy(
+                error = "Hay ${alumnosYaRegistrados.size} alumno(s) seleccionado(s) que ya tienen registro para hoy"
+            ) }
+            return
+        }
+        
+        if (alumnosSeleccionados.isEmpty()) {
             _uiState.update { it.copy(
                 error = "Debes seleccionar al menos un alumno"
             ) }
@@ -612,13 +637,33 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
      * Método provisional mientras se completa la implementación en el repositorio
      */
     private suspend fun getRegistrosDiariosPorFechaYClase(
-        @Suppress("UNUSED_PARAMETER") fecha: String, 
-        @Suppress("UNUSED_PARAMETER") claseId: String
+        fecha: String, 
+        claseId: String
     ): List<RegistroActividad> {
         return try {
-            // Implementación temporal - en producción se usaría:
-            // registroDiarioRepository.obtenerRegistrosDiariosPorFechaYClase(fecha, claseId)
-            emptyList()
+            // En lugar de usar una implementación temporal, llamamos directamente al repositorio
+            val fechaCalendar = Calendar.getInstance()
+            try {
+                // Convertir el string de fecha a objeto Date
+                val formatoFecha = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                fechaCalendar.time = formatoFecha.parse(fecha) ?: Date()
+            } catch (e: Exception) {
+                // Si hay error en el formato, usar la fecha actual
+                Timber.e(e, "Error al parsear fecha: $fecha")
+            }
+            
+            val result = registroDiarioRepository.obtenerRegistrosDiariosPorFechaYClase(
+                fechaCalendar.time,
+                claseId
+            )
+            
+            if (result is Result.Success) {
+                Timber.d("Registros obtenidos para clase $claseId en fecha $fecha: ${result.data.size}")
+                result.data
+            } else {
+                Timber.e("Error al obtener registros para clase $claseId en fecha $fecha")
+                emptyList()
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener registros por fecha y clase")
             emptyList()
@@ -626,7 +671,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
     }
 
     /**
-     * Establece el ID del profesor actual
+     * Establece el ID del profesor actual y actualiza la lista de alumnos con registro
      * 
      * @param profesorId ID del profesor
      */
@@ -678,7 +723,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 val alumnos = if (alumnosResult is Result.Success) alumnosResult.data else emptyList()
                 Timber.d("ListadoPreRegistroDiarioViewModel (setProfesorId): Alumnos recibidos: ${alumnos.joinToString { it.nombre + " (ID: " + it.id + ", DNI: " + it.dni + ", Presente: " + it.presente + ")" }}")
                 
-                // Actualizar registros existentes para la fecha actual
+                // Obtener registros existentes para la fecha actual
                 val registrosResult = registroDiarioRepository.obtenerRegistrosDiariosPorFechaYClase(
                     _uiState.value.fechaSeleccionada.toDate(),
                     clase.id
@@ -701,6 +746,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                         totalAlumnos = alumnos.size,
                         alumnosPresentes = alumnos.count { a -> a.presente },
                         alumnosConRegistro = alumnosConRegistro,
+                        alumnosSeleccionados = it.alumnosSeleccionados.filter { alumno -> !alumnosConRegistro.contains(alumno.id) },
                         isLoading = false
                     )
                 }

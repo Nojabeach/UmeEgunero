@@ -548,20 +548,16 @@ fun InfoSection(
 private fun obtenerResumenComidas(registro: RegistroActividad): String {
     val comidas = mutableListOf<String>()
     
-    if (registro.primerPlato != null && registro.primerPlato != EstadoComida.NO_SERVIDO) {
-        comidas.add("Primer plato: ${obtenerTextoEstadoComida(registro.primerPlato!!)}")
+    if (registro.comidas.primerPlato.estadoComida != EstadoComida.NO_SERVIDO) {
+        comidas.add("Primer plato: ${obtenerTextoEstadoComida(registro.comidas.primerPlato.estadoComida)}")
     }
     
-    if (registro.segundoPlato != null && registro.segundoPlato != EstadoComida.NO_SERVIDO) {
-        comidas.add("Segundo plato: ${obtenerTextoEstadoComida(registro.segundoPlato!!)}")
+    if (registro.comidas.segundoPlato.estadoComida != EstadoComida.NO_SERVIDO) {
+        comidas.add("Segundo plato: ${obtenerTextoEstadoComida(registro.comidas.segundoPlato.estadoComida)}")
     }
     
-    if (registro.postre != null && registro.postre != EstadoComida.NO_SERVIDO) {
-        comidas.add("Postre: ${obtenerTextoEstadoComida(registro.postre!!)}")
-    }
-    
-    if (registro.merienda != null && registro.merienda != EstadoComida.NO_SERVIDO) {
-        comidas.add("Merienda: ${obtenerTextoEstadoComida(registro.merienda!!)}")
+    if (registro.comidas.postre.estadoComida != EstadoComida.NO_SERVIDO) {
+        comidas.add("Postre: ${obtenerTextoEstadoComida(registro.comidas.postre.estadoComida)}")
     }
     
     return if (comidas.isEmpty()) {

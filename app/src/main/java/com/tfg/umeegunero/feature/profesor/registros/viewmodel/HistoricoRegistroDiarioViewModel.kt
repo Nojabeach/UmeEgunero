@@ -41,7 +41,8 @@ data class HistoricoRegistroUiState(
     val alumnos: List<Alumno> = emptyList(),
     val alumnoSeleccionado: Alumno? = null,
     val registros: List<RegistroActividad> = emptyList(),
-    val fechaSeleccionada: Date = Date()
+    val fechaSeleccionada: Date = Date(),
+    val mensajeExito: String? = null
 )
 
 /**
@@ -232,28 +233,53 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true, registros = emptyList()) }
                 
-                registroDiarioRepository.obtenerRegistrosAlumno(alumnoId, limite)
+                Timber.d("Cargando registros para alumno ID: $alumnoId")
+                
+                registroDiarioRepository.obtenerRegistrosAlumno(alumnoId)
                     .collect { result ->
                         when (result) {
                             is Result.Success -> {
-                                val registros = result.data.sortedByDescending { it.fecha }
+                                // Procesamos los registros para asegurar la consistencia de datos
+                                val registros = result.data.map { registro ->
+                                    // Verificar si el ID tiene formato temporal y corregirlo si es necesario
+                                    val registroProcesado = if (registro.id.startsWith("local_")) {
+                                        val idCorregido = generarIdConsistente(registro)
+                                        registro.copy(id = idCorregido)
+                                    } else {
+                                        registro
+                                    }
+                                    
+                                    // Procesar el registro para garantizar la consistencia de los datos
+                                    procesarRegistroParaHistorico(registroProcesado)
+                                }.sortedByDescending { it.fecha }
+                                
                                 _uiState.update { 
                                     it.copy(
                                         registros = registros,
                                         isLoading = false
                                     )
                                 }
+                                
+                                if (registros.isEmpty()) {
+                                    Timber.d("No se encontraron registros para el alumno $alumnoId")
+                                } else {
+                                    Timber.d("Registros cargados: ${registros.size}")
+                                    registros.forEach { reg ->
+                                        Timber.d("Registro: fecha=${reg.fecha}, comidas=${reg.comidas}, alumnoId=${reg.alumnoId}")
+                                    }
+                                }
                             }
                             is Result.Error -> {
                                 Timber.e(result.exception, "Error al obtener registros")
                                 _uiState.update { 
                                     it.copy(
-                                        isLoading = false,
-                                        error = "Error al cargar registros: ${result.exception?.message}"
+                                        error = "Error al cargar registros: ${result.exception?.message ?: "Error desconocido"}",
+                                        isLoading = false
                                     )
                                 }
                             }
                             is Result.Loading -> {
+                                // Este estado se maneja durante la inicialización
                                 _uiState.update { it.copy(isLoading = true) }
                             }
                         }
@@ -262,11 +288,122 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
                 Timber.e(e, "Error al cargar registros del alumno: ${e.message}")
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
-                        error = "Error al cargar registros: ${e.message}"
+                        error = "Error al cargar registros: ${e.message}",
+                        isLoading = false
                     )
                 }
             }
+        }
+    }
+    
+    /**
+     * Genera un ID consistente para un registro basado en la fecha y el ID del alumno
+     */
+    private fun generarIdConsistente(registro: RegistroActividad): String {
+        val fechaStr = if (registro.fecha != null) {
+            val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+            sdf.format(registro.fecha)
+        } else {
+            val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+            sdf.format(Date())
+        }
+        
+        return "registro_${fechaStr}_${registro.alumnoId}"
+    }
+    
+    /**
+     * Procesa un registro para asegurar la consistencia de los datos en el histórico
+     * 
+     * @param registro Registro a procesar
+     * @return Registro procesado
+     */
+    private fun procesarRegistroParaHistorico(registro: RegistroActividad): RegistroActividad {
+        try {
+            Timber.d("Procesando registro: ID=${registro.id}, AlumnoID=${registro.alumnoId}, Fecha=${registro.fecha}")
+            
+            // Verificar y procesar el objeto comidas
+            val comidas = registro.comidas ?: Comidas()
+            
+            // Verificar cada campo del objeto comidas y convertir estados si es necesario
+            val primerPlato = comidas.primerPlato.copy(
+                estadoComida = convertirStringAEstadoComida(comidas.primerPlato.estadoComida.toString())
+            )
+            
+            val segundoPlato = comidas.segundoPlato.copy(
+                estadoComida = convertirStringAEstadoComida(comidas.segundoPlato.estadoComida.toString())
+            )
+            
+            val postre = comidas.postre.copy(
+                estadoComida = convertirStringAEstadoComida(comidas.postre.estadoComida.toString())
+            )
+            
+            val comidasProcesadas = comidas.copy(
+                primerPlato = primerPlato,
+                segundoPlato = segundoPlato,
+                postre = postre
+            )
+            
+            // Asegurar que tengamos horaInicio y horaFin para siesta en formato correcto
+            val horaInicioSiesta = formatearHora(registro.horaInicioSiesta)
+            val horaFinSiesta = formatearHora(registro.horaFinSiesta)
+            
+            Timber.d("Comidas procesadas: primer=${primerPlato.estadoComida}, segundo=${segundoPlato.estadoComida}, postre=${postre.estadoComida}")
+            
+            return registro.copy(
+                comidas = comidasProcesadas,
+                horaInicioSiesta = horaInicioSiesta,
+                horaFinSiesta = horaFinSiesta
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "Error al procesar registro para histórico: ${e.message}")
+            return registro
+        }
+    }
+    
+    /**
+     * Convierte una cadena de texto a un valor del enum EstadoComida
+     */
+    private fun convertirStringAEstadoComida(estadoStr: String): EstadoComida {
+        return when (estadoStr.uppercase()) {
+            "COMPLETO" -> EstadoComida.COMPLETO
+            "PARCIAL" -> EstadoComida.PARCIAL
+            "RECHAZADO" -> EstadoComida.RECHAZADO
+            "NO_SERVIDO" -> EstadoComida.NO_SERVIDO
+            "SIN_DATOS" -> EstadoComida.SIN_DATOS
+            "NO_APLICABLE" -> EstadoComida.NO_APLICABLE
+            else -> {
+                // También manejar casos de strings que podrían venir de la base de datos
+                when (estadoStr.uppercase()) {
+                    "BIEN", "BUENO", "GOOD" -> EstadoComida.COMPLETO
+                    "REGULAR", "MEDIO" -> EstadoComida.PARCIAL
+                    "MAL", "NADA" -> EstadoComida.RECHAZADO
+                    else -> EstadoComida.NO_SERVIDO
+                }
+            }
+        }
+    }
+    
+    /**
+     * Formatea una hora en formato HH:mm a partir de un Timestamp o string
+     */
+    private fun formatearHora(horaStr: String): String {
+        return try {
+            if (horaStr.isEmpty()) return ""
+            
+            // Si ya tiene formato HH:mm, devolverlo directamente
+            if (horaStr.matches(Regex("\\d{1,2}:\\d{2}"))) {
+                return horaStr
+            }
+            
+            val partes = horaStr.split(":")
+            return if (partes.size >= 2) {
+                String.format("%02d:%02d", partes[0].toInt(), partes[1].toInt())
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al formatear hora: $horaStr")
+            ""
         }
     }
     
@@ -312,10 +449,7 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true, registros = emptyList()) }
                 
-                // Formato de fecha para la consulta
-                val formatoFecha = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val fechaStr = formatoFecha.format(fecha)
-                
+                // Obtener los límites del día
                 val inicio = Calendar.getInstance().apply {
                     time = fecha
                     set(Calendar.HOUR_OF_DAY, 0)
@@ -334,11 +468,20 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
                 
                 Timber.d("Buscando registros para alumno $alumnoId entre $inicio y $fin")
                 
-                val result = registroDiarioRepository.obtenerRegistrosPorFecha(alumnoId, inicio, fin)
+                // Usar el repositorio con Timestamp para consultas más precisas
+                val inicioTimestamp = Timestamp(inicio)
+                val finTimestamp = Timestamp(fin)
+                
+                val result = registroDiarioRepository.obtenerRegistrosPorFechaYAlumno(alumnoId, inicioTimestamp, finTimestamp)
                 
                 when (result) {
                     is Result.Success -> {
-                        val registros = result.data
+                        val registrosCrudos = result.data
+                        
+                        // Procesar los registros para asegurar la consistencia
+                        val registros = registrosCrudos.map { procesarRegistroParaHistorico(it) }
+                            .sortedByDescending { it.fecha }
+                        
                         _uiState.update { 
                             it.copy(
                                 registros = registros,
@@ -350,14 +493,17 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
                             Timber.d("No se encontraron registros para la fecha seleccionada")
                         } else {
                             Timber.d("Se encontraron ${registros.size} registros para la fecha")
+                            registros.forEach { reg -> 
+                                Timber.d("Registro: fecha=${reg.fecha}, comidas=${reg.comidas}")
+                            }
                         }
                     }
                     is Result.Error -> {
-                        Timber.e(result.exception, "Error al obtener registros por fecha")
+                        Timber.e(result.exception, "Error al obtener registros por fecha: ${result.exception?.message}")
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = "Error al cargar registros: ${result.exception?.message}"
+                                error = "Error al cargar registros: ${result.exception?.message ?: "Error desconocido"}"
                             )
                         }
                     }
@@ -399,23 +545,18 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
      */
     private fun normalizarRegistro(registro: RegistroActividad): RegistroActividad {
         // Valores por defecto para campos que podrían estar nulos
-        val primerPlato = registro.primerPlato ?: EstadoComida.NO_SERVIDO
-        val segundoPlato = registro.segundoPlato ?: EstadoComida.NO_SERVIDO
-        val postre = registro.postre ?: EstadoComida.NO_SERVIDO
-        val merienda = registro.merienda ?: EstadoComida.NO_SERVIDO
+        val primerPlato = registro.comidas.primerPlato.estadoComida
+        val segundoPlato = registro.comidas.segundoPlato.estadoComida
+        val postre = registro.comidas.postre.estadoComida
         
         // Componer observaciones para evitar duplicidad
-        val obsComida = registro.observacionesComida.ifEmpty { registro.observaciones ?: "" }
+        val obsComida = registro.observacionesComida.ifEmpty { "" }
         
-        // Unificar las observaciones de caca y generales
+        // Unificar las observaciones
         val obsCaca = registro.observacionesCaca
-        val obsGenerales = registro.observacionesGenerales.ifEmpty { registro.observaciones ?: "" }
+        val obsGenerales = registro.observacionesGenerales
         
         return registro.copy(
-            primerPlato = primerPlato,
-            segundoPlato = segundoPlato,
-            postre = postre,
-            merienda = merienda,
             observacionesComida = obsComida,
             observacionesCaca = obsCaca,
             observacionesGenerales = obsGenerales
@@ -506,5 +647,54 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
             Timber.e(e, "Error al obtener registros por alumno y fecha")
             Result.Error(e)
         }
+    }
+
+    /**
+     * Obtiene un resumen textual del estado de las comidas
+     */
+    private fun obtenerResumenComidas(registro: RegistroActividad): String {
+        val comidas = mutableListOf<String>()
+        
+        // Verificar si el campo comidas está inicializado
+        if (registro.comidas != null) {
+            if (registro.comidas.primerPlato.estadoComida != EstadoComida.NO_SERVIDO) {
+                comidas.add("Primer plato: ${obtenerTextoEstadoComida(registro.comidas.primerPlato.estadoComida)}")
+            }
+            
+            if (registro.comidas.segundoPlato.estadoComida != EstadoComida.NO_SERVIDO) {
+                comidas.add("Segundo plato: ${obtenerTextoEstadoComida(registro.comidas.segundoPlato.estadoComida)}")
+            }
+            
+            if (registro.comidas.postre.estadoComida != EstadoComida.NO_SERVIDO) {
+                comidas.add("Postre: ${obtenerTextoEstadoComida(registro.comidas.postre.estadoComida)}")
+            }
+        }
+        
+        return if (comidas.isEmpty()) {
+            "No se ha servido ninguna comida"
+        } else {
+            comidas.joinToString(", ")
+        }
+    }
+
+    /**
+     * Convierte el estado de comida a texto legible
+     */
+    private fun obtenerTextoEstadoComida(estado: EstadoComida): String {
+        return when (estado) {
+            EstadoComida.COMPLETO -> "Completo"
+            EstadoComida.PARCIAL -> "Parcial"
+            EstadoComida.RECHAZADO -> "Rechazado"
+            EstadoComida.NO_SERVIDO -> "No servido"
+            EstadoComida.SIN_DATOS -> "Sin datos"
+            EstadoComida.NO_APLICABLE -> "No aplicable"
+        }
+    }
+
+    /**
+     * Limpiar mensaje de éxito
+     */
+    fun limpiarMensajeExito() {
+        _uiState.update { it.copy(mensajeExito = null) }
     }
 } 

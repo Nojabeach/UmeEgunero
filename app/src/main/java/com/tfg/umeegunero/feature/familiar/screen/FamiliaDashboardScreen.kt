@@ -474,8 +474,7 @@ fun FamiliaDashboardScreen(
                     }),
                     CategoriaCardData("Calendario", "Revisa eventos y fechas importantes", Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiary, onClick = { showNavigateToCalendarioDialog = true }),
                     CategoriaCardData("Historial", "Consulta el registro diario de tu hijo/a", Icons.AutoMirrored.Filled.Assignment, MaterialTheme.colorScheme.secondary, onClick = { showNavigateToHistorialDialog = true }),
-                    CategoriaCardData("Notificaciones", "Revisa todas las notificaciones pendientes", Icons.Default.Notifications, MaterialTheme.colorScheme.primary, onClick = { showNavigateToNotificacionesDialog = true }),
-                    CategoriaCardData("Configuración", "Ajusta preferencias de tu perfil y notificaciones", Icons.Default.Settings, MaterialTheme.colorScheme.tertiary, onClick = { showNavigateToConfiguracionDialog = true })
+                    CategoriaCardData("Notificaciones", "Revisa todas las notificaciones pendientes", Icons.Default.Notifications, MaterialTheme.colorScheme.primary, onClick = { showNavigateToNotificacionesDialog = true })
                 )
                 
                 LazyVerticalGrid(
@@ -1252,8 +1251,8 @@ fun ResumenActividadCard(
                     ActividadInfoItem(
                         icon = Icons.Default.Bedtime,
                         title = "Siesta",
-                        value = if (ultimoRegistro.siesta?.duracion ?: 0 > 0) 
-                            "${ultimoRegistro.siesta?.duracion} min" 
+                        value = if (ultimoRegistro.haSiestaSiNo) 
+                            "Sí" 
                         else 
                             "No"
                     )
@@ -1263,14 +1262,14 @@ fun ResumenActividadCard(
                     ActividadInfoItem(
                         icon = Icons.Default.Bathroom,
                         title = "Necesidades",
-                        value = if (ultimoRegistro.necesidadesFisiologicas.caca) "Sí" else "No"
+                        value = if (ultimoRegistro.haHechoCaca) "Sí" else "No"
                     )
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // Observaciones
-                if (!ultimoRegistro.observaciones.isNullOrBlank()) {
+                if (ultimoRegistro.observacionesGenerales.isNotBlank()) {
                     Text(
                         text = "Observaciones:",
                         style = MaterialTheme.typography.titleSmall,
@@ -1280,7 +1279,7 @@ fun ResumenActividadCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     
                     Text(
-                        text = ultimoRegistro.observaciones ?: "",
+                        text = ultimoRegistro.observacionesGenerales,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,

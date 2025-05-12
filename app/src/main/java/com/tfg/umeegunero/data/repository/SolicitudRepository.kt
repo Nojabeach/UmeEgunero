@@ -262,7 +262,7 @@ class SolicitudRepository @Inject constructor(
                     try {
                         // Obtener datos del familiar para el email
                         val familiarResultado = usuarioRepository.obtenerUsuarioPorId(solicitud.familiarId)
-                        if (familiarResultado is Result.Success && familiarResultado.data != null) {
+                        if (familiarResultado is Result.Success) {
                             val familiar = familiarResultado.data
                             
                             // Enviar email de aprobación
@@ -303,7 +303,7 @@ class SolicitudRepository @Inject constructor(
             val alumno = solicitud.alumnoId?.let { alumnoRepository.obtenerAlumnoPorId(it) }
             
             val nombreFamiliar = familiar?.let { 
-                if (it is Result.Success && it.data != null) {
+                if (it is Result.Success) {
                     "${it.data.nombre} ${it.data.apellidos}".trim()
                 } else {
                     "Un familiar"
@@ -312,7 +312,7 @@ class SolicitudRepository @Inject constructor(
             
             val nombreAlumno = alumno?.let { 
                 if (it is Result.Success && it.data != null) {
-                    "${it.data.nombre} ${it.data.apellidos}".trim()
+                    "${it.data?.nombre ?: ""} ${it.data?.apellidos ?: ""}".trim()
                 } else {
                     "un alumno"
                 }
@@ -350,13 +350,11 @@ class SolicitudRepository @Inject constructor(
             }
             
             val alumno = solicitud.alumnoId?.let { alumnoRepository.obtenerAlumnoPorId(it) }
-            val nombreAlumno = alumno?.let { 
-                if (it is Result.Success && it.data != null) {
-                    "${it.data.nombre} ${it.data.apellidos}".trim()
+            val alumnoNombre = if (alumno is Result.Success && alumno.data != null) {
+                "${alumno.data?.nombre ?: ""} ${alumno.data?.apellidos ?: ""}".trim()
                 } else {
                     "el alumno"
                 }
-            } ?: "el alumno"
             
             val estado = solicitud.estado
             val titulo = when (estado) {
@@ -366,9 +364,9 @@ class SolicitudRepository @Inject constructor(
             }
             
             val mensaje = when (estado) {
-                EstadoSolicitud.APROBADA -> "Tu solicitud para vincularte con $nombreAlumno ha sido aprobada"
-                EstadoSolicitud.RECHAZADA -> "Tu solicitud para vincularte con $nombreAlumno ha sido rechazada"
-                else -> "El estado de tu solicitud para vincularte con $nombreAlumno ha cambiado a $estado"
+                EstadoSolicitud.APROBADA -> "Tu solicitud para vincularte con $alumnoNombre ha sido aprobada"
+                EstadoSolicitud.RECHAZADA -> "Tu solicitud para vincularte con $alumnoNombre ha sido rechazada"
+                else -> "El estado de tu solicitud para vincularte con $alumnoNombre ha cambiado a $estado"
             }
             
             // Usar el servicio de notificaciones local en lugar de Cloud Functions
@@ -401,7 +399,11 @@ class SolicitudRepository @Inject constructor(
                 val alumnoInfo = alumnoRepository.getAlumnoByDni(solicitud.alumnoDni)
                 val centroInfo = centroRepository.getCentroById(solicitud.centroId)
                 
-                val alumnoNombre = if (alumnoInfo is Result.Success) alumnoInfo.data?.nombre ?: "Alumno" else "Alumno"
+                val alumnoNombre = if (alumnoInfo is Result.Success && alumnoInfo.data != null) {
+                    "${alumnoInfo.data?.nombre} ${alumnoInfo.data?.apellidos}".trim()
+                } else {
+                    "Alumno"
+                }
                 val centroNombre = if (centroInfo is Result.Success) centroInfo.data?.nombre ?: "Centro" else "Centro"
                 
                 // Crear un mensaje para cada administrador
@@ -445,12 +447,16 @@ class SolicitudRepository @Inject constructor(
         try {
             // Obtener información del familiar para el mensaje
             val familiarResult = usuarioRepository.getUsuarioById(solicitud.familiarId)
-            if (familiarResult != null) {
+                
                 // Obtener información del alumno y centro para personalizar el mensaje
                 val alumnoInfo = alumnoRepository.getAlumnoByDni(solicitud.alumnoDni)
                 val centroInfo = centroRepository.getCentroById(solicitud.centroId)
                 
-                val alumnoNombre = if (alumnoInfo is Result.Success) alumnoInfo.data?.nombre ?: "el alumno" else "el alumno"
+            val alumnoNombre = if (alumnoInfo is Result.Success && alumnoInfo.data != null) {
+                "${alumnoInfo.data?.nombre ?: ""} ${alumnoInfo.data?.apellidos ?: ""}".trim()
+            } else {
+                "el alumno"
+            }
                 val centroNombre = if (centroInfo is Result.Success) centroInfo.data?.nombre ?: "el centro" else "el centro"
                 
                 // Determinar título y contenido según el estado
@@ -493,7 +499,6 @@ class SolicitudRepository @Inject constructor(
                 )
                 
                 unifiedMessageRepository.sendMessage(message)
-            }
         } catch (e: Exception) {
             Timber.e(e, "Error al crear mensaje para solicitud procesada")
         }

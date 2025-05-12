@@ -390,21 +390,40 @@ fun EventoItem(
         Column(
             modifier = Modifier.weight(1f)
         ) {
+            // Extraer Hora si existe en la descripción
+            val descripcionParts = evento.descripcion.split("\nHora:")
+            val tituloMostrar = evento.titulo
+            val descripcionMostrar = descripcionParts.first().trim().ifEmpty { "Sin descripción" }
+            val horaMostrar = if (descripcionParts.size > 1) "Hora: ${descripcionParts[1].trim()}" else null
+            
             Text(
-                text = evento.titulo,
+                text = tituloMostrar,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = 2, // Permitir hasta 2 líneas para el título
                 overflow = TextOverflow.Ellipsis
             )
             
+            Spacer(modifier = Modifier.height(2.dp))
+            
             Text(
-                text = evento.descripcion.ifEmpty { "Sin descripción" },
+                text = descripcionMostrar,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
+                maxLines = 3, // Permitir hasta 3 líneas para la descripción
                 overflow = TextOverflow.Ellipsis
             )
+            
+            // Mostrar la hora si existe
+            if (horaMostrar != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = horaMostrar,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         
         IconButton(onClick = onDelete) {

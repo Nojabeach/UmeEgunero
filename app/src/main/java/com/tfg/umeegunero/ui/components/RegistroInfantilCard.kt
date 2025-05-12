@@ -20,10 +20,10 @@ import com.tfg.umeegunero.data.model.EstadoComida
 
 /**
  * Componente para mostrar un registro de actividad infantil en forma de tarjeta.
- * 
+ *
  * Este componente es flexible y puede representar diferentes tipos de registros
  * como alimentación, descanso, higiene, etc. con un estilo consistente.
- * 
+ *
  * @param titulo Título principal del registro
  * @param subtitulo Subtítulo o descripción corta
  * @param hora Hora del registro
@@ -80,12 +80,12 @@ fun RegistroInfantilCard(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = icono,
-                            contentDescription = null,
+                Icon(
+                    imageVector = icono,
+                    contentDescription = null,
                             modifier = Modifier.size(20.dp),
                             tint = iconoTint
-                        )
+                )
                     }
                 }
                 

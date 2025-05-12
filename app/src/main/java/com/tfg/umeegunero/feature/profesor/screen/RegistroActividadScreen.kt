@@ -100,19 +100,20 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Badge
 import androidx.compose.material3.SuggestionChip
+import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegistroActividadScreen(
-    viewModel: RegistroActividadViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
-    onRegistroGuardado: () -> Unit
+    navController: NavController,
+    viewModel: RegistroActividadViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    var mostrarDialogoEliminar by remember { mutableStateOf(false) }
 
     // Detectar si el registro se ha guardado exitosamente
     LaunchedEffect(uiState.registroGuardado) {
@@ -121,18 +122,33 @@ fun RegistroActividadScreen(
                 snackbarHostState.showSnackbar("Registro guardado correctamente")
                 // Esperar un poco antes de navegar de vuelta
                 kotlinx.coroutines.delay(1500)
-                onRegistroGuardado()
+                navController.popBackStack()
+                viewModel.resetearEstadoEliminacion()
             }
         }
     }
 
     // Detectar y mostrar errores
     LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            scope.launch {
-                snackbarHostState.showSnackbar(it)
-                viewModel.clearError()
-            }
+        if (uiState.error != null) {
+            snackbarHostState.showSnackbar(uiState.error!!)
+            viewModel.limpiarError()
+        }
+    }
+
+    // Efecto para mostrar mensajes de éxito
+    LaunchedEffect(uiState.mensajeExito) {
+        if (uiState.mensajeExito != null) {
+            snackbarHostState.showSnackbar(uiState.mensajeExito!!)
+            viewModel.limpiarMensajeExito()
+        }
+    }
+
+    // Efecto para volver atrás cuando se elimina el registro
+    LaunchedEffect(uiState.registroEliminado) {
+        if (uiState.registroEliminado) {
+            navController.popBackStack()
+            viewModel.resetearEstadoEliminacion()
         }
     }
 
@@ -141,13 +157,13 @@ fun RegistroActividadScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Registro de Actividad",
+                        text = "Registro Diario: ${uiState.alumno?.nombre ?: "Alumno"}",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -156,21 +172,11 @@ fun RegistroActividadScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.mostrarSelectorPlantillas() }
+                        onClick = { mostrarDialogoEliminar = true }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.List,
-                            contentDescription = "Plantillas"
-                        )
-                    }
-                    
-                    IconButton(
-                        onClick = { viewModel.guardarRegistro() },
-                        enabled = !uiState.isLoading
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = "Guardar"
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar registro"
                         )
                     }
                 },
@@ -315,6 +321,32 @@ fun RegistroActividadScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            // Dialog para confirmar eliminación
+            if (mostrarDialogoEliminar) {
+                AlertDialog(
+                    onDismissRequest = { mostrarDialogoEliminar = false },
+                    title = { Text("Eliminar registro") },
+                    text = { Text("¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                mostrarDialogoEliminar = false
+                                viewModel.eliminarRegistro(uiState.registroId)
+                            }
+                        ) {
+                            Text("Eliminar")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { mostrarDialogoEliminar = false }
+                        ) {
+                            Text("Cancelar")
+                        }
+                    }
                 )
             }
         }
@@ -669,8 +701,13 @@ fun HoraSiestaSelector(
                 contentDescription = null,
                 modifier = Modifier.size(16.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = timeText)
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = timeText,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -991,14 +1028,12 @@ fun formatTimestamp(timestamp: Timestamp): String {
 
 @Composable
 fun HiltRegistroActividadScreen(
-    viewModel: RegistroActividadViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
-    onRegistroGuardado: () -> Unit
+    navController: NavController,
+    viewModel: RegistroActividadViewModel = hiltViewModel()
 ) {
     RegistroActividadScreen(
-        viewModel = viewModel,
-        onNavigateBack = onNavigateBack,
-        onRegistroGuardado = onRegistroGuardado
+        navController = navController,
+        viewModel = viewModel
     )
 }
 

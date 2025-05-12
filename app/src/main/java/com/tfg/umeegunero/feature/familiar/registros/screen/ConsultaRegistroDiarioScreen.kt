@@ -133,7 +133,7 @@ fun RegistroDiarioCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (!registro.visualizadoPorFamiliar) 
+            containerColor = if (!registro.vistoPorFamiliar) 
                 MaterialTheme.colorScheme.primaryContainer 
             else 
                 MaterialTheme.colorScheme.surface
@@ -160,7 +160,7 @@ fun RegistroDiarioCard(
                     fontWeight = FontWeight.Bold
                 )
                 
-                if (!registro.visualizadoPorFamiliar) {
+                if (!registro.vistoPorFamiliar) {
                     Spacer(modifier = Modifier.weight(1f))
                     Box(
                         modifier = Modifier
@@ -187,12 +187,9 @@ fun RegistroDiarioCard(
                 icon = Icons.Default.NightsStay,
                 title = "Siesta",
                 content = if (registro.haSiestaSiNo) {
-                    val inicio = registro.horaInicioSiesta?.toDate()
-                    val fin = registro.horaFinSiesta?.toDate()
                     val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
-                    
-                    if (inicio != null && fin != null) {
-                        "De ${formatoHora.format(inicio)} a ${formatoHora.format(fin)}"
+                    if (registro.horaInicioSiesta.isNotEmpty() && registro.horaFinSiesta.isNotEmpty()) {
+                        "De ${registro.horaInicioSiesta} a ${registro.horaFinSiesta}"
                     } else {
                         "Ha dormido siesta"
                     }
@@ -329,17 +326,20 @@ fun InfoRow(
 fun obtenerResumenComidas(registro: RegistroActividad): String {
     val elementos = mutableListOf<String>()
     
-    if (registro.primerPlato == EstadoComida.COMPLETO) elementos.add("Primer plato completo")
-    else if (registro.primerPlato == EstadoComida.PARCIAL) elementos.add("Primer plato parcial")
+    if (registro.comidas.primerPlato.estadoComida == EstadoComida.COMPLETO) 
+        elementos.add("Primer plato completo")
+    else if (registro.comidas.primerPlato.estadoComida == EstadoComida.PARCIAL) 
+        elementos.add("Primer plato parcial")
     
-    if (registro.segundoPlato == EstadoComida.COMPLETO) elementos.add("Segundo plato completo")
-    else if (registro.segundoPlato == EstadoComida.PARCIAL) elementos.add("Segundo plato parcial")
+    if (registro.comidas.segundoPlato.estadoComida == EstadoComida.COMPLETO) 
+        elementos.add("Segundo plato completo")
+    else if (registro.comidas.segundoPlato.estadoComida == EstadoComida.PARCIAL) 
+        elementos.add("Segundo plato parcial")
     
-    if (registro.postre == EstadoComida.COMPLETO) elementos.add("Postre completo")
-    else if (registro.postre == EstadoComida.PARCIAL) elementos.add("Postre parcial")
-    
-    if (registro.merienda == EstadoComida.COMPLETO) elementos.add("Merienda completa")
-    else if (registro.merienda == EstadoComida.PARCIAL) elementos.add("Merienda parcial")
+    if (registro.comidas.postre.estadoComida == EstadoComida.COMPLETO) 
+        elementos.add("Postre completo")
+    else if (registro.comidas.postre.estadoComida == EstadoComida.PARCIAL) 
+        elementos.add("Postre parcial")
     
     return if (elementos.isEmpty()) {
         "No hay registro de comidas"

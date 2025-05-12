@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.feature.familiar.screen.RegistroModel
 import com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroUiState
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Usuario
@@ -55,23 +54,8 @@ class DetalleRegistroViewModel @Inject constructor(
 
                 when (registroResult) {
                     is Result.Success<RegistroActividad> -> {
-                        val registroOriginal = registroResult.data
+                        val registro = registroResult.data
                         
-                        // Convertir a nuestro modelo RegistroModel
-                        val registro = RegistroModel(
-                            id = registroOriginal.id,
-                            alumnoId = registroOriginal.alumnoId,
-                            alumnoNombre = registroOriginal.alumnoNombre,
-                            fecha = registroOriginal.fecha,
-                            profesorId = registroOriginal.profesorId,
-                            profesorNombre = registroOriginal.profesorNombre,
-                            comida = registroOriginal.comida,
-                            siesta = registroOriginal.siesta,
-                            cacaControl = registroOriginal.cacaControl,
-                            actividades = registroOriginal.actividades,
-                            observaciones = registroOriginal.observaciones?.toString()
-                        )
-
                         _uiState.update {
                             it.copy(
                                 registro = registro,
@@ -80,7 +64,7 @@ class DetalleRegistroViewModel @Inject constructor(
                         }
 
                         // Cargamos el nombre del profesor si no viene incluido
-                        if (registro.profesorId != null && registro.profesorNombre == null) {
+                        if (registro.profesorId.isNotEmpty() && registro.profesorNombre == null) {
                             cargarProfesor(registro.profesorId)
                         }
                     }
