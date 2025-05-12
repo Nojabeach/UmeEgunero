@@ -12,6 +12,7 @@ import com.tfg.umeegunero.data.repository.ProfesorRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
+import com.tfg.umeegunero.util.FileSaverUtil
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,9 @@ import com.google.firebase.Timestamp
 import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
 import java.time.LocalDateTime
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.flow.update
 
 /**
  * Estado UI para la pantalla "Mis Alumnos".
@@ -58,8 +62,8 @@ class MisAlumnosProfesorViewModel @Inject constructor(
     private val calendarioRepository: CalendarioRepository,
     private val authRepository: AuthRepository,
     private val eventoRepository: EventoRepository,
-    // private val informeRepository: InformeRepository, // Comentado temporalmente
-    // private val fileSaverUtil: FileSaverUtil // Comentado temporalmente
+    private val firestore: FirebaseFirestore,
+    private val fileSaverUtil: FileSaverUtil
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MisAlumnosUiState())
@@ -75,15 +79,15 @@ class MisAlumnosProfesorViewModel @Inject constructor(
     fun cargarAlumnos() {
         viewModelScope.launch {
             try {
-                _uiState.value = MisAlumnosUiState(isLoading = true)
+                _uiState.update { it.copy(isLoading = true) }
                 
                 // Obtener ID del usuario actual
                 val usuario = authRepository.getCurrentUser()
                 if (usuario == null) {
-                    _uiState.value = MisAlumnosUiState(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         error = "No se pudo obtener el usuario actual"
-                    )
+                    ) }
                     return@launch
                 }
                 
@@ -92,10 +96,10 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                 // Obtener el perfil de profesor del usuario
                 val perfilProfesor = usuario.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
                 if (perfilProfesor == null) {
-                    _uiState.value = MisAlumnosUiState(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         error = "El usuario no tiene perfil de profesor"
-                    )
+                    ) }
                     return@launch
                 }
                 
@@ -210,27 +214,27 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                 
                 // Si no hay alumnos, mostrar mensaje específico
                 if (alumnosSinDuplicados.isEmpty()) {
-                    _uiState.value = MisAlumnosUiState(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         error = "No hay alumnos asignados a este profesor",
                         alumnos = emptyList(),
                         clase = nombreClase
-                    )
+                    ) }
                 } else {
-                    _uiState.value = MisAlumnosUiState(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         alumnos = alumnosSinDuplicados,
                         clase = nombreClase
-                    )
+                    ) }
                     Timber.d("Cargados ${alumnosSinDuplicados.size} alumnos para el profesor")
                 }
                 
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar alumnos del profesor: ${e.message}")
-                _uiState.value = MisAlumnosUiState(
+                _uiState.update { it.copy(
                     isLoading = false,
                     error = "Error al cargar alumnos: ${e.message}"
-                )
+                ) }
             }
         }
     }
@@ -274,15 +278,15 @@ class MisAlumnosProfesorViewModel @Inject constructor(
     fun programarReunion(alumnoId: String, titulo: String, fecha: String, hora: String, descripcion: String) {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+                _uiState.update { it.copy(isLoading = true, error = null) }
                 
                 // Obtener datos del usuario actual (profesor)
                 val currentUser = authRepository.getCurrentUser()
                 if (currentUser == null) {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         error = "Usuario no autenticado"
-                    )
+                    ) }
                     return@launch
                 }
                 
@@ -312,7 +316,7 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                     val evento = Evento(
                         id = "",
                         titulo = titulo,
-                        descripcion = "$descripcion\n\nFecha: $fecha\nHora: $hora",
+                        descripcion = "$descripcion\\n\\nFecha: $fecha\\nHora: $hora",
                         fecha = Timestamp.now(), // Usamos la fecha actual
                         tipo = TipoEvento.REUNION,
                         creadorId = profesorId,
@@ -328,95 +332,114 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                     val resultado = eventoRepository.crearEvento(evento)
                     when (resultado) {
                         is Result.Success -> {
-                            _uiState.value = _uiState.value.copy(
+                            _uiState.update { it.copy(
                                 isLoading = false,
                                 mensajeExito = "Reunión programada correctamente",
                                 error = null
-                            )
+                            ) }
                             
                             // Limpiar mensaje de éxito después de unos segundos
                             delay(3000)
-                            _uiState.value = _uiState.value.copy(mensajeExito = null)
+                            _uiState.update { it.copy(mensajeExito = null) }
                         }
                         is Result.Error -> {
-                            _uiState.value = _uiState.value.copy(
+                            _uiState.update { it.copy(
                                 isLoading = false,
                                 error = "Error al programar reunión: ${resultado.exception?.message}"
-                            )
+                            ) }
                         }
                         else -> {
-                            _uiState.value = _uiState.value.copy(isLoading = false)
+                            _uiState.update { it.copy(isLoading = false) }
                         }
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error al obtener profesor: ${e.message}")
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         error = "Error al obtener datos del profesor: ${e.message}"
-                    )
+                    ) }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error al programar reunión")
-                _uiState.value = _uiState.value.copy(
+                _uiState.update { it.copy(
                     isLoading = false,
                     error = "Error al programar reunión: ${e.message}"
-                )
+                ) }
             }
         }
     }
 
     /**
-     * Genera un informe con el listado de alumnos y lo guarda localmente.
+     * Genera un informe con el listado de alumnos y lo guarda localmente y en Firestore.
      */
-    /* // Comentado temporalmente hasta que se implemente InformeRepository y FileSaverUtil
     fun generarInformeAlumnos() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val alumnos = _uiState.value.alumnos
+                val alumnos = uiState.value.alumnos
                 if (alumnos.isEmpty()) {
                     _uiState.update { it.copy(isLoading = false, error = "No hay alumnos para generar el informe.") }
                     return@launch
                 }
+                
+                // Obtener ID del profesor actual
+                val profesorId = authRepository.getCurrentUserId() ?: "Desconocido"
 
                 // Generar contenido del informe (ejemplo simple)
                 val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))
-                val nombreArchivo = "Informe_Alumnos_${System.currentTimeMillis()}.txt"
+                val nombreArchivoBase = "Informe_Alumnos_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}"
+                val nombreArchivoLocal = "$nombreArchivoBase.txt"
                 var contenido = "Informe de Alumnos Generado el $timestamp\\n"
+                contenido += "Clase: ${uiState.value.clase.ifEmpty { "No especificada" }}\\n"
+                contenido += "Profesor ID: $profesorId\\n"
                 contenido += "=============================================\\n\\n"
                 alumnos.forEachIndexed { index, alumno ->
                     contenido += "${index + 1}. ${alumno.nombre} ${alumno.apellidos} (DNI: ${alumno.dni})\\n"
                     // Aquí podrías añadir más detalles si los tuvieras en el modelo Alumno
                 }
 
-                // Crear objeto Informe (asumiendo su estructura)
-                val informe = Informe(
-                    id = "", // Se generará o no es necesario guardarlo aquí
-                    nombre = nombreArchivo,
-                    fechaGeneracion = Timestamp.now(),
-                    contenido = contenido
+                // Crear el Map para Firestore (sin el contenido completo)
+                val informeFirestore = mapOf(
+                    "nombre" to nombreArchivoBase,
+                    "fechaGeneracion" to Timestamp.now(),
+                    "tipo" to "listado_alumnos_profesor",
+                    "generadoPorId" to profesorId,
+                    "contenido" to contenido // Guardamos el contenido aquí también por consistencia con el ejemplo del usuario
+                    // "urlDescarga" // No aplica para guardado local directo
                 )
 
-                // 1. Guardar en Firestore (opcional, depende de tus requisitos)
-                // val saveResult = informeRepository.guardarInforme(informe)
-                // if (saveResult is Result.Error) {
-                //     _uiState.update { it.copy(isLoading = false, error = "Error al guardar informe en la base de datos: ${saveResult.exception?.message}") }
-                //      return@launch // O manejar de otra forma
-                // }
+                // 1. Guardar en Firestore
+                var firestoreError: String? = null
+                try {
+                    firestore.collection("informes")
+                             .document(nombreArchivoBase) // Usar nombre base como ID
+                             .set(informeFirestore)
+                             .await()
+                    Timber.i("Registro del informe guardado en Firestore con ID: $nombreArchivoBase")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al guardar registro del informe en Firestore")
+                    firestoreError = "Error al guardar registro del informe: ${e.message}"
+                }
 
                 // 2. Guardar archivo localmente
-                // val fileSaveResult = fileSaverUtil.saveTextToFile(nombreArchivo, contenido)
-                // if (fileSaveResult is Result.Success) {
-                //     _uiState.update { it.copy(isLoading = false, mensajeExito = "Informe generado y guardado como '$nombreArchivo'") }
-                // } else if (fileSaveResult is Result.Error) {
-                //     _uiState.update { it.copy(isLoading = false, error = "Error al guardar el archivo local: ${fileSaveResult.exception?.message}") }
-                // }
+                val fileSaveResult = fileSaverUtil.saveTextToFile(nombreArchivoLocal, contenido)
+                if (fileSaveResult is Result.Success) {
+                    // Éxito al guardar localmente, comprobar si hubo error en Firestore
+                    if (firestoreError != null) {
+                        _uiState.update { it.copy(isLoading = false, error = "$firestoreError. El archivo se guardó localmente como '${fileSaveResult.data}'") }
+                    } else {
+                        _uiState.update { it.copy(isLoading = false, mensajeExito = "Informe guardado como '${fileSaveResult.data}'") }
+                    }
+                } else if (fileSaveResult is Result.Error) {
+                    // Error al guardar localmente, combinar con error de Firestore si existe
+                    val errorMsg = "Error al guardar el archivo local: ${fileSaveResult.exception?.message}" + 
+                                   if (firestoreError != null) " ($firestoreError)" else ""
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
+                }
 
-                 // Placeholder hasta tener FileSaverUtil
-                 _uiState.update { it.copy(isLoading = false, mensajeExito = "Informe generado (guardado local no implementado aún)") }
-                 delay(2000) // Simular proceso
-                 _uiState.update { it.copy(mensajeExito = null) }
-
+                 // Limpiar mensaje después de unos segundos
+                 delay(4000)
+                 _uiState.update { it.copy(mensajeExito = null, error = null) }
 
             } catch (e: Exception) {
                 Timber.e(e, "Error al generar el informe de alumnos")
@@ -424,5 +447,4 @@ class MisAlumnosProfesorViewModel @Inject constructor(
             }
         }
     }
-    */
 } 

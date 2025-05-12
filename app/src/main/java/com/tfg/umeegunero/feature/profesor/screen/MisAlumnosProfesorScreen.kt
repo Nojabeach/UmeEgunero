@@ -162,7 +162,7 @@ fun MisAlumnosProfesorScreen(
                 onClick = {
                     haptic.performHapticFeedbackSafely()
                     // Llamar a la función del ViewModel para generar el informe
-                    // viewModel.generarInformeAlumnos() // Comentado temporalmente
+                    viewModel.generarInformeAlumnos()
                     // TODO: Mostrar Snackbar o mensaje temporal indicando que la función no está implementada
                 },
                 containerColor = ProfesorColor,
