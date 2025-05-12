@@ -666,4 +666,110 @@ class RegistroDiarioRepository @Inject constructor(
             Result.Error(e)
         }
     }
+    
+    /**
+     * Obtiene los registros diarios para una fecha y clase específica
+     * 
+     * @param fecha Fecha del registro
+     * @param claseId ID de la clase
+     * @return Resultado con la lista de registros
+     */
+    suspend fun obtenerRegistrosDiariosPorFechaYClase(
+        fecha: Date,
+        claseId: String
+    ): Result<List<RegistroActividad>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Convertir fecha a timestamp para el filtrado
+                val calendar = Calendar.getInstance()
+                calendar.time = fecha
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                val startOfDay = calendar.time
+                
+                calendar.set(Calendar.HOUR_OF_DAY, 23)
+                calendar.set(Calendar.MINUTE, 59)
+                calendar.set(Calendar.SECOND, 59)
+                val endOfDay = calendar.time
+                
+                val startTimestamp = Timestamp(startOfDay)
+                val endTimestamp = Timestamp(endOfDay)
+                
+                Timber.d("Buscando registros para clase: $claseId, entre $startOfDay y $endOfDay")
+                
+                val registrosSnapshot = firestore.collection("registrosActividad")
+                    .whereEqualTo("claseId", claseId)
+                    .whereGreaterThanOrEqualTo("fecha", startTimestamp)
+                    .whereLessThanOrEqualTo("fecha", endTimestamp)
+                    .get()
+                    .await()
+                
+                val registros = registrosSnapshot.documents.mapNotNull { document ->
+                    try {
+                        document.toObject(RegistroActividad::class.java)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al convertir documento a RegistroActividad: ${document.id}")
+                        null
+                    }
+                }
+                
+                Timber.d("Se encontraron ${registros.size} registros para la clase $claseId y fecha $fecha")
+                registros.forEach { 
+                    Timber.d("Registro: alumnoId=${it.alumnoId}, fecha=${it.fecha}, creado por=${it.creadoPor}")
+                }
+                
+                Result.Success(registros)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener registros por fecha y clase")
+                Result.Error(e)
+            }
+        }
+    }
+    
+    /**
+     * Obtiene los registros diarios para un alumno en un rango de fechas específico
+     * 
+     * @param alumnoId ID del alumno
+     * @param fechaInicio Timestamp de inicio del rango
+     * @param fechaFin Timestamp de fin del rango
+     * @return Resultado con la lista de registros
+     */
+    suspend fun obtenerRegistrosPorFechaYAlumno(
+        alumnoId: String,
+        fechaInicio: Timestamp,
+        fechaFin: Timestamp
+    ): Result<List<RegistroActividad>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Timber.d("Buscando registros para alumno: $alumnoId, entre $fechaInicio y $fechaFin")
+                
+                val registrosSnapshot = firestore.collection("registrosActividad")
+                    .whereEqualTo("alumnoId", alumnoId)
+                    .whereGreaterThanOrEqualTo("fecha", fechaInicio)
+                    .whereLessThanOrEqualTo("fecha", fechaFin)
+                    .get()
+                    .await()
+                
+                val registros = registrosSnapshot.documents.mapNotNull { document ->
+                    try {
+                        document.toObject(RegistroActividad::class.java)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al convertir documento a RegistroActividad: ${document.id}")
+                        null
+                    }
+                }
+                
+                Timber.d("Se encontraron ${registros.size} registros para el alumno $alumnoId en el rango de fechas")
+                registros.forEach { 
+                    Timber.d("Registro: id=${it.id}, fecha=${it.fecha}, creado por=${it.creadoPor}")
+                }
+                
+                Result.Success(registros)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener registros por alumno y fecha")
+                Result.Error(e)
+            }
+        }
+    }
 } 

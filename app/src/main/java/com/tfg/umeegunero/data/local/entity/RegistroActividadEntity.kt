@@ -104,10 +104,10 @@ data class RegistroActividadEntity(
                 fechaTimestamp = registro.fecha.seconds * 1000,
                 profesorId = registro.profesorId,
                 profesorNombre = registro.profesorNombre,
-                primerPlato = registro.comidas.primerPlato.nivelConsumo.name,
-                segundoPlato = registro.comidas.segundoPlato.nivelConsumo.name,
-                postre = registro.comidas.postre.nivelConsumo.name,
-                merienda = registro.comidas.primerPlato.nivelConsumo.name,
+                primerPlato = registro.comidas.primerPlato.estadoComida.name,
+                segundoPlato = registro.comidas.segundoPlato.estadoComida.name,
+                postre = registro.comidas.postre.estadoComida.name,
+                merienda = registro.comidas.primerPlato.estadoComida.name,
                 observacionesComida = registro.observacionesComida,
                 haSiestaSiNo = registro.siesta != null,
                 horaInicioSiestaTimestamp = registro.siesta?.inicio?.seconds?.times(1000) ?: registro.horaInicioSiesta?.seconds?.times(1000),
@@ -152,13 +152,13 @@ data class RegistroActividadEntity(
             profesorNombre = profesorNombre,
             comidas = Comidas(
                 primerPlato = com.tfg.umeegunero.data.model.Plato(
-                    "", com.tfg.umeegunero.data.model.NivelConsumo.valueOf(primerPlato)
+                    "", EstadoComida.valueOf(primerPlato)
                 ),
                 segundoPlato = com.tfg.umeegunero.data.model.Plato(
-                    "", com.tfg.umeegunero.data.model.NivelConsumo.valueOf(segundoPlato)
+                    "", EstadoComida.valueOf(segundoPlato)
                 ),
                 postre = com.tfg.umeegunero.data.model.Plato(
-                    "", com.tfg.umeegunero.data.model.NivelConsumo.valueOf(postre)
+                    "", EstadoComida.valueOf(postre)
                 )
             ),
             siesta = Siesta(

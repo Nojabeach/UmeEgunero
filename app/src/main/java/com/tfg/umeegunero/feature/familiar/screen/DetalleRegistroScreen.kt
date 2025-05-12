@@ -62,7 +62,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.Timestamp
-import com.tfg.umeegunero.data.model.NivelConsumo
+import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.Comida
 import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.data.model.CacaControl
@@ -1127,21 +1127,25 @@ fun formatDuracion(minutos: Int): String {
     }
 }
 
-fun nivelConsumoText(nivel: NivelConsumo): String {
+fun nivelConsumoText(nivel: EstadoComida): String {
     return when (nivel) {
-        NivelConsumo.NADA -> "Nada"
-        NivelConsumo.POCO -> "Poco"
-        NivelConsumo.BIEN -> "Bien"
-        NivelConsumo.TODO -> "Todo"
+        EstadoComida.RECHAZADO -> "Nada"
+        EstadoComida.PARCIAL -> "Poco"
+        EstadoComida.COMPLETO -> "Bien"
+        EstadoComida.NO_SERVIDO -> "No servido"
+        EstadoComida.NO_APLICABLE -> "No aplicable"
+        EstadoComida.SIN_DATOS -> "Sin datos"
     }
 }
 
-fun nivelConsumoColor(nivel: NivelConsumo): Color {
+fun nivelConsumoColor(nivel: EstadoComida): Color {
     return when (nivel) {
-        NivelConsumo.NADA -> Color.Red
-        NivelConsumo.POCO -> Color(0xFFFF9800) // Orange
-        NivelConsumo.BIEN -> Color(0xFF4CAF50) // Green
-        NivelConsumo.TODO -> Color(0xFF2196F3) // Blue
+        EstadoComida.RECHAZADO -> Color.Red
+        EstadoComida.PARCIAL -> Color(0xFFFF9800) // Orange
+        EstadoComida.COMPLETO -> Color(0xFF4CAF50) // Green
+        EstadoComida.NO_SERVIDO -> Color(0xFF2196F3) // Blue
+        EstadoComida.NO_APLICABLE -> Color(0xFF9E9E9E) // Gray
+        EstadoComida.SIN_DATOS -> Color(0xFF9E9E9E) // Gray
     }
 }
 
@@ -1361,16 +1365,16 @@ fun DetalleRegistroScreenPreviewContent() {
                         
                         Text(
                             text = comidaMock.consumoPrimero?.let { nivelConsumoText(when (it) {
-                                "Lentejas con verduras" -> NivelConsumo.BIEN
-                                "Filete de pollo con ensalada" -> NivelConsumo.BIEN
-                                else -> NivelConsumo.POCO
+                                "Lentejas con verduras" -> EstadoComida.COMPLETO
+                                "Filete de pollo con ensalada" -> EstadoComida.COMPLETO
+                                else -> EstadoComida.PARCIAL
                             }) } ?: "No registrado",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = comidaMock.consumoPrimero?.let { nivelConsumoColor(when (it) {
-                                "Lentejas con verduras" -> NivelConsumo.BIEN
-                                "Filete de pollo con ensalada" -> NivelConsumo.BIEN
-                                else -> NivelConsumo.POCO
+                                "Lentejas con verduras" -> EstadoComida.COMPLETO
+                                "Filete de pollo con ensalada" -> EstadoComida.COMPLETO
+                                else -> EstadoComida.PARCIAL
                             }) } ?: Color.Black
                         )
                     }
@@ -1393,9 +1397,9 @@ fun DetalleRegistroScreenPreviewContent() {
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = comidaMock.consumoSegundo?.let { nivelConsumoColor(when (it) {
-                                "Lentejas con verduras" -> NivelConsumo.BIEN
-                                "Filete de pollo con ensalada" -> NivelConsumo.BIEN
-                                else -> NivelConsumo.POCO
+                                "Lentejas con verduras" -> EstadoComida.COMPLETO
+                                "Filete de pollo con ensalada" -> EstadoComida.COMPLETO
+                                else -> EstadoComida.PARCIAL
                             }) } ?: Color.Black
                         )
                     }
@@ -1418,8 +1422,8 @@ fun DetalleRegistroScreenPreviewContent() {
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = comidaMock.consumoPostre?.let { nivelConsumoColor(when (it) {
-                                "Fruta" -> NivelConsumo.BIEN
-                                else -> NivelConsumo.POCO
+                                "Fruta" -> EstadoComida.COMPLETO
+                                else -> EstadoComida.PARCIAL
                             }) } ?: Color.Black
                         )
                     }

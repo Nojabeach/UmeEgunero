@@ -53,7 +53,6 @@ import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Centro
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.EstadoComida
-import com.tfg.umeegunero.data.model.NivelConsumo
 import com.tfg.umeegunero.data.model.SolicitudVinculacion
 import com.tfg.umeegunero.data.model.EstadoSolicitud
 import com.tfg.umeegunero.feature.familiar.viewmodel.FamiliarDashboardViewModel
@@ -1242,8 +1241,8 @@ fun ResumenActividadCard(
                         icon = Icons.Default.Restaurant,
                         title = "Alimentación",
                         value = when {
-                            ultimoRegistro.comidas.primerPlato.nivelConsumo == NivelConsumo.valueOf("COMPLETO") -> "Completa"
-                            ultimoRegistro.comidas.primerPlato.nivelConsumo == NivelConsumo.valueOf("PARCIAL") -> "Parcial"
+                            ultimoRegistro.comidas.primerPlato.estadoComida == EstadoComida.COMPLETO -> "Completa"
+                            ultimoRegistro.comidas.primerPlato.estadoComida == EstadoComida.PARCIAL -> "Parcial"
                             else -> "No servido"
                         }
                     )

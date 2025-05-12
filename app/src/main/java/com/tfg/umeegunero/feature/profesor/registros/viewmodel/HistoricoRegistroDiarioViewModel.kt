@@ -25,6 +25,9 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import com.tfg.umeegunero.data.model.EstadoComida
+import com.tfg.umeegunero.data.model.Comidas
+import com.google.firebase.Timestamp
 
 /**
  * Estado de UI para la pantalla de histórico de registros diarios
@@ -386,5 +389,122 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
      */
     fun limpiarError() {
         _uiState.update { it.copy(error = null) }
+    }
+    
+    /**
+     * Método para convertir un registro diario a un formato unificado
+     * 
+     * @param registro Registro diario a normalizar
+     * @return Registro diario con formato normalizado
+     */
+    private fun normalizarRegistro(registro: RegistroActividad): RegistroActividad {
+        // Valores por defecto para campos que podrían estar nulos
+        val primerPlato = registro.primerPlato ?: EstadoComida.NO_SERVIDO
+        val segundoPlato = registro.segundoPlato ?: EstadoComida.NO_SERVIDO
+        val postre = registro.postre ?: EstadoComida.NO_SERVIDO
+        val merienda = registro.merienda ?: EstadoComida.NO_SERVIDO
+        
+        // Componer observaciones para evitar duplicidad
+        val obsComida = registro.observacionesComida.ifEmpty { registro.observaciones ?: "" }
+        
+        // Unificar las observaciones de caca y generales
+        val obsCaca = registro.observacionesCaca
+        val obsGenerales = registro.observacionesGenerales.ifEmpty { registro.observaciones ?: "" }
+        
+        return registro.copy(
+            primerPlato = primerPlato,
+            segundoPlato = segundoPlato,
+            postre = postre,
+            merienda = merienda,
+            observacionesComida = obsComida,
+            observacionesCaca = obsCaca,
+            observacionesGenerales = obsGenerales
+        )
+    }
+    
+    /**
+     * Convierte un nivel de consumo a un estado de comida correspondiente
+     */
+    private fun convertirNivelConsumoAEstadoComida(nivelConsumo: String): EstadoComida {
+        return when (nivelConsumo.uppercase()) {
+            "BIEN", "COMPLETO" -> EstadoComida.COMPLETO
+            "REGULAR", "PARCIAL" -> EstadoComida.PARCIAL
+            "MAL", "NADA", "RECHAZADO" -> EstadoComida.RECHAZADO
+            else -> EstadoComida.NO_SERVIDO
+        }
+    }
+
+    /**
+     * Carga los registros para la fecha seleccionada
+     */
+    private fun cargarRegistros() {
+        _uiState.update { it.copy(isLoading = true) }
+        
+        viewModelScope.launch {
+            try {
+                // Solo cargar si tenemos un alumno seleccionado
+                val alumnoId = _uiState.value.alumnoSeleccionado?.id ?: return@launch
+                val fecha = _uiState.value.fechaSeleccionada
+                
+                // Convertir fecha a formato adecuado para la consulta
+                val calendar = Calendar.getInstance()
+                calendar.time = fecha
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                val fechaInicio = calendar.time
+                
+                calendar.set(Calendar.HOUR_OF_DAY, 23)
+                calendar.set(Calendar.MINUTE, 59)
+                calendar.set(Calendar.SECOND, 59)
+                val fechaFin = calendar.time
+                
+                val result = obtenerRegistrosPorAlumnoYFecha(alumnoId, fechaInicio, fechaFin)
+                
+                if (result is Result.Success<List<RegistroActividad>>) {
+                    val registrosNormalizados = result.data.map { normalizarRegistro(it) }
+                    _uiState.update { it.copy(
+                        registros = registrosNormalizados,
+                        isLoading = false
+                    ) }
+                } else {
+                    _uiState.update { it.copy(
+                        error = "Error al cargar los registros: ${(result as? Result.Error)?.exception?.message ?: "Desconocido"}",
+                        isLoading = false
+                    ) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = "Error al cargar registros: ${e.message}",
+                    isLoading = false
+                ) }
+            }
+        }
+    }
+
+    /**
+     * Obtiene registros por alumno y fecha
+     */
+    private suspend fun obtenerRegistrosPorAlumnoYFecha(
+        alumnoId: String, 
+        fechaInicio: Date, 
+        fechaFin: Date
+    ): Result<List<RegistroActividad>> {
+        return try {
+            val startTimestamp = Timestamp(fechaInicio)
+            val endTimestamp = Timestamp(fechaFin)
+            
+            val result = registroDiarioRepository.obtenerRegistrosPorFechaYAlumno(alumnoId, startTimestamp, endTimestamp)
+            if (result is Result.Success) {
+                Timber.d("Registros obtenidos para alumno $alumnoId: ${result.data.size}")
+                Result.Success(result.data)
+            } else {
+                Timber.e("Error al obtener registros para alumno $alumnoId: ${(result as? Result.Error)?.exception?.message}")
+                Result.Error((result as? Result.Error)?.exception ?: Exception("Error desconocido"))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros por alumno y fecha")
+            Result.Error(e)
+        }
     }
 } 

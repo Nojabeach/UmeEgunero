@@ -46,16 +46,14 @@ data class Comida(
  * alternativa más estructurada al uso de campos individuales para cada plato.
  * 
  * @property descripcion Descripción textual del plato servido (ej: "Puré de verduras")
- * @property nivelConsumo Nivel de aceptación y consumo del plato (propiedad mantenida por compatibilidad)
- * @property consumo Nivel de aceptación y consumo del plato según la escala [NivelConsumo]
+ * @property estadoComida Nivel de aceptación y consumo del plato
  * 
  * @see Comidas Modelo contenedor que agrupa múltiples platos
- * @see NivelConsumo Enumeración que define los niveles estándar de consumo
+ * @see EstadoComida Enumeración que define los niveles estándar de consumo
  */
 data class Plato(
     val descripcion: String = "",
-    val nivelConsumo: NivelConsumo = NivelConsumo.BIEN,
-    val consumo: NivelConsumo = NivelConsumo.BIEN
+    val estadoComida: EstadoComida = EstadoComida.NO_SERVIDO
 )
 
 /**

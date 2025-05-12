@@ -77,13 +77,13 @@ import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.model.Comidas
 import com.tfg.umeegunero.data.model.CacaControl
 import com.tfg.umeegunero.data.model.NecesidadesFisiologicas
-import com.tfg.umeegunero.data.model.NivelConsumo
 import com.tfg.umeegunero.data.model.Observacion
 import com.tfg.umeegunero.data.model.Plato
 import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.data.model.TipoObservacion
 import com.tfg.umeegunero.data.model.PlantillaRegistroActividad
 import com.tfg.umeegunero.data.model.TipoActividad
+import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.feature.profesor.viewmodel.RegistroActividadViewModel
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -373,9 +373,9 @@ fun AlumnoInfoCard(alumno: Alumno) {
 @Composable
 fun ComidasCard(
     comidas: Comidas,
-    onUpdatePrimerPlato: (String, NivelConsumo) -> Unit,
-    onUpdateSegundoPlato: (String, NivelConsumo) -> Unit,
-    onUpdatePostre: (String, NivelConsumo) -> Unit
+    onUpdatePrimerPlato: (String, EstadoComida) -> Unit,
+    onUpdateSegundoPlato: (String, EstadoComida) -> Unit,
+    onUpdatePostre: (String, EstadoComida) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -437,15 +437,15 @@ fun ComidasCard(
 fun PlatoInput(
     titulo: String,
     plato: Plato,
-    onUpdate: (String, NivelConsumo) -> Unit
+    onUpdate: (String, EstadoComida) -> Unit
 ) {
     var descripcion by remember { mutableStateOf(plato.descripcion) }
-    var consumo by remember { mutableStateOf(plato.nivelConsumo) }
+    var consumo by remember { mutableStateOf(plato.estadoComida) }
 
     // Actualizar si cambia el plato
     LaunchedEffect(plato) {
         descripcion = plato.descripcion
-        consumo = plato.nivelConsumo
+        consumo = plato.estadoComida
     }
 
     Column(
@@ -478,10 +478,10 @@ fun PlatoInput(
 
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             SegmentedButton(
-                selected = consumo == NivelConsumo.BIEN,
+                selected = consumo == EstadoComida.COMPLETO,
                 onClick = {
-                    consumo = NivelConsumo.BIEN
-                    onUpdate(descripcion, NivelConsumo.BIEN)
+                    consumo = EstadoComida.COMPLETO
+                    onUpdate(descripcion, EstadoComida.COMPLETO)
                 },
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                 colors = SegmentedButtonDefaults.colors(
@@ -491,16 +491,16 @@ fun PlatoInput(
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Bien"
+                    contentDescription = "Completo"
                 )
                 Text("Bien")
             }
 
             SegmentedButton(
-                selected = consumo == NivelConsumo.POCO,
+                selected = consumo == EstadoComida.PARCIAL,
                 onClick = {
-                    consumo = NivelConsumo.POCO
-                    onUpdate(descripcion, NivelConsumo.POCO)
+                    consumo = EstadoComida.PARCIAL
+                    onUpdate(descripcion, EstadoComida.PARCIAL)
                 },
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                 colors = SegmentedButtonDefaults.colors(
@@ -510,16 +510,16 @@ fun PlatoInput(
             ) {
                 Icon(
                     imageVector = Icons.Default.Warning,
-                    contentDescription = "Poco"
+                    contentDescription = "Parcial"
                 )
                 Text("Poco")
             }
 
             SegmentedButton(
-                selected = consumo == NivelConsumo.NADA,
+                selected = consumo == EstadoComida.RECHAZADO,
                 onClick = {
-                    consumo = NivelConsumo.NADA
-                    onUpdate(descripcion, NivelConsumo.NADA)
+                    consumo = EstadoComida.RECHAZADO
+                    onUpdate(descripcion, EstadoComida.RECHAZADO)
                 },
                 shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
                 colors = SegmentedButtonDefaults.colors(
@@ -529,7 +529,7 @@ fun PlatoInput(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Nada"
+                    contentDescription = "Rechazado"
                 )
                 Text("Nada")
             }

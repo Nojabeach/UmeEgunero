@@ -9,7 +9,7 @@ import com.tfg.umeegunero.data.model.Comidas
 import com.tfg.umeegunero.data.model.CacaControl
 import com.tfg.umeegunero.data.model.Comida
 import com.tfg.umeegunero.data.model.NecesidadesFisiologicas
-import com.tfg.umeegunero.data.model.NivelConsumo
+import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.Observacion
 import com.tfg.umeegunero.data.model.Plato
 import com.tfg.umeegunero.data.model.PlantillaRegistroActividad
@@ -41,9 +41,9 @@ data class RegistroActividadUiState(
     val error: String? = null,
     val alumno: Alumno? = null,
     val comidas: Comidas = Comidas(
-        primerPlato = Plato("", NivelConsumo.BIEN),
-        segundoPlato = Plato("", NivelConsumo.BIEN),
-        postre = Plato("", NivelConsumo.BIEN)
+        primerPlato = Plato("", EstadoComida.COMPLETO),
+        segundoPlato = Plato("", EstadoComida.COMPLETO),
+        postre = Plato("", EstadoComida.COMPLETO)
     ),
     val siesta: Siesta? = null,
     val necesidadesFisiologicas: CacaControl = CacaControl(
@@ -137,12 +137,8 @@ class RegistroActividadViewModel @Inject constructor(
     /**
      * Actualiza información del primer plato
      */
-    fun updatePrimerPlato(descripcion: String, nivelConsumo: NivelConsumo) {
-        val plato = _uiState.value.comidas.primerPlato?.copy(
-            descripcion = descripcion,
-            nivelConsumo = nivelConsumo,
-            consumo = nivelConsumo
-        ) ?: Plato(descripcion, nivelConsumo, nivelConsumo)
+    fun updatePrimerPlato(descripcion: String, estadoComida: EstadoComida) {
+        val plato = Plato(descripcion, estadoComida)
 
         _uiState.update {
             it.copy(comidas = it.comidas.copy(primerPlato = plato))
@@ -152,12 +148,8 @@ class RegistroActividadViewModel @Inject constructor(
     /**
      * Actualiza información del segundo plato
      */
-    fun updateSegundoPlato(descripcion: String, nivelConsumo: NivelConsumo) {
-        val plato = _uiState.value.comidas.segundoPlato?.copy(
-            descripcion = descripcion,
-            nivelConsumo = nivelConsumo,
-            consumo = nivelConsumo
-        ) ?: Plato(descripcion, nivelConsumo, nivelConsumo)
+    fun updateSegundoPlato(descripcion: String, estadoComida: EstadoComida) {
+        val plato = Plato(descripcion, estadoComida)
 
         _uiState.update {
             it.copy(comidas = it.comidas.copy(segundoPlato = plato))
@@ -167,12 +159,8 @@ class RegistroActividadViewModel @Inject constructor(
     /**
      * Actualiza información del postre
      */
-    fun updatePostre(descripcion: String, nivelConsumo: NivelConsumo) {
-        val plato = _uiState.value.comidas.postre?.copy(
-            descripcion = descripcion,
-            nivelConsumo = nivelConsumo,
-            consumo = nivelConsumo
-        ) ?: Plato(descripcion, nivelConsumo, nivelConsumo)
+    fun updatePostre(descripcion: String, estadoComida: EstadoComida) {
+        val plato = Plato(descripcion, estadoComida)
 
         _uiState.update {
             it.copy(comidas = it.comidas.copy(postre = plato))
@@ -315,11 +303,11 @@ class RegistroActividadViewModel @Inject constructor(
                 // Convertir los datos del UI a objetos del modelo
                 val comida = Comida(
                     consumoPrimero = _uiState.value.comidas.primerPlato?.descripcion,
-                    descripcionPrimero = "Nivel: ${_uiState.value.comidas.primerPlato?.nivelConsumo?.name ?: "No especificado"}",
+                    descripcionPrimero = "Nivel: ${_uiState.value.comidas.primerPlato?.estadoComida?.name ?: "No especificado"}",
                     consumoSegundo = _uiState.value.comidas.segundoPlato?.descripcion,
-                    descripcionSegundo = "Nivel: ${_uiState.value.comidas.segundoPlato?.nivelConsumo?.name ?: "No especificado"}",
+                    descripcionSegundo = "Nivel: ${_uiState.value.comidas.segundoPlato?.estadoComida?.name ?: "No especificado"}",
                     consumoPostre = _uiState.value.comidas.postre?.descripcion,
-                    descripcionPostre = "Nivel: ${_uiState.value.comidas.postre?.nivelConsumo?.name ?: "No especificado"}"
+                    descripcionPostre = "Nivel: ${_uiState.value.comidas.postre?.estadoComida?.name ?: "No especificado"}"
                 )
                 
                 val cacaControl = _uiState.value.necesidadesFisiologicas.copy()

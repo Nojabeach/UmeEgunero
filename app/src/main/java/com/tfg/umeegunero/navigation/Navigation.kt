@@ -578,9 +578,9 @@ fun Navigation(
                         launchSingleTop = true
                     }
                 },
-                onNavigateToAddUser = { isAdminApp ->
+                onNavigateToAddUser = { isAdmin ->
                     navController.navigate(AppScreens.AddUser.createRoute(
-                        isAdminApp = isAdminApp
+                        isAdminApp = isAdmin
                     )) {
                         launchSingleTop = true
                     }
@@ -823,8 +823,9 @@ fun Navigation(
                 navArgument("cursoId") { type = NavType.StringType; defaultValue = ""; nullable = true }
             )
         ) { backStackEntry ->
-            val centroId = backStackEntry.arguments?.getString("centroId")
-            val cursoId = backStackEntry.arguments?.getString("cursoId")
+            // Los parámetros se leen aquí pero se pasan directamente al ViewModel en AddClaseScreen
+            // val centroId = backStackEntry.arguments?.getString("centroId")
+            // val cursoId = backStackEntry.arguments?.getString("cursoId")
             com.tfg.umeegunero.feature.common.academico.screen.AddClaseScreen(
                 navController = navController
             )
@@ -837,7 +838,8 @@ fun Navigation(
                 navArgument("claseId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
+            // El claseId se lee aquí pero se usa directamente en el ViewModel
+            // val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
             com.tfg.umeegunero.feature.common.academico.screen.EditClaseScreen(
                 navController = navController
                 // El ViewModel se encarga de cargar la clase por ID
@@ -889,8 +891,17 @@ fun Navigation(
             val alumnosIds = backStackEntry.arguments?.getString("alumnosIds") ?: ""
             val fecha = backStackEntry.arguments?.getString("fecha")
             
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Pantalla Registro Diario Profesor para: $alumnosIds, Fecha: $fecha")
+            if (alumnosIds.isNotBlank()) {
+                com.tfg.umeegunero.feature.profesor.registros.screen.HiltRegistroDiarioScreen(
+                    alumnosIds = alumnosIds,
+                    fecha = fecha,
+                    navController = navController
+                )
+            } else {
+                // Mostrar mensaje de error si no hay alumnos seleccionados
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Error: No se han seleccionado alumnos para el registro diario")
+                }
             }
         }
 

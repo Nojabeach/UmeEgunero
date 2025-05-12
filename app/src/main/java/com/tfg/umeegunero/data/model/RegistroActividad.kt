@@ -15,8 +15,7 @@ import com.google.firebase.firestore.DocumentId
  * por los familiares, permitiendo una comunicación efectiva entre ambas partes.
  * 
  * Este modelo unifica las funcionalidades de los antiguos modelos
- * RegistroDiario y RegistroActividad para evitar duplicidad y
- * simplificar la estructura de datos.
+ * de registro para evitar duplicidad y simplificar la estructura de datos.
  * 
  * @property id Identificador único del registro generado automáticamente.
  * @property alumnoId Identificador del alumno al que pertenece el registro.
@@ -130,49 +129,4 @@ data class RegistroActividad(
     
     // Plantilla - Nueva funcionalidad
     val plantillaId: String? = null // ID de la plantilla utilizada (si se usó una)
-) {
-    /**
-     * Función de extensión para convertir el modelo antiguo RegistroDiario a RegistroActividad.
-     * 
-     * Esta función es útil durante la migración de datos del sistema antiguo al nuevo,
-     * asegurando la compatibilidad hacia atrás.
-     * 
-     * @param registro Registro diario antiguo que se va a convertir
-     * @return Un nuevo objeto RegistroActividad con los datos del registro antiguo
-     */
-    companion object {
-        fun fromRegistroDiario(registro: RegistroDiario): RegistroActividad {
-            return RegistroActividad(
-                id = registro.id,
-                alumnoId = registro.alumnoId,
-                alumnoNombre = "", // Este dato se perdía en el modelo antiguo
-                claseId = registro.claseId,
-                fecha = registro.fecha,
-                profesorId = registro.profesorId,
-                profesorNombre = null, // Este dato se perdía en el modelo antiguo
-                primerPlato = registro.primerPlato,
-                segundoPlato = registro.segundoPlato,
-                postre = registro.postre,
-                merienda = registro.merienda,
-                observacionesComida = registro.observacionesComida,
-                haSiestaSiNo = registro.haSiestaSiNo,
-                horaInicioSiesta = registro.horaInicioSiesta,
-                horaFinSiesta = registro.horaFinSiesta,
-                observacionesSiesta = registro.observacionesSiesta,
-                haHechoCaca = registro.haHechoCaca,
-                numeroCacas = registro.numeroCacas,
-                observacionesCaca = registro.observacionesCaca,
-                necesitaPanales = registro.necesitaPanales,
-                necesitaToallitas = registro.necesitaToallitas,
-                necesitaRopaCambio = registro.necesitaRopaCambio,
-                otroMaterialNecesario = registro.otroMaterialNecesario,
-                observacionesGenerales = registro.observacionesGenerales,
-                visualizadoPorFamiliar = registro.visualizadoPorFamiliar,
-                fechaVisualizacion = registro.fechaVisualizacion,
-                ultimaModificacion = registro.ultimaModificacion,
-                creadoPor = registro.creadoPor,
-                modificadoPor = registro.modificadoPor
-            )
-        }
-    }
-} 
+) 

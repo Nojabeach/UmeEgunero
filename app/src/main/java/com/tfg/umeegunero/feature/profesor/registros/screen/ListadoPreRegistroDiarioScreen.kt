@@ -5,11 +5,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,9 +92,6 @@ fun ListadoPreRegistroDiarioScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Estado para el diálogo de confirmación
-    var mostrarDialogoConfirmacion by remember { mutableStateOf(false) }
-    
     // Pasar el profesorId al ViewModel cuando se proporciona
     LaunchedEffect(profesorId) {
         if (!profesorId.isNullOrEmpty()) {
@@ -133,7 +133,11 @@ fun ListadoPreRegistroDiarioScreen(
                 return@LaunchedEffect // No navegar
             }
 
-            val route = AppScreens.RegistroDiarioProfesor.createRouteWithParams(alumnosIds, fecha)
+            // Usar el método de creación de ruta definido en AppScreens
+            val route = AppScreens.RegistroDiarioProfesor.createRouteWithParams(
+                alumnosIds = alumnosIds,
+                fecha = fecha
+            )
             Timber.d("ListadoPreRegistroDiarioScreen: Ruta construida: '$route'")
             navController.navigate(route)
             viewModel.resetearNavegacion()
@@ -162,11 +166,10 @@ fun ListadoPreRegistroDiarioScreen(
         },
         floatingActionButton = {
             if (uiState.alumnosSeleccionados.isNotEmpty()) {
-                ExtendedFloatingActionButton(
-                    onClick = { viewModel.iniciarRegistroDiario() },
-                    icon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    text = { Text("Registrar ${uiState.alumnosSeleccionados.size} alumnos") },
-                    containerColor = ProfesorColor
+                PresentesFAB(
+                    selectedCount = uiState.alumnosSeleccionados.size,
+                    totalCount = uiState.alumnos.size,
+                    onFabClick = { viewModel.iniciarRegistroDiario() }
                 )
             }
         },
@@ -226,147 +229,31 @@ fun ListadoPreRegistroDiarioScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Barra de acciones
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botón para seleccionar todos
-                Button(
-                    onClick = { viewModel.seleccionarTodosLosAlumnos() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ProfesorColor
-                    )
-                ) {
-                    Icon(Icons.Default.SelectAll, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Seleccionar todos")
-                }
-                
-                // Botón para completar automáticamente
-                OutlinedButton(
-                    onClick = { mostrarDialogoConfirmacion = true },
-                    modifier = Modifier.weight(1f),
-                    border = BorderStroke(1.dp, ProfesorColor)
-                ) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = ProfesorColor
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Auto-completar",
-                        color = ProfesorColor
-                    )
-                }
-            }
+            // Acciones rápidas
+            AccionesRapidas(
+                onSelectAll = { viewModel.seleccionarTodosLosAlumnos() },
+                onDeselectAll = { viewModel.deseleccionarTodosLosAlumnos() }
+            )
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Barra de filtro
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Alumnos",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                
-                // Filtro de asistencia
-                AssistanceFilterChip(
-                    seleccionado = uiState.mostrarSoloPresentes,
-                    onSeleccionado = { viewModel.toggleFiltroPresentes() }
-                )
-            }
-            
             // Lista de alumnos
-            if (uiState.alumnosFiltrados.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PersonOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "No hay alumnos disponibles",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = uiState.alumnosFiltrados,
-                        key = { it.id }
-                    ) { alumno ->
-                        AlumnoItem(
-                            alumno = alumno,
-                            seleccionado = uiState.alumnosSeleccionados.contains(alumno),
-                            tieneRegistro = uiState.alumnosConRegistro.contains(alumno.id),
-                            onSeleccionado = { viewModel.toggleSeleccionAlumno(alumno) },
-                            modifier = Modifier.animateItemPlacement(
-                                animationSpec = tween(durationMillis = 300)
-                            )
-                        )
-                    }
+            LazyColumn {
+                items(uiState.alumnos) { alumno ->
+                    AlumnoSelectionChip(
+                        alumno = alumno,
+                        isSelected = uiState.alumnosSeleccionados.contains(alumno),
+                        onSelectionChanged = { selected ->
+                            if (selected) {
+                                viewModel.seleccionarAlumno(alumno)
+                            } else {
+                                viewModel.deseleccionarAlumno(alumno)
+                            }
+                        },
+                        tieneRegistro = uiState.alumnosConRegistro.contains(alumno.id)
+                    )
                 }
             }
-        }
-        
-        // Diálogo de confirmación para auto-completar
-        if (mostrarDialogoConfirmacion) {
-            AlertDialog(
-                onDismissRequest = { mostrarDialogoConfirmacion = false },
-                title = { Text("Completar automáticamente") },
-                text = { 
-                    Text(
-                        "¿Deseas completar automáticamente el registro diario para todos los alumnos presentes? Esto creará registros con valores por defecto (comidas completas, sin siesta, sin deposiciones)."
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.completarAutomaticamente()
-                            mostrarDialogoConfirmacion = false
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ProfesorColor
-                        )
-                    ) {
-                        Text("Confirmar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { mostrarDialogoConfirmacion = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
         }
     }
 }
@@ -507,139 +394,219 @@ fun AssistanceFilterChip(
 }
 
 /**
- * Elemento de la lista de alumnos
+ * Componente que representa un chip de selección de alumno
  */
 @Composable
-fun AlumnoItem(
+fun AlumnoSelectionChip(
     alumno: Alumno,
-    seleccionado: Boolean,
-    tieneRegistro: Boolean,
-    onSeleccionado: () -> Unit,
-    modifier: Modifier = Modifier
+    isSelected: Boolean,
+    onSelectionChanged: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    tieneRegistro: Boolean = false
 ) {
-    Card(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onSeleccionado() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (seleccionado)
-                ProfesorColor.copy(alpha = 0.15f)
-            else
-                MaterialTheme.colorScheme.surface
-        ),
-        border = if (seleccionado)
-            BorderStroke(1.dp, ProfesorColor)
-        else
-            null,
-        shape = RoundedCornerShape(12.dp)
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = when {
+            tieneRegistro -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            isSelected -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surface
+        },
+        tonalElevation = 2.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .clickable(enabled = !tieneRegistro) { onSelectionChanged(!isSelected) }
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Indicador de selección
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (seleccionado)
-                            ProfesorColor
-                        else
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                    ),
-                contentAlignment = Alignment.Center
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (seleccionado) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        tint = Color.White
-                    )
-                } else {
-                    Text(
-                        text = alumno.nombre.firstOrNull()?.toString() ?: "?",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            // Información del alumno
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = alumno.nombre,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (alumno.presente) 
-                            Icons.Default.CheckCircle 
-                        else 
-                            Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = if (alumno.presente)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (alumno.presente) "Presente" else "Ausente",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (alumno.presente)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-            
-            // Indicador de registro existente
-            AnimatedVisibility(
-                visible = tieneRegistro,
-                enter = fadeIn() + slideInVertically(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(Color.Green.copy(alpha = 0.3f))
-                        .border(1.dp, Color.Green.copy(alpha = 0.5f), CircleShape),
-                    contentAlignment = Alignment.Center
+                // Avatar con inicial
+                Surface(
+                    shape = CircleShape,
+                    color = when {
+                        tieneRegistro -> Color.Gray
+                        isSelected -> ProfesorColor
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    },
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.EventAvailable,
-                        contentDescription = "Registro completado",
-                        tint = Color.Green,
-                        modifier = Modifier.size(20.dp)
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = alumno.nombre.first().toString(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (isSelected && !tieneRegistro) 
+                                Color.White 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // Información del alumno
+                Column {
+                    Text(
+                        text = "${alumno.nombre} ${alumno.apellidos}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (tieneRegistro)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (tieneRegistro) 
+                            "Registro ya completado" 
+                        else 
+                            "DNI: ${alumno.dni}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Checkbox de selección
-            Checkbox(
-                checked = seleccionado,
-                onCheckedChange = { onSeleccionado() },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = ProfesorColor
-                )
+            // Icono de selección
+            Icon(
+                imageVector = when {
+                    tieneRegistro -> Icons.Default.Check
+                    isSelected -> Icons.Default.CheckCircle
+                    else -> Icons.Default.RadioButtonUnchecked
+                },
+                contentDescription = when {
+                    tieneRegistro -> "Registro completado"
+                    isSelected -> "Alumno seleccionado"
+                    else -> "Alumno no seleccionado"
+                },
+                tint = when {
+                    tieneRegistro -> Color.Gray
+                    isSelected -> ProfesorColor
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
             )
         }
+    }
+}
+
+/**
+ * Componente FAB con contador de seleccionados
+ */
+@Composable
+fun PresentesFAB(
+    selectedCount: Int,
+    totalCount: Int,
+    onFabClick: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Column(
+        horizontalAlignment = Alignment.End
+    ) {
+        // Tooltip que aparece al expandir
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + slideInVertically(),
+            exit = fadeOut() + slideOutVertically()
+        ) {
+            Surface(
+                modifier = Modifier
+                    .padding(bottom = 16.dp, end = 16.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = 4.dp
+            ) {
+                Text(
+                    text = "$selectedCount de $totalCount alumnos seleccionados",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        
+        // FAB principal
+        ExtendedFloatingActionButton(
+            onClick = onFabClick,
+            modifier = Modifier
+                .padding(16.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            expanded = true
+                            try {
+                                awaitRelease()
+                            } finally {
+                                expanded = false
+                            }
+                        }
+                    )
+                },
+            containerColor = ProfesorColor,
+            contentColor = Color.White
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null
+                )
+                Text(
+                    text = "Registrar $selectedCount Presentes",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Componente de acciones rápidas
+ */
+@Composable
+fun AccionesRapidas(
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = false,
+            onClick = onSelectAll,
+            label = { Text("Seleccionar Todos") },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        )
+        
+        FilterChip(
+            selected = false,
+            onClick = onDeselectAll,
+            label = { Text("Deseleccionar Todos") },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Clear,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        )
     }
 }
 
@@ -694,15 +661,16 @@ fun ListadoPreRegistroDiarioScreenPreview() {
             private val _uiState = MutableStateFlow(previewState)
             val uiState: StateFlow<ListadoPreRegistroDiarioUiState> = _uiState.asStateFlow()
             
-            fun seleccionarFecha(fecha: LocalDate) {}
-            fun toggleSeleccionAlumno(alumno: Alumno) {}
+            fun seleccionarFecha(@Suppress("UNUSED_PARAMETER") fecha: LocalDate) {}
+            fun seleccionarAlumno(@Suppress("UNUSED_PARAMETER") alumno: Alumno) {}
+            fun deseleccionarAlumno(@Suppress("UNUSED_PARAMETER") alumno: Alumno) {}
             fun seleccionarTodosLosAlumnos() {}
-            fun toggleFiltroPresentes() {}
-            fun completarAutomaticamente() {}
+            fun deseleccionarTodosLosAlumnos() {}
             fun iniciarRegistroDiario() {}
             fun resetearNavegacion() {}
             fun limpiarError() {}
             fun limpiarMensajeExito() {}
+            fun mostrarError(@Suppress("UNUSED_PARAMETER") mensaje: String) {}
         }
         
         ListadoPreRegistroDiarioScreen(
