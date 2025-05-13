@@ -60,6 +60,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen
 import timber.log.Timber
+import kotlinx.coroutines.flow.collectLatest
+import com.tfg.umeegunero.feature.common.mensajeria.ChatScreen
+import com.tfg.umeegunero.feature.common.comunicacion.screen.UnifiedInboxScreen
+import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.UnifiedInboxViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.tfg.umeegunero.feature.common.comunicacion.screen.MessageDetailScreen
+import com.tfg.umeegunero.feature.common.comunicacion.screen.ComunicadoDetailScreen
 
 /**
  * Navegación principal de la aplicación
@@ -67,13 +74,43 @@ import timber.log.Timber
  * @param navController Controlador de navegación
  * @param startDestination Ruta inicial
  * @param onCloseApp Función para cerrar la app
+ * @param navigationViewModel ViewModel que maneja la navegación basada en eventos
  */
 @Composable
 fun Navigation(
     navController: NavHostController = rememberNavController(),
     startDestination: String = AppScreens.Welcome.route,
-    onCloseApp: () -> Unit = {}
+    onCloseApp: () -> Unit = {},
+    navigationViewModel: NavigationViewModel = hiltViewModel()
 ) {
+    // Observar comandos de navegación
+    LaunchedEffect(navigationViewModel, navController) {
+        navigationViewModel.navigationCommands.collectLatest { command ->
+            when (command) {
+                is NavigationCommand.NavigateTo -> {
+                    try {
+                        navController.navigate(command.route) {
+                            launchSingleTop = true
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al navegar a: ${command.route}")
+                    }
+                }
+                is NavigationCommand.NavigateBack -> {
+                    navController.popBackStack()
+                }
+                is NavigationCommand.NavigateToWithClearBackstack -> {
+                    navController.navigate(command.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -938,17 +975,16 @@ fun Navigation(
         }
 
         composable(route = AppScreens.UnifiedInbox.route) {
-            com.tfg.umeegunero.feature.common.comunicacion.screen.UnifiedInboxScreen(
+            UnifiedInboxScreen(
                 onNavigateToMessage = { messageId ->
-                    navController.navigate("mensaje_detalle/$messageId")
+                    navController.navigate(AppScreens.MessageDetail.createRoute(messageId))
                 },
                 onNavigateToNewMessage = {
                     navController.navigate(AppScreens.NewMessage.createRoute())
                 },
                 onBack = {
                     navController.popBackStack()
-                },
-                viewModel = hiltViewModel()
+                }
             )
         }
 
@@ -986,6 +1022,72 @@ fun Navigation(
                 onBack = { navController.popBackStack() },
                 onMessageSent = { navController.popBackStack() },
                 viewModel = hiltViewModel()
+            )
+        }
+
+        // Pantalla de detalle de mensaje unificado
+        composable(
+            route = AppScreens.MessageDetail.route,
+            arguments = listOf(
+                navArgument("messageId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val messageId = backStackEntry.arguments?.getString("messageId") ?: ""
+            MessageDetailScreen(
+                messageId = messageId,
+                onBack = { navController.popBackStack() },
+                onNavigateToConversation = { conversationId ->
+                    // Navegar a la conversación correspondiente
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    if (currentUser != null) {
+                        // Determinar si el usuario es profesor o familiar
+                        val route = if (currentUser.email?.contains("profesor") == true) {
+                            AppScreens.ChatProfesor.createRoute(conversationId, "")
+                        } else {
+                            AppScreens.ChatFamilia.createRoute(conversationId, "")
+                        }
+                        navController.navigate(route)
+                    }
+                }
+            )
+        }
+        
+        // Pantalla de chat (utilizando UnifiedMessage)
+        composable(
+            route = AppScreens.Chat.route,
+            arguments = listOf(
+                navArgument("conversacionId") { type = NavType.StringType },
+                navArgument("participanteId") { type = NavType.StringType },
+                navArgument("alumnoId") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val conversacionId = backStackEntry.arguments?.getString("conversacionId") ?: ""
+            val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId")
+            
+            ChatScreen(
+                conversacionId = conversacionId,
+                participanteId = participanteId,
+                alumnoId = alumnoId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de detalle de comunicado
+        composable(
+            route = AppScreens.DetalleComunicado.route,
+            arguments = listOf(
+                navArgument("comunicadoId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val comunicadoId = backStackEntry.arguments?.getString("comunicadoId") ?: ""
+            ComunicadoDetailScreen(
+                comunicadoId = comunicadoId,
+                onBack = { navController.popBackStack() }
             )
         }
     }

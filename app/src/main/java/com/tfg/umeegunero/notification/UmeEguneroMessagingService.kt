@@ -25,6 +25,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import com.tfg.umeegunero.data.model.MessageType
+import com.tfg.umeegunero.MainActivity
+import com.tfg.umeegunero.navigation.AppScreens
 
 /**
  * Servicio para procesar mensajes de Firebase Cloud Messaging (FCM).
@@ -69,52 +71,73 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
     /**
      * Guarda el token FCM en el documento del usuario actual en Firestore
      */
-    private suspend fun guardarTokenEnFirestore(token: String) {
+    private fun guardarTokenEnFirestore(token: String) {
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+        
         try {
-            val auth = FirebaseAuth.getInstance()
-            val currentUser = auth.currentUser
+            val userId = currentUser.uid
+            val userDocRef = FirebaseFirestore.getInstance()
+                .collection("usuarios")
+                .document(userId)
             
-            if (currentUser != null) {
-                val db = FirebaseFirestore.getInstance()
-                val userId = currentUser.uid
+            // Añadir el token como un campo en un mapa para permitir múltiples dispositivos
+            userDocRef.get().addOnSuccessListener { document ->
+                val fcmTokens = document.get("fcmTokens") as? Map<String, String> ?: mapOf()
+                val updatedTokens = fcmTokens.toMutableMap().apply {
+                    this[token] = token
+                }
                 
-                // Generar un ID único para este token (basado en timestamp + uuid corto)
-                val tokenId = "token_${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().substring(0, 8)}"
-                
-                // Guardar el token en el documento del usuario
-                db.collection("usuarios")
-                    .document(userId)
-                    .update("fcmTokens.$tokenId", token)
+                userDocRef.update("fcmTokens", updatedTokens)
                     .addOnSuccessListener {
-                        Timber.d("Token FCM guardado en Firestore para usuario $userId")
+                        Timber.d("Token FCM actualizado en Firestore")
                     }
                     .addOnFailureListener { e ->
-                        Timber.e(e, "Error al guardar token FCM en Firestore para usuario $userId")
+                        Timber.e(e, "Error al actualizar token FCM en Firestore")
+                        
+                        // Intentar crear el documento si no existe
+                        userDocRef.set(mapOf("fcmTokens" to mapOf(token to token)))
+                            .addOnSuccessListener {
+                                Timber.d("Token FCM guardado en documento nuevo")
+                            }
+                            .addOnFailureListener { innerE ->
+                                Timber.e(innerE, "Error al crear documento para token FCM")
+                            }
                     }
-            } else {
-                Timber.d("No hay usuario autenticado. El token se guardará cuando el usuario inicie sesión.")
+            }.addOnFailureListener { e ->
+                Timber.e(e, "Error al obtener documento del usuario para token FCM")
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al guardar token FCM en Firestore")
+            Timber.e(e, "Error general al guardar token FCM: ${e.message}")
         }
     }
     
     /**
-     * Llamado cuando se recibe un mensaje de FCM
+     * Procesa mensajes recibidos de FCM
      */
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         Timber.d("Mensaje FCM recibido de: ${remoteMessage.from}")
         
         try {
+            // Priorizar el campo 'messageType' del payload data para determinar el tipo de mensaje
+            val messageType = remoteMessage.data["messageType"] ?: remoteMessage.data["tipo"]
+            val messageId = remoteMessage.data["messageId"]
+            
+            if (messageId != null) {
+                // Este es un mensaje unificado, procesarlo como tal
+                procesarNotificacionUnificada(remoteMessage.data)
+                return
+            }
+            
+            // Procesamiento para formatos de mensajes antiguos
             remoteMessage.notification?.let { notification ->
                 val title = notification.title ?: ""
                 val body = notification.body ?: ""
                 
                 // Usar el canal adecuado según el tipo de notificación
-                val channelId = when (remoteMessage.data["tipo"]) {
+                val channelId = when (messageType) {
                     "solicitud_vinculacion" -> AppNotificationManager.CHANNEL_ID_SOLICITUDES
-                    "chat" -> AppNotificationManager.CHANNEL_ID_GENERAL
+                    "chat" -> AppNotificationManager.CHANNEL_ID_CHAT
                     "registro_diario" -> AppNotificationManager.CHANNEL_ID_TAREAS
                     "incidencia" -> if (remoteMessage.data["urgente"] == "true") {
                         AppNotificationManager.CHANNEL_ID_INCIDENCIAS
@@ -122,81 +145,111 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
                         AppNotificationManager.CHANNEL_ID_GENERAL
                     }
                     "asistencia" -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
-                    "unified_message" -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
+                    "unified_message", "ANNOUNCEMENT", "CHAT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "NOTIFICATION", "SYSTEM" -> 
+                        AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
                     else -> AppNotificationManager.CHANNEL_ID_GENERAL
                 }
                 
                 // Generar un ID único para la notificación
-                val notificationId = when (remoteMessage.data["tipo"]) {
-                    "solicitud_vinculacion" -> remoteMessage.data["solicitudId"]?.hashCode()
-                    "chat" -> remoteMessage.data["conversacionId"]?.hashCode()
-                    "registro_diario" -> remoteMessage.data["alumnoId"]?.hashCode()
-                    "incidencia" -> ("incidencia_${remoteMessage.data["alumnoId"]}_${System.currentTimeMillis()}").hashCode()
-                    "asistencia" -> ("asistencia_${remoteMessage.data["alumnoId"]}_${remoteMessage.data["fecha"]}").hashCode()
-                    else -> null
-                } ?: System.currentTimeMillis().toInt()
+                val notificationId = when {
+                    messageId != null -> messageId.hashCode()
+                    remoteMessage.data.containsKey("solicitudId") -> remoteMessage.data["solicitudId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+                    remoteMessage.data.containsKey("mensajeId") -> remoteMessage.data["mensajeId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+                    else -> System.currentTimeMillis().toInt()
+                }
                 
-                // Mostrar la notificación
-                mostrarNotificacion(title, body, channelId, notificationId, remoteMessage.data)
-            }
-            
-            // Procesar datos de la notificación
-            if (remoteMessage.data.isNotEmpty()) {
                 // Procesar según el tipo de notificación
-                when (remoteMessage.data["tipo"]) {
-                    "chat" -> procesarNotificacionChat(remoteMessage.data)
-                    "registro_diario" -> procesarNotificacionRegistroDiario(remoteMessage.data)
+                when (messageType) {
                     "solicitud_vinculacion" -> procesarNotificacionSolicitud(remoteMessage.data)
+                    "chat" -> procesarNotificacionChat(remoteMessage.data)
                     "incidencia" -> procesarNotificacionIncidencia(remoteMessage.data)
                     "asistencia" -> procesarNotificacionAsistencia(remoteMessage.data)
-                    "unified_message" -> procesarNotificacionUnificada(remoteMessage.data)
+                    "unified_message", "ANNOUNCEMENT", "CHAT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "NOTIFICATION", "SYSTEM" -> 
+                        procesarNotificacionUnificada(remoteMessage.data)
+                    else -> {
+                        // Notificación general
+                        mostrarNotificacion(title, body, channelId, notificationId, remoteMessage.data)
+                    }
+                }
+            } ?: run {
+                // Sin objeto de notificación, procesar según datos
+                if (remoteMessage.data.isNotEmpty()) {
+                    val title = remoteMessage.data["title"] ?: remoteMessage.data["titulo"] ?: "Nueva notificación"
+                    val body = remoteMessage.data["body"] ?: remoteMessage.data["mensaje"] ?: remoteMessage.data["content"] ?: "Tienes una nueva notificación"
+                    
+                    val channelId = when (messageType) {
+                        "solicitud_vinculacion" -> AppNotificationManager.CHANNEL_ID_SOLICITUDES
+                        "chat" -> AppNotificationManager.CHANNEL_ID_CHAT
+                        "registro_diario" -> AppNotificationManager.CHANNEL_ID_TAREAS
+                        "incidencia" -> if (remoteMessage.data["urgente"] == "true") {
+                            AppNotificationManager.CHANNEL_ID_INCIDENCIAS
+                        } else {
+                            AppNotificationManager.CHANNEL_ID_GENERAL
+                        }
+                        "asistencia" -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
+                        "unified_message", "ANNOUNCEMENT", "CHAT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "NOTIFICATION", "SYSTEM" -> 
+                            AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
+                        else -> AppNotificationManager.CHANNEL_ID_GENERAL
+                    }
+                    
+                    // Generar un ID único para la notificación
+                    val notificationId = when {
+                        messageId != null -> messageId.hashCode()
+                        remoteMessage.data.containsKey("solicitudId") -> remoteMessage.data["solicitudId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+                        remoteMessage.data.containsKey("mensajeId") -> remoteMessage.data["mensajeId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+                        else -> System.currentTimeMillis().toInt()
+                    }
+                    
+                    // Procesar según el tipo de notificación
+                    when (messageType) {
+                        "solicitud_vinculacion" -> procesarNotificacionSolicitud(remoteMessage.data)
+                        "chat" -> procesarNotificacionChat(remoteMessage.data)
+                        "incidencia" -> procesarNotificacionIncidencia(remoteMessage.data)
+                        "asistencia" -> procesarNotificacionAsistencia(remoteMessage.data)
+                        "unified_message", "ANNOUNCEMENT", "CHAT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "NOTIFICATION", "SYSTEM" -> 
+                            procesarNotificacionUnificada(remoteMessage.data)
+                        else -> {
+                            // Notificación general
+                            mostrarNotificacion(title, body, channelId, notificationId, remoteMessage.data)
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al procesar el mensaje FCM")
+            Timber.e(e, "Error al procesar notificación FCM")
+            
+            // Intentar mostrar algo aunque haya error
+            val title = remoteMessage.notification?.title ?: remoteMessage.data["title"] ?: "Nueva notificación"
+            val body = remoteMessage.notification?.body ?: remoteMessage.data["message"] ?: "Tienes una nueva notificación"
+            mostrarNotificacion(title, body, AppNotificationManager.CHANNEL_ID_GENERAL, System.currentTimeMillis().toInt())
         }
     }
     
     /**
-     * Procesa notificaciones relacionadas con el chat
+     * Procesa notificaciones de chat
      */
     private fun procesarNotificacionChat(data: Map<String, String>) {
-        val titulo = data["titulo"] ?: "Nuevo mensaje"
-        val mensaje = data["mensaje"] ?: "Has recibido un nuevo mensaje"
-        val channelId = AppNotificationManager.CHANNEL_ID_GENERAL
-        val notificationId = data["conversacionId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+        val titulo = data["titulo"] ?: data["title"] ?: "Nuevo mensaje"
+        val mensaje = data["mensaje"] ?: data["body"] ?: data["content"] ?: "Has recibido un nuevo mensaje"
+        val conversacionId = data["conversacionId"] ?: ""
+        val mensajeId = data["mensajeId"] ?: data["messageId"] ?: ""
+        val remitente = data["remitente"] ?: data["senderName"] ?: ""
+        
+        val channelId = AppNotificationManager.CHANNEL_ID_CHAT
+        val notificationId = mensajeId.ifEmpty { conversacionId }.hashCode()
         
         mostrarNotificacion(titulo, mensaje, channelId, notificationId, data)
         
         // Enviar broadcast para actualizar la UI si la app está abierta
         sendBroadcast(Intent(ACTION_NUEVO_MENSAJE_CHAT).apply {
-            putExtra("conversacionId", data["conversacionId"])
-            putExtra("remitente", data["remitente"])
-            putExtra("remitenteId", data["remitenteId"])
-            putExtra("alumnoId", data["alumnoId"])
+            putExtra("mensajeId", mensajeId)
+            putExtra("conversacionId", conversacionId)
+            putExtra("remitente", remitente)
         })
     }
     
     /**
-     * Procesa notificaciones relacionadas con el registro diario
-     */
-    private fun procesarNotificacionRegistroDiario(data: Map<String, String>) {
-        val titulo = data["titulo"] ?: "Actualización de registro diario"
-        val mensaje = data["mensaje"] ?: "Se ha actualizado el registro diario"
-        val channelId = AppNotificationManager.CHANNEL_ID_TAREAS
-        val notificationId = data["alumnoId"]?.hashCode() ?: System.currentTimeMillis().toInt()
-        
-        mostrarNotificacion(titulo, mensaje, channelId, notificationId, data)
-        
-        // Enviar broadcast para actualizar la UI si la app está abierta
-        sendBroadcast(Intent(ACTION_ACTUALIZACION_REGISTRO).apply {
-            putExtra("alumnoId", data["alumnoId"])
-            putExtra("fecha", data["fecha"])
-        })
-    }
-    
-    /**
-     * Procesa notificaciones relacionadas con solicitudes de vinculación
+     * Procesa notificaciones de solicitudes de vinculación
      */
     private fun procesarNotificacionSolicitud(data: Map<String, String>) {
         val titulo = data["titulo"] ?: "Nueva solicitud"
@@ -270,35 +323,61 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
      */
     private fun procesarNotificacionUnificada(data: Map<String, String>) {
         val messageId = data["messageId"] ?: return
+        val messageType = data["messageType"] ?: "SYSTEM"
         
-        serviceScope.launch(Dispatchers.IO) {
-            // Cargar el mensaje desde el repositorio
-            val messageResult = unifiedMessageRepository.getMessageById(messageId)
-            
-            val titulo = data["titulo"] ?: "Nuevo mensaje"
-            val mensaje = data["mensaje"] ?: "Has recibido un nuevo mensaje"
-            val notificationId = messageId.hashCode()
-            
-            // Determinar canal según tipo de mensaje
-            val channelId = when (data["messageType"]) {
-                MessageType.NOTIFICATION.name -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
-                MessageType.ANNOUNCEMENT.name -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
-                MessageType.CHAT.name -> AppNotificationManager.CHANNEL_ID_GENERAL
-                MessageType.INCIDENT.name -> AppNotificationManager.CHANNEL_ID_INCIDENCIAS
-                MessageType.ATTENDANCE.name -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
-                MessageType.DAILY_RECORD.name -> AppNotificationManager.CHANNEL_ID_TAREAS
-                MessageType.SYSTEM.name -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
-                else -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
-            }
-            
-            mostrarNotificacion(titulo, mensaje, channelId, notificationId, data)
-            
-            // Enviar broadcast para actualizar la UI si la app está abierta
-            sendBroadcast(Intent(ACTION_NUEVO_MENSAJE_UNIFICADO).apply {
-                putExtra("messageId", messageId)
-                putExtra("messageType", data["messageType"])
-            })
+        // Obtener los datos básicos de la notificación
+        val titulo = data["title"] ?: data["titulo"] ?: "Nuevo mensaje"
+        val mensaje = data["body"] ?: data["mensaje"] ?: data["content"] ?: "Has recibido un nuevo mensaje"
+        val conversacionId = data["conversationId"] ?: ""
+        val notificationId = messageId.hashCode()
+        
+        // Determinar canal según tipo de mensaje
+        val channelId = when (messageType) {
+            MessageType.CHAT.name -> AppNotificationManager.CHANNEL_ID_CHAT
+            MessageType.ANNOUNCEMENT.name -> AppNotificationManager.CHANNEL_ID_ANNOUNCEMENTS
+            MessageType.INCIDENT.name -> AppNotificationManager.CHANNEL_ID_INCIDENCIAS
+            MessageType.ATTENDANCE.name -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
+            MessageType.DAILY_RECORD.name -> AppNotificationManager.CHANNEL_ID_TAREAS
+            MessageType.NOTIFICATION.name, 
+            MessageType.SYSTEM.name -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
+            else -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
         }
+        
+        // Crear el intent para cuando se toca la notificación
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("messageId", messageId)
+            putExtra("messageType", messageType)
+            putExtra("conversationId", conversacionId)
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // Crear la notificación con el PendingIntent específico
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(titulo)
+            .setContentText(mensaje)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(mensaje))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .build()
+        
+        NotificationManagerCompat.from(this).notify(notificationId, notification)
+        
+        // Enviar broadcast para actualizar la UI si la app está abierta
+        sendBroadcast(Intent(ACTION_NUEVO_MENSAJE_UNIFICADO).apply {
+            putExtra("messageId", messageId)
+            putExtra("messageType", messageType)
+            putExtra("conversationId", conversacionId)
+        })
     }
     
     /**
@@ -312,19 +391,37 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
         data: Map<String, String>? = null
     ) {
         // Crear intent para abrir la app al pulsar la notificación
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
         
-        // Modificar el intent según el tipo de notificación para realizar deeplinks
-        modificarIntentSegunCanal(intent, channelId, data)
+        // Añadir datos relevantes al intent
+        data?.forEach { (key, value) ->
+            intent.putExtra(key, value)
+        }
+        
+        // Asegurar que tenemos algunos datos clave para la navegación
+        if (data?.containsKey("messageId") == true) {
+            val messageType = data["messageType"]
+            
+            // No es necesario agregar esto de nuevo, ya se añadió en el bucle anterior
+            // intent.putExtra("messageId", data["messageId"])
+            // intent.putExtra("messageType", messageType)
+            
+            // Si es un mensaje de chat, agregar el ID de la conversación
+            if (messageType == MessageType.CHAT.name && data.containsKey("conversationId")) {
+                // Ya se añadió en el bucle anterior
+                // intent.putExtra("conversationId", data["conversationId"])
+            }
+        }
         
         val pendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            notificationId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        // Construir la notificación
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(titulo)
@@ -333,78 +430,15 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
             
-        // Añadir opciones específicas según el tipo de canal
-        when (channelId) {
-            AppNotificationManager.CHANNEL_ID_INCIDENCIAS -> {
-                // Para incidencias, hacer que la notificación sea persistente
-                notification.setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_MAX)
-                    .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
-            }
-            
-            AppNotificationManager.CHANNEL_ID_SOLICITUDES, 
-            AppNotificationManager.CHANNEL_ID_ASISTENCIA -> {
-                // Para solicitudes y asistencia, añadir vibración pero no persistente
-                notification.setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                    .setVibrate(longArrayOf(0, 250, 250, 250))
-            }
-        }
-            
-        // Mostrar la notificación
-        with(NotificationManagerCompat.from(this)) {
-            notify(notificationId, notification.build())
+        // Si es un canal de alta prioridad, agregar luz y vibración
+        if (channelId == AppNotificationManager.CHANNEL_ID_INCIDENCIAS) {
+            notification.setVibrate(longArrayOf(0, 500, 250, 500))
+            notification.setLights(0xFF0000, 3000, 3000) // Rojo
         }
         
-        Timber.d("Notificación mostrada: $titulo")
-    }
-    
-    /**
-     * Modificar el intent según el tipo de notificación para realizar deeplinks
-     */
-    private fun modificarIntentSegunCanal(intent: Intent?, channelId: String, data: Map<String, String>? = null) {
-        intent?.apply {
-            action = Intent.ACTION_VIEW
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            
-            when (channelId) {
-                AppNotificationManager.CHANNEL_ID_SOLICITUDES -> {
-                    // Intent para abrir la pantalla de solicitudes de vinculación
-                    putExtra("openSection", "solicitudes")
-                }
-                
-                AppNotificationManager.CHANNEL_ID_GENERAL -> {
-                    // Para notificaciones generales (incluidos mensajes)
-                    // No hacemos cambios adicionales
-                }
-                
-                AppNotificationManager.CHANNEL_ID_TAREAS -> {
-                    // Intent para abrir la sección de registro diario/tareas
-                    putExtra("openSection", "registrodiario")
-                }
-                
-                AppNotificationManager.CHANNEL_ID_INCIDENCIAS -> {
-                    // Intent para abrir la sección de incidencias (prioridad alta)
-                    putExtra("openSection", "incidencias")
-                    putExtra("urgent", true)
-                }
-                
-                AppNotificationManager.CHANNEL_ID_ASISTENCIA -> {
-                    // Intent para abrir la sección de asistencia
-                    putExtra("openSection", "asistencia")
-                }
-                
-                AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION -> {
-                    // Intent para abrir la bandeja de entrada unificada
-                    putExtra("openSection", "unified_inbox")
-                    data?.get("messageId")?.let { messageId ->
-                        putExtra("messageId", messageId)
-                    }
-                }
-            }
-        }
+        NotificationManagerCompat.from(this).notify(notificationId, notification.build())
     }
     
     /**

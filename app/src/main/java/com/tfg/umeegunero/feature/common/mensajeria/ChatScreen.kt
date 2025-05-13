@@ -44,7 +44,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Mensaje
+import com.tfg.umeegunero.data.model.MessageStatus
 import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.theme.FamiliarColor
 import com.tfg.umeegunero.ui.theme.ProfesorColor
@@ -240,7 +242,7 @@ fun ChatScreen(
                                 items(uiState.mensajes.sortedByDescending { it.timestamp }) { mensaje ->
                                     MessageItem(
                                         message = mensaje,
-                                        isSentByMe = mensaje.emisorId == uiState.usuario?.dni,
+                                        isSentByMe = mensaje.senderId == uiState.usuario?.dni,
                                         onLongClick = { /* TODO: Acciones adicionales */ }
                                     )
                                 }
@@ -272,7 +274,7 @@ fun ChatScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageItem(
-    message: Mensaje,
+    message: UnifiedMessage,
     isSentByMe: Boolean,
     onLongClick: () -> Unit = {}
 ) {
@@ -318,16 +320,16 @@ fun MessageItem(
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = message.texto,
+                        text = message.content,
                         style = MaterialTheme.typography.bodyMedium,
                         color = contentColor
                     )
                     
                     // Adjunto (si hay)
-                    if (message.adjuntos?.isNotEmpty() == true) {
+                    if (message.attachments.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Adjunto: ${message.adjuntos.first()}",
+                            text = "Adjunto: ${message.attachments.first()}",
                             style = MaterialTheme.typography.bodySmall,
                             color = contentColor.copy(alpha = 0.7f)
                         )
@@ -353,9 +355,9 @@ fun MessageItem(
                         if (isSentByMe) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
-                                imageVector = if (message.leido) Icons.Filled.DoneAll else Icons.Filled.Done,
-                                contentDescription = if (message.leido) "Leído" else "Enviado",
-                                tint = if (message.leido) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.7f),
+                                imageVector = if (message.status == MessageStatus.READ) Icons.Filled.DoneAll else Icons.Filled.Done,
+                                contentDescription = if (message.status == MessageStatus.READ) "Leído" else "Enviado",
+                                tint = if (message.status == MessageStatus.READ) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.7f),
                                 modifier = Modifier.size(16.dp)
                             )
                         }

@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.feature.common.comunicacion.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.UnifiedMessage
@@ -18,11 +19,10 @@ import javax.inject.Inject
  * Estado de la UI para la pantalla de detalle de mensaje
  */
 data class MessageDetailUiState(
-    val message: UnifiedMessage? = null,
-    val originalMessage: UnifiedMessage? = null, // Mensaje original en caso de ser una respuesta
     val isLoading: Boolean = false,
+    val message: UnifiedMessage? = null,
     val error: String? = null,
-    val messageDeleted: Boolean = false
+    val isDeleted: Boolean = false
 )
 
 /**
@@ -30,53 +30,61 @@ data class MessageDetailUiState(
  */
 @HiltViewModel
 class MessageDetailViewModel @Inject constructor(
-    private val messageRepository: UnifiedMessageRepository
+    private val messageRepository: UnifiedMessageRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(MessageDetailUiState())
     val uiState: StateFlow<MessageDetailUiState> = _uiState.asStateFlow()
     
-    private var messageId: String = ""
+    // Obtener el ID del mensaje de los argumentos de navegación
+    private val messageId: String = savedStateHandle["messageId"] ?: ""
+    
+    init {
+        if (messageId.isNotEmpty()) {
+            loadMessage(messageId)
+        }
+    }
     
     /**
-     * Carga un mensaje específico por su ID
+     * Carga los detalles del mensaje
      */
     fun loadMessage(id: String) {
         _uiState.update { it.copy(isLoading = true, error = null) }
-        messageId = id
         
         viewModelScope.launch {
             try {
-                when (val result = messageRepository.getMessageById(id)) {
+                val result = messageRepository.getMessageById(id)
+                
+                when (result) {
                     is Result.Success -> {
                         _uiState.update { 
                             it.copy(
-                                message = result.data,
                                 isLoading = false,
+                                message = result.data,
                                 error = null
                             )
                         }
                         
-                        // Si el mensaje no está leído, marcarlo como leído automáticamente
-                        if (result.data.isRead.not()) {
+                        // Marcar como leído automáticamente si no es un comunicado que requiere confirmación explícita
+                        val message = result.data
+                        if (!message.isRead && 
+                            (message.type != com.tfg.umeegunero.data.model.MessageType.ANNOUNCEMENT || 
+                             message.metadata["requireConfirmation"] != "true")) {
+                            
                             markAsRead()
-                        }
-                        
-                        // Si es una respuesta, cargar el mensaje original
-                        if (!result.data.replyToId.isNullOrEmpty()) {
-                            loadOriginalMessage(result.data.replyToId!!)
                         }
                     }
                     is Result.Error -> {
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                error = result.message
+                                error = result.message ?: "Error al cargar el mensaje"
                             )
                         }
                     }
                     is Result.Loading -> {
-                        // Nada que hacer aquí, ya actualizamos isLoading arriba
+                        _uiState.update { it.copy(isLoading = true) }
                     }
                 }
             } catch (e: Exception) {
@@ -84,7 +92,7 @@ class MessageDetailViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        error = "Error al cargar mensaje: ${e.message}"
+                        error = "Error: ${e.message ?: "Error desconocido"}"
                     )
                 }
             }
@@ -92,80 +100,61 @@ class MessageDetailViewModel @Inject constructor(
     }
     
     /**
-     * Carga el mensaje original al que se responde
-     */
-    private suspend fun loadOriginalMessage(originalMessageId: String) {
-        try {
-            when (val result = messageRepository.getMessageById(originalMessageId)) {
-                is Result.Success -> {
-                    _uiState.update { 
-                        it.copy(originalMessage = result.data)
-                    }
-                }
-                is Result.Error -> {
-                    Timber.e("Error al cargar mensaje original: ${result.message}")
-                }
-                is Result.Loading -> {
-                    // No es necesario manejar este estado aquí
-                }
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al cargar mensaje original: ${e.message}")
-        }
-    }
-    
-    /**
-     * Marca el mensaje actual como leído
+     * Marca el mensaje como leído
      */
     fun markAsRead() {
+        val currentMessage = _uiState.value.message ?: return
+        
         viewModelScope.launch {
             try {
-                val result = messageRepository.markAsRead(messageId)
+                val result = messageRepository.markAsRead(currentMessage.id)
                 
-                if (result is Result.Success) {
-                    // Actualizar el estado localmente
-                    _uiState.update { currentState ->
-                        currentState.message?.let { message ->
-                            currentState.copy(
-                                message = message.copy(
+                when (result) {
+                    is Result.Success -> {
+                        // Actualizar el estado local
+                        _uiState.update { state ->
+                            state.copy(
+                                message = state.message?.copy(
                                     status = com.tfg.umeegunero.data.model.MessageStatus.READ
                                 )
                             )
-                        } ?: currentState
+                        }
                     }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(error = "Error al marcar como leído: ${result.message}") }
+                    }
+                    else -> {}
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al marcar mensaje como leído: $messageId")
+                Timber.e(e, "Error al marcar mensaje como leído: ${currentMessage.id}")
                 _uiState.update { 
-                    it.copy(error = "Error al marcar mensaje como leído: ${e.message}")
+                    it.copy(error = "Error al marcar como leído: ${e.message}")
                 }
             }
         }
     }
     
     /**
-     * Elimina el mensaje actual
+     * Elimina el mensaje
      */
     fun deleteMessage() {
+        val currentMessage = _uiState.value.message ?: return
+        
         viewModelScope.launch {
             try {
-                when (val result = messageRepository.deleteMessage(messageId)) {
+                val result = messageRepository.deleteMessage(currentMessage.id)
+                
+                when (result) {
                     is Result.Success -> {
-                        _uiState.update { 
-                            it.copy(messageDeleted = true)
-                        }
+                        _uiState.update { it.copy(isDeleted = true) }
                     }
                     is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(error = "Error al eliminar mensaje: ${result.message}")
-                        }
+                        _uiState.update { it.copy(error = "Error al eliminar mensaje: ${result.message}") }
                     }
-                    is Result.Loading -> {
-                        // No es necesario manejar este estado aquí
-                    }
+                    else -> {}
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al eliminar mensaje: $messageId")
+                Timber.e(e, "Error al eliminar mensaje: ${currentMessage.id}")
                 _uiState.update { 
                     it.copy(error = "Error al eliminar mensaje: ${e.message}")
                 }
@@ -174,7 +163,7 @@ class MessageDetailViewModel @Inject constructor(
     }
     
     /**
-     * Limpia cualquier error actual
+     * Limpia el error actual
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }

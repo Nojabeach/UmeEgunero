@@ -167,6 +167,44 @@ class AppNotificationManager @Inject constructor(
                 )
             }
             
+            // Canal para mensajes de chat (más específico que el general)
+            val chatChannel = NotificationChannel(
+                CHANNEL_ID_CHAT,
+                CHANNEL_NAME_CHAT,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificaciones de mensajes de chat privados"
+                enableLights(true)
+                lightColor = Color.MAGENTA
+                enableVibration(true)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+            }
+            
+            // Canal para anuncios y comunicados
+            val announcementsChannel = NotificationChannel(
+                CHANNEL_ID_ANNOUNCEMENTS,
+                CHANNEL_NAME_ANNOUNCEMENTS,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Comunicados oficiales y anuncios del centro educativo"
+                enableLights(true)
+                lightColor = Color.GREEN
+                enableVibration(true)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+            }
+            
             // Crear todos los canales
             notificationManager.createNotificationChannel(tareasChannel)
             notificationManager.createNotificationChannel(generalChannel)
@@ -175,6 +213,8 @@ class AppNotificationManager @Inject constructor(
             notificationManager.createNotificationChannel(incidenciasChannel)
             notificationManager.createNotificationChannel(asistenciaChannel)
             notificationManager.createNotificationChannel(unifiedCommunicationChannel)
+            notificationManager.createNotificationChannel(chatChannel)
+            notificationManager.createNotificationChannel(announcementsChannel)
             
             Timber.d("Canales de notificación creados")
         }
@@ -296,5 +336,12 @@ class AppNotificationManager @Inject constructor(
         // Constantes para el canal de comunicación unificada
         const val CHANNEL_ID_UNIFIED_COMMUNICATION = "unified_communication"
         const val CHANNEL_NAME_UNIFIED_COMMUNICATION = "Sistema de Comunicación Unificado"
+        
+        // Canales de notificación
+        const val CHANNEL_ID_CHAT = "channel_chat"
+        const val CHANNEL_NAME_CHAT = "Mensajes de chat"
+        
+        const val CHANNEL_ID_ANNOUNCEMENTS = "channel_announcements"
+        const val CHANNEL_NAME_ANNOUNCEMENTS = "Comunicados"
     }
 } 

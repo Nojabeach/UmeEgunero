@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.padding
 import com.google.firebase.messaging.FirebaseMessaging
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tfg.umeegunero.navigation.NavigationViewModel
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 /**
  * Clase simple para representar datos de notificación
@@ -72,6 +75,9 @@ class MainActivity : ComponentActivity() {
     // Instancia de FirebaseAuth
     private lateinit var auth: FirebaseAuth
     
+    // ViewModel para la navegación
+    private lateinit var navigationViewModel: NavigationViewModel
+    
     /**
      * Método de inicialización de la actividad.
      * 
@@ -102,37 +108,12 @@ class MainActivity : ComponentActivity() {
             }
         }
         
-        // Configuramos el servicio de notificaciones
-        val intent = intent
-        if (intent.extras != null) {
-            for (key in intent.extras!!.keySet()) {
-                val value = intent.extras?.getString(key) ?: intent.extras?.getInt(key)?.toString()
-                ?: intent.extras?.getBoolean(key)?.toString() ?: "valor no obtenible"
-                Timber.d("Key: $key Value: $value")
-            }
-            
-            // Redirigir a la pantalla de notificaciones si fue abierto desde una notificación
-            if (intent.hasExtra("tipo")) {
-                val tipo = intent.getStringExtra("tipo")
-                if (tipo == "MENSAJE") {
-                    val mensajeId = intent.getStringExtra("mensajeId")
-                    if (mensajeId != null) {
-                        // Almacenamos la información para procesarla cuando sea necesario
-                        val notificationData = NotificationData(
-                            tipo = tipo,
-                            data = mapOf("mensajeId" to mensajeId)
-                        )
-                        // La información se almacenará para ser procesada por el componente correspondiente
-                        Timber.d("Notificación recibida: $notificationData")
-                    }
-                }
-            }
-        }
-        
         // Manejar posibles errores durante la inicialización de Firebase
         checkFirebaseInitialization()
         
         setContent {
+            navigationViewModel = viewModel()
+            
             val isDarkTheme = rememberDarkThemeState(preferenciasRepository)
             UmeEguneroTheme(darkTheme = isDarkTheme) {
                 Surface(
@@ -158,9 +139,65 @@ class MainActivity : ComponentActivity() {
                             Navigation(
                                 navController = navController,
                                 startDestination = AppScreens.Welcome.route,
-                                onCloseApp = { closeApp() }
+                                onCloseApp = { closeApp() },
+                                navigationViewModel = navigationViewModel
                             )
                         }
+                    }
+                }
+            }
+            
+            // Procesar el intent inicial si se abre desde una notificación
+            intent?.let { handleIntent(it) }
+        }
+    }
+    
+    /**
+     * Maneja un nuevo intent cuando la actividad ya está creada
+     * Esto es importante para manejar notificaciones cuando la app está en segundo plano
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+    
+    /**
+     * Procesa el intent para manejar notificaciones
+     */
+    private fun handleIntent(intent: Intent) {
+        // Extraer datos para la navegación desde notificaciones
+        val messageId = intent.getStringExtra("messageId")
+        val messageType = intent.getStringExtra("messageType")
+        val conversationId = intent.getStringExtra("conversationId")
+        
+        // Si tenemos un ID de mensaje, manejar la navegación
+        if (messageId != null) {
+            Timber.d("Notificación procesada - messageId: $messageId, tipo: $messageType, conversationId: $conversationId")
+            
+            lifecycleScope.launch {
+                try {
+                    navigationViewModel.handleNotificationNavigation(messageId, messageType)
+                    // Registrar analítica de apertura desde notificación
+                    Timber.i("Usuario navegó desde notificación: $messageType, messageId: $messageId")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar desde notificación")
+                    showErrorToast("Error al procesar la notificación")
+                }
+            }
+        } else {
+            // Revisa si hay un intent de navegación directo (desde un deep link)
+            val destino = intent.getStringExtra("destino")
+            val parametros = intent.getStringExtra("parametros")
+            
+            if (destino != null) {
+                Timber.d("Deep link procesado - destino: $destino, parametros: $parametros")
+                lifecycleScope.launch {
+                    try {
+                        // Construir ruta de navegación a partir de destino y parámetros
+                        val ruta = if (parametros.isNullOrEmpty()) destino else "$destino/$parametros"
+                        navigationViewModel.navigateTo(ruta)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al navegar por deep link")
                     }
                 }
             }
@@ -171,27 +208,38 @@ class MainActivity : ComponentActivity() {
      * Guarda el token del dispositivo de forma segura
      */
     private fun guardarTokenDeFormaSegura(token: String) {
-        if (auth.currentUser != null) {
-            // Guardar el token en Firestore
-            val userId = auth.currentUser?.uid
-            if (userId != null) {
-                FirebaseFirestore.getInstance()
-                    .collection("usuarios")
-                    .document(userId)
-                    .update("fcmToken", token)
-                    .addOnSuccessListener {
-                        Timber.d("Token guardado correctamente")
-                    }
-                    .addOnFailureListener { e ->
-                        Timber.e(e, "Error al guardar token")
-                    }
-            }
+        // Verificar que el usuario está autenticado
+        val user = auth.currentUser
+        if (user == null) {
+            Timber.w("No se puede guardar el token FCM porque no hay usuario autenticado")
+            return
+        }
+        
+        try {
+            // Obtener referencia al documento del usuario en Firestore
+            val userRef = FirebaseFirestore.getInstance().collection("usuarios").document(user.uid)
+            
+            // Actualizar el campo fcmTokens como un mapa con el token actual
+            // Esto permite tener múltiples tokens por usuario (varios dispositivos)
+            val tokenData = mapOf(
+                "fcmTokens" to mapOf(token to token)
+            )
+            
+            // Actualizar de forma segura usando merge para no sobreescribir otros campos
+            userRef.set(tokenData, com.google.firebase.firestore.SetOptions.merge())
+                .addOnSuccessListener {
+                    Timber.d("Token FCM guardado correctamente")
+                }
+                .addOnFailureListener { e ->
+                    Timber.e(e, "Error al guardar token FCM")
+                }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al guardar token FCM en Firestore")
         }
     }
     
     /**
-     * Verifica que Firebase esté correctamente inicializado.
-     * Si hay problemas, intenta una reinicialización con configuración mínima.
+     * Verifica la inicialización correcta de Firebase
      */
     private fun checkFirebaseInitialization() {
         try {

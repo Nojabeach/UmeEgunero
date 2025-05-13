@@ -1,161 +1,72 @@
 package com.tfg.umeegunero.feature.common.comunicacion.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Message
-import androidx.compose.material.icons.automirrored.filled.Reply
-import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MarkEmailRead
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tfg.umeegunero.data.model.MessagePriority
+import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.MessageStatus
 import com.tfg.umeegunero.data.model.MessageType
 import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.MessageDetailViewModel
-import com.tfg.umeegunero.ui.components.ErrorContent
-import kotlinx.coroutines.launch
+import com.tfg.umeegunero.ui.components.LoadingIndicator
 import java.text.SimpleDateFormat
-import java.util.Locale
-import androidx.compose.material3.HorizontalDivider
+import java.util.*
+import androidx.compose.material.icons.automirrored.filled.Reply
 
 /**
- * Pantalla de detalle de mensaje unificado
- * 
- * Muestra el contenido completo de un mensaje, incluyendo metadatos, contenido y opciones
- * de acción como responder, marcar como leído o eliminar.
- * 
- * @param messageId ID del mensaje a mostrar
- * @param onBack Callback para navegar hacia atrás
- * @param onReply Callback para responder al mensaje
- * @param viewModel ViewModel que gestiona la lógica de la pantalla
+ * Pantalla de detalle para cualquier tipo de mensaje
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageDetailScreen(
     messageId: String,
     onBack: () -> Unit,
-    onReply: (String) -> Unit,
+    onNavigateToConversation: (String) -> Unit = {},
     viewModel: MessageDetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showOptions by remember { mutableStateOf(false) }
-    
-    // Cargar el mensaje al iniciar
+    // Cargar el mensaje
     LaunchedEffect(messageId) {
         viewModel.loadMessage(messageId)
     }
     
-    // Mostrar errores
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let { error ->
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(message = error)
-                viewModel.clearError()
-            }
-        }
-    }
-    
-    // Diálogo de confirmación para eliminar
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("¿Eliminar mensaje?") },
-            text = { Text("Esta acción no se puede deshacer.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteMessage()
-                        showDeleteDialog = false
-                        // Volver a la pantalla anterior después de eliminar
-                        onBack()
-                    }
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
+    val uiState by viewModel.uiState.collectAsState()
     
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { 
                     Text(
-                        text = when(uiState.message?.type) {
-                            MessageType.ANNOUNCEMENT -> "Comunicado"
-                            MessageType.CHAT -> "Mensaje"
+                        text = when (uiState.message?.type) {
+                            MessageType.CHAT -> "Mensaje de chat"
                             MessageType.NOTIFICATION -> "Notificación"
+                            MessageType.ANNOUNCEMENT -> "Comunicado"
                             MessageType.INCIDENT -> "Incidencia"
                             MessageType.ATTENDANCE -> "Asistencia"
                             MessageType.DAILY_RECORD -> "Registro diario"
-                            MessageType.SYSTEM -> "Sistema"
-                            null -> "Detalle de Mensaje"
-                        },
-                        fontWeight = FontWeight.Bold
+                            MessageType.SYSTEM -> "Mensaje del sistema"
+                            null -> "Detalle de mensaje"
+                        }
                     ) 
                 },
                 navigationIcon = {
@@ -166,380 +77,82 @@ fun MessageDetailScreen(
                         )
                     }
                 },
-                actions = {
-                    // Mostrar botón de responder solo para mensajes tipo CHAT o ANNOUNCEMENT
-                    if (uiState.message?.type == MessageType.CHAT || uiState.message?.type == MessageType.ANNOUNCEMENT) {
-                        IconButton(onClick = { messageId.let(onReply) }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Reply,
-                                contentDescription = "Responder"
-                            )
-                        }
-                    }
-                    
-                    // Botón de opciones
-                    Box {
-                        IconButton(onClick = { showOptions = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Más opciones"
-                            )
-                        }
-                        
-                        DropdownMenu(
-                            expanded = showOptions,
-                            onDismissRequest = { showOptions = false }
-                        ) {
-                            // Añadir opción para iniciar nueva conversación con el remitente
-                            if (uiState.message?.senderId != null) {
-                                DropdownMenuItem(
-                                    text = { Text("Nueva conversación") },
-                                    onClick = {
-                                        viewModel.startNewConversation(uiState.message?.senderId ?: "")
-                                        showOptions = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.Message,
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
-                                HorizontalDivider(thickness = 0.5.dp)
-                            }
-                            
-                            DropdownMenuItem(
-                                text = { Text("Marcar como leído") },
-                                onClick = {
-                                    viewModel.markAsRead()
-                                    showOptions = false
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.MarkEmailRead,
-                                        contentDescription = null
-                                    )
-                                }
-                            )
-                            
-                            DropdownMenuItem(
-                                text = { Text("Eliminar") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Eliminar"
-                                    )
-                                },
-                                onClick = {
-                                    showDeleteDialog = true
-                                    showOptions = false
-                                }
-                            )
-                        }
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { padding ->
+        }
+    ) { paddingValues ->
         Box(
             modifier = Modifier
+                .padding(paddingValues)
                 .fillMaxSize()
-                .padding(padding)
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
+                    LoadingIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        message = "Cargando mensaje..."
                     )
                 }
                 uiState.error != null -> {
-                    ErrorContent(
+                    ErrorView(
                         message = uiState.error ?: "Error desconocido",
-                        onRetry = { viewModel.loadMessage(messageId) }
+                        onRetry = { viewModel.loadMessage(messageId) },
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
                 uiState.message != null -> {
+                    // Contenido del mensaje
                     val message = uiState.message!!
-                    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                    val formattedDate = dateFormat.format(message.timestamp.toDate())
                     
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Título del mensaje con mejor formato
-                        Text(
-                            text = message.title,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // Información del remitente y fecha
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Círculo con la inicial del remitente
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(getMessageTypeColor(message.type)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = message.senderName.first().toString(),
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                // Información del remitente y fecha
-                                Column {
-                                    Text(
-                                        text = message.senderName,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    
-                                    Text(
-                                        text = formattedDate,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            
-                            // Badge de prioridad
-                            if (message.priority == MessagePriority.HIGH || 
-                                message.priority == MessagePriority.URGENT) {
-                                
-                                // Fondo adaptado según nivel de prioridad
-                                val backgroundColor = when (message.priority) {
-                                    MessagePriority.HIGH -> Color(0xFFFFA000)
-                                    MessagePriority.URGENT -> Color(0xFFE53935)
-                                    else -> Color(0xFF2E7D32) // Para LOW y NORMAL
-                                }
-                                
-                                // Texto adaptado según nivel de prioridad
-                                val priorityText = when (message.priority) {
-                                    MessagePriority.HIGH -> "Alta"
-                                    MessagePriority.URGENT -> "Urgente"
-                                    else -> "Normal"
-                                }
-                                
-                                Card(
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = backgroundColor
-                                    ),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Text(
-                                        text = priorityText,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                }
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Separador
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            thickness = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Mostrar tipo de mensaje
-                        Text(
-                            text = when(message.type) {
-                                MessageType.CHAT -> "Mensaje de chat"
-                                MessageType.NOTIFICATION -> "Notificación"
-                                MessageType.ANNOUNCEMENT -> "Comunicado oficial"
-                                MessageType.INCIDENT -> "Reporte de incidencia"
-                                MessageType.ATTENDANCE -> "Notificación de asistencia"
-                                MessageType.DAILY_RECORD -> "Registro diario"
-                                MessageType.SYSTEM -> "Mensaje del sistema"
-                            },
-                            style = MaterialTheme.typography.labelMedium
-                        )
-
-                        // Mostrar icono específico según tipo
-                        val isImportantType = message.type == MessageType.INCIDENT || 
-                                             message.type == MessageType.ANNOUNCEMENT
-                        
-                        // Contenido del mensaje
-                        Text(
-                            text = message.content,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        // Si es una respuesta, mostrar información del mensaje original
-                        if (!message.replyToId.isNullOrEmpty() && uiState.originalMessage != null) {
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
-                            // Separador
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                thickness = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant
+                    // Manejar tipos específicos de mensajes
+                    when (message.type) {
+                        MessageType.ANNOUNCEMENT -> {
+                            ComunicadoDetailScreen(
+                                comunicadoId = message.id,
+                                onBack = onBack
                             )
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp)
-                                ) {
-                                    Text(
-                                        text = "Mensaje original:",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    Text(
-                                        text = uiState.originalMessage!!.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    
-                                    Text(
-                                        text = uiState.originalMessage!!.content,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 3,
-                                        fontStyle = FontStyle.Italic,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
                         }
-                        
-                        // Botón de responder para mensajes chat
-                        if (message.type == MessageType.CHAT || message.type == MessageType.ANNOUNCEMENT) {
-                            Spacer(modifier = Modifier.height(32.dp))
-                            
-                            FilledTonalButton(
-                                onClick = { messageId.let(onReply) },
-                                modifier = Modifier.align(Alignment.CenterHorizontally)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Reply,
-                                    contentDescription = "Responder"
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Responder")
-                            }
-                        }
-                        
-                        // Visualización mejorada para adjuntos
-                        if (message.attachments.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
-                            Text(
-                                text = "Archivos adjuntos",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            // Lista de adjuntos
-                            Column(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                message.attachments.forEach { attachment ->
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp)
-                                            .clickable { 
-                                                val url = attachment["url"] as? String
-                                                if (!url.isNullOrEmpty()) {
-                                                    viewModel.openAttachment(attachment) 
-                                                }
-                                            },
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                        )
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.AttachFile,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                            
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            
-                                            Column(
-                                                modifier = Modifier.weight(1f)
-                                            ) {
-                                                Text(
-                                                    text = (attachment["name"] as? String) ?: "Archivo adjunto",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.SemiBold
-                                                )
-                                                
-                                                val size = (attachment["size"] as? Number)?.toLong()
-                                                if (size != null) {
-                                                    Text(
-                                                        text = formatFileSize(size),
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                }
-                                            }
-                                        }
+                        MessageType.CHAT -> {
+                            // Pantalla simplificada para mensajes de chat
+                            ChatMessageDetail(
+                                message = message,
+                                onContinueChat = {
+                                    if (message.conversationId.isNotEmpty()) {
+                                        onNavigateToConversation(message.conversationId)
+                                    } else {
+                                        // Log error
+                                        println("No hay ID de conversación para continuar el chat")
                                     }
                                 }
-                            }
+                            )
                         }
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
+                        else -> {
+                            // Vista genérica para otros tipos de mensajes
+                            GenericMessageDetail(
+                                message = message,
+                                onMarkAsRead = {
+                                    viewModel.markAsRead()
+                                }
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    // Mensaje no encontrado
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No se encontró el mensaje",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }
@@ -548,13 +161,494 @@ fun MessageDetailScreen(
 }
 
 /**
- * Formatea el tamaño de un archivo a una cadena legible
+ * Vista para mensajes de chat
  */
-private fun formatFileSize(size: Long): String {
-    return when {
-        size < 1024 -> "$size B"
-        size < 1024 * 1024 -> "${(size / 1024.0).toInt()} KB"
-        size < 1024 * 1024 * 1024 -> "${(size / (1024.0 * 1024.0)).toInt()} MB"
-        else -> "${(size / (1024.0 * 1024.0 * 1024.0)).toInt()} GB"
+@Composable
+fun ChatMessageDetail(
+    message: UnifiedMessage,
+    onContinueChat: () -> Unit
+) {
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    val formattedDate = dateFormat.format(message.timestamp.toDate())
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Encabezado
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar o iniciales del emisor
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = message.senderName.firstOrNull()?.toString() ?: "U",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = message.senderName,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                
+                Text(
+                    text = formattedDate,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Icono indicador de tipo de mensaje
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Chat,
+                contentDescription = "Chat",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        
+        Divider(modifier = Modifier.padding(bottom = 16.dp))
+        
+        // Contenido del mensaje
+        Text(
+            text = message.content,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+        
+        // Botón para continuar la conversación
+        Button(
+            onClick = onContinueChat,
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Message,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Text(text = "Continuar conversación")
+        }
+    }
+}
+
+/**
+ * Vista genérica para otros tipos de mensajes
+ */
+@Composable
+fun GenericMessageDetail(
+    message: UnifiedMessage,
+    onMarkAsRead: () -> Unit
+) {
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    val formattedDate = dateFormat.format(message.timestamp.toDate())
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Banner según tipo de mensaje
+        MessageTypeBanner(messageType = message.type)
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Título
+        if (message.title.isNotEmpty()) {
+            Text(
+                text = message.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+        
+        // Info del remitente
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar o iniciales del emisor
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(getColorForMessageType(message.type)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = message.senderName.firstOrNull()?.toString() ?: "U",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = message.senderName,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                
+                Text(
+                    text = formattedDate,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        Divider(modifier = Modifier.padding(bottom = 16.dp))
+        
+        // Contenido
+        Text(
+            text = message.content,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+        
+        // Información adicional
+        if (message.metadata.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Información adicional",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    message.metadata.forEach { (key, value) ->
+                        Row(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = key.replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(0.4f)
+                            )
+                            
+                            Text(
+                                text = value,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(0.6f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Botón para marcar como leído
+        if (!message.isRead) {
+            Button(
+                onClick = onMarkAsRead,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DoneAll,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text("Marcar como leído")
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DoneAll,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "Mensaje leído",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Banner según tipo de mensaje
+ */
+@Composable
+fun MessageTypeBanner(messageType: MessageType) {
+    val (color, icon, title) = when (messageType) {
+        MessageType.INCIDENT -> Triple(
+            Color(0xFFE53935),
+            Icons.Default.Warning,
+            "Incidencia"
+        )
+        MessageType.ATTENDANCE -> Triple(
+            Color(0xFF2196F3),
+            Icons.Default.Event,
+            "Registro de asistencia"
+        )
+        MessageType.DAILY_RECORD -> Triple(
+            Color(0xFFFF9800),
+            Icons.Default.Assignment,
+            "Registro diario"
+        )
+        MessageType.NOTIFICATION -> Triple(
+            MaterialTheme.colorScheme.tertiary,
+            Icons.Default.Notifications,
+            "Notificación"
+        )
+        MessageType.SYSTEM -> Triple(
+            Color(0xFF9C27B0),
+            Icons.Default.Info,
+            "Mensaje del sistema"
+        )
+        else -> return // No mostrar para otros tipos
+    }
+    
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = color.copy(alpha = 0.5f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.padding(end = 12.dp)
+            )
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = color
+            )
+        }
+    }
+}
+
+/**
+ * Obtiene el color asociado a un tipo de mensaje
+ */
+@Composable
+fun getColorForMessageType(type: MessageType): Color {
+    return when (type) {
+        MessageType.CHAT -> MaterialTheme.colorScheme.primary
+        MessageType.NOTIFICATION -> MaterialTheme.colorScheme.tertiary
+        MessageType.ANNOUNCEMENT -> Color(0xFF4CAF50) // Verde
+        MessageType.INCIDENT -> Color(0xFFF44336) // Rojo
+        MessageType.ATTENDANCE -> Color(0xFF2196F3) // Azul
+        MessageType.DAILY_RECORD -> Color(0xFFFF9800) // Naranja
+        MessageType.SYSTEM -> Color(0xFF9C27B0) // Púrpura
+    }
+}
+
+/**
+ * Obtiene el icono asociado a un tipo de mensaje
+ */
+@Composable
+fun getIconForMessageType(type: MessageType): ImageVector {
+    return when (type) {
+        MessageType.CHAT -> Icons.AutoMirrored.Filled.Chat
+        MessageType.NOTIFICATION -> Icons.Default.Notifications
+        MessageType.ANNOUNCEMENT -> Icons.Default.Announcement
+        MessageType.INCIDENT -> Icons.Default.Warning
+        MessageType.ATTENDANCE -> Icons.Default.Event
+        MessageType.DAILY_RECORD -> Icons.Default.Assignment
+        MessageType.SYSTEM -> Icons.Default.Info
+    }
+}
+
+/**
+ * Vista de error mejorada con botón de reintentar
+ */
+@Composable
+private fun ErrorView(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Error,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier
+                .size(48.dp)
+                .padding(bottom = 16.dp)
+        )
+        
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Text(text = "Reintentar")
+        }
+    }
+}
+
+/**
+ * Indicador de estado de mensaje mejorado
+ */
+@Composable
+fun MessageStatusIndicator(
+    status: MessageStatus,
+    timestamp: Timestamp,
+    modifier: Modifier = Modifier
+) {
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    val formattedDate = dateFormat.format(timestamp.toDate())
+    
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        when (status) {
+            MessageStatus.READ -> {
+                Icon(
+                    imageVector = Icons.Default.DoneAll,
+                    contentDescription = "Mensaje leído",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "Leído el $formattedDate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            MessageStatus.UNREAD -> {
+                Icon(
+                    imageVector = Icons.Default.MarkEmailUnread,
+                    contentDescription = "Mensaje no leído",
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "No leído - Enviado el $formattedDate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+            else -> {
+                Icon(
+                    imageVector = Icons.Default.Done,
+                    contentDescription = "Mensaje enviado",
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "Enviado el $formattedDate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Botón de respuesta mejorado para el chat
+ */
+@Composable
+fun EnhancedReplyButton(
+    onClick: () -> Unit,
+    message: UnifiedMessage,
+    modifier: Modifier = Modifier
+) {
+    ElevatedButton(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        elevation = ButtonDefaults.elevatedButtonElevation(4.dp),
+        colors = ButtonDefaults.elevatedButtonColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Reply,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Text(
+                text = "Responder a ${message.senderName.split(" ").firstOrNull() ?: ""}",
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 } 
