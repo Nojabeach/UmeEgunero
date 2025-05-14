@@ -234,9 +234,17 @@ private fun DetalleAlumnoContent(
                     onClick = {
                         if (alumno.familiarIds.isNotEmpty()) {
                             val familiarId = alumno.familiarIds.first()
-                            navController.navigate(AppScreens.Chat.createRoute(familiarId, alumno.dni))
+                            try {
+                                // Obtener una conversación o crear una nueva
+                                // y navegar a ella usando los parámetros correctos
+                                navController.navigate("${AppScreens.ChatContacts.route}")
+                                Timber.d("Navegando a ContactChat para inicio de chat con familiares de ${alumno.nombre}")
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al navegar a Chat: ${e.message}")
+                            }
                         } else {
                             Timber.w("No hay familiares asociados a este alumno para iniciar chat")
+                            // Aquí podrías mostrar un SnackBar o un diálogo informando del error
                         }
                     },
                     modifier = Modifier.weight(1f)

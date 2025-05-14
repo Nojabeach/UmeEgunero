@@ -2,17 +2,26 @@ package com.tfg.umeegunero.feature.common.comunicacion.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.Timestamp
-import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.data.model.MessagePriority
-import com.tfg.umeegunero.data.model.MessageStatus
-import com.tfg.umeegunero.data.model.MessageType
-import com.tfg.umeegunero.data.model.RecipientItem
-import com.tfg.umeegunero.data.model.UnifiedMessage
-import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
-import com.tfg.umeegunero.data.model.RecipientGroup
+import androidx.lifecycle.SavedStateHandle
+import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.Familiar
 import com.tfg.umeegunero.data.model.RecipientGroupType
+import com.tfg.umeegunero.data.model.RecipientItem
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.repository.AlumnoRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.CentroRepository
+import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.data.repository.FamiliarRepository
+import com.tfg.umeegunero.data.repository.ProfesorRepository
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.model.UnifiedMessage
+import com.tfg.umeegunero.data.model.MessageType
+import com.tfg.umeegunero.data.model.MessageStatus
+import com.google.firebase.Timestamp
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,9 +29,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import timber.log.Timber
-import java.util.UUID
 import javax.inject.Inject
+import java.util.*
+import timber.log.Timber
 
 /**
  * Estructura para representar a un destinatario seleccionado
@@ -45,41 +54,40 @@ data class UserSearchResult(
  * Estado de la UI para la pantalla de nuevo mensaje
  */
 data class NewMessageUiState(
-    val recipientId: String = "",
+    val recipientId: String? = null,
     val recipients: List<RecipientItem> = emptyList(),
-    val recipientGroups: List<RecipientGroup> = emptyList(), // Grupos de destinatarios
-    val availableCenters: List<RecipientGroup> = emptyList(),
-    val availableCourses: List<RecipientGroup> = emptyList(),
-    val availableClasses: List<RecipientGroup> = emptyList(),
-    val showGroupSelection: Boolean = false, // Controla la visibilidad del selector de grupos
-    val selectedGroupType: RecipientGroupType? = null, // Tipo de grupo seleccionado
-    val searchResults: List<RecipientItem> = emptyList(),
+    val selectedRecipients: List<RecipientItem> = emptyList(),
     val subject: String = "",
     val content: String = "",
-    val messageType: MessageType = MessageType.CHAT,
-    val priority: MessagePriority = MessagePriority.NORMAL,
-    val conversationId: String = "",
-    val replyingTo: UnifiedMessage? = null,
-    val attachments: List<Map<String, String>> = emptyList(),
     val isLoading: Boolean = false,
-    val isSearching: Boolean = false,
-    val isSent: Boolean = false,
     val error: String? = null,
-    val conversationStarted: Boolean = false,
+    val searchResults: List<SearchResultItem> = emptyList(),
     val searchQuery: String = "",
-    val showTypeMenu: Boolean = false,
-    val isReply: Boolean = false,
-    val isSending: Boolean = false,
-    val messageSent: Boolean = false,
-    val titleError: String? = null,
-    val contentError: String? = null
-) {
-    /**
-     * Indica si el mensaje puede ser enviado (validación)
-     */
-    val canSendMessage: Boolean
-        get() = subject.isNotBlank() && content.isNotBlank() && 
-                (recipients.isNotEmpty() || recipientGroups.isNotEmpty() || replyingTo != null)
+    val messageType: String = "CHAT", // Tipo de mensaje, por defecto CHAT
+    val availableMessageTypes: List<String> = listOf("CHAT", "ANNOUNCEMENT", "NOTIFICATION", "SYSTEM"),
+    val canSendMessage: Boolean = subject.isNotBlank() && content.isNotBlank() && (selectedRecipients.isNotEmpty())
+)
+
+data class SearchResultItem(
+    val id: String,
+    val name: String,
+    val type: String,
+    val description: String = ""
+)
+
+data class RecipientGroup(
+    val id: String,
+    val name: String,
+    val type: RecipientGroupType
+)
+
+enum class RecipientGroupType {
+    CENTRO,
+    CURSO,
+    CLASE,
+    PROFESOR,
+    FAMILIAR,
+    ALUMNO
 }
 
 /**
@@ -90,615 +98,476 @@ class NewMessageViewModel @Inject constructor(
     private val messageRepository: UnifiedMessageRepository,
     private val usuarioRepository: UsuarioRepository,
     private val authRepository: AuthRepository,
-    private val centroRepository: com.tfg.umeegunero.data.repository.CentroRepository,
-    private val cursoRepository: com.tfg.umeegunero.data.repository.CursoRepository,
-    private val claseRepository: com.tfg.umeegunero.data.repository.ClaseRepository
+    private val centroRepository: CentroRepository,
+    private val cursoRepository: CursoRepository,
+    private val claseRepository: ClaseRepository,
+    private val alumnoRepository: AlumnoRepository,
+    private val familiarRepository: FamiliarRepository,
+    private val profesorRepository: ProfesorRepository,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(NewMessageUiState())
     val uiState: StateFlow<NewMessageUiState> = _uiState.asStateFlow()
     
     init {
-        // Cargar usuarios para la búsqueda
-        searchUsers("")
-        
-        // Si el tipo de mensaje es ANNOUNCEMENT, cargar los centros, cursos y clases disponibles
-        viewModelScope.launch {
-            loadAvailableCenters()
-        }
-    }
-    
-    /**
-     * Carga los centros disponibles para el usuario actual
-     */
-    private suspend fun loadAvailableCenters() {
-        try {
-            val currentUser = authRepository.getCurrentUser() ?: return
-            
-            when (val result = centroRepository.getAllCentros()) {
-                is Result.Success -> {
-                    val centers = result.data.map { centro ->
-                        RecipientGroup(
-                            id = centro.id,
-                            name = centro.nombre,
-                            type = RecipientGroupType.CENTER
-                        )
-                    }
-                    _uiState.update { it.copy(availableCenters = centers) }
-                }
-                else -> Timber.d("No se pudo cargar la lista de centros")
+        // Si se proporciona un ID de destinatario, precargarlo
+        savedStateHandle.get<String>("receiverId")?.let { id ->
+            if (id.isNotEmpty()) {
+                // loadRecipient(id) // Eliminado porque no existe
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al cargar centros")
         }
+        
+        // Si se proporciona un tipo de mensaje, establecerlo
+        savedStateHandle.get<String>("messageType")?.let { type ->
+            if (type.isNotEmpty() && _uiState.value.availableMessageTypes.contains(type)) {
+                _uiState.update { it.copy(messageType = type) }
+            }
+        }
+        
+        // Cargar usuarios disponibles
+        loadRealDestinations()
     }
     
     /**
-     * Carga los cursos disponibles para un centro específico
+     * Carga destinatarios reales basados en el rol del usuario actual:
+     * 1. Administradores de centro
+     * 2. Profesores del mismo curso (para profesor) o profesores del hijo (para padre)
+     * 3. Padres del aula (para profesor) o padres del aula del hijo (para padre)
      */
-    fun loadCoursesForCenter(centerId: String) {
+    private fun loadRealDestinations() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                when (val result = cursoRepository.getCursosPorCentro(centerId)) {
-                    is Result.Success -> {
-                        val courses = result.data.map { curso ->
-                            RecipientGroup(
-                                id = curso.id,
-                                name = curso.nombre,
-                                type = RecipientGroupType.COURSE
-                            )
+                val results = mutableListOf<SearchResultItem>()
+                
+                // Obtener el usuario actual
+                val currentUser = authRepository.getCurrentUser() ?: throw Exception("Usuario no encontrado")
+                val userType = currentUser.perfiles.firstOrNull()?.tipo ?: throw Exception("Tipo de usuario no definido")
+                
+                // Obtener el centro del usuario actual (basado en su primer perfil)
+                val centroId = currentUser.perfiles.firstOrNull()?.centroId ?: ""
+                if (centroId.isEmpty()) {
+                    throw Exception("Usuario sin centro asignado")
+                }
+                
+                // 1. Cargar administradores del centro
+                val adminResults = loadCentroAdmins(centroId)
+                results.addAll(adminResults)
+                
+                // 2 y 3. Dependiendo del tipo de usuario
+                when (userType) {
+                    TipoUsuario.PROFESOR -> {
+                        // Obtener el curso y clase donde el profesor da clases
+                        val clasesProfesor = claseRepository.getClasesByProfesor(currentUser.dni)
+                        if (clasesProfesor is Result.Success) {
+                            val clases = clasesProfesor.data
+                            
+                            if (clases.isNotEmpty()) {
+                                // 2. Profesores del mismo curso
+                                val cursosIds = clases.map { it.cursoId }.distinct()
+                                val profesoresResults = loadProfesoresByCursos(cursosIds, currentUser.dni)
+                                results.addAll(profesoresResults)
+                                
+                                // 3. Padres de los alumnos de las clases
+                                val padresResults = loadPadresByClases(clases.map { it.id })
+                                results.addAll(padresResults)
+                            }
                         }
-                        _uiState.update { it.copy(availableCourses = courses) }
                     }
-                    else -> Timber.d("No se pudieron cargar los cursos del centro $centerId")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cargar cursos del centro $centerId")
-            }
-        }
-    }
-    
-    /**
-     * Carga las clases disponibles para un curso específico
-     */
-    fun loadClassesForCourse(courseId: String) {
-        viewModelScope.launch {
-            try {
-                when (val result = claseRepository.getClasesPorCurso(courseId)) {
-                    is Result.Success -> {
-                        val classes = result.data.map { clase ->
-                            RecipientGroup(
-                                id = clase.id,
-                                name = clase.nombre,
-                                type = RecipientGroupType.CLASS
-                            )
+                    TipoUsuario.FAMILIAR -> {
+                        // Obtener las clases donde estudian los hijos del familiar
+                        val hijosResults = alumnoRepository.getAlumnosByFamiliarId(currentUser.dni)
+                        if (hijosResults is Result.Success<List<Alumno>>) {
+                            val hijos = hijosResults.data
+                            
+                            if (hijos.isNotEmpty()) {
+                                // Obtener clases de los hijos
+                                val clasesIds = mutableListOf<String>()
+                                val profesorResults = mutableListOf<SearchResultItem>()
+                                
+                                for (alumno in hijos) {
+                                    // Usamos la clase del alumno directamente si está disponible
+                                    if (alumno.claseId.isNotEmpty()) {
+                                        val claseId = alumno.claseId
+                                        clasesIds.add(claseId)
+                                        
+                                        try {
+                                            // Cargar la clase para obtener detalles
+                                            val claseResult = claseRepository.getClaseById(claseId)
+                                            if (claseResult is Result.Success) {
+                                                val clase = claseResult.data
+                                                
+                                                // 2. Profesores del hijo
+                                                val profesorItems = loadProfesorByClaseId(clase.id)
+                                                profesorResults.addAll(profesorItems)
+                                            }
+                                        } catch (e: Exception) {
+                                            Timber.e(e, "Error al cargar clase: $claseId para alumno: ${alumno.id}")
+                                        }
+                                    }
+                                }
+                                
+                                results.addAll(profesorResults.distinctBy { it.id })
+                                
+                                // 3. Padres del aula de los hijos (excepto el usuario actual)
+                                if (clasesIds.isNotEmpty()) {
+                                    val padresResults = loadPadresByClases(clasesIds)
+                                    // Filtramos para no incluirnos a nosotros mismos
+                                    val filteredPadres = padresResults.filter { it.id != currentUser.dni }
+                                    results.addAll(filteredPadres)
+                                }
+                            }
                         }
-                        _uiState.update { it.copy(availableClasses = classes) }
                     }
-                    else -> Timber.d("No se pudieron cargar las clases del curso $courseId")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cargar clases del curso $courseId")
-            }
-        }
-    }
-    
-    /**
-     * Actualiza el tipo de grupo seleccionado
-     */
-    fun selectGroupType(type: RecipientGroupType) {
-        _uiState.update { it.copy(selectedGroupType = type) }
-        
-        // Si se selecciona un tipo de grupo, cargar los datos necesarios
-        when (type) {
-            RecipientGroupType.CENTER -> {
-                // Los centros ya se cargan al iniciar
-            }
-            RecipientGroupType.TEACHER -> {
-                // Mostrar todos los profesores
-                viewModelScope.launch {
-                    searchTeachers()
-                }
-            }
-            RecipientGroupType.PARENT -> {
-                // Mostrar todos los familiares
-                viewModelScope.launch {
-                    searchParents()
-                }
-            }
-            else -> {
-                // Para los demás tipos, esperamos la selección del usuario
-            }
-        }
-    }
-    
-    /**
-     * Busca todos los profesores
-     */
-    private suspend fun searchTeachers() {
-        try {
-            when (val result = usuarioRepository.buscarUsuariosPorPerfil("PROFESOR")) {
-                is Result.Success -> {
-                    val teachers = result.data.map { profesor ->
-                        RecipientItem(
-                            id = profesor.dni,
-                            name = "${profesor.nombre} ${profesor.apellidos}",
-                            email = profesor.email,
-                            avatarUrl = null
-                        )
+                    else -> {
+                        // Para otros tipos de usuario, solo mostrar administradores (ya cargados)
                     }
-                    _uiState.update { it.copy(searchResults = teachers) }
                 }
-                else -> Timber.d("No se pudieron cargar los profesores")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al cargar profesores")
-        }
-    }
-    
-    /**
-     * Busca todos los padres/tutores
-     */
-    private suspend fun searchParents() {
-        try {
-            when (val result = usuarioRepository.buscarUsuariosPorPerfil("FAMILIAR")) {
-                is Result.Success -> {
-                    val parents = result.data.map { familiar ->
-                        RecipientItem(
-                            id = familiar.dni,
-                            name = "${familiar.nombre} ${familiar.apellidos}",
-                            email = familiar.email,
-                            avatarUrl = null
-                        )
-                    }
-                    _uiState.update { it.copy(searchResults = parents) }
-                }
-                else -> Timber.d("No se pudieron cargar los familiares")
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al cargar familiares")
-        }
-    }
-    
-    /**
-     * Añade un grupo de destinatarios
-     */
-    fun addRecipientGroup(group: RecipientGroup) {
-        val currentGroups = _uiState.value.recipientGroups.toMutableList()
-        if (currentGroups.none { it.id == group.id }) {
-            currentGroups.add(group)
-            _uiState.update { it.copy(recipientGroups = currentGroups) }
-        }
-    }
-    
-    /**
-     * Elimina un grupo de destinatarios
-     */
-    fun removeRecipientGroup(groupId: String) {
-        val currentGroups = _uiState.value.recipientGroups.toMutableList()
-        currentGroups.removeAll { it.id == groupId }
-        _uiState.update { it.copy(recipientGroups = currentGroups) }
-    }
-    
-    /**
-     * Alterna la visibilidad del selector de grupos
-     */
-    fun toggleGroupSelection() {
-        _uiState.update { it.copy(showGroupSelection = !it.showGroupSelection) }
-    }
-    
-    /**
-     * Actualiza el título del mensaje
-     */
-    fun updateTitle(title: String) {
-        _uiState.update { 
-            it.copy(
-                subject = title,
-                titleError = if (title.isBlank()) "El título es obligatorio" else null
-            )
-        }
-    }
-    
-    /**
-     * Actualiza el contenido del mensaje
-     */
-    fun updateContent(content: String) {
-        _uiState.update { 
-            it.copy(
-                content = content,
-                contentError = if (content.isBlank()) "El contenido es obligatorio" else null
-            )
-        }
-    }
-    
-    /**
-     * Establece el tipo de mensaje
-     */
-    fun setMessageType(type: MessageType) {
-        _uiState.update { it.copy(messageType = type) }
-    }
-    
-    /**
-     * Establece la prioridad del mensaje
-     */
-    fun updatePriority(priority: MessagePriority) {
-        _uiState.update { it.copy(priority = priority) }
-    }
-    
-    /**
-     * Actualiza la consulta de búsqueda y busca usuarios
-     */
-    fun updateSearchQuery(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
-        searchUsers(query)
-    }
-    
-    /**
-     * Busca usuarios para agregar como destinatarios
-     */
-    fun searchUsers(query: String) {
-        if (query.isBlank()) {
-            _uiState.update { it.copy(searchResults = emptyList()) }
-            return
-        }
-        
-        viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(isSearching = true) }
                 
-                // Validar que tenemos un usuario actual
-                val currentUser = authRepository.getCurrentUser() ?: return@launch
-                
-                // Implementar la búsqueda de usuarios
-                val usuariosResult = usuarioRepository.buscarUsuariosPorNombreOCorreo(query, 10)
-                
-                if (usuariosResult is Result.Success) {
-                    val usuariosFiltrados = usuariosResult.data.filter { it.dni != currentUser.dni }
-                    _uiState.update { 
-                        it.copy(
-                            searchResults = usuariosFiltrados.map { usuario ->
-                                RecipientItem(
-                                    id = usuario.dni,
-                                    name = "${usuario.nombre} ${usuario.apellidos}",
-                                    email = usuario.email,
-                                    avatarUrl = usuario.avatarUrl
-                                )
-                            },
-                            isSearching = false
-                        )
-                    }
-                } else {
-                    _uiState.update { it.copy(
-                        searchResults = emptyList(),
-                        isSearching = false,
-                        error = "Error al buscar usuarios"
-                    )}
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al buscar usuarios")
                 _uiState.update { it.copy(
-                    isSearching = false,
-                    error = "Error al buscar usuarios: ${e.message}"
+                    searchResults = results,
+                    isLoading = false
+                )}
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = e.message ?: "Error al cargar destinatarios",
+                    isLoading = false
                 )}
             }
         }
     }
     
     /**
-     * Añade un destinatario a la lista de seleccionados
+     * Carga los administradores de un centro educativo
      */
-    fun addReceiver(id: String, name: String) {
-        val currentReceivers = _uiState.value.recipients.toMutableList()
-        if (currentReceivers.none { it.id == id }) {
-            currentReceivers.add(RecipientItem(id, name, "", ""))
-            _uiState.update { it.copy(recipients = currentReceivers) }
+    private suspend fun loadCentroAdmins(centroId: String): List<SearchResultItem> {
+        val admins = mutableListOf<SearchResultItem>()
+        
+        try {
+            val result = usuarioRepository.getAdminsByCentroId(centroId)
+            if (result is Result.Success) {
+                result.data.forEach { admin ->
+                    admins.add(SearchResultItem(
+                        id = admin.dni,
+                        name = "${admin.nombre} ${admin.apellidos}",
+                        type = TipoUsuario.ADMIN_CENTRO.toString(),
+                        description = "Administrador del centro"
+                    ))
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar administradores del centro: $centroId")
         }
+        
+        return admins
     }
     
     /**
-     * Elimina un destinatario de la lista de seleccionados
+     * Carga profesores de los cursos especificados, excluyendo al profesor actual
      */
+    private suspend fun loadProfesoresByCursos(cursosIds: List<String>, currentProfesorId: String): List<SearchResultItem> {
+        val profesores = mutableListOf<SearchResultItem>()
+        
+        try {
+            for (cursoId in cursosIds) {
+                val cursoResult = cursoRepository.getCursoById(cursoId)
+                val cursoNombre = if (cursoResult is Result.Success) cursoResult.data.nombre else "Curso"
+                
+                val clasesResult = claseRepository.getClasesByCursoId(cursoId)
+                if (clasesResult is Result.Success) {
+                    val clases = clasesResult.data
+                    for (clase in clases) {
+                        // Agregar profesor titular si existe y no es el mismo que el profesor actual
+                        if (!clase.profesorId.isNullOrEmpty() && clase.profesorId != currentProfesorId) {
+                            val profesorResult = usuarioRepository.getUsuarioById(clase.profesorId)
+                            if (profesorResult is Result.Success) {
+                                val profesor = profesorResult.data
+                                profesores.add(SearchResultItem(
+                                    id = profesor.dni,
+                                    name = "${profesor.nombre} ${profesor.apellidos}",
+                                    type = TipoUsuario.PROFESOR.toString(),
+                                    description = "Profesor de $cursoNombre - ${clase.nombre}"
+                                ))
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar profesores de cursos: ${cursosIds.joinToString()}")
+        }
+        
+        return profesores.distinctBy { it.id }
+    }
+    
+    /**
+     * Carga los profesores de una clase específica
+     */
+    private suspend fun loadProfesorByClaseId(claseId: String): List<SearchResultItem> {
+        val profesores = mutableListOf<SearchResultItem>()
+        
+        try {
+            val claseResult = claseRepository.getClaseById(claseId)
+            if (claseResult is Result.Success) {
+                val clase = claseResult.data
+                
+                // Obtener curso para mostrar información más completa
+                val cursoResult = cursoRepository.getCursoById(clase.cursoId)
+                val cursoNombre = if (cursoResult is Result.Success) cursoResult.data.nombre else "Curso"
+                
+                // Obtener profesor titular
+                if (!clase.profesorId.isNullOrEmpty()) {
+                    val profesor = usuarioRepository.getUsuarioById(clase.profesorId)
+                    if (profesor is Result.Success) {
+                        profesores.add(SearchResultItem(
+                            id = profesor.data.dni,
+                            name = "${profesor.data.nombre} ${profesor.data.apellidos}",
+                            type = TipoUsuario.PROFESOR.toString(),
+                            description = "Profesor de $cursoNombre - ${clase.nombre}"
+                        ))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar profesor de la clase: $claseId")
+        }
+        
+        return profesores
+    }
+    
+    /**
+     * Carga los padres de los alumnos de las clases especificadas
+     */
+    private suspend fun loadPadresByClases(clasesIds: List<String>): List<SearchResultItem> {
+        val padres = mutableListOf<SearchResultItem>()
+        
+        try {
+            for (claseId in clasesIds) {
+                val alumnosResult = alumnoRepository.getAlumnosByClaseId(claseId)
+                if (alumnosResult is Result.Success) {
+                    val alumnos = alumnosResult.data
+                    
+                    for (alumno in alumnos) {
+                        val familiaresResult = familiarRepository.getFamiliaresByAlumnoId(alumno.id)
+                        if (familiaresResult is Result.Success) {
+                            familiaresResult.data.forEach { familiar ->
+                                padres.add(SearchResultItem(
+                                    id = familiar.dni,
+                                    name = "${familiar.nombre} ${familiar.apellidos}",
+                                    type = TipoUsuario.FAMILIAR.toString(),
+                                    description = "Familiar de ${alumno.nombre}"
+                                ))
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar padres de clases: ${clasesIds.joinToString()}")
+        }
+        
+        return padres.distinctBy { it.id }
+    }
+    
+    fun searchUsers(query: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, searchQuery = query) }
+            try {
+                // Filtrar los resultados que ya tenemos cargados
+                val allResults = _uiState.value.searchResults
+                val filteredResults = if (query.isNotEmpty()) {
+                    allResults.filter { 
+                        it.name.contains(query, ignoreCase = true) || 
+                        it.description.contains(query, ignoreCase = true)
+                    }
+                } else {
+                    allResults
+                }
+                
+                _uiState.update { it.copy(
+                    searchResults = filteredResults,
+                    isLoading = false
+                )}
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = e.message ?: "Error al buscar usuarios",
+                    isLoading = false
+                )}
+            }
+        }
+    }
+    
+    fun addReceiver(id: String) {
+        val recipient = uiState.value.searchResults.find { it.id == id }
+        if (recipient != null) {
+            val currentRecipients = _uiState.value.selectedRecipients.toMutableList()
+            if (!currentRecipients.any { it.id == recipient.id }) {
+                currentRecipients.add(RecipientItem(
+                    id = recipient.id,
+                    name = recipient.name,
+                    type = recipient.type
+                ))
+                _uiState.update { it.copy(
+                    selectedRecipients = currentRecipients,
+                    recipients = currentRecipients
+                )}
+            }
+        }
+    }
+    
     fun removeReceiver(id: String) {
-        val currentReceivers = _uiState.value.recipients.toMutableList()
-        currentReceivers.removeAll { it.id == id }
-        _uiState.update { it.copy(recipients = currentReceivers) }
+        val currentRecipients = _uiState.value.selectedRecipients.toMutableList()
+        currentRecipients.removeIf { it.id == id }
+        _uiState.update { it.copy(
+            selectedRecipients = currentRecipients,
+            recipients = currentRecipients
+        )}
     }
     
-    /**
-     * Carga un mensaje original para responder
-     */
-    fun loadOriginalMessage(messageId: String) {
-        viewModelScope.launch {
-            try {
-                when (val result = messageRepository.getMessageById(messageId)) {
-                    is Result.Success -> {
-                        val originalMessage = result.data
-                        _uiState.update { 
-                            it.copy(
-                                replyingTo = originalMessage,
-                                isReply = true,
-                                subject = if (!originalMessage.title.startsWith("RE: ")) 
-                                    "RE: ${originalMessage.title}" else originalMessage.title,
-                                recipients = listOf(
-                                    RecipientItem(
-                                        id = originalMessage.senderId,
-                                        name = originalMessage.senderName,
-                                        email = "",
-                                        avatarUrl = ""
-                                    )
-                                ),
-                                messageType = originalMessage.type
-                            )
-                        }
-                    }
-                    is Result.Error -> {
-                        _uiState.update { 
-                            it.copy(error = "Error al cargar mensaje original: ${result.message}")
-                        }
-                    }
-                    is Result.Loading -> {
-                        // No necesitamos manejar este estado aquí
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cargar mensaje original")
-                _uiState.update { 
-                    it.copy(error = "Error al cargar mensaje original: ${e.message}")
-                }
-            }
-        }
+    fun updateTitle(title: String) {
+        _uiState.update { it.copy(subject = title) }
     }
     
-    /**
-     * Establece un ID de destinatario preseleccionado
-     */
-    fun setReceiverId(receiverId: String) {
-        viewModelScope.launch {
-            try {
-                val usuarioResult = usuarioRepository.getUsuarioById(receiverId)
-                if (usuarioResult is Result.Success) {
-                    val usuario = usuarioResult.data
-                    addReceiver(usuario.dni, "${usuario.nombre} ${usuario.apellidos}")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener destinatario: $receiverId")
-            }
-        }
+    fun updateContent(content: String) {
+        _uiState.update { it.copy(content = content) }
     }
     
-    /**
-     * Alterna la visibilidad del menú de tipos de mensaje
-     */
-    fun toggleTypeMenu() {
-        _uiState.update { it.copy(showTypeMenu = !it.showTypeMenu) }
+    fun updateSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        searchUsers(query)
     }
     
-    /**
-     * Limpia la información de respuesta
-     */
-    fun clearReplyTo() {
-        _uiState.update { 
-            it.copy(
-                replyingTo = null,
-                isReply = false
-            )
-        }
-    }
-    
-    /**
-     * Establece el mensaje al que se responde
-     */
-    fun setReplyTo(message: UnifiedMessage) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                replyingTo = message,
-                subject = if (!message.title.startsWith("RE: ")) "RE: ${message.title}" else message.title,
-                recipients = listOf(
-                    RecipientItem(
-                        id = message.senderId,
-                        name = message.senderName,
-                        email = "",
-                        avatarUrl = null
-                    )
-                ),
-                messageType = message.type,
-                conversationId = message.conversationId
-            )
-        }
-    }
-    
-    /**
-     * Envía el mensaje
-     */
     fun sendMessage() {
-        val currentState = _uiState.value
-        
-        // Validar campos obligatorios
-        if (currentState.subject.isBlank() || currentState.content.isBlank()) {
-            _uiState.update {
-                it.copy(
-                    titleError = if (it.subject.isBlank()) "El título es obligatorio" else null,
-                    contentError = if (it.content.isBlank()) "El contenido es obligatorio" else null
-                )
-            }
-            return
-        }
-        
-        // Validar destinatarios si no es una respuesta
-        if (currentState.replyingTo == null && 
-            currentState.recipients.isEmpty() && 
-            currentState.recipientGroups.isEmpty()) {
-            _uiState.update {
-                it.copy(error = "Debe seleccionar al menos un destinatario o grupo")
-            }
-            return
-        }
-        
-        _uiState.update { it.copy(isLoading = true, error = null, isSending = true) }
-        
         viewModelScope.launch {
             try {
-                // Obtener el usuario actual
-                val currentUser = authRepository.getCurrentUser()
-                if (currentUser == null) {
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            isSending = false,
-                            error = "Error: Usuario no autenticado"
-                        )
-                    }
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Verificar que tenemos lo mínimo necesario
+                val state = _uiState.value
+                if (state.subject.isBlank() || state.content.isBlank() || state.selectedRecipients.isEmpty()) {
+                    _uiState.update { it.copy(
+                        error = "Por favor completa todos los campos requeridos",
+                        isLoading = false
+                    ) }
                     return@launch
                 }
                 
-                // Expandir los grupos de destinatarios a usuarios individuales
-                val expandedReceivers = mutableListOf<String>()
-                
-                // Añadir destinatarios individuales
-                expandedReceivers.addAll(currentState.recipients.map { it.id })
-                
-                // Expandir grupos (centro, curso, clase, etc.)
-                for (group in currentState.recipientGroups) {
-                    when (group.type) {
-                        RecipientGroupType.CENTER -> {
-                            // Simular la obtención de usuarios del centro
-                            // Originalmente: val usersResult = usuarioRepository.getUsuariosPorCentro(group.id)
-                            Timber.d("Simulando obtención de usuarios para centro: ${group.id}")
-                            val usuarios = listOf("usuario1", "usuario2", "usuario3")
-                            expandedReceivers.addAll(usuarios)
-                        }
-                        RecipientGroupType.COURSE -> {
-                            // Simular la obtención de alumnos del curso
-                            // Originalmente: val alumnosResult = claseRepository.getAllAlumnosPorCurso(group.id)
-                            Timber.d("Simulando obtención de alumnos para curso: ${group.id}")
-                            val alumnosIds = listOf("alumno1", "alumno2", "alumno3")
-                            expandedReceivers.addAll(alumnosIds)
-                            
-                            // Simular la obtención de familiares de los alumnos
-                            for (alumnoId in alumnosIds) {
-                                // Originalmente: val familiaresResult = usuarioRepository.getFamiliaresPorAlumnoId(alumnoId)
-                                Timber.d("Simulando obtención de familiares para alumno: $alumnoId")
-                                val familiares = listOf("familiar1", "familiar2")
-                                expandedReceivers.addAll(familiares)
-                            }
-                        }
-                        RecipientGroupType.CLASS -> {
-                            // Simular la obtención de alumnos de la clase
-                            // Originalmente: val alumnosResult = claseRepository.getAlumnosPorClase(group.id)
-                            Timber.d("Simulando obtención de alumnos para clase: ${group.id}")
-                            val alumnosIds = listOf("alumno1", "alumno2", "alumno3")
-                            expandedReceivers.addAll(alumnosIds)
-                            
-                            // Simular la obtención de familiares de los alumnos
-                            for (alumnoId in alumnosIds) {
-                                // Originalmente: val familiaresResult = usuarioRepository.getFamiliaresPorAlumnoId(alumnoId)
-                                Timber.d("Simulando obtención de familiares para alumno: $alumnoId")
-                                val familiares = listOf("familiar1", "familiar2")
-                                expandedReceivers.addAll(familiares)
-                            }
-                        }
-                        RecipientGroupType.TEACHER -> {
-                            // Obtener todos los profesores
-                            val profesoresResult = usuarioRepository.buscarUsuariosPorPerfil("PROFESOR")
-                            if (profesoresResult is Result.Success) {
-                                expandedReceivers.addAll(profesoresResult.data.map { it.dni })
-                            }
-                        }
-                        RecipientGroupType.PARENT -> {
-                            // Obtener todos los familiares
-                            val familiaresResult = usuarioRepository.buscarUsuariosPorPerfil("FAMILIAR")
-                            if (familiaresResult is Result.Success) {
-                                expandedReceivers.addAll(familiaresResult.data.map { it.dni })
-                            }
-                        }
-                        RecipientGroupType.USER -> {
-                            // Ya incluido en recipients
-                        }
-                    }
+                // Obtener usuario remitente
+                val currentUser = authRepository.getCurrentUser()
+                if (currentUser == null) {
+                    _uiState.update { it.copy(
+                        error = "No se pudo obtener información del usuario actual",
+                        isLoading = false
+                    ) }
+                    return@launch
                 }
+                val sender = currentUser
                 
-                // Eliminar duplicados y el propio remitente
-                val uniqueReceivers = expandedReceivers.distinct().filter { it != currentUser.dni }
+                // Preparar destinatarios
+                val recipientIds = state.selectedRecipients.map { it.id }
                 
-                // Crear el mensaje
+                // Crear el mensaje unificado
                 val message = UnifiedMessage(
                     id = UUID.randomUUID().toString(),
-                    title = currentState.subject,
-                    content = currentState.content,
-                    type = currentState.messageType,
-                    priority = currentState.priority,
-                    senderId = currentUser.dni,
-                    senderName = "${currentUser.nombre} ${currentUser.apellidos}".trim(),
-                    conversationId = currentState.conversationId,
-                    replyToId = currentState.replyingTo?.id ?: "",
-                    // Si es una respuesta, usar el remitente original como destinatario
-                    receiverId = if (currentState.replyingTo != null) 
-                                    currentState.replyingTo.senderId 
-                                 else 
-                                    if (uniqueReceivers.size == 1) 
-                                        uniqueReceivers.first() 
-                                    else "",
-                    // Si hay múltiples destinatarios, usar la lista expandida
-                    receiversIds = if (uniqueReceivers.size > 1) uniqueReceivers else emptyList(),
-                    timestamp = Timestamp.now(),
+                    title = state.subject,
+                    content = state.content,
+                    senderId = sender.dni,
+                    senderName = "${sender.nombre} ${sender.apellidos}",
+                    receiversIds = recipientIds,
+                    timestamp = Timestamp(Date()),
+                    type = when(state.messageType) {
+                        "ANNOUNCEMENT" -> MessageType.ANNOUNCEMENT
+                        "NOTIFICATION" -> MessageType.NOTIFICATION
+                        "SYSTEM" -> MessageType.SYSTEM
+                        else -> MessageType.CHAT
+                    },
                     status = MessageStatus.UNREAD
                 )
                 
-                // Enviar el mensaje mediante el repositorio
+                // Guardar mensaje
                 val result = messageRepository.sendMessage(message)
                 
-                when (result) {
-                    is Result.Success -> {
-                        // Mensaje enviado correctamente
-                        Timber.d("Mensaje enviado correctamente con ID: ${result.data}")
-                        
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                isSending = false,
-                                messageSent = true,
-                                subject = "",
-                                content = "",
-                                recipients = emptyList(),
-                                recipientGroups = emptyList(),
-                                error = null
-                            )
-                        }
-                    }
-                    is Result.Error -> {
-                        // Error al enviar el mensaje
-                        Timber.e(result.exception, "Error al enviar mensaje: ${result.message}")
-                        
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                isSending = false,
-                                error = "Error al enviar mensaje: ${result.message}"
-                            )
-                        }
-                    }
-                    else -> {
-                        Timber.d("Resultado no manejado: $result")
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al enviar mensaje")
-                
-                _uiState.update { 
-                    it.copy(
+                if (result is Result.Success<*>) {
+                    _uiState.update { it.copy(
                         isLoading = false,
-                        isSending = false,
-                        error = "Error al enviar mensaje: ${e.message}"
-                    )
+                        subject = "",
+                        content = "",
+                        selectedRecipients = emptyList()
+                    ) }
+                    
+                    // Notificar éxito
+                    // ...
+                } else {
+                    _uiState.update { it.copy(
+                        error = "Error al enviar el mensaje",
+                        isLoading = false
+                    ) }
                 }
+                
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = "Error al enviar el mensaje: ${e.message}",
+                    isLoading = false
+                ) }
             }
         }
     }
     
-    /**
-     * Limpia el error actual
-     */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
+
+    private fun mapUsuarioToRecipientItem(usuario: Usuario): RecipientItem {
+        return RecipientItem(
+            id = usuario.dni,
+            name = usuario.nombre,
+            type = usuario.perfiles.firstOrNull()?.tipo?.name ?: TipoUsuario.ALUMNO.name
+        )
+    }
+
+    private fun mapAlumnoToRecipientItem(alumno: Alumno): RecipientItem {
+        return RecipientItem(
+            id = alumno.id,
+            name = alumno.nombre,
+            type = TipoUsuario.ALUMNO.name
+        )
+    }
+
+    private fun mapFamiliarToRecipientItem(familiar: Familiar): RecipientItem {
+        return RecipientItem(
+            id = familiar.id,
+            name = familiar.nombre,
+            type = TipoUsuario.FAMILIAR.name
+        )
+    }
+
+    /**
+     * Actualiza el tipo de mensaje seleccionado
+     */
+    fun updateMessageType(type: String) {
+        if (_uiState.value.availableMessageTypes.contains(type)) {
+            _uiState.update { it.copy(messageType = type) }
+        }
+    }
+
+    // Estos métodos no se usarán ahora, pero se mantienen como referencia para implementaciones futuras
+    // cuando los repositorios tengan las funciones necesarias implementadas
+
+    /**
+     * Las siguientes funciones se implementarán en el futuro cuando los repositorios
+     * tengan las APIs necesarias:
+     * 
+     * - loadCentroAdmins(centroId: String): List<SearchResultItem>
+     *   Para cargar administradores del centro
+     * 
+     * - loadProfesoresByCursos(cursosIds: List<String>, currentProfesorId: String): List<SearchResultItem>
+     *   Para cargar profesores de cursos específicos
+     * 
+     * - loadProfesorByClaseId(claseId: String): List<SearchResultItem>
+     *   Para cargar profesores de una clase específica
+     * 
+     * - loadPadresByClases(clasesIds: List<String>): List<SearchResultItem>
+     *   Para cargar padres de alumnos de las clases especificadas
+     */
 } 

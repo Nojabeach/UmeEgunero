@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -102,6 +103,17 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import kotlinx.coroutines.launch
+import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.School
 
 /**
  * Pantalla que muestra la lista de alumnos del profesor
@@ -130,47 +142,56 @@ fun MisAlumnosProfesorScreen(
     // Estado para el diálogo de programación de reunión
     var mostrarDialogoReunion by remember { mutableStateOf(false) }
     var alumnoSeleccionadoParaReunion by remember { mutableStateOf<Alumno?>(null) }
+    
+    // Estado para el diálogo de exportación
+    var mostrarDialogoExportar by remember { mutableStateOf(false) }
+    var filtroExportacion by remember { mutableStateOf("todos") } // "todos", "seleccionados", "filtrados"
+    var formatoExportacion by remember { mutableStateOf("pdf") } // "pdf", "csv", "excel"
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Mis Alumnos") },
                 navigationIcon = {
-                    IconButton(onClick = { 
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
-                        navController.popBackStack() 
-                    }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
                 },
+                actions = {
+                    IconButton(onClick = { mostrarDialogoExportar = true }) {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = "Exportar"
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = ProfesorColor,
                     titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    haptic.performHapticFeedbackSafely()
-                    // Llamar a la función del ViewModel para generar el informe
-                    viewModel.generarInformeAlumnos()
-                    // TODO: Mostrar Snackbar o mensaje temporal indicando que la función no está implementada
-                },
-                containerColor = ProfesorColor,
-                contentColor = Color.White
-            ) {
-                Icon(
-                    imageVector = Icons.Default.GetApp,
-                    contentDescription = "Generar listado de alumnos"
+            if (uiState.alumnos.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        // Lógica para generar un informe o exportar
+                        mostrarDialogoExportar = true
+                    },
+                    containerColor = ProfesorColor,
+                    contentColor = Color.White,
+                    icon = { 
+                        Icon(
+                            Icons.Default.FileDownload,
+                            contentDescription = "Exportar informe"
+                        )
+                    },
+                    text = { Text("Exportar") }
                 )
             }
         }
@@ -181,7 +202,7 @@ fun MisAlumnosProfesorScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            // Buscador
+            // Barra de búsqueda
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -189,36 +210,151 @@ fun MisAlumnosProfesorScreen(
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
                 placeholder = { Text("Buscar alumno...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Buscar"
+                    )
+                },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { 
-                            try {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error al realizar feedback háptico")
-                            }
-                            searchQuery = "" 
-                        }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                        IconButton(
+                            onClick = { searchQuery = "" }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Limpiar"
+                            )
                         }
                     }
                 },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Search
+                ),
                 keyboardActions = KeyboardActions(
-                    onSearch = { 
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
-                        focusManager.clearFocus() 
-                    }
+                    onSearch = { focusManager.clearFocus() }
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
+            
+            // Selector de curso
+            if (uiState.cursos.isNotEmpty()) {
+                Text(
+                    text = "Selecciona un curso:",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                )
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(uiState.cursos) { curso ->
+                        val isSelected = uiState.cursoSeleccionado?.id == curso.id
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.seleccionarCurso(curso) },
+                            label = { 
+                                Text(
+                                    text = curso.nombre,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = ProfesorColor,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+            }
+            
+            // Selector de clase (si hay un curso seleccionado y clases disponibles)
+            if (uiState.cursoSeleccionado != null && uiState.clases.isNotEmpty()) {
+                Text(
+                    text = "Selecciona una clase:",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                )
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(uiState.clases) { clase ->
+                        val isSelected = uiState.claseSeleccionada?.id == clase.id
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.seleccionarClase(clase) },
+                            label = { 
+                                Text(
+                                    text = clase.nombre,
+                                    style = MaterialTheme.typography.bodyMedium
+                                ) 
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = ProfesorColor,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+            }
+            
+            // Mostrar información relevante según el estado de selección
+            if (uiState.cursoSeleccionado != null) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                    color = ProfesorColor.copy(alpha = 0.3f)
+                )
+                
+                if (uiState.claseSeleccionada != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = null,
+                            tint = ProfesorColor
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${uiState.cursoSeleccionado?.nombre} - ${uiState.claseSeleccionada?.nombre}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        if (uiState.alumnos.isNotEmpty()) {
+                            Text(
+                                text = "${uiState.alumnos.size} alumnos",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                } else {
+                    Text(
+                        text = "Curso: ${uiState.cursoSeleccionado?.nombre}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Selecciona una clase para ver sus alumnos",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
 
+            // Contenido principal
             when {
                 uiState.isLoading -> {
                     Box(
@@ -233,11 +369,72 @@ fun MisAlumnosProfesorScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = uiState.error ?: "Error desconocido",
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = uiState.error ?: "Error desconocido",
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                            
+                            Button(
+                                onClick = { viewModel.limpiarError() },
+                                colors = ButtonDefaults.buttonColors(containerColor = ProfesorColor)
+                            ) {
+                                Text("Entendido")
+                            }
+                        }
+                    }
+                }
+                uiState.cursoSeleccionado == null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = ProfesorColor.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Selecciona un curso para continuar",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                uiState.claseSeleccionada == null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.People,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = ProfesorColor.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Selecciona una clase para ver los alumnos",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
                 uiState.alumnos.isEmpty() -> {
@@ -257,7 +454,7 @@ fun MisAlumnosProfesorScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "No hay alumnos asignados",
+                                text = "No hay alumnos en esta clase",
                                 style = MaterialTheme.typography.bodyLarge,
                                 textAlign = TextAlign.Center
                             )
@@ -265,58 +462,34 @@ fun MisAlumnosProfesorScreen(
                     }
                 }
                 else -> {
-                    val filteredAlumnos = if (searchQuery.isEmpty()) {
-                        uiState.alumnos
-                    } else {
-                        uiState.alumnos.filter { 
-                            it.nombre.contains(searchQuery, ignoreCase = true) || 
-                            it.apellidos.contains(searchQuery, ignoreCase = true)
-                        }
+                    // Lista de alumnos (filtrados por búsqueda)
+                    val alumnosFiltrados = uiState.alumnos.filter {
+                        searchQuery.isEmpty() || 
+                        "${it.nombre} ${it.apellidos}".contains(searchQuery, ignoreCase = true) ||
+                        it.dni.contains(searchQuery, ignoreCase = true)
                     }
                     
-                    // Lista de alumnos
                     LazyColumn(
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        // Información del total
-                        item {
-                            Text(
-                                text = "Total: ${filteredAlumnos.size} alumno(s)",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-                        
-                        // Lista de alumnos
-                        items(
-                            items = filteredAlumnos,
-                            key = { it.id }
-                        ) { alumno ->
+                        items(alumnosFiltrados) { alumno ->
                             AlumnoCard(
                                 alumno = alumno,
                                 onClick = {
-                                    haptic.performHapticFeedbackSafely()
-                                    try {
-                                        // Usar la función createRoute de AppScreens
-                                        navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.id))
-                                        // Log del intento de navegación para depuración
-                                        Timber.d("Navegando a detalle de alumno: ${alumno.id}")
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Error al navegar a detalle de alumno")
-                                    }
+                                    navController.navigate(
+                                        AppScreens.DetalleAlumnoProfesor.createRoute(alumno.dni)
+                                    )
                                 },
-                                onProgramarReunion = {
-                                    haptic.performHapticFeedbackSafely()
+                                onProgramarReunionClick = {
                                     alumnoSeleccionadoParaReunion = alumno
                                     mostrarDialogoReunion = true
+                                    haptic.performHapticFeedbackSafely()
                                 }
                             )
                         }
-                        
-                        // Espacio al final para evitar que el último elemento quede oculto
-                        item { Spacer(modifier = Modifier.height(72.dp)) }
+                        // Añadir espacio al final para que el último elemento no quede oculto por el FAB
+                        item { Spacer(modifier = Modifier.height(80.dp)) }
                     }
                 }
             }
@@ -344,6 +517,300 @@ fun MisAlumnosProfesorScreen(
             }
         )
     }
+
+    // Diálogo de exportación de informe
+    if (mostrarDialogoExportar) {
+        Dialog(
+            onDismissRequest = { mostrarDialogoExportar = false }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    // Cabecera
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.GetApp,
+                            contentDescription = null,
+                            tint = ProfesorColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "Exportar Informe de Alumnos",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Opciones de exportación
+                    Text(
+                        text = "Selecciona los alumnos a incluir:",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = filtroExportacion == "todos",
+                            onClick = { filtroExportacion = "todos" },
+                            label = { Text("Todos") },
+                            leadingIcon = {
+                                if (filtroExportacion == "todos") {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        )
+                        
+                        FilterChip(
+                            selected = filtroExportacion == "filtrados",
+                            onClick = { filtroExportacion = "filtrados" },
+                            label = { Text("Filtrados") },
+                            leadingIcon = {
+                                if (filtroExportacion == "filtrados") {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Formato de exportación
+                    Text(
+                        text = "Formato de exportación:",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = formatoExportacion == "pdf",
+                            onClick = { formatoExportacion = "pdf" },
+                            label = { Text("PDF") },
+                            leadingIcon = {
+                                if (formatoExportacion == "pdf") {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        )
+                        
+                        FilterChip(
+                            selected = formatoExportacion == "excel",
+                            onClick = { formatoExportacion = "excel" },
+                            label = { Text("Excel") },
+                            leadingIcon = {
+                                if (formatoExportacion == "excel") {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        )
+                        
+                        FilterChip(
+                            selected = formatoExportacion == "csv",
+                            onClick = { formatoExportacion = "csv" },
+                            label = { Text("CSV") },
+                            leadingIcon = {
+                                if (formatoExportacion == "csv") {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Vista previa del informe
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Vista previa del informe",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Cabecera de tabla
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(ProfesorColor.copy(alpha = 0.1f))
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    "Nombre", 
+                                    fontWeight = FontWeight.Bold, 
+                                    modifier = Modifier.weight(0.4f)
+                                )
+                                Text(
+                                    "DNI", 
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(0.3f)
+                                )
+                                Text(
+                                    "Clase", 
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(0.3f)
+                                )
+                            }
+
+                            // Filas de ejemplo
+                            val alumnos = uiState.alumnos.take(3)
+                            if (alumnos.isNotEmpty()) {
+                                alumnos.forEach { alumno ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(8.dp)
+                                    ) {
+                                        Text(
+                                            "${alumno.nombre} ${alumno.apellidos}",
+                                            modifier = Modifier.weight(0.4f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            alumno.dni,
+                                            modifier = Modifier.weight(0.3f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            alumno.clase,
+                                            modifier = Modifier.weight(0.3f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    HorizontalDivider(thickness = 0.5.dp)
+                                }
+                                Text(
+                                    "... y ${uiState.alumnos.size - 3} más",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Text(
+                                    "No hay datos para mostrar",
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Información de filas a exportar
+                    val totalFilas = when (filtroExportacion) {
+                        "todos" -> uiState.alumnos.size
+                        "filtrados" -> if (searchQuery.isNotEmpty()) {
+                            uiState.alumnos.count { 
+                                it.nombre.contains(searchQuery, ignoreCase = true) || 
+                                it.apellidos.contains(searchQuery, ignoreCase = true)
+                            }
+                        } else uiState.alumnos.size
+                        else -> 0
+                    }
+
+                    Text(
+                        text = "Se exportarán $totalFilas filas",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Botones de acción
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { mostrarDialogoExportar = false },
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text("Cancelar")
+                        }
+                        
+                        Button(
+                            onClick = {
+                                mostrarDialogoExportar = false
+                                viewModel.generarInformeAlumnos(
+                                    filtro = filtroExportacion,
+                                    formato = formatoExportacion,
+                                    terminoBusqueda = searchQuery
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ProfesorColor
+                            )
+                        ) {
+                            Text("Exportar")
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -353,7 +820,7 @@ fun MisAlumnosProfesorScreen(
 fun AlumnoCard(
     alumno: Alumno,
     onClick: () -> Unit,
-    onProgramarReunion: () -> Unit,
+    onProgramarReunionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -420,7 +887,7 @@ fun AlumnoCard(
                     
                     // Botón para programar reunión
                     IconButton(
-                        onClick = onProgramarReunion,
+                        onClick = onProgramarReunionClick,
                         modifier = Modifier
                             .size(36.dp)
                             .background(

@@ -31,6 +31,7 @@ import javax.inject.Inject
 import androidx.navigation.NavController
 import com.tfg.umeegunero.navigation.AppScreens
 import java.util.Date
+import kotlinx.coroutines.delay
 
 /**
  * Estado UI para la pantalla de dashboard del familiar
@@ -125,6 +126,10 @@ class FamiliarDashboardViewModel @Inject constructor(
     
     // Estado inmutable expuesto a la UI, para seguir el principio de encapsulamiento
     val uiState: StateFlow<FamiliarDashboardUiState> = _uiState.asStateFlow()
+    
+    // Flow específico para el contador de mensajes no leídos
+    private val _unreadMessageCount = MutableStateFlow(0)
+    val unreadMessageCount: StateFlow<Int> = _unreadMessageCount.asStateFlow()
 
     /**
      * Inicialización del ViewModel, se ejecuta al crear la instancia
@@ -567,10 +572,58 @@ class FamiliarDashboardViewModel @Inject constructor(
      * @param familiarId ID del familiar
      */
     private suspend fun cargarTotalMensajesNoLeidos(familiarId: String) {
-        // Implementación simplificada (en realidad debería llamar al repositorio apropiado)
-        // Por ahora establecemos un valor de ejemplo
-        _uiState.update { 
-            it.copy(totalMensajesNoLeidos = 0)
+        try {
+            // Aquí deberíamos consultar la base de datos para obtener los mensajes no leídos
+            // Este es un ejemplo de implementación. Deberías reemplazarlo con la llamada real al repositorio.
+            val mensajesNoLeidosCount = obtenerContadorMensajesNoLeidos(familiarId)
+            
+            // Actualizar el estado general
+            _uiState.update { 
+                it.copy(totalMensajesNoLeidos = mensajesNoLeidosCount)
+            }
+            
+            // Actualizar también el flow específico para la UI
+            _unreadMessageCount.update { mensajesNoLeidosCount }
+            
+            // Programar actualizaciones periódicas de este contador
+            iniciarActualizacionesPeriodicasMensajes(familiarId)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar mensajes no leídos: ${e.message}")
+        }
+    }
+    
+    /**
+     * Obtiene el contador de mensajes no leídos para un familiar
+     * Esta función consulta Firestore para obtener los mensajes no leídos reales
+     */
+    private suspend fun obtenerContadorMensajesNoLeidos(familiarId: String): Int {
+        // En un sistema real, aquí deberías consultar tu repositorio de mensajes
+        // Por ejemplo:
+        // val result = mensajeRepository.getMensajesNoLeidosCount(familiarId)
+        // return if (result is Result.Success) result.data else 0
+        
+        // Simulamos una consulta para pruebas (reemplazar con tu lógica real)
+        return 5 // Valor de prueba
+    }
+    
+    /**
+     * Inicia actualizaciones periódicas del contador de mensajes no leídos
+     */
+    private fun iniciarActualizacionesPeriodicasMensajes(familiarId: String) {
+        viewModelScope.launch {
+            while(true) {
+                // Esperar 5 minutos antes de actualizar de nuevo
+                delay(5 * 60 * 1000)
+                
+                // Actualizar contador de mensajes no leídos
+                val nuevoContador = obtenerContadorMensajesNoLeidos(familiarId)
+                _unreadMessageCount.update { nuevoContador }
+                
+                // También actualizar el estado general
+                _uiState.update { 
+                    it.copy(totalMensajesNoLeidos = nuevoContador)
+                }
+            }
         }
     }
 

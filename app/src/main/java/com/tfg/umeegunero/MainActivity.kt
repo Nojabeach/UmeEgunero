@@ -36,6 +36,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tfg.umeegunero.navigation.NavigationViewModel
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.Timestamp
 
 /**
  * Clase simple para representar datos de notificación
@@ -216,25 +218,85 @@ class MainActivity : ComponentActivity() {
         }
         
         try {
-            // Obtener referencia al documento del usuario en Firestore
-            val userRef = FirebaseFirestore.getInstance().collection("usuarios").document(user.uid)
+            // Primero obtenemos el DNI del usuario actual desde Firestore
+            val userEmail = user.email
+            if (userEmail.isNullOrEmpty()) {
+                Timber.w("No se puede guardar el token FCM porque el usuario no tiene email")
+                return
+            }
             
-            // Actualizar el campo fcmTokens como un mapa con el token actual
-            // Esto permite tener múltiples tokens por usuario (varios dispositivos)
-            val tokenData = mapOf(
-                "fcmTokens" to mapOf(token to token)
-            )
-            
-            // Actualizar de forma segura usando merge para no sobreescribir otros campos
-            userRef.set(tokenData, com.google.firebase.firestore.SetOptions.merge())
-                .addOnSuccessListener {
-                    Timber.d("Token FCM guardado correctamente")
+            // Consultar el documento del usuario por email para obtener su DNI
+            FirebaseFirestore.getInstance()
+                .collection("usuarios")
+                .whereEqualTo("email", userEmail)
+                .limit(1)
+                .get()
+                .addOnSuccessListener { querySnapshot ->
+                    if (querySnapshot.isEmpty) {
+                        Timber.e("No se encontró usuario con email: $userEmail")
+                        return@addOnSuccessListener
+                    }
+                    
+                    val userDoc = querySnapshot.documents.first()
+                    val dni = userDoc.getString("dni")
+                    
+                    if (dni.isNullOrEmpty()) {
+                        Timber.e("El usuario no tiene DNI asignado: $userEmail")
+                        return@addOnSuccessListener
+                    }
+                    
+                    Timber.d("Guardando token FCM para el usuario con DNI: $dni")
+                    
+                    // Generar un ID único para el dispositivo
+                    val deviceId = "device_${System.currentTimeMillis()}"
+                    
+                    // Estructura para actualizar el token FCM en las preferencias de notificaciones
+                    // Siguiendo la estructura del usuario que has mostrado
+                    val tokenUpdate = mapOf(
+                        "preferencias.notificaciones.fcmToken" to token,
+                        "preferencias.notificaciones.deviceId" to deviceId,
+                        "preferencias.notificaciones.lastUpdated" to Timestamp.now()
+                    )
+                    
+                    // Actualizar el documento con el DNI como ID
+                    val dniDocRef = FirebaseFirestore.getInstance()
+                        .collection("usuarios")
+                        .document(dni)
+                    
+                    dniDocRef.update(tokenUpdate)
+                        .addOnSuccessListener {
+                            Timber.d("Token FCM actualizado correctamente en preferencias del usuario con DNI: $dni")
+                        }
+                        .addOnFailureListener { e ->
+                            Timber.e(e, "Error al actualizar token FCM en documento DNI: $dni")
+                            
+                            // Si el error es porque no existe el campo preferencias.notificaciones,
+                            // intentamos crearlo con una estructura completa
+                            val initialData = mapOf(
+                                "preferencias" to mapOf(
+                                    "notificaciones" to mapOf(
+                                        "fcmToken" to token,
+                                        "deviceId" to deviceId,
+                                        "lastUpdated" to Timestamp.now(),
+                                        "push" to true // Habilitamos push por defecto al registrar token
+                                    )
+                                )
+                            )
+                            
+                            dniDocRef.set(initialData, SetOptions.merge())
+                                .addOnSuccessListener {
+                                    Timber.d("Preferencias de notificaciones creadas para usuario DNI: $dni")
+                                }
+                                .addOnFailureListener { innerE ->
+                                    Timber.e(innerE, "Error al crear preferencias de notificaciones para DNI: $dni")
+                                }
+                        }
                 }
                 .addOnFailureListener { e ->
-                    Timber.e(e, "Error al guardar token FCM")
+                    Timber.e(e, "Error al buscar usuario por email: $userEmail")
                 }
         } catch (e: Exception) {
-            Timber.e(e, "Error al guardar token FCM en Firestore")
+            Timber.e(e, "Error general al guardar token FCM: ${e.message}")
         }
     }
     

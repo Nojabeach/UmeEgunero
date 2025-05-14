@@ -29,6 +29,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.time.format.DateTimeFormatter
 
 /**
  * Extensión para convertir LocalDate a Date
@@ -314,17 +315,24 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
      * Selecciona un alumno para el registro diario
      */
     fun seleccionarAlumno(alumno: Alumno) {
-        _uiState.update { currentState ->
-            // Verificar que el alumno no tenga registro previo
-            if (!currentState.alumnosConRegistro.contains(alumno.id) && 
-                !currentState.alumnosSeleccionados.contains(alumno)) {
-                currentState.copy(
-                    alumnosSeleccionados = currentState.alumnosSeleccionados + alumno
+        val currentState = _uiState.value
+        
+        // Verificar que el alumno no tenga registro previo
+        if (!currentState.alumnosConRegistro.contains(alumno.id) && 
+            !currentState.alumnosSeleccionados.contains(alumno)) {
+            Timber.d("Seleccionando alumno: ${alumno.nombre} (ID: ${alumno.id})")
+            _uiState.update {
+                it.copy(
+                    alumnosSeleccionados = it.alumnosSeleccionados + alumno
                 )
-            } else {
-                // Si ya tiene registro, no hacer nada
-                currentState
             }
+        } else {
+            // Si ya tiene registro, mostrar error
+            if (currentState.alumnosConRegistro.contains(alumno.id)) {
+                Timber.d("No se puede seleccionar alumno ${alumno.nombre}: ya tiene registro")
+                mostrarErrorTemporal("El alumno ${alumno.nombre} ya tiene un registro para hoy")
+            }
+            // Si ya estaba seleccionado, no hacer nada
         }
     }
 
@@ -343,15 +351,24 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
      * Selecciona todos los alumnos para el registro diario
      */
     fun seleccionarTodosLosAlumnos() {
-        _uiState.update { currentState ->
-            // Filtrar alumnos que no tengan registro previo
-            val alumnosSinRegistro = currentState.alumnos.filter { 
-                !currentState.alumnosConRegistro.contains(it.id) 
+        val currentState = _uiState.value
+        
+        // Filtrar alumnos que no tengan registro previo
+        val alumnosSinRegistro = currentState.alumnos.filter { alumno -> 
+            !currentState.alumnosConRegistro.contains(alumno.id) 
+        }
+        
+        if (alumnosSinRegistro.isEmpty()) {
+            Timber.d("No hay alumnos sin registro para seleccionar")
+            mostrarErrorTemporal("Todos los alumnos ya tienen registro para hoy")
+        } else {
+            Timber.d("Seleccionando todos los alumnos sin registro: ${alumnosSinRegistro.size}")
+            _uiState.update {
+                it.copy(
+                    alumnosSeleccionados = alumnosSinRegistro,
+                    error = null
+                )
             }
-            
-            currentState.copy(
-                alumnosSeleccionados = alumnosSinRegistro
-            )
         }
     }
 
@@ -612,17 +629,28 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
     }
 
     /**
-     * Limpia mensaje de error
+     * Limpiar mensaje de error
      */
     fun limpiarError() {
         _uiState.update { it.copy(error = null) }
     }
 
     /**
-     * Limpia mensaje de éxito
+     * Limpiar mensaje de éxito
      */
     fun limpiarMensajeExito() {
         _uiState.update { it.copy(mensajeExito = null) }
+    }
+
+    /**
+     * Mostrar error temporal y luego limpiarlo automáticamente
+     */
+    fun mostrarErrorTemporal(mensaje: String) {
+        _uiState.update { it.copy(error = mensaje) }
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(3000) // Mostrar el error por 3 segundos
+            limpiarError()
+        }
     }
 
     /**
@@ -756,6 +784,99 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     error = "Error al cargar los datos: ${e.message}",
                     isLoading = false
                 ) }
+            }
+        }
+    }
+
+    /**
+     * Elimina el registro de un alumno para la fecha seleccionada
+     */
+    fun eliminarRegistro(alumnoId: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                val fecha = _uiState.value.fechaSeleccionada
+                val formattedDate = fecha.format(DateTimeFormatter.BASIC_ISO_DATE) // Formato: YYYYMMDD
+                val registroDocId = "registro_${formattedDate}_${alumnoId}"
+                
+                Timber.d("Intentando eliminar registro: $registroDocId")
+                
+                val resultado = registroDiarioRepository.eliminarRegistro(registroDocId)
+                if (resultado) {
+                    // Actualizar la lista de alumnos con registro
+                    val alumnosConRegistroActualizado = _uiState.value.alumnosConRegistro.toMutableSet()
+                    alumnosConRegistroActualizado.remove(alumnoId)
+                    
+                    _uiState.update { it.copy(
+                        alumnosConRegistro = alumnosConRegistroActualizado,
+                        mensajeExito = "Registro eliminado correctamente",
+                        isLoading = false
+                    ) }
+                    
+                    // Recargar registros para actualizar la UI
+                    verificarRegistrosExistentes()
+                    
+                    Timber.d("Registro eliminado correctamente: $registroDocId")
+                } else {
+                    _uiState.update { it.copy(
+                        error = "No se pudo eliminar el registro",
+                        isLoading = false
+                    ) }
+                    Timber.e("Error al eliminar registro: $registroDocId")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al eliminar registro para alumnoId: $alumnoId")
+                _uiState.update { it.copy(
+                    error = "Error al eliminar registro: ${e.message}",
+                    isLoading = false
+                ) }
+            }
+        }
+    }
+
+    /**
+     * Verifica y actualiza los registros existentes para la fecha actual
+     */
+    private fun verificarRegistrosExistentes() {
+        viewModelScope.launch {
+            try {
+                // Obtener usuario actual y clase
+                val usuario = authRepository.getCurrentUser() ?: return@launch
+                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni) ?: return@launch
+                
+                // Obtener clases del profesor
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
+                if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) return@launch
+                
+                val clase = clasesResult.data.first()
+                
+                // Obtener registros para esta fecha
+                val registrosResult = registroDiarioRepository.obtenerRegistrosDiariosPorFechaYClase(
+                    _uiState.value.fechaSeleccionada.toDate(),
+                    clase.id
+                )
+                
+                // Actualizar alumnos con registro
+                val alumnosConRegistro = if (registrosResult is Result.Success) {
+                    registrosResult.data.map { it.alumnoId }.toSet()
+                } else {
+                    emptySet()
+                }
+                
+                Timber.d("Alumnos con registro actualizados: $alumnosConRegistro")
+                
+                _uiState.update { it.copy(
+                    alumnosConRegistro = alumnosConRegistro,
+                    isLoading = false
+                )}
+                
+            } catch (e: Exception) {
+                Timber.e(e, "Error al verificar registros existentes")
+                _uiState.update { it.copy(
+                    error = "Error al actualizar registros: ${e.message}",
+                    isLoading = false
+                )}
             }
         }
     }

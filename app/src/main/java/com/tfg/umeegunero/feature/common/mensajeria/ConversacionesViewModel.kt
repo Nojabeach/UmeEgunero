@@ -180,7 +180,7 @@ class ConversacionesViewModel @Inject constructor(
      * Procesa las conversaciones y actualiza el estado
      */
     private suspend fun procesarConversaciones(
-        conversacionesInfo: List<com.tfg.umeegunero.data.repository.ConversacionInfo>,
+        conversacionesInfo: List<com.tfg.umeegunero.data.model.ConversacionInfo>,
         usuario: Usuario
     ) {
         if (conversacionesInfo.isEmpty()) {
@@ -227,25 +227,25 @@ class ConversacionesViewModel @Inject constructor(
                 
                 // Crear resumen
                 val resumen = ConversacionResumen(
-                    id = conversacion.conversacionId,
+                    id = conversacion.id,
                     participanteId = conversacion.participanteId,
                     nombreParticipante = nombreParticipante,
                     participanteAvatar = null,
                     alumnoId = conversacion.alumnoId,
                     nombreAlumno = nombreAlumno,
-                    ultimoMensaje = conversacion.ultimoMensaje,
-                    fechaUltimoMensaje = conversacion.fechaUltimoMensaje,
+                    ultimoMensaje = "", // La nueva clase no tiene este campo
+                    fechaUltimoMensaje = 0, // La nueva clase no tiene este campo
                     mensajesNoLeidos = conversacion.mensajesNoLeidos
                 )
                 
                 resumenList.add(resumen)
             } catch (e: Exception) {
-                Timber.e(e, "Error procesando conversación ${conversacion.conversacionId}")
+                Timber.e(e, "Error procesando conversación ${conversacion.id}")
                 // Continuamos con otras conversaciones
             }
         }
         
-        // Ordenar por fecha más reciente
+        // Ordenar por fecha más reciente (ahora usamos fecha constante)
         val listaOrdenada = resumenList.sortedByDescending { 
             it.fechaUltimoMensaje
         }

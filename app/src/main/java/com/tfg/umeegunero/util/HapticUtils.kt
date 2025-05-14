@@ -3,6 +3,7 @@ package com.tfg.umeegunero.util
 import android.util.Log
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import timber.log.Timber
 
 /**
  * Utilidades para la retroalimentación háptica en Jetpack Compose.
@@ -17,12 +18,14 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
  * 
  * @return Boolean indicando si la retroalimentación se ejecutó correctamente.
  */
-fun HapticFeedback.performHapticFeedbackSafely() : Boolean {
+fun HapticFeedback.performHapticFeedbackSafely(
+    feedbackType: HapticFeedbackType = HapticFeedbackType.LongPress
+): Boolean {
     return try {
-        this.performHapticFeedback(HapticFeedbackType.LongPress)
+        this.performHapticFeedback(feedbackType)
         true
     } catch (e: Exception) {
-        Log.e("HapticFeedback", "Error al ejecutar retroalimentación háptica", e)
+        Timber.e(e, "Error al realizar feedback háptico: ${e.message}")
         false
     }
 } 

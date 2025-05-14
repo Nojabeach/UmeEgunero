@@ -914,4 +914,44 @@ class RegistroDiarioRepository @Inject constructor(
             return@withContext false
         }
     }
+
+    /**
+     * Elimina un registro diario por su ID
+     *
+     * @param registroId ID del registro a eliminar
+     * @return true si la eliminación fue exitosa, false en caso contrario
+     */
+    suspend fun eliminarRegistro(registroId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Intentando eliminar registro con ID: $registroId")
+            
+            // Si hay conexión, eliminar de Firestore
+            if (isNetworkAvailable()) {
+                try {
+                    // Eliminación lógica: marcamos como eliminado en lugar de borrar
+                    registrosCollection.document(registroId)
+                        .update("eliminado", true)
+                        .await()
+                    
+                    // También eliminamos de la caché local
+                    localRegistroRepository.deleteRegistroActividad(registroId)
+                    
+                    Timber.d("Registro $registroId eliminado con éxito")
+                    return@withContext true
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al eliminar registro en Firestore: $registroId")
+                    return@withContext false
+                }
+            } else {
+                Timber.w("Sin conexión a Internet. No se puede eliminar el registro remoto.")
+                // Eliminación local
+                localRegistroRepository.deleteRegistroActividad(registroId)
+                // Pendiente de sincronización cuando haya conexión
+                return@withContext true
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error general al eliminar registro: $registroId")
+            return@withContext false
+        }
+    }
 } 

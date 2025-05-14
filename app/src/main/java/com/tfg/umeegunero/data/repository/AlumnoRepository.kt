@@ -576,7 +576,9 @@ class AlumnoRepositoryImpl @Inject constructor(
      */
     override suspend fun actualizarProfesor(alumnoDni: String, profesorId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            // Buscar primero el documento del alumno por su DNI
+            Timber.d("Actualizando profesor $profesorId para alumno $alumnoDni")
+            
+            // Buscar el documento del alumno por su DNI
             val query = firestore.collection(COLLECTION_ALUMNOS)
                 .whereEqualTo("dni", alumnoDni)
                 .limit(1)
@@ -584,21 +586,21 @@ class AlumnoRepositoryImpl @Inject constructor(
                 .await()
                 
             if (query.isEmpty) {
-                Timber.w("No se encontró alumno con DNI: $alumnoDni")
+                Timber.e("No se encontró el alumno con DNI: $alumnoDni")
                 return@withContext Result.Error(Exception("Alumno no encontrado"))
             }
             
-            // Actualizar el documento con el nuevo profesorId
-            val documentSnapshot = query.documents.first()
-            firestore.collection(COLLECTION_ALUMNOS)
-                .document(documentSnapshot.id)
-                .update("profesorId", profesorId)
-                .await()
+            // Obtener la referencia al documento y actualizar el campo profesorId
+            val documentRef = query.documents.first().reference
+            documentRef.update("profesorId", profesorId).await()
             
-            Timber.d("Profesor actualizado para alumno: $alumnoDni, nuevo profesor: $profesorId")
+            // También guardarlo en el array profesorIds si existe
+            documentRef.update("profesorIds", com.google.firebase.firestore.FieldValue.arrayUnion(profesorId)).await()
+            
+            Timber.d("Profesor actualizado correctamente para el alumno $alumnoDni")
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error al actualizar profesor para alumno: $alumnoDni")
+            Timber.e(e, "Error al actualizar profesor para alumno $alumnoDni")
             return@withContext Result.Error(e)
         }
     }

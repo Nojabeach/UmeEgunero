@@ -97,6 +97,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import com.tfg.umeegunero.util.performHapticFeedbackSafely
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 
 /**
  * Componente para mostrar una tarjeta en el dashboard con título, descripción e icono
@@ -305,7 +307,7 @@ fun ProfesorDashboardScreen(
         AlertDialog(
             onDismissRequest = { showChatFamiliasDialog = false },
             title = { Text("Chat con Familias") },
-            text = { Text("¿Quieres ver tus conversaciones con las familias?") },
+            text = { Text("¿Qué acción quieres realizar?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -318,12 +320,23 @@ fun ProfesorDashboardScreen(
                         }
                     }
                 ) {
-                    Text("Sí")
+                    Text("Ver mensajes")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showChatFamiliasDialog = false }) {
-                    Text("No")
+                TextButton(onClick = { 
+                    showChatFamiliasDialog = false
+                    try {
+                        // Pasamos solo el nombre de la ruta base, no la ruta completa con parámetros
+                        val chatRouteName = AppScreens.ChatProfesor.route.split("/")[0] // Extraer solo la parte "chat_profesor"
+                        navController.navigate(AppScreens.ChatContacts.createRoute(chatRouteName = chatRouteName))
+                        Timber.d("Navegación a Contactos de Chat exitosa con ruta: $chatRouteName")
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al navegar a Contactos de Chat: ${e.message}")
+                        viewModel.showSnackbarMessage("Error al navegar a Nuevo Chat")
+                    }
+                }) {
+                    Text("Nuevo chat")
                 }
             }
         )
@@ -445,7 +458,9 @@ fun ProfesorDashboardScreen(
         topBar = {
             ProfesorDashboardTopBar(
                 onProfileClick = { showPerfilDialog = true },
-                onLogoutClick = { showLogoutDialog = true }
+                onLogoutClick = { showLogoutDialog = true },
+                viewModel = viewModel,
+                navController = navController
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -484,41 +499,70 @@ fun ProfesorDashboardScreen(
 @Composable
 private fun ProfesorDashboardTopBar(
     onProfileClick: () -> Unit,
-    onLogoutClick: () -> Unit
+    onLogoutClick: () -> Unit,
+    viewModel: ProfesorDashboardViewModel = hiltViewModel(),
+    navController: NavController = rememberNavController()
 ) {
     val haptic = LocalHapticFeedback.current
+    // Observar el contador de mensajes no leídos
+    val unreadMessageCount by viewModel.unreadMessageCount.collectAsState()
     
     CenterAlignedTopAppBar(
-        title = {
-            Text(
-                text = "Panel de Profesor", // Título más conciso
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-            )
-        },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = ProfesorColor, // Color corporativo del profesor
-            titleContentColor = Color.White, // Color del título
-            actionIconContentColor = Color.White // Color de los iconos de acción
-        ),
+        title = { Text("Dashboard Profesor") },
         actions = {
+            // Icono de mensajes/chat con badge si hay mensajes no leídos
+            BadgedBox(
+                badge = {
+                    if (unreadMessageCount > 0) {
+                        Badge { 
+                            Text(
+                                text = if (unreadMessageCount > 99) "99+" else unreadMessageCount.toString(),
+                                style = MaterialTheme.typography.labelSmall
+                            ) 
+                        }
+                    }
+                }
+            ) {
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedbackSafely(HapticFeedbackType.LongPress)
+                        navController.navigate(AppScreens.UnifiedInbox.route)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Chat,
+                        contentDescription = "Mensajes"
+                    )
+                }
+            }
+            
             // Icono de perfil
-            IconButton(onClick = { onProfileClick() }) {
+            IconButton(onClick = { 
+                haptic.performHapticFeedbackSafely(HapticFeedbackType.LongPress)
+                onProfileClick() 
+            }) {
                 Icon(
-                    imageVector = Icons.Default.Face, // Icono más representativo para perfil
-                    contentDescription = "Ver Perfil",
-                    tint = Color.White // Asegurar tinte blanco
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Perfil"
                 )
             }
             
-            // Botón de cerrar sesión
-            IconButton(onClick = { onLogoutClick() }) {
+            // Icono de cerrar sesión
+            IconButton(onClick = {
+                haptic.performHapticFeedbackSafely(HapticFeedbackType.LongPress)
+                onLogoutClick()
+            }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                    contentDescription = "Cerrar sesión",
-                    tint = Color.White // Asegurar tinte blanco
+                    contentDescription = "Cerrar sesión"
                 )
             }
-        }
+        },
+        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            containerColor = ProfesorColor,
+            titleContentColor = Color.White,
+            actionIconContentColor = Color.White
+        )
     )
 }
 
@@ -580,13 +624,21 @@ fun ProfesorDashboardContent(
             }
         ),
         CategoriaCardData(
-            titulo = "Nuevo Mensaje",
-            descripcion = "Crear comunicados o mensajes personalizados",
+            titulo = "Nuevo Chat",
+            descripcion = "Iniciar conversación con familiares o profesores",
             icono = Icons.AutoMirrored.Filled.SpeakerNotes,
             color = ProfesorColor,
             onClick = { 
                 haptic.performHapticFeedbackSafely()
-                navController.navigate(AppScreens.NewMessage.createRoute())
+                try {
+                    // Pasamos solo el nombre de la ruta base, no la ruta completa con parámetros
+                    val chatRouteName = AppScreens.ChatProfesor.route.split("/")[0] // Extraer solo la parte "chat_profesor"
+                    navController.navigate(AppScreens.ChatContacts.createRoute(chatRouteName = chatRouteName))
+                    Timber.d("Navegación a Contactos de Chat exitosa con ruta: $chatRouteName")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Contactos de Chat: ${e.message}")
+                    viewModel.showSnackbarMessage("Error al navegar a Nuevo Chat")
+                }
             }
         )
     )
@@ -710,8 +762,19 @@ fun ProfesorDashboardContent(
                                             // Navegando explícitamente al Inbox y no usando el callback
                                             navController.navigate(AppScreens.UnifiedInbox.route)
                                             Timber.d("Navegación a Inbox Unificado exitosa")
+                                        } else if (card.titulo == "Nuevo Chat") {
+                                            // Navegación a contactos para nuevo chat
+                                            try {
+                                                // Pasamos solo el nombre de la ruta base, no la ruta completa con parámetros
+                                                val chatRouteName = AppScreens.ChatProfesor.route.split("/")[0] // Extraer solo la parte "chat_profesor"
+                                                navController.navigate(AppScreens.ChatContacts.createRoute(chatRouteName = chatRouteName))
+                                                Timber.d("Navegación a Contactos de Chat exitosa con ruta: $chatRouteName")
+                                            } catch (e: Exception) {
+                                                Timber.e(e, "Error al navegar a Contactos de Chat: ${e.message}")
+                                                viewModel.showSnackbarMessage("Error al navegar a Nuevo Chat")
+                                            }
                                         } else {
-                                            // Navegación a nuevo mensaje
+                                            // Para cualquier otro caso
                                             card.onClick()
                                         }
                                     } catch (e: Exception) {

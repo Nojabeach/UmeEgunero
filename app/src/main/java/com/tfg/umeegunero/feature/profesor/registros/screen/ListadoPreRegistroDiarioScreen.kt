@@ -427,6 +427,37 @@ fun AlumnoSelectionChip(
     modifier: Modifier = Modifier,
     tieneRegistro: Boolean = false
 ) {
+    var showEliminarRegistroDialog by remember { mutableStateOf(false) }
+    val viewModel = hiltViewModel<ListadoPreRegistroDiarioViewModel>()
+    
+    // Diálogo de confirmación para eliminar registro
+    if (showEliminarRegistroDialog) {
+        AlertDialog(
+            onDismissRequest = { showEliminarRegistroDialog = false },
+            title = { Text("Eliminar registro") },
+            text = { Text("¿Estás seguro de que quieres eliminar el registro de ${alumno.nombre}? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showEliminarRegistroDialog = false
+                        // Llamar a función en ViewModel para eliminar el registro
+                        viewModel.eliminarRegistro(alumno.id)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEliminarRegistroDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+    
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -437,12 +468,29 @@ fun AlumnoSelectionChip(
             isSelected -> MaterialTheme.colorScheme.primaryContainer
             else -> MaterialTheme.colorScheme.surface
         },
+        border = if (tieneRegistro) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+        } else {
+            null
+        },
         tonalElevation = 2.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = !tieneRegistro) { onSelectionChanged(!isSelected) }
+                .run {
+                    if (tieneRegistro) {
+                        // Si tiene registro, eliminar el clickable y agregar un tap para mostrar opciones
+                        this.pointerInput(Unit) {
+                            detectTapGestures {
+                                showEliminarRegistroDialog = true
+                            }
+                        }
+                    } else {
+                        // Si no tiene registro, mantener el comportamiento normal de selección
+                        this.clickable { onSelectionChanged(!isSelected) }
+                    }
+                }
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -489,7 +537,7 @@ fun AlumnoSelectionChip(
                     // Mensaje de estado
                     Text(
                         text = if (tieneRegistro) 
-                            "Ya registrado hoy • No seleccionable" 
+                            "Ya registrado hoy • Toca para eliminar" 
                         else 
                             "DNI: ${alumno.dni}",
                         style = MaterialTheme.typography.bodyMedium,
@@ -501,13 +549,17 @@ fun AlumnoSelectionChip(
                 }
             }
             
-            // Icono de selección
+            // Icono de selección o acción
             if (tieneRegistro) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "Registro bloqueado",
-                    tint = MaterialTheme.colorScheme.error
-                )
+                IconButton(
+                    onClick = { showEliminarRegistroDialog = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar registro",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             } else {
                 Icon(
                     imageVector = when {
@@ -704,6 +756,7 @@ fun ListadoPreRegistroDiarioScreenPreview() {
             fun limpiarError() {}
             fun limpiarMensajeExito() {}
             fun mostrarError(@Suppress("UNUSED_PARAMETER") mensaje: String) {}
+            fun eliminarRegistro(@Suppress("UNUSED_PARAMETER") id: String) {}
         }
         
         ListadoPreRegistroDiarioScreen(

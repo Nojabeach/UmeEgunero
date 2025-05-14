@@ -106,6 +106,10 @@ class ProfesorDashboardViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfesorDashboardUiState())
     val uiState: StateFlow<ProfesorDashboardUiState> = _uiState.asStateFlow()
 
+    // Flow específico para el contador de mensajes no leídos
+    private val _unreadMessageCount = MutableStateFlow(0)
+    val unreadMessageCount: StateFlow<Int> = _unreadMessageCount.asStateFlow()
+
     init {
         cargarDatosInicialesDashboard()
     }
@@ -365,6 +369,12 @@ class ProfesorDashboardViewModel @Inject constructor(
                                 totalMensajesNoLeidos = mensajes.size
                             )
                         }
+                        
+                        // Actualizar también el flow específico para la UI
+                        _unreadMessageCount.update { mensajes.size }
+                        
+                        // Programar actualizaciones periódicas de este contador
+                        iniciarActualizacionesPeriodicasMensajes(profesorId)
                     }
                     is Result.Error -> {
                         _uiState.update { it.copy(error = "Error al cargar mensajes: ${mensajesResult.exception?.message ?: "Error desconocido"}") }
@@ -375,6 +385,39 @@ class ProfesorDashboardViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error inesperado al cargar mensajes: ${e.message}") }
                 Timber.e(e, "Error inesperado al cargar mensajes no leídos")
+            }
+        }
+    }
+    
+    /**
+     * Inicia actualizaciones periódicas del contador de mensajes no leídos
+     */
+    private fun iniciarActualizacionesPeriodicasMensajes(profesorId: String) {
+        viewModelScope.launch {
+            while(true) {
+                // Esperar 5 minutos antes de actualizar de nuevo
+                kotlinx.coroutines.delay(5 * 60 * 1000)
+                
+                try {
+                    when (val mensajesResult = usuarioRepository.getMensajesNoLeidos(profesorId)) {
+                        is Result.Success -> {
+                            val mensajes = mensajesResult.data
+                            // Actualizar contador en el flow específico
+                            _unreadMessageCount.update { mensajes.size }
+                            
+                            // También actualizar el estado general
+                            _uiState.update { 
+                                it.copy(
+                                    mensajesNoLeidos = mensajes,
+                                    totalMensajesNoLeidos = mensajes.size
+                                )
+                            }
+                        }
+                        else -> { /* No hacer nada en caso de error o loading */ }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error en actualización periódica de mensajes: ${e.message}")
+                }
             }
         }
     }

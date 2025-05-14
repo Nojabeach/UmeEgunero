@@ -278,4 +278,19 @@ class LocalRegistroActividadRepository @Inject constructor(
             0
         }
     }
+    
+    /**
+     * Elimina un registro de actividad de la base de datos local por su ID
+     *
+     * @param registroId ID del registro a eliminar
+     */
+    suspend fun deleteRegistroActividad(registroId: String) {
+        try {
+            Timber.d("Eliminando registro local con ID: $registroId")
+            val rowsAffected = registroActividadDao.deleteRegistroById(registroId)
+            Timber.d("Registro eliminado: $registroId, filas afectadas: $rowsAffected")
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar registro local: $registroId")
+        }
+    }
 } 

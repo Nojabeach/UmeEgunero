@@ -410,4 +410,119 @@ class CursoRepository @Inject constructor() {
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene los cursos asignados a un profesor
+     * @param profesorId ID del profesor
+     * @return Result con la lista de cursos
+     */
+    suspend fun getCursosByProfesorId(profesorId: String): Result<List<Curso>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Obteniendo cursos para el profesor: $profesorId")
+            
+            // Primero obtenemos las clases asignadas al profesor
+            val clasesResult = firestore.collection("clases")
+                .whereEqualTo("profesorId", profesorId)
+                .get()
+                .await()
+                
+            // También buscar en profesorTitularId y profesoresAuxiliaresIds
+            val clasesProfTitular = firestore.collection("clases")
+                .whereEqualTo("profesorTitularId", profesorId)
+                .get()
+                .await()
+                
+            val clasesAuxiliares = firestore.collection("clases")
+                .whereArrayContains("profesoresAuxiliaresIds", profesorId)
+                .get()
+                .await()
+                
+            // Combinar resultados y eliminar duplicados
+            val documentos = (clasesResult.documents + 
+                            clasesProfTitular.documents +
+                            clasesAuxiliares.documents).distinctBy { it.id }
+            
+            // Obtener IDs de cursos únicos
+            val cursosIds = documentos.mapNotNull { doc ->
+                doc.getString("cursoId")
+            }.distinct()
+            
+            Timber.d("IDs de cursos encontrados para el profesor $profesorId: $cursosIds")
+            
+            if (cursosIds.isEmpty()) {
+                return@withContext Result.Success(emptyList())
+            }
+            
+            // Ahora obtenemos los detalles de cada curso
+            val cursos = mutableListOf<Curso>()
+            for (cursoId in cursosIds) {
+                val cursoDoc = cursosCollection.document(cursoId).get().await()
+                if (cursoDoc.exists()) {
+                    val curso = cursoDoc.toObject(Curso::class.java)?.copy(id = cursoDoc.id)
+                    if (curso != null) {
+                        cursos.add(curso)
+                    }
+                }
+            }
+            
+            Timber.d("Obtenidos ${cursos.size} cursos para el profesor $profesorId")
+            return@withContext Result.Success(cursos)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener cursos para el profesor $profesorId")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene las clases de un curso específico asignadas a un profesor
+     * @param cursoId ID del curso
+     * @param profesorId ID del profesor
+     * @return Result con la lista de clases
+     */
+    suspend fun getClasesByCursoAndProfesor(cursoId: String, profesorId: String): Result<List<Clase>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Obteniendo clases para el curso $cursoId y profesor $profesorId")
+            
+            // Consultar clases donde el profesor es el titular
+            val clasesQuery1 = firestore.collection("clases")
+                .whereEqualTo("cursoId", cursoId)
+                .whereEqualTo("profesorId", profesorId)
+                .get()
+                .await()
+                
+            // Consultar clases donde el profesor es el titular (campo alternativo)
+            val clasesQuery2 = firestore.collection("clases")
+                .whereEqualTo("cursoId", cursoId)
+                .whereEqualTo("profesorTitularId", profesorId)
+                .get()
+                .await()
+                
+            // Consultar clases donde el profesor es auxiliar
+            val clasesQuery3 = firestore.collection("clases")
+                .whereEqualTo("cursoId", cursoId)
+                .whereArrayContains("profesoresAuxiliaresIds", profesorId)
+                .get()
+                .await()
+                
+            // Combinar resultados y eliminar duplicados
+            val documentos = (clasesQuery1.documents + 
+                            clasesQuery2.documents +
+                            clasesQuery3.documents).distinctBy { it.id }
+            
+            val clases = documentos.mapNotNull { doc ->
+                try {
+                    doc.toObject(Clase::class.java)?.copy(id = doc.id)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al convertir documento a Clase: ${doc.id}")
+                    null
+                }
+            }
+            
+            Timber.d("Encontradas ${clases.size} clases para el curso $cursoId y profesor $profesorId")
+            return@withContext Result.Success(clases)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener clases para el curso $cursoId y profesor $profesorId")
+            return@withContext Result.Error(e)
+        }
+    }
 }

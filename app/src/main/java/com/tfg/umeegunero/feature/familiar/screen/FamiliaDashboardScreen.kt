@@ -170,7 +170,7 @@ fun FamiliaDashboardScreen(
         }
     }
     
-    // Diálogo para crear una nueva solicitud de vinculación
+    // Diálogos de confirmación
     if (showNuevaSolicitudDialog) {
         NuevaSolicitudDialog(
             centros = uiState.centros,
@@ -183,7 +183,6 @@ fun FamiliaDashboardScreen(
         )
     }
     
-    // Diálogo de confirmación para cerrar sesión
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -212,7 +211,6 @@ fun FamiliaDashboardScreen(
         )
     }
     
-    // Diálogo de confirmación para ir a notificaciones
     if (showNavigateToNotificacionesDialog) {
         AlertDialog(
             onDismissRequest = { showNavigateToNotificacionesDialog = false },
@@ -241,7 +239,6 @@ fun FamiliaDashboardScreen(
         )
     }
     
-    // Diálogo de confirmación para ir a calendario
     if (showNavigateToCalendarioDialog) {
         AlertDialog(
             onDismissRequest = { showNavigateToCalendarioDialog = false },
@@ -270,12 +267,11 @@ fun FamiliaDashboardScreen(
         )
     }
     
-    // Diálogo de confirmación para ir a mensajes
     if (showNavigateToMensajesDialog) {
         AlertDialog(
             onDismissRequest = { showNavigateToMensajesDialog = false },
-            title = { Text("Mensajes Unificados") },
-            text = { Text("¿Quieres acceder a tu bandeja de mensajes unificada?") },
+            title = { Text("Chat") },
+            text = { Text("¿Quieres abrir el chat para comunicarte con el centro?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -285,7 +281,7 @@ fun FamiliaDashboardScreen(
                             Timber.e(e, "Error al realizar feedback háptico")
                         }
                         showNavigateToMensajesDialog = false
-                        navController.navigate(AppScreens.UnifiedInbox.route)
+                        navController.navigate(AppScreens.ChatContacts.createRoute("familiar"))
                     }
                 ) {
                     Text("Sí")
@@ -299,7 +295,6 @@ fun FamiliaDashboardScreen(
         )
     }
     
-    // Diálogo de confirmación para ir a configuración
     if (showNavigateToConfiguracionDialog) {
         AlertDialog(
             onDismissRequest = { showNavigateToConfiguracionDialog = false },
@@ -328,14 +323,13 @@ fun FamiliaDashboardScreen(
         )
     }
     
-    // Diálogo de confirmación para ir a historial
     if (showNavigateToHistorialDialog) {
         AlertDialog(
             onDismissRequest = { showNavigateToHistorialDialog = false },
             title = { Text("Historial") },
             text = { 
                 if (uiState.hijoSeleccionado != null) {
-                    Text("¿Quieres ver el historial de ${uiState.hijoSeleccionado!!.nombre}?")
+                    Text("¿Quieres ver el historial completo de ${uiState.hijoSeleccionado!!.nombre}?")
                 } else {
                     Text("Necesitas seleccionar un hijo primero")
                 }
@@ -387,23 +381,27 @@ fun FamiliaDashboardScreen(
                     )
                 },
                 actions = {
-                    // Botón de mensajes con badge para notificaciones
+                    // Badge para notificaciones reales
+                    val pendingCount = uiState.registrosSinLeer
+                    
+                    // Botón de notificaciones con badge
                     BadgedBox(
                         badge = {
-                            if (uiState.totalMensajesNoLeidos > 0) {
-                                Badge { Text(uiState.totalMensajesNoLeidos.toString()) }
+                            if (pendingCount > 0) {
+                                Badge { Text(pendingCount.toString()) }
                             }
                         }
                     ) {
                         IconButton(
-                            onClick = { showNavigateToMensajesDialog = true }
+                            onClick = { showNavigateToNotificacionesDialog = true }
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Chat,
-                                contentDescription = "Mensajes"
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Notificaciones"
                             )
                         }
                     }
+                    
                     // Icono de perfil
                     IconButton(onClick = { showNavigateToConfiguracionDialog = true }) {
                         Icon(
@@ -411,6 +409,7 @@ fun FamiliaDashboardScreen(
                             contentDescription = "Perfil"
                         )
                     }
+                    
                     // Cerrar sesión
                     IconButton(onClick = { showLogoutDialog = true }) {
                         Icon(
@@ -468,47 +467,34 @@ fun FamiliaDashboardScreen(
                 ),
                 exit = fadeOut()
             ) {
-                val cards = listOf(
-                    CategoriaCardData("Mensajes", "Mensajería unificada y comunicados del centro", Icons.AutoMirrored.Filled.Chat, MaterialTheme.colorScheme.primary, onClick = { 
-                        navController.navigate(AppScreens.UnifiedInbox.route)
-                    }),
-                    CategoriaCardData("Calendario", "Revisa eventos y fechas importantes", Icons.Default.CalendarMonth, MaterialTheme.colorScheme.tertiary, onClick = { showNavigateToCalendarioDialog = true }),
-                    CategoriaCardData("Historial", "Consulta el registro diario de tu hijo/a", Icons.AutoMirrored.Filled.Assignment, MaterialTheme.colorScheme.secondary, onClick = { showNavigateToHistorialDialog = true }),
-                    CategoriaCardData("Notificaciones", "Revisa todas las notificaciones pendientes", Icons.Default.Notifications, MaterialTheme.colorScheme.primary, onClick = { showNavigateToNotificacionesDialog = true })
-                )
-                
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(bottom = 80.dp) // Espacio para el FAB
                 ) {
                     // Header de bienvenida
-                    item(span = { GridItemSpan(2) }) {
+                    item {
                         BienvenidaCard(
                             nombreFamiliar = uiState.familiar?.nombre ?: "Familiar",
                             totalHijos = uiState.hijos.size
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                     
-                    // Selector de hijos
-                    item(span = { GridItemSpan(2) }) {
-                        HijosMultiSelector(
+                    // Selector de hijos en formato dropdown
+                    item {
+                        HijosDropdownSelector(
                             hijos = uiState.hijos,
                             hijoSeleccionado = uiState.hijoSeleccionado,
                             onHijoSelected = { viewModel.seleccionarHijo(it) }
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                     
                     // Sección de solicitudes pendientes
                     if (uiState.solicitudesPendientes.isNotEmpty()) {
-                        item(span = { GridItemSpan(2) }) {
+                        item {
                             Text(
                                 text = "Solicitudes pendientes",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -518,49 +504,22 @@ fun FamiliaDashboardScreen(
                             SolicitudesPendientesCard(
                                 solicitudes = uiState.solicitudesPendientes
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
                     
-                    // Divider y sección de accesos rápidos
-                    item(span = { GridItemSpan(2) }) {
-                        Text(
-                            text = "Accesos rápidos",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = FamiliarColor,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        HorizontalDivider(thickness = 2.dp, color = FamiliarColor.copy(alpha = 0.2f))
-                    }
-                    
-                    items(cards.size) { index ->
-                        val card = cards[index]
-                        CategoriaCard(
-                            titulo = card.titulo,
-                            descripcion = card.descripcion,
-                            icono = card.icono,
-                            color = FamiliarColor,
-                            iconTint = card.iconTint,
-                            border = true,
-                            onClick = card.onClick,
-                            modifier = Modifier.padding(4.dp)
-                        )
-                    }
-                    
-                    // Divider y sección de resumen de actividad (solo si hay un hijo seleccionado)
+                    // PRIMERA SECCIÓN: Registro diario de actividad (con prioridad)
                     if (uiState.hijoSeleccionado != null) {
-                        item(span = { GridItemSpan(2) }) {
-                            Spacer(Modifier.height(16.dp))
+                        item {
                             Text(
-                                text = "Resumen de Actividad",
+                                text = "Registro de Actividad",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                 color = FamiliarColor,
-                                modifier = Modifier.padding(bottom = 4.dp)
+                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                             )
                             HorizontalDivider(thickness = 2.dp, color = FamiliarColor.copy(alpha = 0.2f))
-                        }
-                        
-                        item(span = { GridItemSpan(2) }) {
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
                             ResumenActividadCard(
                                 alumno = uiState.hijoSeleccionado!!,
                                 registrosActividad = uiState.registrosActividad,
@@ -577,33 +536,304 @@ fun FamiliaDashboardScreen(
                                 }
                             )
                         }
+                    } else if (uiState.hijos.isEmpty()) {
+                        // Mensaje cuando no hay hijos vinculados
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    
+                                    Text(
+                                        text = "No tienes hijos vinculados",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    Text(
+                                        text = "Usa el botón + para solicitar vincular un hijo a tu cuenta",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
                     }
                     
-                    // Divider y sección de notificaciones
-                    item(span = { GridItemSpan(2) }) {
-                        Spacer(Modifier.height(16.dp))
+                    // SEGUNDA SECCIÓN: Accesos rápidos
+                    item {
                         Text(
-                            text = "Notificaciones",
+                            text = "Accesos rápidos",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = FamiliarColor,
-                            modifier = Modifier.padding(bottom = 4.dp)
+                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                         )
                         HorizontalDivider(thickness = 2.dp, color = FamiliarColor.copy(alpha = 0.2f))
                     }
                     
-                    item(span = { GridItemSpan(2) }) {
-                        NotificacionesCard(
-                            totalNoLeidas = uiState.registrosSinLeer,
-                            onVerTodas = { navController.navigate(AppScreens.NotificacionesFamilia.route) }
+                    // Botón de Historial
+                    item {
+                        AccionRapidaCard(
+                            titulo = "Historial",
+                            descripcion = "Consulta los registros históricos de actividad",
+                            icono = Icons.AutoMirrored.Filled.Assignment,
+                            onClick = { showNavigateToHistorialDialog = true },
+                            enabled = uiState.hijoSeleccionado != null
+                        )
+                    }
+                    
+                    // Botón de Notificaciones
+                    item {
+                        AccionRapidaCard(
+                            titulo = "Notificaciones",
+                            descripcion = "Revisa notificaciones y recordatorios importantes",
+                            icono = Icons.Default.Notifications,
+                            onClick = { showNavigateToNotificacionesDialog = true },
+                            badgeCount = uiState.registrosSinLeer
+                        )
+                    }
+                    
+                    // Botón de Chat
+                    item {
+                        AccionRapidaCard(
+                            titulo = "Chat",
+                            descripcion = "Comunícate directamente con el profesor",
+                            icono = Icons.AutoMirrored.Filled.Chat,
+                            onClick = { showNavigateToMensajesDialog = true }
+                        )
+                    }
+                    
+                    // Botón de Calendario
+                    item {
+                        AccionRapidaCard(
+                            titulo = "Calendario",
+                            descripcion = "Consulta eventos y fechas importantes",
+                            icono = Icons.Default.DateRange,
+                            onClick = { showNavigateToCalendarioDialog = true }
                         )
                     }
                     
                     // Espaciador final
-                    item(span = { GridItemSpan(2) }) {
+                    item {
                         Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Selector de hijos en formato dropdown
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HijosDropdownSelector(
+    hijos: List<Alumno>,
+    hijoSeleccionado: Alumno?,
+    onHijoSelected: (Alumno) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Selecciona un hijo",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = FamiliarColor
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            if (hijos.isEmpty()) {
+                Text(
+                    text = "No tienes hijos vinculados",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = hijoSeleccionado?.nombre ?: "Selecciona un hijo",
+                        onValueChange = { },
+                        readOnly = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                            focusedBorderColor = FamiliarColor,
+                            unfocusedBorderColor = FamiliarColor.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        hijos.forEach { hijo ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        // Avatar circular con inicial
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(CircleShape)
+                                                .background(FamiliarColor),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = hijo.nombre.first().toString(),
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        
+                                        Text(hijo.nombre)
+                                    }
+                                },
+                                onClick = {
+                                    onHijoSelected(hijo)
+                                    expanded = false
+                                },
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tarjeta para una acción rápida en el dashboard
+ */
+@Composable
+fun AccionRapidaCard(
+    titulo: String,
+    descripcion: String,
+    icono: ImageVector,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    badgeCount: Int = 0
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (enabled) 
+                MaterialTheme.colorScheme.surface 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icono con badge si es necesario
+            BadgedBox(
+                badge = {
+                    if (badgeCount > 0) {
+                        Badge {
+                            Text(
+                                text = badgeCount.toString(),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
+                    }
+                }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(FamiliarColor.copy(alpha = if (enabled) 1f else 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icono,
+                        contentDescription = titulo,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (enabled) 
+                        MaterialTheme.colorScheme.onSurface 
+                    else 
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+                
+                Text(
+                    text = descripcion,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (enabled) 
+                        MaterialTheme.colorScheme.onSurfaceVariant 
+                    else 
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+            }
+            
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Ir a $titulo",
+                tint = if (enabled) 
+                    FamiliarColor 
+                else 
+                    FamiliarColor.copy(alpha = 0.5f)
+            )
         }
     }
 }
@@ -710,152 +940,6 @@ fun BienvenidaCard(
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
-            }
-        }
-    }
-}
-
-/**
- * Componente que permite seleccionar entre múltiples hijos vinculados a la cuenta familiar.
- * 
- * @param hijos Lista de alumnos vinculados al familiar
- * @param hijoSeleccionado Alumno actualmente seleccionado
- * @param onHijoSelected Callback cuando se selecciona un hijo
- */
-@Composable
-fun HijosMultiSelector(
-    hijos: List<Alumno>,
-    hijoSeleccionado: Alumno?,
-    onHijoSelected: (Alumno) -> Unit
-) {
-    val haptic = LocalHapticFeedback.current
-    if (hijos.isEmpty()) {
-        // Si no hay hijos, mostrar un mensaje informativo
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
-            ),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(24.dp)
-                )
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                Text(
-                    text = "Usa el botón + para solicitar vincular un hijo a tu cuenta",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-        }
-    } else {
-        // Vista normal con selección de hijos
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Mis hijos",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(hijos) { hijo ->
-                        val isSelected = hijo.dni == hijoSeleccionado?.dni
-                        
-                        Card(
-                            modifier = Modifier
-                                .width(120.dp)
-                                .height(140.dp)
-                                .clickable { 
-                                    try {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Error al realizar feedback háptico")
-                                    }
-                                    onHijoSelected(hijo) 
-                                },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected) 
-                                    FamiliarColor.copy(alpha = 0.2f) 
-                                else 
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            border = if (isSelected) 
-                                BorderStroke(2.dp, FamiliarColor)
-                            else 
-                                null
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                // Avatar/Inicial del alumno
-                                Box(
-                                    modifier = Modifier
-                                        .size(60.dp)
-                                        .clip(CircleShape)
-                                        .background(if (isSelected) FamiliarColor else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = hijo.nombre.first().toString(),
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        color = Color.White
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = hijo.nombre,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                                
-                                if (hijo.fechaNacimiento != null) {
-                                    Text(
-                                        text = "${DateUtils.calcularEdad(hijo.fechaNacimiento!!)} años",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
@@ -1348,87 +1432,6 @@ fun ActividadInfoItem(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
         )
-    }
-}
-
-/**
- * Tarjeta de notificaciones para mostrar resumen de notificaciones pendientes
- * 
- * @param totalNoLeidas Total de notificaciones o registros sin leer
- * @param onVerTodas Callback cuando se quiere ver todas las notificaciones
- */
-@Composable
-fun NotificacionesCard(
-    totalNoLeidas: Int,
-    onVerTodas: () -> Unit
-) {
-    val haptic = LocalHapticFeedback.current
-    
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (totalNoLeidas > 0) {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.error
-                        ) {
-                            Text(
-                                text = totalNoLeidas.toString(),
-                                color = MaterialTheme.colorScheme.onError
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    
-                    Text(
-                        text = if (totalNoLeidas > 0) 
-                            "Tienes $totalNoLeidas ${if (totalNoLeidas == 1) "registro" else "registros"} sin leer"
-                        else
-                            "No hay notificaciones pendientes",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (totalNoLeidas > 0) 
-                            MaterialTheme.colorScheme.error 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Button(
-                onClick = { 
-                    try {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al realizar feedback háptico")
-                    }
-                    onVerTodas() 
-                },
-                modifier = Modifier.align(Alignment.End),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = FamiliarColor
-                )
-            ) {
-                Text("Ver todas")
-            }
-        }
     }
 }
 

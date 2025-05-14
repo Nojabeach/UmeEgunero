@@ -312,13 +312,26 @@ sealed class AppScreens(val route: String) {
     }
     
     /**
-     * Pantalla de chat entre usuarios
-     * @param familiarId Identificador del familiar
-     * @param alumnoId Identificador del alumno (opcional)
+     * Chat con otro usuario (profesor, familiar, etc.)
      */
-    object Chat : AppScreens("chat/{familiarId}/{alumnoId}") {
-        fun createRoute(familiarId: String, alumnoId: String? = null) = 
-            if (alumnoId != null) "chat/$familiarId/$alumnoId" else "chat/$familiarId"
+    object Chat : AppScreens("chat/{conversacionId}/{participanteId}?alumnoId={alumnoId}") {
+        fun createRoute(participanteId: String, conversacionId: String, alumnoId: String? = null): String {
+            return if (alumnoId != null) {
+                "chat/$conversacionId/$participanteId?alumnoId=$alumnoId"
+            } else {
+                "chat/$conversacionId/$participanteId"
+            }
+        }
+        
+        val arguments = listOf(
+            navArgument("conversacionId") { type = NavType.StringType },
+            navArgument("participanteId") { type = NavType.StringType },
+            navArgument("alumnoId") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }
+        )
     }
 
     /** Pantalla de gestión de centros educativos */
@@ -434,6 +447,15 @@ sealed class AppScreens(val route: String) {
     
     /** Pantalla de conversaciones para el profesor */
     object ConversacionesProfesor : AppScreens("conversaciones_profesor")
+    
+    /** Pantalla de contactos para iniciar un chat nuevo */
+    object ChatContacts : AppScreens("chat_contacts/{chatRouteName}") {
+        fun createRoute(chatRouteName: String) = "chat_contacts/$chatRouteName"
+        
+        val arguments = listOf(
+            navArgument("chatRouteName") { type = NavType.StringType }
+        )
+    }
     
     /**
      * Detalles de un alumno desde la perspectiva del profesor

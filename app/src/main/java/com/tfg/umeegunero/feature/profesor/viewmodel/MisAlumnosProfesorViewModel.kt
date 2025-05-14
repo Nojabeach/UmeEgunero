@@ -3,448 +3,411 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
-import com.tfg.umeegunero.data.model.TipoUsuario
-import com.tfg.umeegunero.data.model.Familiar
+import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.repository.AlumnoRepository
-import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
-import com.tfg.umeegunero.data.repository.ProfesorRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.repository.EventoRepository
-import com.tfg.umeegunero.util.FileSaverUtil
+import com.tfg.umeegunero.data.repository.CursoRepository
+import com.tfg.umeegunero.data.repository.ProfesorRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import javax.inject.Inject
 import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
-import com.tfg.umeegunero.data.model.Evento
-import com.tfg.umeegunero.data.model.TipoEvento
-import java.util.Date
-import com.google.firebase.Timestamp
-import kotlinx.coroutines.delay
-import java.time.format.DateTimeFormatter
 import java.time.LocalDateTime
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.flow.update
+import java.time.format.DateTimeFormatter
+import java.time.Period
+import javax.inject.Inject
 
 /**
- * Estado UI para la pantalla "Mis Alumnos".
+ * Estado de la UI para la pantalla de alumnos del profesor
  */
 data class MisAlumnosUiState(
     val isLoading: Boolean = false,
-    val alumnos: List<Alumno> = emptyList(),
     val error: String? = null,
-    val clase: String = "",
-    val mensajeExito: String? = null
+    val mensaje: String? = null,
+    val alumnos: List<Alumno> = emptyList(),
+    val profesorActual: Usuario? = null,
+    val claseActual: Clase? = null,
+    val informeGenerado: Boolean = false,
+    val informeContenido: String = "",
+    val informeFormato: String = "pdf",
+    val cursos: List<Curso> = emptyList(),
+    val clases: List<Clase> = emptyList(),
+    val cursoSeleccionado: Curso? = null,
+    val claseSeleccionada: Clase? = null
 )
 
 /**
- * ViewModel para la pantalla "Mis Alumnos" del profesor.
- *
- * Gestiona la carga y filtrado de alumnos asignados al profesor.
- * Proporciona acceso a la información detallada de cada alumno,
- * incluyendo sus vinculaciones familiares.
+ * ViewModel para la gestión de alumnos del profesor
  */
 @HiltViewModel
 class MisAlumnosProfesorViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository,
-    private val profesorRepository: ProfesorRepository,
     private val alumnoRepository: AlumnoRepository,
+    private val usuarioRepository: UsuarioRepository,
     private val claseRepository: ClaseRepository,
-    private val calendarioRepository: CalendarioRepository,
-    private val authRepository: AuthRepository,
-    private val eventoRepository: EventoRepository,
-    private val firestore: FirebaseFirestore,
-    private val fileSaverUtil: FileSaverUtil
+    private val cursoRepository: CursoRepository,
+    private val profesorRepository: ProfesorRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MisAlumnosUiState())
     val uiState: StateFlow<MisAlumnosUiState> = _uiState.asStateFlow()
 
     init {
-        cargarAlumnos()
+        cargarDatosIniciales()
     }
 
-    /**
-     * Carga los alumnos asignados al profesor actual
-     */
-    fun cargarAlumnos() {
+    private fun cargarDatosIniciales() {
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
                 
-                // Obtener ID del usuario actual
-                val usuario = authRepository.getCurrentUser()
-                if (usuario == null) {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        error = "No se pudo obtener el usuario actual"
-                    ) }
-                    return@launch
-                }
-                
-                Timber.d("Cargando alumnos para usuario con DNI: ${usuario.dni}")
-                
-                // Obtener el perfil de profesor del usuario
-                val perfilProfesor = usuario.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
-                if (perfilProfesor == null) {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        error = "El usuario no tiene perfil de profesor"
-                    ) }
-                    return@launch
-                }
-                
-                val centroId = perfilProfesor.centroId
-                val profesorId = usuario.dni
-                
-                Timber.d("Profesor identificado. DNI: $profesorId, Centro: $centroId")
-                
-                // Lista para almacenar todos los alumnos
-                val todosLosAlumnos = mutableListOf<Alumno>()
-                var nombreClase = ""
-                
-                // 1. Obtener alumnos donde este profesor es el asignado directamente
-                Timber.d("Buscando alumnos con profesor asignado: $profesorId")
-                val alumnosDirectos = alumnoRepository.getAlumnosForProfesor(profesorId)
-                todosLosAlumnos.addAll(alumnosDirectos)
-                Timber.d("Encontrados ${alumnosDirectos.size} alumnos asignados directamente")
-                
-                // 2. Obtener clases asignadas al profesor
-                val clasesResult = claseRepository.getClasesByProfesor(profesorId)
-                if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
-                    Timber.d("Encontradas ${clasesResult.data.size} clases para el profesor")
+                // Obtener profesor actual
+                val profesor = usuarioRepository.getCurrentUser()
+                if (profesor != null) {
+                    _uiState.update { it.copy(profesorActual = profesor) }
                     
-                    // Para cada clase, obtener sus alumnos
-                    for (clase in clasesResult.data) {
-                        // Guardamos el nombre de la primera clase (para simplificar)
-                        if (nombreClase.isEmpty()) {
-                            nombreClase = clase.nombre
-                        }
-                        
-                        Timber.d("Procesando clase: ${clase.id} - ${clase.nombre}")
-                        
-                        // Usar múltiples métodos para obtener alumnos
-                        
-                        // Método 1: Obtener por ID de clase
-                        val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
-                        if (alumnosResult is Result.Success) {
-                            Timber.d("Método 1 - Encontrados ${alumnosResult.data.size} alumnos en clase ${clase.nombre}")
-                            todosLosAlumnos.addAll(alumnosResult.data)
-                        }
-                        
-                        // Método 2: Usar alumnosIds de la clase
-                        clase.alumnosIds?.let { ids ->
-                            if (ids.isNotEmpty()) {
-                                Timber.d("Método 2 - La clase tiene ${ids.size} IDs de alumnos")
-                                for (alumnoId in ids) {
-                                    try {
-                                        val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
-                                        if (alumnoResult is Result.Success) {
-                                            todosLosAlumnos.add(alumnoResult.data)
-                                            Timber.d("Método 2 - Añadido alumno: ${alumnoResult.data.nombre}")
-                                        }
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Error al cargar alumno por ID: $alumnoId")
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Método 3: Obtener alumnos por documento
-                        val alumnosPorClase = alumnoRepository.getAlumnosPorClase(clase.id)
-                        if (alumnosPorClase.isNotEmpty()) {
-                            Timber.d("Método 3 - Encontrados ${alumnosPorClase.size} alumnos por clase")
-                            todosLosAlumnos.addAll(alumnosPorClase)
-                        }
-                    }
+                    // Cargar cursos disponibles
+                    cargarCursos(profesor.dni)
                 } else {
-                    // Intentamos buscar clases asignadas al profesor directamente en la base de datos
-                    Timber.d("No se encontraron clases asignadas a este profesor en la búsqueda principal")
-                    
-                    // Intentar buscar por el ID del profesor en caso de que no esté correctamente mapeado
-                    val clasesResultDirecto = claseRepository.getClasesByProfesorId(profesorId)
-                    if (clasesResultDirecto is Result.Success && clasesResultDirecto.data.isNotEmpty()) {
-                        val clases = clasesResultDirecto.data
-                        Timber.d("Encontradas ${clases.size} clases mediante búsqueda directa por ID")
-                        
-                        for (clase in clases) {
-                            // Guardamos el nombre de la primera clase
-                            if (nombreClase.isEmpty()) {
-                                nombreClase = clase.nombre
-                            }
-                            
-                            // Obtener alumnos de la clase
-                            val alumnosResult = alumnoRepository.getAlumnosByClaseId(clase.id)
-                            if (alumnosResult is Result.Success) {
-                                todosLosAlumnos.addAll(alumnosResult.data)
-                                Timber.d("Añadidos ${alumnosResult.data.size} alumnos de clase ${clase.nombre}")
-                            }
-                        }
-                    } else {
-                        Timber.d("No hay clases asignadas al profesor $profesorId")
+                    _uiState.update { 
+                        it.copy(
+                            error = "No se pudo obtener información del profesor actual",
+                            isLoading = false
+                        )
                     }
                 }
-                
-                // 4. Buscar por centro educativo si no se encontraron alumnos
-                if (centroId.isNotEmpty() && todosLosAlumnos.isEmpty()) {
-                    Timber.d("Buscando alumnos por centroId: $centroId")
-                    try {
-                        val alumnosDelCentro = cargarAlumnosPorCentro(centroId)
-                        if (alumnosDelCentro.isNotEmpty()) {
-                            Timber.d("Encontrados ${alumnosDelCentro.size} alumnos del centro")
-                            todosLosAlumnos.addAll(alumnosDelCentro)
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al cargar alumnos por centro: ${e.message}")
-                    }
-                }
-                
-                // Eliminar duplicados
-                val alumnosSinDuplicados = todosLosAlumnos.distinctBy { it.dni }
-                Timber.d("Total de alumnos sin duplicados: ${alumnosSinDuplicados.size}")
-                
-                // Si no hay alumnos, mostrar mensaje específico
-                if (alumnosSinDuplicados.isEmpty()) {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        error = "No hay alumnos asignados a este profesor",
-                        alumnos = emptyList(),
-                        clase = nombreClase
-                    ) }
-                } else {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        alumnos = alumnosSinDuplicados,
-                        clase = nombreClase
-                    ) }
-                    Timber.d("Cargados ${alumnosSinDuplicados.size} alumnos para el profesor")
-                }
-                
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar alumnos del profesor: ${e.message}")
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = "Error al cargar alumnos: ${e.message}"
-                ) }
-            }
-        }
-    }
-    
-    /**
-     * Carga alumnos por centro educativo
-     */
-    private suspend fun cargarAlumnosPorCentro(centroId: String): List<Alumno> {
-        return try {
-            // Intentar con el repositorio 
-            val result = alumnoRepository.getAlumnosByCentroId(centroId)
-            Timber.d("Resultado de carga por centro: ${result.size} alumnos")
-            
-            // Si no hay alumnos por el método directo, intentar con método alternativo
-            if (result.isEmpty()) {
-                Timber.d("Intentando método alternativo de carga por centro")
-                val resultAlternativo = alumnoRepository.getAlumnosByCentro(centroId)
-                if (resultAlternativo is Result.Success) {
-                    Timber.d("Método alternativo: ${resultAlternativo.data.size} alumnos")
-                    return resultAlternativo.data
-                }
-            }
-            
-            return result
-        } catch (e: Exception) {
-            Timber.e(e, "Error en cargarAlumnosPorCentro: ${e.message}")
-            emptyList()
-        }
-    }
-    
-    /**
-     * Refresca la lista de alumnos
-     */
-    fun refrescarAlumnos() {
-        cargarAlumnos()
-    }
-
-    /**
-     * Programa una reunión con el familiar de un alumno
-     */
-    fun programarReunion(alumnoId: String, titulo: String, fecha: String, hora: String, descripcion: String) {
-        viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(isLoading = true, error = null) }
-                
-                // Obtener datos del usuario actual (profesor)
-                val currentUser = authRepository.getCurrentUser()
-                if (currentUser == null) {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        error = "Usuario no autenticado"
-                    ) }
-                    return@launch
-                }
-                
-                // Obtener datos del profesor
-                val profesorId = currentUser.dni
-                
-                try {
-                    // Manejar el resultado sin depender de tipos específicos
-                    val profesorResult = profesorRepository.getProfesorById(profesorId)
-                    
-                    // Variable para almacenar el centroId
-                    var centroId = ""
-                    
-                    // Obtener centroId de diferentes fuentes
-                    centroId = when {
-                        // Intento 1: Obtener del perfil del usuario actual (modo más seguro)
-                        currentUser.perfiles.any { it.tipo == TipoUsuario.PROFESOR && it.centroId.isNotEmpty() } -> 
-                            currentUser.perfiles.first { it.tipo == TipoUsuario.PROFESOR }.centroId
-                        
-                        // Intento 2: Obtener un valor por defecto si todo falla
-                        else -> ""
-                    }
-                    
-                    Timber.d("Programando reunión con centroId: $centroId")
-                    
-                    // Usar el modelo de Evento existente con los parámetros que acepta
-                    val evento = Evento(
-                        id = "",
-                        titulo = titulo,
-                        descripcion = "$descripcion\\n\\nFecha: $fecha\\nHora: $hora",
-                        fecha = Timestamp.now(), // Usamos la fecha actual
-                        tipo = TipoEvento.REUNION,
-                        creadorId = profesorId,
-                        centroId = centroId,
-                        recordatorio = true,
-                        tiempoRecordatorioMinutos = 30,
-                        publico = false,
-                        destinatarios = listOf(alumnoId),
-                        ubicacion = "Centro educativo - Sala de reuniones"
+                Timber.e(e, "Error al cargar datos iniciales")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar datos: ${e.message}",
+                        isLoading = false
                     )
-                    
-                    // Guardar evento en Firestore
-                    val resultado = eventoRepository.crearEvento(evento)
-                    when (resultado) {
-                        is Result.Success -> {
-                            _uiState.update { it.copy(
-                                isLoading = false,
-                                mensajeExito = "Reunión programada correctamente",
-                                error = null
-                            ) }
-                            
-                            // Limpiar mensaje de éxito después de unos segundos
-                            delay(3000)
-                            _uiState.update { it.copy(mensajeExito = null) }
-                        }
-                        is Result.Error -> {
-                            _uiState.update { it.copy(
-                                isLoading = false,
-                                error = "Error al programar reunión: ${resultado.exception?.message}"
-                            ) }
-                        }
-                        else -> {
-                            _uiState.update { it.copy(isLoading = false) }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al obtener profesor: ${e.message}")
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        error = "Error al obtener datos del profesor: ${e.message}"
-                    ) }
                 }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al programar reunión")
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = "Error al programar reunión: ${e.message}"
-                ) }
             }
         }
     }
 
-    /**
-     * Genera un informe con el listado de alumnos y lo guarda localmente y en Firestore.
-     */
-    fun generarInformeAlumnos() {
+    private fun cargarCursos(profesorId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val alumnos = uiState.value.alumnos
-                if (alumnos.isEmpty()) {
-                    _uiState.update { it.copy(isLoading = false, error = "No hay alumnos para generar el informe.") }
+                Timber.d("Cargando cursos para el profesor: $profesorId")
+                val cursosResult = cursoRepository.getCursosByProfesorId(profesorId)
+                
+                if (cursosResult is Result.Success<List<Curso>>) {
+                    val cursos = cursosResult.data
+                    Timber.d("Cursos encontrados: ${cursos.size}")
+                    
+                    _uiState.update { it.copy(
+                        cursos = cursos,
+                        isLoading = false
+                    )}
+                } else {
+                    // Si no encontramos cursos específicos, intentar cargar todos los cursos
+                    val todosCursosResult = cursoRepository.getAllCursos()
+                    if (todosCursosResult is Result.Success && todosCursosResult.data.isNotEmpty()) {
+                        _uiState.update { it.copy(
+                            cursos = todosCursosResult.data,
+                            isLoading = false
+                        )}
+                    } else {
+                        _uiState.update { 
+                            it.copy(
+                                error = "No se encontraron cursos asignados",
+                                isLoading = false
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar cursos")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar cursos: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+    
+    fun seleccionarCurso(curso: Curso) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(
+                    cursoSeleccionado = curso,
+                    claseSeleccionada = null,
+                    alumnos = emptyList(),
+                    isLoading = true
+                )}
+                
+                // Cargar clases del curso seleccionado
+                cargarClasesPorCurso(curso.id)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al seleccionar curso")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al seleccionar curso: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+    
+    private fun cargarClasesPorCurso(cursoId: String) {
+        viewModelScope.launch {
+            try {
+                Timber.d("Cargando clases para el curso: $cursoId")
+                
+                val profesorId = _uiState.value.profesorActual?.dni
+                if (profesorId == null) {
+                    _uiState.update { 
+                        it.copy(
+                            error = "No se pudo obtener el ID del profesor",
+                            isLoading = false
+                        )
+                    }
                     return@launch
                 }
                 
-                // Obtener ID del profesor actual
-                val profesorId = authRepository.getCurrentUserId() ?: "Desconocido"
-
-                // Generar contenido del informe (ejemplo simple)
-                val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))
-                val nombreArchivoBase = "Informe_Alumnos_${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))}"
-                val nombreArchivoLocal = "$nombreArchivoBase.txt"
-                var contenido = "Informe de Alumnos Generado el $timestamp\\n"
-                contenido += "Clase: ${uiState.value.clase.ifEmpty { "No especificada" }}\\n"
-                contenido += "Profesor ID: $profesorId\\n"
-                contenido += "=============================================\\n\\n"
-                alumnos.forEachIndexed { index, alumno ->
-                    contenido += "${index + 1}. ${alumno.nombre} ${alumno.apellidos} (DNI: ${alumno.dni})\\n"
-                    // Aquí podrías añadir más detalles si los tuvieras en el modelo Alumno
-                }
-
-                // Crear el Map para Firestore (sin el contenido completo)
-                val informeFirestore = mapOf(
-                    "nombre" to nombreArchivoBase,
-                    "fechaGeneracion" to Timestamp.now(),
-                    "tipo" to "listado_alumnos_profesor",
-                    "generadoPorId" to profesorId,
-                    "contenido" to contenido // Guardamos el contenido aquí también por consistencia con el ejemplo del usuario
-                    // "urlDescarga" // No aplica para guardado local directo
-                )
-
-                // 1. Guardar en Firestore
-                var firestoreError: String? = null
-                try {
-                    firestore.collection("informes")
-                             .document(nombreArchivoBase) // Usar nombre base como ID
-                             .set(informeFirestore)
-                             .await()
-                    Timber.i("Registro del informe guardado en Firestore con ID: $nombreArchivoBase")
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al guardar registro del informe en Firestore")
-                    firestoreError = "Error al guardar registro del informe: ${e.message}"
-                }
-
-                // 2. Guardar archivo localmente
-                val fileSaveResult = fileSaverUtil.saveTextToFile(nombreArchivoLocal, contenido)
-                if (fileSaveResult is Result.Success) {
-                    // Éxito al guardar localmente, comprobar si hubo error en Firestore
-                    if (firestoreError != null) {
-                        _uiState.update { it.copy(isLoading = false, error = "$firestoreError. El archivo se guardó localmente como '${fileSaveResult.data}'") }
+                // Obtener clases del curso filtradas por profesor
+                val clasesResult = cursoRepository.getClasesByCursoAndProfesor(cursoId, profesorId)
+                
+                if (clasesResult is Result.Success<List<Clase>>) {
+                    val clases = clasesResult.data
+                    Timber.d("Clases encontradas: ${clases.size}")
+                    
+                    _uiState.update { it.copy(
+                        clases = clases,
+                        isLoading = false
+                    )}
+                } else {
+                    // Intentar cargar todas las clases del curso
+                    val todasClasesResult = claseRepository.getClasesByCursoId(cursoId)
+                    if (todasClasesResult is Result.Success<List<Clase>>) {
+                        _uiState.update { it.copy(
+                            clases = todasClasesResult.data,
+                            isLoading = false
+                        )}
                     } else {
-                        _uiState.update { it.copy(isLoading = false, mensajeExito = "Informe guardado como '${fileSaveResult.data}'") }
+                        _uiState.update { 
+                            it.copy(
+                                error = "No se encontraron clases para este curso",
+                                isLoading = false
+                            )
+                        }
                     }
-                } else if (fileSaveResult is Result.Error) {
-                    // Error al guardar localmente, combinar con error de Firestore si existe
-                    val errorMsg = "Error al guardar el archivo local: ${fileSaveResult.exception?.message}" + 
-                                   if (firestoreError != null) " ($firestoreError)" else ""
-                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                 }
-
-                 // Limpiar mensaje después de unos segundos
-                 delay(4000)
-                 _uiState.update { it.copy(mensajeExito = null, error = null) }
-
             } catch (e: Exception) {
-                Timber.e(e, "Error al generar el informe de alumnos")
-                _uiState.update { it.copy(isLoading = false, error = "Error inesperado al generar el informe: ${e.message}") }
+                Timber.e(e, "Error al cargar clases")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar clases: ${e.message}",
+                        isLoading = false
+                    )
+                }
             }
         }
     }
-} 
+    
+    fun seleccionarClase(clase: Clase) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(
+                    claseSeleccionada = clase,
+                    alumnos = emptyList(),
+                    isLoading = true
+                )}
+                
+                // Cargar alumnos de la clase seleccionada
+                cargarAlumnosPorClase(clase.id)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al seleccionar clase")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al seleccionar clase: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+
+    private fun cargarAlumnosPorClase(claseId: String) {
+        viewModelScope.launch {
+            try {
+                Timber.d("Cargando alumnos para la clase: $claseId")
+                val alumnosResult = alumnoRepository.getAlumnosByClaseId(claseId)
+                
+                if (alumnosResult is Result.Success) {
+                    val alumnos = alumnosResult.data
+                    Timber.d("Alumnos encontrados: ${alumnos.size}")
+                    
+                    // Actualizar el profesorId para cada alumno si es necesario
+                    val profesor = _uiState.value.profesorActual
+                    if (profesor != null) {
+                        for (alumno in alumnos) {
+                            if (alumno.profesorId.isNullOrEmpty() || alumno.profesorId != profesor.dni) {
+                                Timber.d("Actualizando profesor ${profesor.dni} para alumno ${alumno.dni}")
+                                alumnoRepository.actualizarProfesor(alumno.dni, profesor.dni)
+                            }
+                        }
+                    }
+                    
+                    _uiState.update { 
+                        it.copy(
+                            alumnos = alumnos,
+                            isLoading = false
+                        )
+                    }
+                } else if (alumnosResult is Result.Error) {
+                    Timber.e(alumnosResult.exception, "Error al cargar alumnos")
+                    _uiState.update { 
+                        it.copy(
+                            error = "Error al cargar alumnos: ${alumnosResult.exception?.message ?: "Error desconocido"}",
+                            isLoading = false
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar alumnos")
+                _uiState.update { 
+                    it.copy(
+                        error = "Error al cargar alumnos: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+
+    fun limpiarError() {
+        _uiState.update { it.copy(error = null) }
+    }
+    
+    fun limpiarMensaje() {
+        _uiState.update { it.copy(mensaje = null) }
+    }
+
+    fun programarReunion(
+        alumnoDni: String,
+        titulo: String,
+        fecha: String,
+        hora: String,
+        descripcion: String
+    ) {
+        viewModelScope.launch {
+            try {
+                // Aquí iría la lógica para programar la reunión
+                // Por ejemplo, guardar en Firestore
+                val reunion = hashMapOf<String, Any>(
+                    "alumnoDni" to alumnoDni,
+                    "titulo" to titulo,
+                    "fecha" to fecha,
+                    "hora" to hora,
+                    "descripcion" to descripcion,
+                    "estado" to "pendiente"
+                )
+                
+                // Guardar en Firestore
+                profesorRepository.programarReunion(reunion)
+                
+                // Mostrar mensaje de éxito
+                _uiState.update { it.copy(
+                    mensaje = "Reunión programada correctamente",
+                    error = null
+                )}
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = "Error al programar la reunión: ${e.message}",
+                    mensaje = null
+                )}
+            }
+        }
+    }
+
+    fun generarInformeAlumnos(
+        filtro: String,
+        formato: String,
+        terminoBusqueda: String
+    ) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Filtrar alumnos según el criterio seleccionado
+                val alumnosFiltrados = when (filtro) {
+                    "todos" -> uiState.value.alumnos
+                    "filtrados" -> if (terminoBusqueda.isNotEmpty()) {
+                        uiState.value.alumnos.filter { 
+                            it.nombre.contains(terminoBusqueda, ignoreCase = true) || 
+                            it.apellidos.contains(terminoBusqueda, ignoreCase = true)
+                        }
+                    } else uiState.value.alumnos
+                    else -> emptyList()
+                }
+
+                // Generar el informe según el formato seleccionado
+                val informe = when (formato) {
+                    "pdf" -> generarInformePDF(alumnosFiltrados)
+                    "excel" -> generarInformeExcel(alumnosFiltrados)
+                    "csv" -> generarInformeCSV(alumnosFiltrados)
+                    else -> throw IllegalArgumentException("Formato no soportado")
+                }
+
+                // Guardar el informe
+                profesorRepository.guardarInforme(informe, formato)
+
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    mensaje = "Informe generado correctamente",
+                    error = null
+                )}
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = "Error al generar el informe: ${e.message}",
+                    mensaje = null
+                )}
+            }
+        }
+    }
+
+    private fun generarInformePDF(alumnos: List<Alumno>): String {
+        // Implementar generación de PDF
+        return "Informe PDF generado"
+    }
+
+    private fun generarInformeExcel(alumnos: List<Alumno>): String {
+        // Implementar generación de Excel
+        return "Informe Excel generado"
+    }
+
+    private fun generarInformeCSV(alumnos: List<Alumno>): String {
+        // Implementar generación de CSV
+        return "Informe CSV generado"
+    }
+
+    private fun calcularEdad(fechaNacimiento: String): Int {
+        return try {
+            val fecha = LocalDate.parse(fechaNacimiento, DateTimeFormatter.ISO_DATE)
+            Period.between(fecha, LocalDate.now()).years
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    private fun calcularPorcentaje(parte: Int, total: Int): String {
+        return if (total > 0) {
+            String.format("%.1f", (parte.toFloat() / total) * 100)
+        } else "0.0"
+    }
+}

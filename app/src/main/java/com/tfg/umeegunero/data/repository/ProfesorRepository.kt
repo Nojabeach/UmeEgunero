@@ -199,6 +199,24 @@ class ProfesorRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    suspend fun programarReunion(reunion: HashMap<String, Any>) {
+        firestore.collection("reuniones")
+            .add(reunion)
+            .await()
+    }
+
+    suspend fun guardarInforme(contenido: String, formato: String) {
+        val informe = hashMapOf(
+            "contenido" to contenido,
+            "formato" to formato,
+            "fechaGeneracion" to System.currentTimeMillis()
+        )
+        
+        firestore.collection("informes")
+            .add(informe)
+            .await()
+    }
 }
 
 /**

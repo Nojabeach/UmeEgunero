@@ -77,7 +77,6 @@ import androidx.compose.material3.HorizontalDivider
  * @param onNavigateToSeguridad Callback para navegar a seguridad
  * @param onNavigateToTema Callback para navegar a configuración de tema
  * @param onNavigateToEmailConfig Callback para navegar a configuración de email
- * @param onNavigateToNotificaciones Callback para navegar a notificaciones
  * @param onNavigateToComunicados Callback para navegar a comunicados
  * @param onNavigateToBandejaEntrada Callback para navegar a bandeja de entrada
  * @param onNavigateToComponerMensaje Callback para navegar a componer mensaje
@@ -101,7 +100,6 @@ fun AdminDashboardScreen(
     onNavigateToSeguridad: () -> Unit,
     onNavigateToTema: () -> Unit,
     onNavigateToEmailConfig: () -> Unit,
-    onNavigateToNotificaciones: () -> Unit,
     onNavigateToComunicados: () -> Unit,
     onNavigateToBandejaEntrada: () -> Unit = { navController.navigate(AppScreens.UnifiedInbox.route) },
     onNavigateToComponerMensaje: () -> Unit = { navController.navigate(AppScreens.NewMessage.createRoute()) },
@@ -116,7 +114,6 @@ fun AdminDashboardScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showEmailConfigDialog by remember { mutableStateOf(false) }
-    var showNotificacionesDialog by remember { mutableStateOf(false) }
     var showComunicadosDialog by remember { mutableStateOf(false) }
     var showBandejaEntradaDialog by remember { mutableStateOf(false) }
     var showComponerMensajeDialog by remember { mutableStateOf(false) }
@@ -192,29 +189,6 @@ fun AdminDashboardScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showEmailConfigDialog = false }) {
-                    Text("No")
-                }
-            }
-        )
-    }
-
-    if (showNotificacionesDialog) {
-        AlertDialog(
-            onDismissRequest = { showNotificacionesDialog = false },
-            title = { Text("Notificaciones") },
-            text = { Text("¿Quieres gestionar las notificaciones?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showNotificacionesDialog = false
-                        onNavigateToNotificaciones()
-                    }
-                ) {
-                    Text("Sí")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNotificacionesDialog = false }) {
                     Text("No")
                 }
             }
@@ -528,20 +502,10 @@ fun AdminDashboardScreen(
                                 icono = Icons.Default.Email,
                                 descripcion = "Configurar email de soporte",
                                 color = AdminColor,
-                                    iconTint = AppColors.Red500,
-                                    border = true,
+                                iconTint = AppColors.Red500,
+                                border = true,
                                 onClick = { showEmailConfigDialog = true },
-                                modifier = Modifier.weight(1f)
-                            )
-                            CategoriaCard(
-                                titulo = "Notificaciones",
-                                icono = Icons.Default.Notifications,
-                                descripcion = "Gestionar notificaciones",
-                                color = AdminColor,
-                                    iconTint = AppColors.GradientEnd,
-                                    border = true,
-                                onClick = { showNotificacionesDialog = true },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.fillMaxWidth()
                             )
                             }
                         }
@@ -757,7 +721,6 @@ fun VistaPreviaDashboardAdmin() {
             onNavigateToSeguridad = {},
             onNavigateToTema = {},
             onNavigateToEmailConfig = {},
-            onNavigateToNotificaciones = {},
             onNavigateToComunicados = {},
             onNavigateToBandejaEntrada = {},
             onNavigateToComponerMensaje = {},

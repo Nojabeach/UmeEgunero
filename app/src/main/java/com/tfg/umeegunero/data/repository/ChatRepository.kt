@@ -29,19 +29,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber
-
-/**
- * Representa información resumida de una conversación
- */
-data class ConversacionInfo(
-    val conversacionId: String,
-    val participanteId: String,
-    val ultimoMensaje: String,
-    val fechaUltimoMensaje: Long,
-    val mensajesNoLeidos: Int,
-    val alumnoId: String? = null,
-    val participanteNombre: String? = null
-)
+import com.tfg.umeegunero.data.model.ConversacionInfo
 
 /**
  * Repositorio para gestionar la comunicación y conversaciones en la aplicación UmeEgunero.
@@ -567,36 +555,8 @@ class ChatRepository @Inject constructor(
      * Obtiene las conversaciones de un usuario
      */
     suspend fun getConversacionesByUsuarioId(usuarioId: String): List<ConversacionInfo> {
-        return try {
-            val querySnapshot = firestore.collection("conversaciones")
-                .whereArrayContains("participantes", usuarioId)
-                .get()
-                .await()
-            
-            val conversaciones = querySnapshot.documents.mapNotNull { doc ->
-                val data = doc.data ?: return@mapNotNull null
-                
-                // Obtener participantes y encontrar al otro usuario
-                val participantes = data["participantes"] as? List<*>
-                val otroParticipanteId = participantes
-                    ?.filterIsInstance<String>()
-                    ?.firstOrNull { it != usuarioId } ?: return@mapNotNull null
-                
-                ConversacionInfo(
-                    conversacionId = doc.id,
-                    participanteId = otroParticipanteId,
-                    ultimoMensaje = data["ultimoMensaje"] as? String ?: "",
-                    fechaUltimoMensaje = (data["fechaUltimoMensaje"] as? Timestamp)?.toDate()?.time ?: 0L,
-                    mensajesNoLeidos = (data["${usuarioId}_noLeidos"] as? Number)?.toInt() ?: 0,
-                    alumnoId = data["alumnoId"] as? String
-                )
-            }
-            
-            conversaciones.sortedByDescending { it.fechaUltimoMensaje }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al obtener conversaciones del usuario $usuarioId", e)
-            emptyList()
-        }
+        // Implementación temporal que devuelve una lista vacía
+        return emptyList()
     }
     
     /**

@@ -27,6 +27,8 @@ import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import com.tfg.umeegunero.data.model.MessageType
 import com.tfg.umeegunero.MainActivity
 import com.tfg.umeegunero.navigation.AppScreens
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.Timestamp
 
 /**
  * Servicio para procesar mensajes de Firebase Cloud Messaging (FCM).
@@ -73,39 +75,81 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
      */
     private fun guardarTokenEnFirestore(token: String) {
         val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+        val userUid = currentUser.uid
         
         try {
-            val userId = currentUser.uid
-            val userDocRef = FirebaseFirestore.getInstance()
-                .collection("usuarios")
-                .document(userId)
+            // Primero obtenemos el DNI del usuario actual desde Firestore
+            val userEmail = currentUser.email ?: return
             
-            // Añadir el token como un campo en un mapa para permitir múltiples dispositivos
-            userDocRef.get().addOnSuccessListener { document ->
-                val fcmTokens = document.get("fcmTokens") as? Map<String, String> ?: mapOf()
-                val updatedTokens = fcmTokens.toMutableMap().apply {
-                    this[token] = token
+            // Consultar el documento del usuario por email para obtener su DNI
+            FirebaseFirestore.getInstance()
+                .collection("usuarios")
+                .whereEqualTo("email", userEmail)
+                .limit(1)
+                .get()
+                .addOnSuccessListener { querySnapshot ->
+                    if (querySnapshot.isEmpty) {
+                        Timber.e("No se encontró usuario con email: $userEmail")
+                        return@addOnSuccessListener
+                    }
+                    
+                    val userDoc = querySnapshot.documents.first()
+                    val dni = userDoc.getString("dni")
+                    
+                    if (dni.isNullOrEmpty()) {
+                        Timber.e("El usuario no tiene DNI asignado: $userEmail")
+                        return@addOnSuccessListener
+                    }
+                    
+                    Timber.d("Actualizando token FCM para el usuario con DNI: $dni")
+                    
+                    // Generar un ID único para el dispositivo
+                    val deviceId = "device_${System.currentTimeMillis()}"
+                    
+                    // Estructura para actualizar el token FCM en las preferencias de notificaciones
+                    val tokenUpdate = mapOf(
+                        "preferencias.notificaciones.fcmToken" to token,
+                        "preferencias.notificaciones.deviceId" to deviceId,
+                        "preferencias.notificaciones.lastUpdated" to Timestamp.now()
+                    )
+                    
+                    // Actualizar el documento con el DNI como ID
+                    val dniDocRef = FirebaseFirestore.getInstance()
+                        .collection("usuarios")
+                        .document(dni)
+                    
+                    dniDocRef.update(tokenUpdate)
+                        .addOnSuccessListener {
+                            Timber.d("Token FCM actualizado correctamente en preferencias del usuario con DNI: $dni")
+                        }
+                        .addOnFailureListener { e ->
+                            Timber.e(e, "Error al actualizar token FCM en documento DNI: $dni")
+                            
+                            // Si el error es porque no existe el campo preferencias.notificaciones,
+                            // intentamos crearlo con una estructura completa
+                            val initialData = mapOf(
+                                "preferencias" to mapOf(
+                                    "notificaciones" to mapOf(
+                                        "fcmToken" to token,
+                                        "deviceId" to deviceId,
+                                        "lastUpdated" to Timestamp.now(),
+                                        "push" to true // Habilitamos push por defecto al registrar token
+                                    )
+                                )
+                            )
+                            
+                            dniDocRef.set(initialData, SetOptions.merge())
+                                .addOnSuccessListener {
+                                    Timber.d("Preferencias de notificaciones creadas para usuario DNI: $dni")
+                                }
+                                .addOnFailureListener { innerE ->
+                                    Timber.e(innerE, "Error al crear preferencias de notificaciones para DNI: $dni")
+                                }
+                        }
                 }
-                
-                userDocRef.update("fcmTokens", updatedTokens)
-                    .addOnSuccessListener {
-                        Timber.d("Token FCM actualizado en Firestore")
-                    }
-                    .addOnFailureListener { e ->
-                        Timber.e(e, "Error al actualizar token FCM en Firestore")
-                        
-                        // Intentar crear el documento si no existe
-                        userDocRef.set(mapOf("fcmTokens" to mapOf(token to token)))
-                            .addOnSuccessListener {
-                                Timber.d("Token FCM guardado en documento nuevo")
-                            }
-                            .addOnFailureListener { innerE ->
-                                Timber.e(innerE, "Error al crear documento para token FCM")
-                            }
-                    }
-            }.addOnFailureListener { e ->
-                Timber.e(e, "Error al obtener documento del usuario para token FCM")
-            }
+                .addOnFailureListener { e ->
+                    Timber.e(e, "Error al buscar usuario por email: $userEmail")
+                }
         } catch (e: Exception) {
             Timber.e(e, "Error general al guardar token FCM: ${e.message}")
         }
@@ -438,7 +482,26 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
             notification.setLights(0xFF0000, 3000, 3000) // Rojo
         }
         
-        NotificationManagerCompat.from(this).notify(notificationId, notification.build())
+        showNotification(notificationId, notification.build())
+    }
+    
+    /**
+     * Corregir el método que muestra las notificaciones para verificar permisos antes de mostrarlas
+     */
+    private fun showNotification(notificationId: Int, notification: Notification) {
+        val notificationManager = NotificationManagerCompat.from(this)
+        
+        // Verificar si tenemos permiso para mostrar notificaciones
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                notificationManager.notify(notificationId, notification)
+            } else {
+                Timber.w("No se tienen permisos para mostrar notificaciones")
+            }
+        } else {
+            // En versiones anteriores a Android 13 no se necesitaba el permiso explícito
+            notificationManager.notify(notificationId, notification)
+        }
     }
     
     /**

@@ -305,7 +305,6 @@ fun Navigation(
                     }
                 },
                 onNavigateToEmailConfig = { navController.navigate(AppScreens.EmailConfig.route) },
-                onNavigateToNotificaciones = { navController.navigate(AppScreens.Notificaciones.route) },
                 onNavigateToComunicados = { navController.navigate(AppScreens.ComunicadosCirculares.route) },
                 onNavigateToBandejaEntrada = { navController.navigate(AppScreens.BandejaEntrada.route) },
                 onNavigateToComponerMensaje = { navController.navigate(AppScreens.ComponerMensaje.route) },
@@ -1074,6 +1073,19 @@ fun Navigation(
                 participanteId = participanteId,
                 alumnoId = alumnoId,
                 onBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Pantalla de contactos para iniciar un chat nuevo
+        composable(
+            route = AppScreens.ChatContacts.route,
+            arguments = AppScreens.ChatContacts.arguments
+        ) { backStackEntry ->
+            val chatRouteName = backStackEntry.arguments?.getString("chatRouteName") ?: ""
+            
+            com.tfg.umeegunero.feature.profesor.screen.ChatContactsScreen(
+                navController = navController,
+                chatRouteName = chatRouteName
             )
         }
 
