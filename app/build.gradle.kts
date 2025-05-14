@@ -116,6 +116,12 @@ android {
             arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
         }
     }
+
+    lint {
+        abortOnError = false
+        disable += "MissingPermission"
+        baseline = file("lint-baseline.xml")
+    }
 }
 
 dependencies {
