@@ -61,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen
 import timber.log.Timber
 import kotlinx.coroutines.flow.collectLatest
-import com.tfg.umeegunero.feature.common.mensajeria.ChatScreen
 import com.tfg.umeegunero.feature.common.comunicacion.screen.UnifiedInboxScreen
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.UnifiedInboxViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -1068,12 +1067,22 @@ fun Navigation(
             val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
             val alumnoId = backStackEntry.arguments?.getString("alumnoId")
             
-            ChatScreen(
-                conversacionId = conversacionId,
-                participanteId = participanteId,
-                alumnoId = alumnoId,
-                onBack = { navController.popBackStack() }
-            )
+            // Determinar si el usuario es profesor o familiar y redirigir a la pantalla apropiada
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser != null) {
+                if (currentUser.email?.contains("profesor") == true) {
+                    navController.navigate(AppScreens.ChatProfesor.createRoute(conversacionId, participanteId)) {
+                        popUpTo(AppScreens.Chat.route) { inclusive = true }
+                    }
+                } else {
+                    navController.navigate(AppScreens.ChatFamilia.createRoute(conversacionId, participanteId)) {
+                        popUpTo(AppScreens.Chat.route) { inclusive = true }
+                    }
+                }
+            } else {
+                // Si no hay usuario actual, simplemente volver atrás
+                navController.popBackStack()
+            }
         }
         
         // Pantalla de contactos para iniciar un chat nuevo
@@ -1100,6 +1109,41 @@ fun Navigation(
             ComunicadoDetailScreen(
                 comunicadoId = comunicadoId,
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Pantalla de chat para profesores
+        composable(
+            route = AppScreens.ChatProfesor.route,
+            arguments = listOf(
+                navArgument("conversacionId") { type = NavType.StringType },
+                navArgument("participanteId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val conversacionId = backStackEntry.arguments?.getString("conversacionId") ?: ""
+            val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
+            
+            com.tfg.umeegunero.feature.profesor.screen.ChatProfesorScreen(
+                navController = navController,
+                familiarId = participanteId,
+                familiarNombre = "Contacto" // Nombre por defecto, se actualizará en la pantalla
+            )
+        }
+        
+        // Pantalla de chat para familiares
+        composable(
+            route = AppScreens.ChatFamilia.route,
+            arguments = listOf(
+                navArgument("conversacionId") { type = NavType.StringType },
+                navArgument("participanteId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val conversacionId = backStackEntry.arguments?.getString("conversacionId") ?: ""
+            val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
+            
+            com.tfg.umeegunero.feature.familiar.screen.ChatFamiliaScreen(
+                navController = navController,
+                profesorId = participanteId
             )
         }
     }

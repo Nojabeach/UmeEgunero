@@ -478,17 +478,11 @@ fun AlumnoSelectionChip(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .run {
+                .clickable { 
                     if (tieneRegistro) {
-                        // Si tiene registro, eliminar el clickable y agregar un tap para mostrar opciones
-                        this.pointerInput(Unit) {
-                            detectTapGestures {
-                                showEliminarRegistroDialog = true
-                            }
-                        }
+                        showEliminarRegistroDialog = true
                     } else {
-                        // Si no tiene registro, mantener el comportamiento normal de selección
-                        this.clickable { onSelectionChanged(!isSelected) }
+                        onSelectionChanged(!isSelected) 
                     }
                 }
                 .padding(16.dp),
@@ -551,15 +545,11 @@ fun AlumnoSelectionChip(
             
             // Icono de selección o acción
             if (tieneRegistro) {
-                IconButton(
-                    onClick = { showEliminarRegistroDialog = true }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar registro",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar registro",
+                    tint = MaterialTheme.colorScheme.error
+                )
             } else {
                 Icon(
                     imageVector = when {

@@ -159,57 +159,77 @@ class ClaseRepositoryImpl @Inject constructor(
     
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun obtenerClasesPorCursoFlow(cursoId: String): Flow<Result<List<Clase>>> = callbackFlow {
-        Timber.d("Creando Flow para clases del curso ID: $cursoId")
-
-        val query: Query = clasesCollection.whereEqualTo("cursoId", cursoId)
-
-        // Log de la consulta de Firestore
-        Timber.d("Consulta de Firestore: collection=clases, filtro=cursoId=$cursoId")
-
+        Timber.d("🔍🔍 Creando Flow para clases del curso ID: $cursoId")
+        
+        // Preparar la consulta
+        val query = clasesCollection.whereEqualTo("cursoId", cursoId)
+        
+        // Enviar un estado de carga inicial
+        trySend(Result.Loading()).isSuccess
+        
+        // Realizar carga inicial sin esperar cambios en tiempo real
+        try {
+            Timber.d("🔍 Consultando clases para cursoId=$cursoId")
+            val snapshot = query.get().await()
+            
+            val clases = snapshot.documents.mapNotNull { document ->
+                try {
+                    val data = document.data
+                    Timber.d("📄 Documento clase: id=${document.id}, data=$data")
+                    
+                    val clase = document.toObject(Clase::class.java)?.copy(id = document.id)
+                    clase?.also { Timber.d("✅ Clase mapeada: ${it.nombre} (${it.id})") }
+                    clase
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al mapear documento de clase: ${document.id}")
+                    null
+                }
+            }
+            
+            Timber.d("📊 Carga inicial: ${clases.size} clases encontradas para cursoId=$cursoId")
+            trySend(Result.Success(clases)).isSuccess
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error en carga inicial de clases para cursoId=$cursoId")
+            trySend(Result.Error(e)).isSuccess
+        }
+        
+        // Configurar el listener para cambios en tiempo real
         val listenerRegistration = query.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                Timber.e(error, "Error al escuchar cambios en clases del curso $cursoId")
+                Timber.e(error, "❌ Error al escuchar cambios en clases del curso $cursoId")
                 trySend(Result.Error(error)).isSuccess
                 return@addSnapshotListener
             }
             
             if (snapshot == null) {
-                Timber.w("Snapshot nulo para clases del curso $cursoId")
+                Timber.w("⚠️ Snapshot nulo para clases del curso $cursoId")
                 trySend(Result.Success(emptyList())).isSuccess
                 return@addSnapshotListener
             }
-
-            // Log de los documentos recibidos
-            Timber.d("Documentos recibidos: ${snapshot.documents.size}")
-            snapshot.documents.forEach { document ->
-                Timber.d("Documento: id=${document.id}, data=${document.data}")
-            }
-
-            val clases = snapshot.documents.mapNotNull { document ->
-                val data = document.data ?: return@mapNotNull null
-                
-                Clase(
-                    id = document.id,
-                    cursoId = data["cursoId"] as? String ?: "",
-                    centroId = data["centroId"] as? String ?: "",
-                    nombre = data["nombre"] as? String ?: "",
-                    profesorId = data["profesorId"] as? String,
-                    profesorTitularId = data["profesorTitularId"] as? String,
-                    profesoresAuxiliaresIds = mapearListaSegura(data, "profesoresAuxiliaresIds"),
-                    alumnosIds = mapearListaSegura(data, "alumnosIds"),
-                    capacidadMaxima = (data["capacidadMaxima"] as? Number)?.toInt(),
-                    activo = data["activo"] as? Boolean ?: true,
-                    horario = data["horario"] as? String ?: "",
-                    aula = data["aula"] as? String ?: ""
-                )
-            }
             
-            Timber.d("Snapshot recibido: ${clases.size} clases para el curso $cursoId")
-            trySend(Result.Success(clases)).isSuccess
+            try {
+                val clases = snapshot.documents.mapNotNull { document ->
+                    try {
+                        val clase = document.toObject(Clase::class.java)?.copy(id = document.id)
+                        Timber.d("📝 Clase actualizada: id=${document.id}, nombre=${clase?.nombre ?: "null"}")
+                        clase
+                    } catch (e: Exception) {
+                        Timber.e(e, "❌ Error al convertir documento a Clase: ${document.id}")
+                        null
+                    }
+                }
+                
+                Timber.d("✅ Actualización: ${clases.size} clases para cursoId=$cursoId")
+                trySend(Result.Success(clases)).isSuccess
+            } catch (e: Exception) {
+                Timber.e(e, "❌ Error procesando snapshot de clases: ${e.message}")
+                trySend(Result.Error(e)).isSuccess
+            }
         }
-
+        
+        // Limpiar el listener cuando el Flow se cierra
         awaitClose {
-            Timber.d("Cancelando listener para clases del curso $cursoId")
+            Timber.d("🧹 Limpiando listener de clases para cursoId=$cursoId")
             listenerRegistration.remove()
         }
     }

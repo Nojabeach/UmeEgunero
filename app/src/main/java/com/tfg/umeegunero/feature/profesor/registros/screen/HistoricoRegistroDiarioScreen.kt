@@ -24,18 +24,21 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Class
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalDining
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Subject
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Wc
+import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ShareCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.tfg.umeegunero.data.model.Alumno
@@ -79,6 +83,10 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import android.content.Intent
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,11 +97,15 @@ fun HistoricoRegistroDiarioScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     // Estados para los menús desplegables
     var mostrarMenuClase by remember { mutableStateOf(false) }
     var mostrarMenuAlumno by remember { mutableStateOf(false) }
     var mostrarCalendario by remember { mutableStateOf(false) }
+    
+    // Estado para diálogos
+    var mostrarDialogoExito by remember { mutableStateOf(false) }
     
     // Efecto para mostrar errores
     LaunchedEffect(uiState.error) {
@@ -103,6 +115,49 @@ fun HistoricoRegistroDiarioScreen(
                 viewModel.limpiarError()
             }
         }
+    }
+    
+    // Efecto para manejar el éxito de exportación a PDF
+    LaunchedEffect(uiState.exportPdfUri) {
+        uiState.exportPdfUri?.let {
+            mostrarDialogoExito = true
+        }
+    }
+    
+    // Función para compartir el PDF
+    fun compartirPdf() {
+        val intent = viewModel.crearIntentCompartirPDF()
+        if (intent != null) {
+            context.startActivity(Intent.createChooser(intent, "Compartir PDF de registros"))
+            viewModel.limpiarExportPdfUri()
+            mostrarDialogoExito = false
+        } else {
+            Toast.makeText(context, "Error al crear el archivo para compartir", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    if (mostrarDialogoExito) {
+        AlertDialog(
+            onDismissRequest = { 
+                mostrarDialogoExito = false
+                viewModel.limpiarExportPdfUri()
+            },
+            title = { Text("PDF generado correctamente") },
+            text = { Text("El PDF con los registros ha sido generado. ¿Desea compartirlo?") },
+            confirmButton = {
+                Button(onClick = { compartirPdf() }) {
+                    Text("Compartir")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { 
+                    mostrarDialogoExito = false
+                    viewModel.limpiarExportPdfUri()
+                }) {
+                    Text("Cerrar")
+                }
+            }
+        )
     }
     
     Scaffold(
@@ -133,7 +188,20 @@ fun HistoricoRegistroDiarioScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            if (uiState.alumnoSeleccionado != null && uiState.registros.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = { 
+                        viewModel.exportarRegistrosPDF(context)
+                    },
+                    icon = { Icon(Icons.Default.Share, contentDescription = "Exportar") },
+                    text = { Text("Exportar PDF") },
+                    containerColor = ProfesorColor,
+                    contentColor = Color.White
+                )
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -161,11 +229,26 @@ fun HistoricoRegistroDiarioScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Selector de clase
+                    Text(
+                        text = "Clase",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { mostrarMenuClase = true }
+                                .clickable { mostrarMenuClase = true },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = if (uiState.claseSeleccionada != null) 
+                                    MaterialTheme.colorScheme.primaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.surface
+                            )
                         ) {
                             Row(
                                 modifier = Modifier
@@ -182,8 +265,7 @@ fun HistoricoRegistroDiarioScreen(
                                 Text(
                                     text = uiState.claseSeleccionada?.nombre ?: "Seleccionar clase",
                                     modifier = Modifier.weight(1f),
-                                    overflow = TextOverflow.Ellipsis,
-                                    maxLines = 1
+                                    fontWeight = if (uiState.claseSeleccionada != null) FontWeight.Medium else FontWeight.Normal
                                 )
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
@@ -191,7 +273,7 @@ fun HistoricoRegistroDiarioScreen(
                                 )
                             }
                         }
-                        
+
                         DropdownMenu(
                             expanded = mostrarMenuClase,
                             onDismissRequest = { mostrarMenuClase = false },
@@ -199,35 +281,62 @@ fun HistoricoRegistroDiarioScreen(
                         ) {
                             uiState.clases.forEach { clase ->
                                 DropdownMenuItem(
-                                    text = { Text(clase.nombre) },
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (uiState.claseSeleccionada?.id == clase.id) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(8.dp)
+                                                        .background(ProfesorColor, CircleShape)
+                                                        .align(Alignment.CenterVertically)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                            }
+                                            Text(
+                                                text = clase.nombre,
+                                                fontWeight = if (uiState.claseSeleccionada?.id == clase.id) 
+                                                    FontWeight.Bold 
+                                                else 
+                                                    FontWeight.Normal
+                                            )
+                                        }
+                                    },
                                     onClick = {
                                         viewModel.seleccionarClase(clase.id)
                                         mostrarMenuClase = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Class,
-                                            contentDescription = null,
-                                            tint = ProfesorColor
-                                        )
                                     }
                                 )
                             }
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Spacer(modifier = Modifier.height(16.dp))
                     
                     // Selector de alumno
+                    Text(
+                        text = "Alumno",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { 
-                                    if (uiState.alumnos.isNotEmpty()) {
-                                        mostrarMenuAlumno = true 
+                                .clickable(enabled = uiState.claseSeleccionada != null) { 
+                                    if (uiState.claseSeleccionada != null) {
+                                        mostrarMenuAlumno = true
                                     }
-                                }
+                                },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = if (uiState.alumnoSeleccionado != null) 
+                                    MaterialTheme.colorScheme.primaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.surface
+                            )
                         ) {
                             Row(
                                 modifier = Modifier
@@ -238,26 +347,29 @@ fun HistoricoRegistroDiarioScreen(
                                 Icon(
                                     imageVector = Icons.Default.Person,
                                     contentDescription = null,
-                                    tint = ProfesorColor
+                                    tint = if (uiState.claseSeleccionada != null) ProfesorColor else Color.Gray
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (uiState.alumnoSeleccionado != null) {
-                                        "${uiState.alumnoSeleccionado?.nombre} ${uiState.alumnoSeleccionado?.apellidos}"
+                                    text = if (uiState.claseSeleccionada == null) {
+                                        "Primero selecciona una clase"
+                                    } else if (uiState.alumnoSeleccionado != null) {
+                                        uiState.alumnoSeleccionado!!.nombre ?: "Alumno seleccionado"
                                     } else {
                                         "Seleccionar alumno"
                                     },
                                     modifier = Modifier.weight(1f),
-                                    overflow = TextOverflow.Ellipsis,
-                                    maxLines = 1
+                                    fontWeight = if (uiState.alumnoSeleccionado != null) FontWeight.Medium else FontWeight.Normal,
+                                    color = if (uiState.claseSeleccionada != null) Color.Unspecified else Color.Gray
                                 )
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = null
+                                    contentDescription = null,
+                                    tint = if (uiState.claseSeleccionada != null) Color.Unspecified else Color.Gray
                                 )
                             }
                         }
-                        
+
                         DropdownMenu(
                             expanded = mostrarMenuAlumno,
                             onDismissRequest = { mostrarMenuAlumno = false },
@@ -265,31 +377,55 @@ fun HistoricoRegistroDiarioScreen(
                         ) {
                             uiState.alumnos.forEach { alumno ->
                                 DropdownMenuItem(
-                                    text = { Text("${alumno.nombre} ${alumno.apellidos}") },
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (uiState.alumnoSeleccionado?.id == alumno.id) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(8.dp)
+                                                        .background(ProfesorColor, CircleShape)
+                                                        .align(Alignment.CenterVertically)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                            }
+                                            Text(
+                                                text = alumno.nombre ?: "Alumno sin nombre",
+                                                fontWeight = if (uiState.alumnoSeleccionado?.id == alumno.id) 
+                                                    FontWeight.Bold 
+                                                else 
+                                                    FontWeight.Normal
+                                            )
+                                        }
+                                    },
                                     onClick = {
                                         viewModel.seleccionarAlumno(alumno.id)
                                         mostrarMenuAlumno = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = null,
-                                            tint = ProfesorColor
-                                        )
                                     }
                                 )
                             }
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Spacer(modifier = Modifier.height(16.dp))
                     
                     // Selector de fecha
+                    Text(
+                        text = "Fecha",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { mostrarCalendario = true }
+                                .clickable { mostrarCalendario = true },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
                         ) {
                             Row(
                                 modifier = Modifier
@@ -303,11 +439,20 @@ fun HistoricoRegistroDiarioScreen(
                                     tint = ProfesorColor
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                                        .format(uiState.fechaSeleccionada),
-                                    modifier = Modifier.weight(1f)
-                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = SimpleDateFormat("EEEE, d 'de' MMMM 'de' yyyy", Locale("es", "ES"))
+                                            .format(uiState.fechaSeleccionada),
+                                        fontWeight = FontWeight.Medium,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = if (esHoy(uiState.fechaSeleccionada)) "Hoy" else 
+                                            if (esAyer(uiState.fechaSeleccionada)) "Ayer" else "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
                                     contentDescription = null
@@ -331,21 +476,63 @@ fun HistoricoRegistroDiarioScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
+            // Resumen de selección
+            if (uiState.alumnoSeleccionado != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Mostrando registros de ${uiState.alumnoSeleccionado?.nombre ?: ""} para el día ${
+                                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(uiState.fechaSeleccionada)
+                            }",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
             // Lista de registros
-            if (uiState.isLoading) {
+            if (uiState.isLoading || uiState.isExporting) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = ProfesorColor)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = ProfesorColor)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = if (uiState.isExporting) "Generando PDF..." else "Cargando registros...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             } else if (uiState.registros.isEmpty()) {
+                // Estado vacío mejorado
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.DateRange,
@@ -363,6 +550,15 @@ fun HistoricoRegistroDiarioScreen(
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyLarge
                         )
+                        if (uiState.alumnoSeleccionado != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Prueba a seleccionar otra fecha o comprueba que se hayan creado registros para este alumno",
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             } else {
@@ -385,123 +581,169 @@ fun RegistroDiarioCard(
     registro: RegistroActividad,
     modifier: Modifier = Modifier
 ) {
+    val fecha = SimpleDateFormat("HH:mm", Locale.getDefault()).format(registro.fecha.toDate())
+    
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            // Cabecera con fecha
+            // Encabezado con fecha y hora
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = null,
-                    tint = ProfesorColor
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                        .format(registro.fecha.toDate()),
+                    text = "Registro a las $fecha",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
+                
+                val createdByText = registro.creadoPor?.let { "Por: $it" } ?: ""
+                if (createdByText.isNotEmpty()) {
+                    Text(
+                        text = createdByText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Resumen de comidas
-            InfoSection(
+            // Comidas
+            InfoSeccion(
                 icon = Icons.Default.LocalDining,
                 title = "Comidas",
-                content = obtenerResumenComidas(registro)
-            )
-            
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            
-            // Siesta
-            InfoSection(
-                icon = Icons.Default.NightsStay,
-                title = "Siesta",
-                content = if (registro.haSiestaSiNo) "Ha dormido siesta" else "No ha dormido siesta"
-            )
-            
-            if (registro.observacionesSiesta?.isNotEmpty() == true) {
-                Text(
-                    text = registro.observacionesSiesta ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 32.dp)
-                )
-            }
-            
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            
-            // Deposiciones
-            InfoSection(
-                icon = Icons.Default.Wc,
-                title = "Deposiciones",
-                content = if (registro.haHechoCaca) {
-                    "Ha hecho caca ${registro.numeroCacas} ${if (registro.numeroCacas == 1) "vez" else "veces"}"
-                } else {
-                    "No ha hecho caca"
+                content = {
+                    Column {
+                        ComidaItem("Primer plato", registro.comidas.primerPlato.estadoComida)
+                        ComidaItem("Segundo plato", registro.comidas.segundoPlato.estadoComida)
+                        ComidaItem("Postre", registro.comidas.postre.estadoComida)
+                        
+                        if (!registro.observacionesComida.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Observaciones: ${registro.observacionesComida}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    }
                 }
             )
             
-            if (registro.observacionesCaca?.isNotEmpty() == true) {
-                Text(
-                    text = registro.observacionesCaca ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 32.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Siesta
+            InfoSeccion(
+                icon = Icons.Default.NightsStay,
+                title = "Siesta",
+                content = {
+                    Column {
+                        if (registro.haSiestaSiNo) {
+                            val horaInicio = registro.horaInicioSiesta.ifEmpty { "No registrada" }
+                            val horaFin = registro.horaFinSiesta.ifEmpty { "No registrada" }
+                            
+                            Text("El alumno ha dormido siesta", style = MaterialTheme.typography.bodyMedium)
+                            Text("De $horaInicio a $horaFin", style = MaterialTheme.typography.bodyMedium)
+                            
+                            if (!registro.observacionesSiesta.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Observaciones: ${registro.observacionesSiesta}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        } else {
+                            Text("El alumno no ha dormido siesta", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            )
+            
+            // Mostrar deposiciones si ha hecho caca
+            if (registro.haHechoCaca) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.Default.Wc,
+                    title = "Deposiciones",
+                    content = {
+                        Column {
+                            Text(
+                                "El alumno ha hecho ${registro.numeroCacas} deposiciones", 
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            if (!registro.observacionesCaca.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Observaciones: ${registro.observacionesCaca}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
+                    }
                 )
             }
             
-            // Material necesario
+            // Materiales necesarios
             if (registro.necesitaPanales || registro.necesitaToallitas || registro.necesitaRopaCambio || 
                 !registro.otroMaterialNecesario.isNullOrEmpty()) {
                 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
                 
-                Text(
-                    text = "Material necesario:",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 32.dp)
+                InfoSeccion(
+                    icon = Icons.Default.DateRange,
+                    title = "Material necesario",
+                    content = {
+                        Column {
+                            if (registro.necesitaPanales) {
+                                Text("• Pañales", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (registro.necesitaToallitas) {
+                                Text("• Toallitas", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (registro.necesitaRopaCambio) {
+                                Text("• Ropa de cambio", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (!registro.otroMaterialNecesario.isNullOrEmpty()) {
+                                Text("• ${registro.otroMaterialNecesario}", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
                 )
-                
-                Column(modifier = Modifier.padding(start = 32.dp, top = 4.dp)) {
-                    if (registro.necesitaPanales) {
-                        Text("• Pañales", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    if (registro.necesitaToallitas) {
-                        Text("• Toallitas", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    if (registro.necesitaRopaCambio) {
-                        Text("• Ropa de cambio", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    if (!registro.otroMaterialNecesario.isNullOrEmpty()) {
-                        Text("• ${registro.otroMaterialNecesario}", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
             }
             
             // Observaciones generales
             if (!registro.observacionesGenerales.isNullOrEmpty()) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
                 
-                InfoSection(
-                    icon = Icons.Default.Subject,
+                InfoSeccion(
+                    icon = Icons.AutoMirrored.Filled.Subject,
                     title = "Observaciones generales",
-                    content = ""
-                )
-                
-                Text(
-                    text = registro.observacionesGenerales ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 32.dp)
+                    content = {
+                        Text(
+                            text = registro.observacionesGenerales ?: "",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 )
             }
         }
@@ -509,74 +751,82 @@ fun RegistroDiarioCard(
 }
 
 @Composable
-fun InfoSection(
+fun InfoSeccion(
     icon: ImageVector,
     title: String,
-    content: String,
-    modifier: Modifier = Modifier
+    content: @Composable () -> Unit
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.padding(top = 3.dp),
-            tint = ProfesorColor
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = ProfesorColor,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
-            if (content.isNotEmpty()) {
-                Text(
-                    text = content,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+        }
+        Box(modifier = Modifier.padding(start = 28.dp)) {
+            content()
         }
     }
 }
 
-/**
- * Obtiene un resumen textual del estado de las comidas
- */
-private fun obtenerResumenComidas(registro: RegistroActividad): String {
-    val comidas = mutableListOf<String>()
-    
-    if (registro.comidas.primerPlato.estadoComida != EstadoComida.NO_SERVIDO) {
-        comidas.add("Primer plato: ${obtenerTextoEstadoComida(registro.comidas.primerPlato.estadoComida)}")
-    }
-    
-    if (registro.comidas.segundoPlato.estadoComida != EstadoComida.NO_SERVIDO) {
-        comidas.add("Segundo plato: ${obtenerTextoEstadoComida(registro.comidas.segundoPlato.estadoComida)}")
-    }
-    
-    if (registro.comidas.postre.estadoComida != EstadoComida.NO_SERVIDO) {
-        comidas.add("Postre: ${obtenerTextoEstadoComida(registro.comidas.postre.estadoComida)}")
-    }
-    
-    return if (comidas.isEmpty()) {
-        "No se ha servido ninguna comida"
-    } else {
-        comidas.joinToString(", ")
+@Composable
+fun ComidaItem(nombre: String, estado: EstadoComida) {
+    Row(
+        modifier = Modifier.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val (color, texto) = when (estado) {
+            EstadoComida.COMPLETO -> Pair(Color.Green, "Completo")
+            EstadoComida.PARCIAL -> Pair(Color.Yellow, "Parcial")
+            EstadoComida.RECHAZADO -> Pair(Color.Red, "Rechazado")
+            EstadoComida.NO_SERVIDO -> Pair(Color.Gray, "No servido")
+            EstadoComida.NO_APLICABLE -> Pair(Color.Gray, "No aplicable")
+            EstadoComida.SIN_DATOS -> Pair(Color.Gray, "Sin datos")
+        }
+        
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "$nombre: $texto",
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
-/**
- * Convierte el estado de comida a texto legible
- */
-private fun obtenerTextoEstadoComida(estado: EstadoComida): String {
-    return when (estado) {
-        EstadoComida.COMPLETO -> "Completo"
-        EstadoComida.PARCIAL -> "Parcial"
-        EstadoComida.RECHAZADO -> "Rechazado"
-        EstadoComida.NO_SERVIDO -> "No servido"
-        EstadoComida.SIN_DATOS -> "Sin datos"
-        EstadoComida.NO_APLICABLE -> "No aplicable"
-    }
+// Función para determinar si una fecha es hoy
+private fun esHoy(fecha: Date): Boolean {
+    val hoy = java.util.Calendar.getInstance()
+    val cal = java.util.Calendar.getInstance()
+    cal.time = fecha
+    
+    return hoy.get(java.util.Calendar.YEAR) == cal.get(java.util.Calendar.YEAR) &&
+           hoy.get(java.util.Calendar.DAY_OF_YEAR) == cal.get(java.util.Calendar.DAY_OF_YEAR)
+}
+
+// Función para determinar si una fecha es ayer
+private fun esAyer(fecha: Date): Boolean {
+    val hoy = java.util.Calendar.getInstance()
+    val ayer = java.util.Calendar.getInstance()
+    ayer.add(java.util.Calendar.DAY_OF_YEAR, -1)
+    
+    val cal = java.util.Calendar.getInstance()
+    cal.time = fecha
+    
+    return ayer.get(java.util.Calendar.YEAR) == cal.get(java.util.Calendar.YEAR) &&
+           ayer.get(java.util.Calendar.DAY_OF_YEAR) == cal.get(java.util.Calendar.DAY_OF_YEAR)
 } 

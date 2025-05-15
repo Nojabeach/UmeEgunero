@@ -754,6 +754,7 @@ class RegistroDiarioRepository @Inject constructor(
             try {
                 Timber.d("Buscando registros para alumno: $alumnoId, entre $fechaInicio y $fechaFin")
                 
+                // Ahora usamos los índices compuestos creados manualmente en Firestore
                 val registrosSnapshot = firestore.collection("registrosActividad")
                     .whereEqualTo("alumnoId", alumnoId)
                     .whereGreaterThanOrEqualTo("fecha", fechaInicio)

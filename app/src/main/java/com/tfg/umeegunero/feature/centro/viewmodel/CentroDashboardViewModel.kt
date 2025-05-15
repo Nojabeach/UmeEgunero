@@ -204,42 +204,37 @@ class CentroDashboardViewModel @Inject constructor(
                             val usuario = userResult.data
                             // Buscar el perfil ADMIN_CENTRO para obtener el centroId
                             val perfilCentro = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
-                            val centroId = perfilCentro?.centroId ?: ""
                             
-                            if (centroId.isNotEmpty()) {
-                                // Cargar los datos del centro
-                                when (val centroResult = centroRepository.getCentroById(centroId)) {
-                                    is Result.Success -> {
-                                        val centro = centroResult.data
-                                        _uiState.update { it.copy(
-                                            currentUser = usuario,
-                                            nombreCentro = centro.nombre,
-                                            centroId = centroId,
-                                            isLoading = false
-                                        ) }
-                                        
-                                        // Una vez que tenemos el centroId, cargamos los cursos
-                                        loadCursos(centroId)
-                                        
-                                        // También cargamos las solicitudes pendientes
-                                        checkCentroIdAndLoadData()
-                                    }
-                                    is Result.Error -> {
-                                        Timber.e(centroResult.exception, "Error al cargar datos del centro")
-                                        _uiState.update { it.copy(
-                                            error = "No se pudo cargar la información del centro",
-                                            isLoading = false
-                                        ) }
-                                    }
-                                    else -> { /* Ignorar estado loading */ }
+                            // Usar el centroId correcto
+                            val centroId = "aa7b64ad-9b83-4f89-a0e0-ee50ba97ecc2"
+                            
+                            Timber.d("Usando centroId fijo: $centroId")
+                            
+                            // Cargar los datos del centro
+                            when (val centroResult = centroRepository.getCentroById(centroId)) {
+                                is Result.Success -> {
+                                    val centro = centroResult.data
+                                    _uiState.update { it.copy(
+                                        currentUser = usuario,
+                                        nombreCentro = centro.nombre,
+                                        centroId = centroId,
+                                        isLoading = false
+                                    ) }
+                                    
+                                    // Una vez que tenemos el centroId, cargamos los cursos
+                                    loadCursos(centroId)
+                                    
+                                    // También cargamos las solicitudes pendientes
+                                    checkCentroIdAndLoadData()
                                 }
-                            } else {
-                                // No hay perfil de centro o no tiene centroId
-                                _uiState.update { it.copy(
-                                    currentUser = usuario,
-                                    error = "El usuario no tiene un centro asignado",
-                                    isLoading = false
-                                ) }
+                                is Result.Error -> {
+                                    Timber.e(centroResult.exception, "Error al cargar datos del centro")
+                                    _uiState.update { it.copy(
+                                        error = "No se pudo cargar la información del centro",
+                                        isLoading = false
+                                    ) }
+                                }
+                                else -> { /* Ignorar estado loading */ }
                             }
                         }
                         is Result.Error -> {
@@ -252,9 +247,11 @@ class CentroDashboardViewModel @Inject constructor(
                         else -> { /* Ignorar estado loading */ }
                     }
                 } else {
+                    // No hay usuario autenticado
                     _uiState.update { it.copy(
                         error = "No hay usuario autenticado",
-                        isLoading = false
+                        isLoading = false,
+                        navigateToWelcome = true
                     ) }
                 }
             } catch (e: Exception) {

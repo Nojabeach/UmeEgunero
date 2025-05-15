@@ -28,6 +28,18 @@ import javax.inject.Inject
 import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.Comidas
 import com.google.firebase.Timestamp
+import android.content.Context
+import android.graphics.pdf.PdfDocument
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.net.Uri
+import android.content.Intent
+import android.graphics.Color
+import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 /**
  * Estado de UI para la pantalla de histórico de registros diarios
@@ -42,7 +54,9 @@ data class HistoricoRegistroUiState(
     val alumnoSeleccionado: Alumno? = null,
     val registros: List<RegistroActividad> = emptyList(),
     val fechaSeleccionada: Date = Date(),
-    val mensajeExito: String? = null
+    val mensajeExito: String? = null,
+    val exportPdfUri: Uri? = null,
+    val isExporting: Boolean = false
 )
 
 /**
@@ -531,170 +545,329 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
     }
     
     /**
-     * Limpiar mensaje de error
+     * Limpia mensaje de error
      */
     fun limpiarError() {
         _uiState.update { it.copy(error = null) }
     }
     
     /**
-     * Método para convertir un registro diario a un formato unificado
-     * 
-     * @param registro Registro diario a normalizar
-     * @return Registro diario con formato normalizado
+     * Limpia el URI del archivo PDF exportado
      */
-    private fun normalizarRegistro(registro: RegistroActividad): RegistroActividad {
-        // Valores por defecto para campos que podrían estar nulos
-        val primerPlato = registro.comidas.primerPlato.estadoComida
-        val segundoPlato = registro.comidas.segundoPlato.estadoComida
-        val postre = registro.comidas.postre.estadoComida
-        
-        // Componer observaciones para evitar duplicidad
-        val obsComida = registro.observacionesComida.ifEmpty { "" }
-        
-        // Unificar las observaciones
-        val obsCaca = registro.observacionesCaca
-        val obsGenerales = registro.observacionesGenerales
-        
-        return registro.copy(
-            observacionesComida = obsComida,
-            observacionesCaca = obsCaca,
-            observacionesGenerales = obsGenerales
-        )
+    fun limpiarExportPdfUri() {
+        _uiState.update { it.copy(exportPdfUri = null) }
     }
     
     /**
-     * Convierte un nivel de consumo a un estado de comida correspondiente
+     * Exporta los registros actuales a un archivo PDF
      */
-    private fun convertirNivelConsumoAEstadoComida(nivelConsumo: String): EstadoComida {
-        return when (nivelConsumo.uppercase()) {
-            "BIEN", "COMPLETO" -> EstadoComida.COMPLETO
-            "REGULAR", "PARCIAL" -> EstadoComida.PARCIAL
-            "MAL", "NADA", "RECHAZADO" -> EstadoComida.RECHAZADO
-            else -> EstadoComida.NO_SERVIDO
-        }
-    }
-
-    /**
-     * Carga los registros para la fecha seleccionada
-     */
-    private fun cargarRegistros() {
-        _uiState.update { it.copy(isLoading = true) }
-        
+    fun exportarRegistrosPDF(context: Context) {
         viewModelScope.launch {
             try {
-                // Solo cargar si tenemos un alumno seleccionado
-                val alumnoId = _uiState.value.alumnoSeleccionado?.id ?: return@launch
-                val fecha = _uiState.value.fechaSeleccionada
+                _uiState.update { it.copy(isExporting = true) }
                 
-                // Convertir fecha a formato adecuado para la consulta
-                val calendar = Calendar.getInstance()
-                calendar.time = fecha
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                val fechaInicio = calendar.time
+                val alumno = _uiState.value.alumnoSeleccionado
+                val registros = _uiState.value.registros
                 
-                calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.SECOND, 59)
-                val fechaFin = calendar.time
-                
-                val result = obtenerRegistrosPorAlumnoYFecha(alumnoId, fechaInicio, fechaFin)
-                
-                if (result is Result.Success<List<RegistroActividad>>) {
-                    val registrosNormalizados = result.data.map { normalizarRegistro(it) }
-                    _uiState.update { it.copy(
-                        registros = registrosNormalizados,
-                        isLoading = false
-                    ) }
-                } else {
-                    _uiState.update { it.copy(
-                        error = "Error al cargar los registros: ${(result as? Result.Error)?.exception?.message ?: "Desconocido"}",
-                        isLoading = false
-                    ) }
+                if (alumno == null) {
+                    _uiState.update { 
+                        it.copy(
+                            isExporting = false,
+                            error = "Para exportar, primero selecciona un alumno"
+                        )
+                    }
+                    return@launch
                 }
+                
+                if (registros.isEmpty()) {
+                    _uiState.update { 
+                        it.copy(
+                            isExporting = false,
+                            error = "No hay registros para exportar"
+                        )
+                    }
+                    return@launch
+                }
+                
+                // Crear el documento PDF
+                val pdfDocument = PdfDocument()
+                val pageWidth = 595 // Tamaño A4 en puntos
+                val pageHeight = 842
+                val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+                val page = pdfDocument.startPage(pageInfo)
+                var canvas = page.canvas
+                
+                // Configurar pinceles para dibujar
+                val titlePaint = Paint().apply {
+                    color = Color.rgb(33, 33, 33)
+                    textSize = 18f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+                
+                val subtitlePaint = Paint().apply {
+                    color = Color.rgb(33, 33, 33)
+                    textSize = 14f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+                
+                val textPaint = Paint().apply {
+                    color = Color.rgb(33, 33, 33)
+                    textSize = 12f
+                }
+                
+                val smallTextPaint = Paint().apply {
+                    color = Color.rgb(117, 117, 117)
+                    textSize = 10f
+                }
+                
+                val separatorPaint = Paint().apply {
+                    color = Color.rgb(224, 224, 224)
+                    strokeWidth = 1f
+                }
+                
+                // Dibujar encabezado
+                val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                val currentDate = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+                val title = "Registro de actividades"
+                val subtitle = "Alumno: ${alumno.nombre} - Fecha: ${dateFormat.format(_uiState.value.fechaSeleccionada)}"
+                
+                canvas.drawText(title, 50f, 50f, titlePaint)
+                canvas.drawText(subtitle, 50f, 80f, subtitlePaint)
+                canvas.drawText("Generado el: $currentDate", 50f, 100f, smallTextPaint)
+                
+                canvas.drawLine(50f, 120f, pageWidth - 50f, 120f, separatorPaint)
+                
+                // Dibujar registros
+                var yPosition = 150f
+                
+                registros.forEachIndexed { index, registro ->
+                    // Hora del registro
+                    val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(registro.fecha.toDate())
+                    canvas.drawText("Registro #${index + 1} - $hora", 50f, yPosition, subtitlePaint)
+                    yPosition += 25f
+                    
+                    // Comidas
+                    canvas.drawText("Comidas:", 70f, yPosition, subtitlePaint)
+                    yPosition += 20f
+                    canvas.drawText("• Primer plato: ${estadoComidaATexto(registro.comidas.primerPlato.estadoComida)}", 90f, yPosition, textPaint)
+                    yPosition += 20f
+                    canvas.drawText("• Segundo plato: ${estadoComidaATexto(registro.comidas.segundoPlato.estadoComida)}", 90f, yPosition, textPaint)
+                    yPosition += 20f
+                    canvas.drawText("• Postre: ${estadoComidaATexto(registro.comidas.postre.estadoComida)}", 90f, yPosition, textPaint)
+                    yPosition += 20f
+                    
+                    if (!registro.observacionesComida.isNullOrEmpty()) {
+                        canvas.drawText("• Observaciones: ${registro.observacionesComida}", 90f, yPosition, textPaint)
+                        yPosition += 20f
+                    }
+                    
+                    // Siesta
+                    canvas.drawText("Siesta:", 70f, yPosition, subtitlePaint)
+                    yPosition += 20f
+                    if (registro.haSiestaSiNo) {
+                        val horaInicio = registro.horaInicioSiesta.ifEmpty { "No registrada" }
+                        val horaFin = registro.horaFinSiesta.ifEmpty { "No registrada" }
+                        canvas.drawText("• Ha dormido siesta de $horaInicio a $horaFin", 90f, yPosition, textPaint)
+                        yPosition += 20f
+                        
+                        if (!registro.observacionesSiesta.isNullOrEmpty()) {
+                            canvas.drawText("• Observaciones: ${registro.observacionesSiesta}", 90f, yPosition, textPaint)
+                            yPosition += 20f
+                        }
+                    } else {
+                        canvas.drawText("• No ha dormido siesta", 90f, yPosition, textPaint)
+                        yPosition += 20f
+                    }
+                    
+                    // Deposiciones
+                    if (registro.haHechoCaca) {
+                        canvas.drawText("Deposiciones:", 70f, yPosition, subtitlePaint)
+                        yPosition += 20f
+                        canvas.drawText("• ${registro.numeroCacas} deposiciones", 90f, yPosition, textPaint)
+                        yPosition += 20f
+                        
+                        if (!registro.observacionesCaca.isNullOrEmpty()) {
+                            canvas.drawText("• Observaciones: ${registro.observacionesCaca}", 90f, yPosition, textPaint)
+                            yPosition += 20f
+                        }
+                    }
+                    
+                    // Material necesario
+                    if (registro.necesitaPanales || registro.necesitaToallitas || registro.necesitaRopaCambio || 
+                        !registro.otroMaterialNecesario.isNullOrEmpty()) {
+                        
+                        canvas.drawText("Material Necesario:", 70f, yPosition, subtitlePaint)
+                        yPosition += 20f
+                        
+                        if (registro.necesitaPanales) {
+                            canvas.drawText("• Pañales", 90f, yPosition, textPaint)
+                            yPosition += 20f
+                        }
+                        if (registro.necesitaToallitas) {
+                            canvas.drawText("• Toallitas", 90f, yPosition, textPaint)
+                            yPosition += 20f
+                        }
+                        if (registro.necesitaRopaCambio) {
+                            canvas.drawText("• Ropa de cambio", 90f, yPosition, textPaint)
+                            yPosition += 20f
+                        }
+                        if (!registro.otroMaterialNecesario.isNullOrEmpty()) {
+                            canvas.drawText("• ${registro.otroMaterialNecesario}", 90f, yPosition, textPaint)
+                            yPosition += 20f
+                        }
+                    }
+                    
+                    // Observaciones generales
+                    if (!registro.observacionesGenerales.isNullOrEmpty()) {
+                        canvas.drawText("Observaciones generales:", 70f, yPosition, subtitlePaint)
+                        yPosition += 20f
+                        
+                        // Manejar texto largo dividiéndolo en líneas
+                        val observaciones = registro.observacionesGenerales ?: ""
+                        val maxWidth = pageWidth - 140f // Margen derecho e izquierdo
+                        val lineas = dividirTextoEnLineas(observaciones, maxWidth, textPaint)
+                        
+                        for (linea in lineas) {
+                            canvas.drawText(linea, 90f, yPosition, textPaint)
+                            yPosition += 20f
+                        }
+                    }
+                    
+                    // Separador entre registros
+                    yPosition += 10f
+                    canvas.drawLine(50f, yPosition, pageWidth - 50f, yPosition, separatorPaint)
+                    yPosition += 30f
+                    
+                    // Si no cabe más contenido en esta página, crear una nueva
+                    if (yPosition > pageHeight - 100) {
+                        pdfDocument.finishPage(page)
+                        
+                        // Crear nueva página
+                        val newPageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pdfDocument.pages.size + 1).create()
+                        val newPage = pdfDocument.startPage(newPageInfo)
+                        
+                        // Reiniciar Canvas y posición Y
+                        canvas = newPage.canvas
+                        yPosition = 50f
+                        
+                        // Encabezado de continuación
+                        canvas.drawText("$title (continuación)", 50f, yPosition, titlePaint)
+                        yPosition += 30f
+                        canvas.drawText(subtitle, 50f, yPosition, subtitlePaint)
+                        yPosition += 30f
+                        canvas.drawLine(50f, yPosition, pageWidth - 50f, yPosition, separatorPaint)
+                        yPosition += 30f
+                    }
+                }
+                
+                // Finalizar la última página
+                pdfDocument.finishPage(page)
+                
+                // Guardar el PDF en el almacenamiento
+                val nombreArchivo = "Registro_${alumno.nombre?.replace(" ", "_")}_${dateFormat.format(_uiState.value.fechaSeleccionada).replace("/", "-")}.pdf"
+                val pdfFolder = File(context.getExternalFilesDir(null), "registros")
+                
+                if (!pdfFolder.exists()) {
+                    pdfFolder.mkdirs()
+                }
+                
+                val pdfFile = File(pdfFolder, nombreArchivo)
+                
+                try {
+                    val fos = FileOutputStream(pdfFile)
+                    pdfDocument.writeTo(fos)
+                    pdfDocument.close()
+                    fos.close()
+                    
+                    // Crear un URI para compartir el archivo
+                    val fileUri = FileProvider.getUriForFile(
+                        context, 
+                        "${context.packageName}.provider",
+                        pdfFile
+                    )
+                    
+                    _uiState.update { 
+                        it.copy(
+                            isExporting = false,
+                            exportPdfUri = fileUri,
+                            mensajeExito = "PDF generado correctamente"
+                        )
+                    }
+                    
+                } catch (e: IOException) {
+                    Timber.e(e, "Error al guardar el archivo PDF")
+                    _uiState.update { 
+                        it.copy(
+                            isExporting = false,
+                            error = "Error al guardar el PDF: ${e.message}"
+                        )
+                    }
+                }
+                
             } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    error = "Error al cargar registros: ${e.message}",
-                    isLoading = false
-                ) }
+                Timber.e(e, "Error al exportar registros a PDF")
+                _uiState.update { 
+                    it.copy(
+                        isExporting = false,
+                        error = "Error al exportar registros: ${e.message}"
+                    )
+                }
             }
         }
     }
-
+    
     /**
-     * Obtiene registros por alumno y fecha
+     * Crea un Intent para compartir el PDF generado
      */
-    private suspend fun obtenerRegistrosPorAlumnoYFecha(
-        alumnoId: String, 
-        fechaInicio: Date, 
-        fechaFin: Date
-    ): Result<List<RegistroActividad>> {
-        return try {
-            val startTimestamp = Timestamp(fechaInicio)
-            val endTimestamp = Timestamp(fechaFin)
+    fun crearIntentCompartirPDF(): Intent? {
+        val uri = _uiState.value.exportPdfUri ?: return null
+        
+        return Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_STREAM, uri)
+            type = "application/pdf"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+    
+    /**
+     * Convierte texto largo en líneas que quepan en el ancho disponible
+     */
+    private fun dividirTextoEnLineas(texto: String, maxWidth: Float, paint: Paint): List<String> {
+        val palabras = texto.split(" ")
+        val lineas = mutableListOf<String>()
+        var lineaActual = ""
+        
+        for (palabra in palabras) {
+            val lineaConPalabra = if (lineaActual.isEmpty()) palabra else "$lineaActual $palabra"
+            val anchoPalabra = paint.measureText(lineaConPalabra)
             
-            val result = registroDiarioRepository.obtenerRegistrosPorFechaYAlumno(alumnoId, startTimestamp, endTimestamp)
-            if (result is Result.Success) {
-                Timber.d("Registros obtenidos para alumno $alumnoId: ${result.data.size}")
-                Result.Success(result.data)
+            if (anchoPalabra <= maxWidth) {
+                lineaActual = lineaConPalabra
             } else {
-                Timber.e("Error al obtener registros para alumno $alumnoId: ${(result as? Result.Error)?.exception?.message}")
-                Result.Error((result as? Result.Error)?.exception ?: Exception("Error desconocido"))
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener registros por alumno y fecha")
-            Result.Error(e)
-        }
-    }
-
-    /**
-     * Obtiene un resumen textual del estado de las comidas
-     */
-    private fun obtenerResumenComidas(registro: RegistroActividad): String {
-        val comidas = mutableListOf<String>()
-        
-        // Verificar si el campo comidas está inicializado
-        if (registro.comidas != null) {
-            if (registro.comidas.primerPlato.estadoComida != EstadoComida.NO_SERVIDO) {
-                comidas.add("Primer plato: ${obtenerTextoEstadoComida(registro.comidas.primerPlato.estadoComida)}")
-            }
-            
-            if (registro.comidas.segundoPlato.estadoComida != EstadoComida.NO_SERVIDO) {
-                comidas.add("Segundo plato: ${obtenerTextoEstadoComida(registro.comidas.segundoPlato.estadoComida)}")
-            }
-            
-            if (registro.comidas.postre.estadoComida != EstadoComida.NO_SERVIDO) {
-                comidas.add("Postre: ${obtenerTextoEstadoComida(registro.comidas.postre.estadoComida)}")
+                if (lineaActual.isNotEmpty()) {
+                    lineas.add(lineaActual)
+                }
+                lineaActual = palabra
             }
         }
         
-        return if (comidas.isEmpty()) {
-            "No se ha servido ninguna comida"
-        } else {
-            comidas.joinToString(", ")
+        if (lineaActual.isNotEmpty()) {
+            lineas.add(lineaActual)
         }
+        
+        return lineas
     }
-
+    
     /**
-     * Convierte el estado de comida a texto legible
+     * Convierte un estado de comida a texto
      */
-    private fun obtenerTextoEstadoComida(estado: EstadoComida): String {
+    private fun estadoComidaATexto(estado: EstadoComida): String {
         return when (estado) {
             EstadoComida.COMPLETO -> "Completo"
             EstadoComida.PARCIAL -> "Parcial"
             EstadoComida.RECHAZADO -> "Rechazado"
-            EstadoComida.NO_SERVIDO -> "No servido"
-            EstadoComida.SIN_DATOS -> "Sin datos"
-            EstadoComida.NO_APLICABLE -> "No aplicable"
+            else -> "No servido"
         }
-    }
-
-    /**
-     * Limpiar mensaje de éxito
-     */
-    fun limpiarMensajeExito() {
-        _uiState.update { it.copy(mensajeExito = null) }
     }
 } 

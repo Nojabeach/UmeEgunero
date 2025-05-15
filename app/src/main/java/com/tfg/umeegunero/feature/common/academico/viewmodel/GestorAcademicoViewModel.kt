@@ -115,8 +115,13 @@ class GestorAcademicoViewModel @Inject constructor(
      * @param centro Centro a seleccionar
      */
     fun onCentroSelected(centro: Centro) {
+        Timber.d("Centro seleccionado: ${centro.nombre} (${centro.id})")
         _uiState.update { it.copy(selectedCentro = centro, selectedCurso = null, cursos = emptyList(), clases = emptyList()) }
-        observarCursos(centro.id)
+        
+        // Usar el ID del centro seleccionado, no un ID fijo
+        val centroId = centro.id
+        Timber.d("🔄 Observando cursos del centro ID: $centroId")
+        observarCursos(centroId)
     }
 
     /**

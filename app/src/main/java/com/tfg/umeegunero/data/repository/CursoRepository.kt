@@ -265,7 +265,7 @@ class CursoRepository @Inject constructor() {
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun obtenerCursosPorCentroFlow(centroId: String, soloActivos: Boolean = true): Flow<Result<List<Curso>>> = callbackFlow {
-        Timber.d("Creando Flow para cursos del centro ID: $centroId (soloActivos=$soloActivos)")
+        Timber.d("🔄🔄 Creando Flow para cursos del centro ID: $centroId (soloActivos=$soloActivos)")
         
         // Crear query base filtrando por centroId
         var query: Query = cursosCollection.whereEqualTo("centroId", centroId)
@@ -274,17 +274,47 @@ class CursoRepository @Inject constructor() {
         if (soloActivos) {
             query = query.whereEqualTo("activo", true)
         }
+
+        // Enviar un estado de carga inicial
+        trySend(Result.Loading()).isSuccess
         
+        // Primer carga sin esperar cambios en tiempo real
+        try {
+            Timber.d("🔍 Consultando cursos para centroId=$centroId")
+            val snapshot = query.get().await()
+            
+            val cursos = snapshot.documents.mapNotNull { document ->
+                try {
+                    val data = document.data
+                    Timber.d("📄 Documento curso: id=${document.id}, data=$data")
+                    
+                    val curso = document.toObject<Curso>()?.copy(id = document.id)
+                    curso?.also { Timber.d("✅ Curso mapeado: ${it.nombre} (${it.id})") }
+                    curso
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al mapear documento de curso: ${document.id}")
+                    null
+                }
+            }
+            
+            Timber.d("📊 Carga inicial: ${cursos.size} cursos encontrados para centroId=$centroId")
+            trySend(Result.Success(cursos)).isSuccess
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error en carga inicial de cursos para centroId=$centroId")
+            trySend(Result.Error(e)).isSuccess
+        }
+        
+        // Configurar listener para actualizaciones en tiempo real
         val listenerRegistration = query.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                Timber.e(error, "Error al escuchar cambios en cursos del centro $centroId")
-                trySend(Result.Error(error)).isSuccess // Try to send error
+                Timber.e(error, "❌ Error al escuchar cambios en cursos del centro $centroId")
+                trySend(Result.Error(error)).isSuccess
                 return@addSnapshotListener
             }
             
             if (snapshot == null) {
-                Timber.w("Snapshot nulo para cursos del centro $centroId")
-                trySend(Result.Success(emptyList())).isSuccess // Send empty list if snapshot is null
+                Timber.w("⚠️ Snapshot nulo para cursos del centro $centroId")
+                trySend(Result.Success(emptyList())).isSuccess
                 return@addSnapshotListener
             }
 
@@ -292,20 +322,20 @@ class CursoRepository @Inject constructor() {
                 try {
                     val curso = document.toObject<Curso>()
                     // Asegurar que el ID del documento se asigna al objeto
-                    curso?.copy(id = document.id) 
+                    curso?.copy(id = document.id)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al mapear documento de curso: ${document.id}, data: ${document.data}")
+                    Timber.e(e, "❌ Error al mapear documento de curso: ${document.id}, data: ${document.data}")
                     null
                 }
             }
             
-            Timber.d("Snapshot recibido: ${cursos.size} cursos para el centro $centroId (soloActivos=$soloActivos)")
-            trySend(Result.Success(cursos)).isSuccess // Send the latest list
+            Timber.d("✅ Actualización: ${cursos.size} cursos para centroId=$centroId")
+            trySend(Result.Success(cursos)).isSuccess
         }
 
-        // Cancelar el listener cuando el Flow se cancele
+        // Limpiar el listener cuando el Flow se cierra
         awaitClose {
-            Timber.d("Cancelando listener para cursos del centro $centroId")
+            Timber.d("🧹 Limpiando listener de cursos para centroId=$centroId")
             listenerRegistration.remove()
         }
     }
