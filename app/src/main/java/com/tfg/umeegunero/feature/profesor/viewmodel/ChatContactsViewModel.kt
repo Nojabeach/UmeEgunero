@@ -27,6 +27,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+import com.google.firebase.Timestamp
+import java.util.HashMap
 
 /**
  * Modelo de datos para un contacto de profesor
@@ -101,7 +105,8 @@ class ChatContactsViewModel @Inject constructor(
     private val alumnoRepository: AlumnoRepository,
     private val cursoRepository: CursoRepository,
     private val claseRepository: ClaseRepository,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ChatContactsUiState())
@@ -250,9 +255,9 @@ class ChatContactsViewModel @Inject constructor(
                 
                 _uiState.update { it.copy(hijos = hijos) }
                 
-                // Seleccionamos el primer hijo por defecto
-                val primerHijo = hijos.firstOrNull()
-                if (primerHijo != null) {
+                // Si hay hijos, cargar profesores del primer hijo por defecto
+                if (hijos.isNotEmpty()) {
+                    val primerHijo = hijos[0]  // Usar indexación segura en lugar de first()
                     seleccionarHijo(primerHijo)
                 } else {
                     _uiState.update { it.copy(isLoading = false) }
@@ -364,18 +369,31 @@ class ChatContactsViewModel @Inject constructor(
      */
     private suspend fun loadAdministrators(centroId: String): List<ProfesorContacto> {
         try {
-            // Versión simplificada para compilación
-            Timber.d("Cargando administradores para centro $centroId")
-            return listOf(
+            // Consultar usuarios con perfil de ADMIN_CENTRO para este centro
+            val adminsQuery = firestore.collection("usuarios")
+                .whereArrayContains("perfiles", mapOf(
+                    "tipo" to "ADMIN_CENTRO",
+                    "centroId" to centroId
+                ))
+                .get()
+                .await()
+            
+            return adminsQuery.documents.mapNotNull { doc ->
+                if (!doc.exists()) return@mapNotNull null
+                
+                val dni = doc.id
+                val nombre = doc.getString("nombre") ?: "Admin"
+                val apellidos = doc.getString("apellidos") ?: "Centro"
+                
                 ProfesorContacto(
-                    dni = "11111111A",
-                    nombre = "Ana",
-                    apellidos = "Fernández Gómez",
-                    descripcion = "Administradora del centro"
+                    dni = dni,
+                    nombre = nombre,
+                    apellidos = apellidos,
+                    descripcion = "Administrador de Centro"
                 )
-            )
+            }
         } catch (e: Exception) {
-            Timber.e(e, "Error al cargar administradores")
+            Timber.e(e, "Error al cargar administradores del centro $centroId")
             return emptyList()
         }
     }
@@ -385,102 +403,121 @@ class ChatContactsViewModel @Inject constructor(
      */
     private suspend fun loadTeachers(centroId: String, currentUserDni: String?): List<ProfesorContacto> {
         try {
-            // Versión simplificada para compilación
-            Timber.d("Cargando profesores para centro $centroId")
-            return listOf(
+            // Consultar usuarios con perfil de PROFESOR para este centro
+            val teachersQuery = firestore.collection("usuarios")
+                .get()
+                .await()
+            
+            return teachersQuery.documents.mapNotNull { doc ->
+                if (!doc.exists()) return@mapNotNull null
+                
+                val dni = doc.id
+                // Excluir al usuario actual
+                if (dni == currentUserDni) return@mapNotNull null
+                
+                // Verificar si el usuario tiene perfil de profesor en este centro
+                val perfiles = doc.get("perfiles") as? List<Map<String, Any>> ?: return@mapNotNull null
+                val isProfesorThisCentro = perfiles.any { 
+                    (it["tipo"] as? String) == "PROFESOR" && (it["centroId"] as? String) == centroId 
+                }
+                
+                if (!isProfesorThisCentro) return@mapNotNull null
+                
+                val nombre = doc.getString("nombre") ?: "Profesor"
+                val apellidos = doc.getString("apellidos") ?: ""
+                
                 ProfesorContacto(
-                    dni = "12345678A",
-                    nombre = "María",
-                    apellidos = "García López",
-                    descripcion = "Profesora titular"
-                ),
-                ProfesorContacto(
-                    dni = "87654321B",
-                    nombre = "Juan",
-                    apellidos = "Martínez Ruiz",
-                    descripcion = "Profesor de apoyo"
+                    dni = dni,
+                    nombre = nombre,
+                    apellidos = apellidos,
+                    descripcion = "Profesor"
                 )
-            )
+            }
         } catch (e: Exception) {
-            Timber.e(e, "Error al cargar profesores")
+            Timber.e(e, "Error al cargar profesores del centro $centroId")
             return emptyList()
         }
     }
     
     /**
      * Carga las familias de una clase
+     * @deprecated Use loadFamiliesByClaseId instead
      */
+    @Deprecated("Use loadFamiliesByClaseId instead", ReplaceWith("loadFamiliesByClaseId(claseId)"))
     private suspend fun loadFamilies(claseId: String): List<FamiliarContacto> {
-        try {
-            // Primero obtenemos los alumnos de la clase
-            val alumnosResult = alumnoRepository.getAlumnosByClase(claseId)
-            when (alumnosResult) {
-                is Result.Success<*> -> {
-                    val familiares = mutableListOf<FamiliarContacto>()
-                    @Suppress("UNCHECKED_CAST")
-                    val alumnos = alumnosResult.data as List<Alumno>
-                    
-                    // Para cada alumno, obtenemos sus familiares
-                    for (alumno in alumnos) {
-                        val familiaresResult = familiarRepository.getFamiliaresByAlumnoId(alumno.dni)
-                        
-                        if (familiaresResult is Result.Success<*>) {
-                            @Suppress("UNCHECKED_CAST")
-                            val familiaresData = familiaresResult.data as List<Usuario>
-                            for (familiar in familiaresData) {
-                                familiares.add(
-                                    FamiliarContacto(
-                                        dni = familiar.dni,
-                                        nombre = familiar.nombre,
-                                        apellidos = familiar.apellidos,
-                                        alumnoId = alumno.dni,
-                                        alumnoNombre = alumno.nombre
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    
-                    return familiares
+        return loadFamiliesByClaseId(claseId)
+    }
+    
+    /**
+     * Carga los contactos disponibles para el profesor
+     */
+    private fun loadContacts(centroId: String?, claseId: String?) {
+        viewModelScope.launch {
+            try {
+                if (centroId == null) {
+                    _uiState.update { it.copy(
+                        error = "No se pudo determinar el centro del profesor",
+                        isLoading = false
+                    ) }
+                    return@launch
                 }
-                else -> return emptyList()
+                
+                // 1. Cargar administradores del centro
+                val admins = loadAdministrators(centroId)
+                
+                // 2. Cargar otros profesores del centro
+                val teachers = loadTeachers(centroId, _uiState.value.currentUser?.dni)
+                
+                // 3. Cargar familiares de alumnos de la clase
+                val families = if (claseId != null) {
+                    loadFamiliesByClaseId(claseId)
+                } else {
+                    emptyList()
+                }
+                
+                // Actualizar estado con todos los contactos
+                _uiState.update { state ->
+                    state.copy(
+                        administratorContacts = admins,
+                        teacherContacts = teachers,
+                        familyContacts = families,
+                        filteredContacts = admins + teachers + families,
+                        isLoading = false
+                    )
+                }
+                
+                // Cargar contadores de mensajes no leídos
+                cargarMensajesNoLeidos()
+                
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar contactos")
+                _uiState.update { it.copy(
+                    error = "Error al cargar contactos: ${e.message}",
+                    isLoading = false
+                ) }
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al cargar familiares")
-            return emptyList()
         }
     }
     
     /**
-     * Carga los cursos y clases disponibles para filtrado
+     * Carga cursos y clases disponibles para filtrado
      */
-    private fun loadCoursesAndClasses(centroId: String?) {
+    private fun loadCoursesAndClasses(centroId: String) {
         viewModelScope.launch {
             try {
-                if (centroId == null) return@launch
-                
-                // Versión simplificada para compilación
-                Timber.d("Cargando cursos y clases para centro $centroId")
-                
-                // Datos de ejemplo
-                val cursos = listOf(
-                    Curso(id = "curso1", nombre = "Infantil 1", descripcion = "1-2 años"),
-                    Curso(id = "curso2", nombre = "Infantil 2", descripcion = "2-3 años")
-                )
-                
-                val clases = listOf(
-                    Clase(id = "clase1", nombre = "1A", cursoId = "curso1"),
-                    Clase(id = "clase2", nombre = "1B", cursoId = "curso1"),
-                    Clase(id = "clase3", nombre = "2A", cursoId = "curso2")
-                )
-                
                 _uiState.update { it.copy(
-                    availableCourses = cursos,
-                    availableClasses = clases
+                    currentUserCentroId = centroId
                 ) }
                 
+                // Cargar los cursos usando la función que ahora usa datos reales
+                loadCursos()
+                
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar cursos y clases")
+                Timber.e(e, "Error al cargar cursos y clases para filtrado")
+                _uiState.update { it.copy(
+                    error = "Error al cargar datos para filtrado: ${e.message}",
+                    isLoading = false
+                ) }
             }
         }
     }
@@ -511,78 +548,12 @@ class ChatContactsViewModel @Inject constructor(
     
     /**
      * Filtra los contactos según la búsqueda y los filtros aplicados
+     * @deprecated Use aplicarFiltro instead
      */
+    @Deprecated("Use aplicarFiltro instead", ReplaceWith("aplicarFiltro(_uiState.value.selectedCourseId, _uiState.value.selectedClassId)"))
     private fun filterContacts() {
-        val query = _uiState.value.searchQuery.lowercase()
-        val courseId = _uiState.value.selectedCourseId
-        val classId = _uiState.value.selectedClassId
-        
-        val state = _uiState.value
-        
-        // Filtrar administradores (los administradores no se filtran por curso o clase)
-        val filteredAdmins = state.administratorContacts.filter { admin ->
-            if (query.isNotEmpty()) {
-                "${admin.nombre} ${admin.apellidos}".lowercase().contains(query)
-            } else true
-        }
-        
-        // Filtrar profesores según curso o clase
-        val filteredTeachers = state.teacherContacts.filter { teacher ->
-            val matchesQuery = if (query.isNotEmpty()) {
-                "${teacher.nombre} ${teacher.apellidos}".lowercase().contains(query)
-            } else true
-            
-            val matchesFilters = if (classId != null) {
-                // Si hay clase seleccionada, filtrar profesores de esa clase
-                // Aquí tendríamos que implementar la lógica real con el repository
-                // Por ahora, usando datos simulados para demostración:
-                true // Asumimos que todos los profesores pertenecen a la clase
-            } else if (courseId != null) {
-                // Si hay curso seleccionado pero no clase, filtrar profesores de ese curso
-                // De nuevo, aquí iría la lógica real
-                true
-            } else {
-                // Sin filtros activos
-                true
-            }
-            
-            matchesQuery && matchesFilters
-        }
-        
-        // Filtrar familiares según curso o clase
-        val filteredFamilies = if (state.userType == TipoUsuario.PROFESOR || state.userType == TipoUsuario.ADMIN_CENTRO) {
-            state.familyContacts.filter { family ->
-                val matchesQuery = if (query.isNotEmpty()) {
-                    "${family.nombre} ${family.apellidos}".lowercase().contains(query) ||
-                    (family.alumnoNombre?.lowercase()?.contains(query) ?: false)
-                } else true
-                
-                // Aplicar filtros de curso/clase
-                val matchesFilters = if (classId != null) {
-                    // Si hay clase seleccionada, filtrar alumnos/familiares de esa clase
-                    // Esta lógica depende de cómo tengas modelados tus datos
-                    // Si FamiliarContacto tiene la clase del alumno, podríamos hacer:
-                    // family.alumnoClaseId == classId
-                    // Por ahora simulamos filtrado correcto:
-                    family.alumnoId != null // Solo mostrar los que tienen alumno asociado
-                } else if (courseId != null) {
-                    // Si hay curso seleccionado, mostrar familias de alumnos de ese curso
-                    // Igual que antes, depende de tu modelo
-                    family.alumnoId != null
-                } else {
-                    // Sin filtros
-                    true
-                }
-                
-                matchesQuery && matchesFilters
-            }
-        } else {
-            emptyList()
-        }
-        
-        _uiState.update { it.copy(
-            filteredContacts = filteredAdmins + filteredTeachers + filteredFamilies
-        ) }
+        // Redirigir a la nueva implementación
+        aplicarFiltro(_uiState.value.selectedCourseId, _uiState.value.selectedClassId)
     }
     
     /**
@@ -612,6 +583,9 @@ class ChatContactsViewModel @Inject constructor(
                 selectedClassId = null,
                 availableClasses = emptyList()
             ) }
+            
+            // Aplicar filtros sin curso ni clase seleccionada
+            aplicarFiltro(null, null)
         } else {
             // Seleccionar el nuevo curso y cargar sus clases
             _uiState.update { it.copy(
@@ -622,10 +596,9 @@ class ChatContactsViewModel @Inject constructor(
             
             // Cargar las clases del curso seleccionado
             loadClases(courseId)
+            
+            // No aplicamos filtro aquí porque esperaremos a que se seleccione una clase
         }
-        
-        // Aplicar filtros
-        filterContacts()
     }
     
     /**
@@ -637,20 +610,23 @@ class ChatContactsViewModel @Inject constructor(
         if (currentClassId == classId) {
             // Si se selecciona la misma clase, deseleccionarla
             _uiState.update { it.copy(selectedClassId = null) }
+            
+            // Aplicar filtros solo con el curso seleccionado
+            aplicarFiltro(_uiState.value.selectedCourseId, null)
         } else {
             // Seleccionar la nueva clase
             _uiState.update { it.copy(selectedClassId = classId) }
+            
+            // Aplicar filtro con curso y clase seleccionados
+            aplicarFiltro(_uiState.value.selectedCourseId, classId)
         }
-        
-        // Aplicar filtros
-        filterContacts()
     }
     
     /**
      * Aplica los filtros seleccionados
      */
     fun applyFilters() {
-        filterContacts()
+        aplicarFiltro(_uiState.value.selectedCourseId, _uiState.value.selectedClassId)
     }
     
     /**
@@ -662,66 +638,8 @@ class ChatContactsViewModel @Inject constructor(
             selectedClassId = null
         ) }
         
-        // Recargar todos los contactos
-        val state = _uiState.value
-        if (state.userType == TipoUsuario.PROFESOR) {
-            state.currentUserCentroId?.let { centroId ->
-                loadContacts(centroId, state.currentUserClaseId)
-            }
-        } else if (state.hijoSeleccionado != null) {
-            seleccionarHijo(state.hijoSeleccionado)
-        }
-    }
-    
-    /**
-     * Carga los contactos disponibles para el profesor
-     */
-    private fun loadContacts(centroId: String?, claseId: String?) {
-        viewModelScope.launch {
-            try {
-                if (centroId == null) {
-                    _uiState.update { it.copy(
-                        error = "No se pudo determinar el centro del profesor",
-                        isLoading = false
-                    ) }
-                    return@launch
-                }
-                
-                // 1. Cargar administradores del centro
-                val admins = loadAdministrators(centroId)
-                
-                // 2. Cargar otros profesores del centro
-                val teachers = loadTeachers(centroId, _uiState.value.currentUser?.dni)
-                
-                // 3. Cargar familiares de alumnos de la clase
-                val families = if (claseId != null) {
-                    loadFamilies(claseId)
-                } else {
-                    emptyList()
-                }
-                
-                // Actualizar estado con todos los contactos
-                _uiState.update { state ->
-                    state.copy(
-                        administratorContacts = admins,
-                        teacherContacts = teachers,
-                        familyContacts = families,
-                        filteredContacts = admins + teachers + families,
-                        isLoading = false
-                    )
-                }
-                
-                // Cargar contadores de mensajes no leídos
-                cargarMensajesNoLeidos()
-                
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cargar contactos")
-                _uiState.update { it.copy(
-                    error = "Error al cargar contactos: ${e.message}",
-                    isLoading = false
-                ) }
-            }
-        }
+        // Aplicar filtros sin curso ni clase seleccionada
+        aplicarFiltro(null, null)
     }
     
     /**
@@ -738,6 +656,16 @@ class ChatContactsViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
+                // Obtener el usuario actual
+                val currentUser = authRepository.getCurrentUser()
+                if (currentUser == null) {
+                    _uiState.update { it.copy(
+                        error = "No se pudo obtener información del usuario actual",
+                        isLoading = false
+                    )}
+                    return@launch
+                }
+                
                 // Usar el alumno seleccionado si estamos en modo familiar
                 val contextAlumnoId = if (_uiState.value.userType == TipoUsuario.FAMILIAR) {
                     _uiState.value.hijoSeleccionado?.dni
@@ -745,8 +673,45 @@ class ChatContactsViewModel @Inject constructor(
                     alumnoId
                 }
                 
-                // Crear o obtener la conversación
-                val conversacionId = "nueva" // Aquí deberías llamar al método getOrCreateConversación del repository
+                // Obtener o crear la conversación en Firestore
+                val conversacionData = mapOf(
+                    "participante1Id" to currentUser.dni,
+                    "participante2Id" to contactId,
+                    "nombreParticipante1" to "${currentUser.nombre} ${currentUser.apellidos}",
+                    "nombreParticipante2" to contactName,
+                    "alumnoId" to contextAlumnoId,
+                    "fechaCreacion" to Timestamp.now(),
+                    "ultimaActualizacion" to Timestamp.now()
+                )
+                
+                // Buscar si ya existe una conversación entre estos usuarios
+                val existingConvQuery = firestore.collection("conversaciones")
+                    .whereEqualTo("participante1Id", currentUser.dni)
+                    .whereEqualTo("participante2Id", contactId)
+                    .get()
+                    .await()
+                    
+                val altExistingConvQuery = firestore.collection("conversaciones")
+                    .whereEqualTo("participante1Id", contactId)
+                    .whereEqualTo("participante2Id", currentUser.dni)
+                    .get()
+                    .await()
+                    
+                val conversacionId = if (!existingConvQuery.isEmpty || !altExistingConvQuery.isEmpty) {
+                    // Usar la conversación existente
+                    if (!existingConvQuery.isEmpty) {
+                        existingConvQuery.documents.first().id
+                    } else {
+                        altExistingConvQuery.documents.first().id
+                    }
+                } else {
+                    // Crear nueva conversación
+                    val newConvRef = firestore.collection("conversaciones").document()
+                    newConvRef.set(conversacionData).await()
+                    newConvRef.id
+                }
+                
+                Timber.d("Usando conversaciónId: $conversacionId para chat entre ${currentUser.dni} y $contactId")
                 
                 // Usar las rutas definidas en AppScreens para navegar correctamente
                 if (chatRouteName == AppScreens.ChatProfesor.route) {
@@ -794,23 +759,37 @@ class ChatContactsViewModel @Inject constructor(
             try {
                 val centroId = _uiState.value.currentUserCentroId ?: return@launch
                 
-                // Versión simplificada para compilación
-                Timber.d("Cargando cursos para centro $centroId")
+                Timber.d("Cargando cursos reales para centro $centroId")
                 
-                // Datos de ejemplo
-                val cursos = listOf(
-                    Curso(id = "curso1", nombre = "Infantil 1", descripcion = "1-2 años"),
-                    Curso(id = "curso2", nombre = "Infantil 2", descripcion = "2-3 años")
-                )
+                // Consultar cursos de Firestore
+                val cursosQuery = firestore.collection("cursos")
+                    .whereEqualTo("centroId", centroId)
+                    .get()
+                    .await()
+                
+                val cursos = cursosQuery.documents.mapNotNull { doc ->
+                    if (!doc.exists()) return@mapNotNull null
+                    
+                    Curso(
+                        id = doc.id,
+                        nombre = doc.getString("nombre") ?: "Sin nombre",
+                        descripcion = doc.getString("descripcion") ?: "",
+                        centroId = doc.getString("centroId") ?: centroId
+                    )
+                }
                 
                 _uiState.update { it.copy(
-                    availableCourses = cursos
+                    availableCourses = cursos,
+                    isLoading = false
                 )}
                 
+                Timber.d("Se han cargado ${cursos.size} cursos para el centro $centroId")
+                
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar cursos: ${e.message}")
+                Timber.e(e, "Error al cargar cursos reales: ${e.message}")
                 _uiState.update { it.copy(
-                    error = "Error al cargar cursos: ${e.message}"
+                    error = "Error al cargar cursos: ${e.message}",
+                    isLoading = false
                 )}
             }
         }
@@ -822,76 +801,102 @@ class ChatContactsViewModel @Inject constructor(
     fun loadClases(cursoId: String) {
         viewModelScope.launch {
             try {
-                // Versión simplificada para compilación
-                Timber.d("Cargando clases para curso $cursoId")
+                Timber.d("Cargando clases reales para curso $cursoId")
                 
-                // Datos de ejemplo
-                val clases = listOf(
-                    Clase(id = "clase1", nombre = "1A", cursoId = cursoId),
-                    Clase(id = "clase2", nombre = "1B", cursoId = cursoId)
-                )
+                // Consultar clases de Firestore
+                val clasesQuery = firestore.collection("clases")
+                    .whereEqualTo("cursoId", cursoId)
+                    .get()
+                    .await()
+                
+                val clases = clasesQuery.documents.mapNotNull { doc ->
+                    if (!doc.exists()) return@mapNotNull null
+                    
+                    Clase(
+                        id = doc.id,
+                        nombre = doc.getString("nombre") ?: "Sin nombre",
+                        cursoId = doc.getString("cursoId") ?: cursoId,
+                        centroId = doc.getString("centroId") ?: _uiState.value.currentUserCentroId ?: ""
+                    )
+                }
                 
                 _uiState.update { it.copy(
-                    availableClasses = clases
+                    availableClasses = clases,
+                    isLoading = false
                 )}
                 
+                Timber.d("Se han cargado ${clases.size} clases para el curso $cursoId")
+                
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar clases: ${e.message}")
+                Timber.e(e, "Error al cargar clases reales: ${e.message}")
                 _uiState.update { it.copy(
-                    error = "Error al cargar clases: ${e.message}"
+                    error = "Error al cargar clases: ${e.message}",
+                    isLoading = false
                 )}
             }
         }
     }
     
     /**
-     * Carga contador de mensajes no leídos para cada contacto
+     * Carga los mensajes no leídos para el usuario actual
      */
     fun cargarMensajesNoLeidos() {
         viewModelScope.launch {
-            val currentUser = _uiState.value.currentUser ?: return@launch
-            
             try {
-                // Versión simplificada para compilación
-                Timber.d("Cargando mensajes no leídos para el usuario ${currentUser.dni}")
+                val currentUser = authRepository.getCurrentUser() ?: return@launch
+                val userId = currentUser.dni
                 
-                // Simular contadores aleatorios para los contactos actuales
-                val random = java.util.Random()
+                // Obtener mensajes no leídos desde unified_messages donde el usuario es receptor y el estado es UNREAD
+                val unreadQuery = firestore.collection("unified_messages")
+                    .whereEqualTo("receiverId", userId)
+                    .whereEqualTo("status", "UNREAD")
+                    .get()
+                    .await()
+                    
+                // Obtener mensajes no leídos desde unified_messages donde el usuario está en receiversIds y el estado es UNREAD
+                val unreadGroupQuery = firestore.collection("unified_messages")
+                    .whereArrayContains("receiversIds", userId)
+                    .whereEqualTo("status", "UNREAD")
+                    .get()
+                    .await()
                 
-                // Actualizar administradores con contadores aleatorios
-                val administradoresActualizados = _uiState.value.administratorContacts.map { admin ->
-                    admin.copy(unreadCount = random.nextInt(5))
+                // Combinar los resultados
+                val allUnreadMessages = (unreadQuery.documents + unreadGroupQuery.documents).distinctBy { it.id }
+                
+                // Contar mensajes no leídos por remitente
+                val unreadCountByContact = mutableMapOf<String, Int>()
+                
+                for (doc in allUnreadMessages) {
+                    val senderId = doc.getString("senderId") ?: continue
+                    unreadCountByContact[senderId] = (unreadCountByContact[senderId] ?: 0) + 1
                 }
                 
-                // Actualizar profesores con contadores aleatorios
-                val profesoresActualizados = _uiState.value.teacherContacts.map { profesor ->
-                    profesor.copy(unreadCount = random.nextInt(3))
-                }
-                
-                // Actualizar familiares con contadores aleatorios
-                val familiaresActualizados = _uiState.value.familyContacts.map { familiar ->
-                    familiar.copy(unreadCount = random.nextInt(4))
-                }
-                
-                // Actualizar contactos filtrados
-                val filteredActualizados = when (_uiState.value.activeFilter) {
-                    FiltroContacto.TODOS -> administradoresActualizados + profesoresActualizados + familiaresActualizados
-                    FiltroContacto.ADMINISTRADORES -> administradoresActualizados
-                    FiltroContacto.PROFESORES -> profesoresActualizados
-                    FiltroContacto.FAMILIARES -> familiaresActualizados
-                }
-                
-                // Actualizar el estado
+                // Actualizar contadores en los contactos
                 _uiState.update { state ->
+                    val updatedAdministrators = state.administratorContacts.map { contact ->
+                        contact.copy(unreadCount = unreadCountByContact[contact.dni] ?: 0)
+                    }
+                    
+                    val updatedTeachers = state.teacherContacts.map { contact ->
+                        contact.copy(unreadCount = unreadCountByContact[contact.dni] ?: 0)
+                    }
+                    
+                    val updatedFamilies = state.familyContacts.map { contact ->
+                        contact.copy(unreadCount = unreadCountByContact[contact.dni] ?: 0)
+                    }
+                    
                     state.copy(
-                        administratorContacts = administradoresActualizados,
-                        teacherContacts = profesoresActualizados,
-                        familyContacts = familiaresActualizados,
-                        filteredContacts = filteredActualizados
+                        administratorContacts = updatedAdministrators,
+                        teacherContacts = updatedTeachers,
+                        familyContacts = updatedFamilies,
+                        filteredContacts = when (state.activeFilter) {
+                            FiltroContacto.ADMINISTRADORES -> updatedAdministrators
+                            FiltroContacto.PROFESORES -> updatedTeachers
+                            FiltroContacto.FAMILIARES -> updatedFamilies
+                            else -> updatedAdministrators + updatedTeachers + updatedFamilies
+                        }
                     )
                 }
-                
-                Timber.d("Mensajes no leídos actualizados con éxito")
                 
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar mensajes no leídos: ${e.message}")
@@ -900,57 +905,329 @@ class ChatContactsViewModel @Inject constructor(
     }
     
     /**
-     * Recarga los contactos según el tipo de usuario y el estado actual
+     * Carga los contactos disponibles
      */
     fun loadContacts() {
         viewModelScope.launch {
-            val state = _uiState.value
-            val user = state.currentUser ?: return@launch
-            
-            // Marcar como cargando
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                when (state.userType) {
-                    TipoUsuario.PROFESOR, TipoUsuario.ADMIN_CENTRO -> {
-                        // Para profesores y administradores
-                        val centroId = state.currentUserCentroId
-                        val claseId = state.currentUserClaseId
+                // Obtener usuario actual
+                val currentUser = authRepository.getCurrentUser()
+                
+                if (currentUser == null) {
+                    _uiState.update { it.copy(
+                        error = "No se pudo obtener información del usuario actual",
+                        isLoading = false
+                    )}
+                    return@launch
+                }
+                
+                // Inicializar listas vacías de contactos
+                val administrators = mutableListOf<ProfesorContacto>()
+                val teachers = mutableListOf<ProfesorContacto>()
+                val families = mutableListOf<FamiliarContacto>()
+                
+                // Determinar tipo de usuario y buscar contactos según su perfil
+                val profesorPerfil = currentUser.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
+                val familiarPerfil = currentUser.perfiles.find { it.tipo == TipoUsuario.FAMILIAR }
+                val adminPerfil = currentUser.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                
+                when {
+                    profesorPerfil != null -> {
+                        val centroId = profesorPerfil.centroId
+                        _uiState.update { it.copy(
+                            userType = TipoUsuario.PROFESOR,
+                            currentUser = currentUser,
+                            currentUserCentroId = centroId
+                        )}
                         
-                        if (centroId != null) {
-                            loadContacts(centroId, claseId)
-                        } else {
-                            _uiState.update { it.copy(
-                                error = "No se pudo determinar el centro",
-                                isLoading = false
-                            ) }
+                        // 1. Siempre cargar automáticamente al administrador del centro
+                        administrators.addAll(loadAdministrators(centroId))
+                        Timber.d("Administradores cargados: ${administrators.size}")
+                        
+                        // 2. Cargar profesores del mismo curso
+                        // Primero, obtener la clase del profesor
+                        val clasesResult = claseRepository.getClasesByProfesorId(currentUser.dni)
+                        if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
+                            val clase = clasesResult.data.first()
+                            _uiState.update { it.copy(currentUserClaseId = clase.id) }
+                            
+                            // Obtener el curso de la clase
+                            val cursoResult = cursoRepository.getCursoById(clase.cursoId)
+                            val curso = if (cursoResult is Result.Success) cursoResult.data else null
+                            
+                            if (curso != null) {
+                                // Cargar todos los profesores de las clases del mismo curso
+                                val clasesDelCursoResult = claseRepository.getClasesByCursoId(curso.id)
+                                if (clasesDelCursoResult is Result.Success) {
+                                    val clasesDelCurso = clasesDelCursoResult.data
+                                    val profesoresIds = clasesDelCurso.mapNotNull { it.profesorId }.distinct()
+                                    
+                                    for (profesorId in profesoresIds) {
+                                        // No incluir al profesor actual
+                                        if (profesorId != currentUser.dni) {
+                                            val profesorResult = usuarioRepository.getUsuarioById(profesorId)
+                                            if (profesorResult is Result.Success) {
+                                                val profesor = profesorResult.data
+                                                teachers.add(ProfesorContacto(
+                                                    dni = profesor.dni,
+                                                    nombre = profesor.nombre,
+                                                    apellidos = profesor.apellidos,
+                                                    descripcion = "Profesor de ${curso.nombre}"
+                                                ))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Timber.d("Profesores cargados: ${teachers.size}")
+                        
+                        // 3. Cargar cursos para el filtrado (para mostrar familiares al seleccionar)
+                        loadCoursesAndClasses(centroId)
+                    }
+                    
+                    familiarPerfil != null -> {
+                        _uiState.update { it.copy(
+                            userType = TipoUsuario.FAMILIAR,
+                            currentUser = currentUser,
+                            currentUserCentroId = familiarPerfil.centroId
+                        )}
+                        
+                        // Cargar hijos del familiar
+                        val hijos = loadFamiliarHijos(currentUser.dni)
+                        _uiState.update { it.copy(hijos = hijos) }
+                        
+                        // Si hay hijos, cargar profesores del primer hijo por defecto
+                        if (hijos.isNotEmpty()) {
+                            val primerHijo = hijos[0]  // Usar indexación segura en lugar de first()
+                            seleccionarHijo(primerHijo)
                         }
                     }
-                    TipoUsuario.FAMILIAR -> {
-                        // Para familiares, recargar según el hijo seleccionado
-                        if (state.hijoSeleccionado != null) {
-                            seleccionarHijo(state.hijoSeleccionado)
-                        } else if (state.hijos.isNotEmpty()) {
-                            seleccionarHijo(state.hijos.first())
-                        } else {
-                            // Cargar los hijos del familiar
-                            loadFamiliarContacts(user)
-                        }
+                    
+                    adminPerfil != null -> {
+                        _uiState.update { it.copy(
+                            userType = TipoUsuario.ADMIN_CENTRO,
+                            currentUser = currentUser,
+                            currentUserCentroId = adminPerfil.centroId
+                        )}
+                        
+                        // 1. Cargar profesores del centro
+                        teachers.addAll(
+                            loadTeachers(adminPerfil.centroId, currentUser.dni)
+                        )
+                        
+                        // 2. Cargar cursos para el filtrado
+                        loadCoursesAndClasses(adminPerfil.centroId)
                     }
+                    
                     else -> {
                         _uiState.update { it.copy(
-                            error = "Tipo de usuario desconocido",
+                            error = "El usuario no tiene un perfil válido para ver contactos",
                             isLoading = false
-                        ) }
+                        )}
+                        return@launch
                     }
                 }
+                
+                // Cargar mensajes no leídos para actualizar contadores
+                cargarMensajesNoLeidos()
+                
+                // Actualizar el estado con los contactos cargados
+                _uiState.update { state ->
+                    state.copy(
+                        administratorContacts = administrators,
+                        teacherContacts = teachers,
+                        familyContacts = families,
+                        filteredContacts = when (state.activeFilter) {
+                            FiltroContacto.ADMINISTRADORES -> administrators
+                            FiltroContacto.PROFESORES -> teachers
+                            FiltroContacto.FAMILIARES -> families
+                            else -> administrators + teachers + families
+                        },
+                        isLoading = false
+                    )
+                }
+                
             } catch (e: Exception) {
-                Timber.e(e, "Error al recargar contactos")
+                Timber.e(e, "Error al cargar contactos")
                 _uiState.update { it.copy(
                     error = "Error al cargar contactos: ${e.message}",
                     isLoading = false
-                ) }
+                )}
             }
+        }
+    }
+    
+    /**
+     * Carga los hijos asociados a un familiar
+     */
+    private suspend fun loadFamiliarHijos(familiarId: String): List<Alumno> {
+        try {
+            val result = alumnoRepository.obtenerAlumnosPorFamiliar(familiarId)
+            return when (result) {
+                is Result.Success -> result.data
+                else -> emptyList()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar hijos del familiar $familiarId")
+            return emptyList()
+        }
+    }
+
+    /**
+     * Filtra los contactos por curso y clase seleccionados
+     */
+    fun aplicarFiltro(cursoId: String?, claseId: String?) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(
+                    isLoading = true,
+                    selectedCourseId = cursoId,
+                    selectedClassId = claseId
+                )}
+
+                // Si no hay clase seleccionada, no mostrar familiares
+                if (claseId == null) {
+                    _uiState.update { state ->
+                        state.copy(
+                            familyContacts = emptyList(),
+                            filteredContacts = when (state.activeFilter) {
+                                FiltroContacto.ADMINISTRADORES -> state.administratorContacts
+                                FiltroContacto.PROFESORES -> state.teacherContacts
+                                FiltroContacto.FAMILIARES -> emptyList()
+                                else -> state.administratorContacts + state.teacherContacts
+                            },
+                            isLoading = false
+                        )
+                    }
+                    return@launch
+                }
+
+                // Cargar familiares de los alumnos de la clase seleccionada
+                val families = loadFamiliesByClaseId(claseId)
+                
+                _uiState.update { state ->
+                    state.copy(
+                        familyContacts = families,
+                        filteredContacts = when (state.activeFilter) {
+                            FiltroContacto.ADMINISTRADORES -> state.administratorContacts
+                            FiltroContacto.PROFESORES -> state.teacherContacts
+                            FiltroContacto.FAMILIARES -> families
+                            else -> state.administratorContacts + state.teacherContacts + families
+                        },
+                        isLoading = false
+                    )
+                }
+
+            } catch (e: Exception) {
+                Timber.e(e, "Error al aplicar filtro")
+                _uiState.update { it.copy(
+                    error = "Error al filtrar contactos: ${e.message}",
+                    isLoading = false
+                )}
+            }
+        }
+    }
+
+    /**
+     * Carga los familiares de los alumnos de una clase específica
+     * Implementación siguiendo el flujo:
+     * clases -> alumnosIds -> vinculaciones_familiar_alumno -> familiarId -> usuarios
+     */
+    private suspend fun loadFamiliesByClaseId(claseId: String): List<FamiliarContacto> {
+        try {
+            Timber.d("Cargando familiares para la clase $claseId")
+            val familiaresResult = mutableListOf<FamiliarContacto>()
+            
+            // 1. Obtener la clase para extraer los alumnosIds
+            val claseDoc = firestore.collection("clases").document(claseId).get().await()
+            
+            if (!claseDoc.exists()) {
+                Timber.e("No se encontró la clase con ID: $claseId")
+                return emptyList()
+            }
+            
+            // 2. Extraer los alumnosIds de la clase
+            val alumnosIds = claseDoc.get("alumnosIds") as? List<String> ?: emptyList()
+            Timber.d("Encontrados ${alumnosIds.size} alumnos en la clase $claseId")
+            
+            if (alumnosIds.isEmpty()) {
+                Timber.d("La clase $claseId no tiene alumnos registrados")
+                return emptyList()
+            }
+            
+            // 3. Para cada alumno, buscar sus vinculaciones con familiares
+            for (alumnoId in alumnosIds) {
+                Timber.d("Buscando vinculaciones para alumno: $alumnoId")
+                
+                // Buscar en la colección vinculaciones_familiar_alumno
+                val vinculacionesQuery = firestore.collection("vinculaciones_familiar_alumno")
+                    .whereEqualTo("alumnoId", alumnoId)
+                    .get()
+                    .await()
+                
+                if (vinculacionesQuery.isEmpty) {
+                    Timber.d("No se encontraron vinculaciones para el alumno $alumnoId")
+                    continue
+                }
+                
+                for (vinculacionDoc in vinculacionesQuery.documents) {
+                    // 4. Extraer el familiarId de cada vinculación
+                    val familiarId = vinculacionDoc.getString("familiarId")
+                    val parentesco = vinculacionDoc.getString("parentesco") ?: "Familiar"
+                    
+                    if (familiarId == null) {
+                        Timber.d("Vinculación sin familiarId válido")
+                        continue
+                    }
+                    
+                    // 5. Obtener los datos del familiar desde la colección usuarios
+                    val familiarDoc = firestore.collection("usuarios").document(familiarId).get().await()
+                    
+                    if (!familiarDoc.exists()) {
+                        Timber.d("No se encontró el usuario con ID: $familiarId")
+                        continue
+                    }
+                    
+                    // 6. Extraer la información del familiar
+                    val nombre = familiarDoc.getString("nombre") ?: "Familiar"
+                    val apellidos = familiarDoc.getString("apellidos") ?: ""
+                    val email = familiarDoc.getString("email") ?: ""
+                    
+                    // 7. Obtener información del alumno para mostrar como contexto
+                    val alumnoDoc = firestore.collection("usuarios").document(alumnoId).get().await()
+                    val alumnoNombre = if (alumnoDoc.exists()) {
+                        alumnoDoc.getString("nombre") ?: "Alumno"
+                    } else {
+                        "Alumno"
+                    }
+                    
+                    // 8. Crear el objeto FamiliarContacto y añadirlo a la lista
+                    val familiar = FamiliarContacto(
+                        dni = familiarId,
+                        nombre = nombre,
+                        apellidos = apellidos,
+                        alumnoId = alumnoId,
+                        alumnoNombre = "$alumnoNombre ($parentesco)"
+                    )
+                    
+                    // Evitar duplicados
+                    if (!familiaresResult.any { it.dni == familiar.dni }) {
+                        familiaresResult.add(familiar)
+                        Timber.d("Añadido familiar: $nombre $apellidos, para alumno: $alumnoNombre")
+                    }
+                }
+            }
+            
+            Timber.d("Total de ${familiaresResult.size} familiares encontrados para la clase $claseId")
+            return familiaresResult
+            
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar familiares para la clase $claseId")
+            return emptyList()
         }
     }
 } 

@@ -244,18 +244,21 @@ class MisAlumnosProfesorViewModel @Inject constructor(
     private fun cargarAlumnosPorClase(claseId: String) {
         viewModelScope.launch {
             try {
+                _uiState.update { it.copy(isLoading = true) }
                 Timber.d("Cargando alumnos para la clase: $claseId")
-                val alumnosResult = alumnoRepository.getAlumnosByClaseId(claseId)
                 
-                if (alumnosResult is Result.Success) {
-                    val alumnos = alumnosResult.data
-                    Timber.d("Alumnos encontrados: ${alumnos.size}")
+                // Usar el método getAlumnosPorClase en lugar de getAlumnosByClaseId
+                // Este método busca correctamente los alumnos desde el campo alumnosIds de la clase
+                val alumnos = alumnoRepository.getAlumnosPorClase(claseId)
+                
+                if (alumnos.isNotEmpty()) {
+                    Timber.d("Se encontraron ${alumnos.size} alumnos para la clase $claseId")
                     
                     // Actualizar el profesorId para cada alumno si es necesario
                     val profesor = _uiState.value.profesorActual
                     if (profesor != null) {
                         for (alumno in alumnos) {
-                            if (alumno.profesorId.isNullOrEmpty() || alumno.profesorId != profesor.dni) {
+                            if (alumno.profesorId.isEmpty() || alumno.profesorId != profesor.dni) {
                                 Timber.d("Actualizando profesor ${profesor.dni} para alumno ${alumno.dni}")
                                 alumnoRepository.actualizarProfesor(alumno.dni, profesor.dni)
                             }
@@ -268,17 +271,17 @@ class MisAlumnosProfesorViewModel @Inject constructor(
                             isLoading = false
                         )
                     }
-                } else if (alumnosResult is Result.Error) {
-                    Timber.e(alumnosResult.exception, "Error al cargar alumnos")
+                } else {
+                    Timber.w("No se encontraron alumnos para la clase $claseId")
                     _uiState.update { 
                         it.copy(
-                            error = "Error al cargar alumnos: ${alumnosResult.exception?.message ?: "Error desconocido"}",
+                            alumnos = emptyList(),
                             isLoading = false
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar alumnos")
+                Timber.e(e, "Error al cargar alumnos por clase: $claseId")
                 _uiState.update { 
                     it.copy(
                         error = "Error al cargar alumnos: ${e.message}",

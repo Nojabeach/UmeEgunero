@@ -91,7 +91,185 @@ data class SolicitudPendienteUI(
     val estado: EstadoSolicitud
 )
 
-
+/**
+ * Diálogo para crear una nueva solicitud de vinculación
+ *
+ * @param centros Lista de centros disponibles para vinculación
+ * @param onDismiss Callback al cerrar el diálogo
+ * @param onSubmit Callback al enviar la solicitud (DNI, CentroID)
+ * @param isLoading Indica si se está procesando el envío
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NuevaSolicitudDialog(
+    centros: List<Centro>,
+    onDismiss: () -> Unit,
+    onSubmit: (String, String) -> Unit,
+    isLoading: Boolean = false
+) {
+    var alumnoDni by remember { mutableStateOf("") }
+    var centroSeleccionado by remember { mutableStateOf<Centro?>(null) }
+    var showCentrosDropdown by remember { mutableStateOf(false) }
+    var dniError by remember { mutableStateOf<String?>(null) }
+    
+    // Función de validación de DNI
+    fun validateDni(dni: String): Boolean {
+        val dniPattern = Regex("^\\d{8}[A-HJ-NP-TV-Z]$")
+        if (!dniPattern.matches(dni.uppercase())) return false
+        val letras = "TRWAGMYFPDXBNJZSQVHLCKE"
+        val numero = dni.substring(0, 8).toIntOrNull() ?: return false
+        return dni.uppercase()[8] == letras[numero % 23]
+    }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PersonAdd,
+                    contentDescription = null,
+                    tint = FamiliarColor,
+                    modifier = Modifier.size(36.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "Nueva solicitud de vinculación",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = "Introduce los datos del alumno que deseas vincular",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Campo DNI
+                OutlinedTextField(
+                    value = alumnoDni,
+                    onValueChange = { 
+                        alumnoDni = it.uppercase()
+                        dniError = if (it.isNotBlank() && !validateDni(it)) {
+                            "Formato de DNI inválido"
+                        } else null
+                    },
+                    label = { Text("DNI del alumno") },
+                    placeholder = { Text("Ejemplo: 12345678A") },
+                    leadingIcon = { 
+                        Icon(
+                            imageVector = Icons.Default.Badge, 
+                            contentDescription = null
+                        )
+                    },
+                    isError = dniError != null,
+                    supportingText = { 
+                        if (dniError != null) {
+                            Text(dniError!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Selector de centro
+                ExposedDropdownMenuBox(
+                    expanded = showCentrosDropdown,
+                    onExpandedChange = { showCentrosDropdown = !showCentrosDropdown },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = centroSeleccionado?.nombre ?: "",
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Centro educativo") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCentrosDropdown) },
+                        leadingIcon = { 
+                            Icon(
+                                imageVector = Icons.Default.School, 
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        placeholder = { Text("Selecciona un centro") },
+                        singleLine = true
+                    )
+                    
+                    ExposedDropdownMenu(
+                        expanded = showCentrosDropdown,
+                        onDismissRequest = { showCentrosDropdown = false }
+                    ) {
+                        centros.forEach { centro ->
+                            DropdownMenuItem(
+                                text = { Text(centro.nombre) },
+                                onClick = {
+                                    centroSeleccionado = centro
+                                    showCentrosDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancelar")
+                    }
+                    
+                    Button(
+                        onClick = {
+                            if (alumnoDni.isNotBlank() && validateDni(alumnoDni) && centroSeleccionado != null) {
+                                onSubmit(alumnoDni, centroSeleccionado!!.id)
+                            }
+                        },
+                        enabled = alumnoDni.isNotBlank() && dniError == null && centroSeleccionado != null && !isLoading,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = FamiliarColor)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Enviar")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 /**
  * Pantalla principal del dashboard para familiares
@@ -107,7 +285,7 @@ data class SolicitudPendienteUI(
  * @param viewModel ViewModel que gestiona los datos del dashboard
  * 
  * @author Equipo UmeEgunero
- * @version 5.0
+ * @version 5.1
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -281,7 +459,7 @@ fun FamiliaDashboardScreen(
                             Timber.e(e, "Error al realizar feedback háptico")
                         }
                         showNavigateToMensajesDialog = false
-                        navController.navigate(AppScreens.ChatContacts.createRoute("familiar"))
+                        navController.navigate(AppScreens.ChatContacts.createRoute(AppScreens.ChatFamilia.route))
                     }
                 ) {
                     Text("Sí")
@@ -446,6 +624,12 @@ fun FamiliaDashboardScreen(
                     contentDescription = "Solicitar vinculación de nuevo hijo"
                 )
             }
+        },
+        bottomBar = {
+            // Mostrar solicitudes pendientes como un pequeño banner informativo en el footer
+            if (uiState.solicitudesPendientes.isNotEmpty()) {
+                SolicitudesPendientesFooter(solicitudes = uiState.solicitudesPendientes)
+            }
         }
     ) { paddingValues ->
         if (uiState.isLoading) {
@@ -480,7 +664,8 @@ fun FamiliaDashboardScreen(
                     item {
                         BienvenidaCard(
                             nombreFamiliar = uiState.familiar?.nombre ?: "Familiar",
-                            totalHijos = uiState.hijos.size
+                            totalHijos = uiState.hijos.size,
+                            ultimaActualizacion = uiState.ultimaActualizacion ?: Date()
                         )
                     }
                     
@@ -491,21 +676,6 @@ fun FamiliaDashboardScreen(
                             hijoSeleccionado = uiState.hijoSeleccionado,
                             onHijoSelected = { viewModel.seleccionarHijo(it) }
                         )
-                    }
-                    
-                    // Sección de solicitudes pendientes
-                    if (uiState.solicitudesPendientes.isNotEmpty()) {
-                        item {
-                            Text(
-                                text = "Solicitudes pendientes",
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                color = FamiliarColor,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                            SolicitudesPendientesCard(
-                                solicitudes = uiState.solicitudesPendientes
-                            )
-                        }
                     }
                     
                     // PRIMERA SECCIÓN: Registro diario de actividad (con prioridad)
@@ -608,7 +778,7 @@ fun FamiliaDashboardScreen(
                             titulo = "Notificaciones",
                             descripcion = "Revisa notificaciones y recordatorios importantes",
                             icono = Icons.Default.Notifications,
-                            onClick = { showNavigateToNotificacionesDialog = true },
+                            onClick = { navController.navigate(AppScreens.NotificacionesFamilia.route) },
                             badgeCount = uiState.registrosSinLeer
                         )
                     }
@@ -619,7 +789,10 @@ fun FamiliaDashboardScreen(
                             titulo = "Chat",
                             descripcion = "Comunícate directamente con el profesor",
                             icono = Icons.AutoMirrored.Filled.Chat,
-                            onClick = { showNavigateToMensajesDialog = true }
+                            onClick = { 
+                                // Navegación directa al chat
+                                navController.navigate(AppScreens.ChatContacts.createRoute(AppScreens.ChatFamilia.route)) 
+                            }
                         )
                     }
                     
@@ -629,7 +802,7 @@ fun FamiliaDashboardScreen(
                             titulo = "Calendario",
                             descripcion = "Consulta eventos y fechas importantes",
                             icono = Icons.Default.DateRange,
-                            onClick = { showNavigateToCalendarioDialog = true }
+                            onClick = { navController.navigate(AppScreens.CalendarioFamilia.route) }
                         )
                     }
                     
@@ -874,11 +1047,13 @@ fun SectionHeader(
  *
  * @param nombreFamiliar Nombre del familiar
  * @param totalHijos Número total de hijos vinculados
+ * @param ultimaActualizacion Fecha de la última actualización de datos
  */
 @Composable
 fun BienvenidaCard(
     nombreFamiliar: String,
-    totalHijos: Int
+    totalHijos: Int,
+    ultimaActualizacion: Date
 ) {
     Card(
         modifier = Modifier
@@ -921,7 +1096,7 @@ fun BienvenidaCard(
                 )
                 
                 Text(
-                    text = "Última actualización: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}",
+                    text = "Última actualización: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(ultimaActualizacion)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -947,310 +1122,113 @@ fun BienvenidaCard(
 }
 
 /**
- * Tarjeta que muestra las solicitudes de vinculación pendientes
- * 
- * @param solicitudes Lista de solicitudes pendientes
+ * Nuevo footer compacto para mostrar las solicitudes pendientes
  */
 @Composable
-fun SolicitudesPendientesCard(
+fun SolicitudesPendientesFooter(
     solicitudes: List<SolicitudPendienteUI>
 ) {
+    val pendientes = solicitudes.count { it.estado == EstadoSolicitud.PENDIENTE }
+    val aprobadas = solicitudes.count { it.estado == EstadoSolicitud.APROBADA }
+    val rechazadas = solicitudes.count { it.estado == EstadoSolicitud.RECHAZADA }
+    
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Uso de items para calcular altura dinámica
-            val itemHeight = 84.dp // Altura aproximada de cada item
-            val maxHeight = 200.dp
-            val calculatedHeight = if (solicitudes.size * itemHeight.value > maxHeight.value) maxHeight else itemHeight * solicitudes.size
-            
-            LazyColumn(
-                modifier = Modifier.height(calculatedHeight),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(solicitudes) { solicitud ->
-                    SolicitudItem(solicitud = solicitud)
-                }
-            }
-        }
-    }
-}
-
-/**
- * Elemento individual de una solicitud de vinculación
- * 
- * @param solicitud Datos de la solicitud
- */
-@Composable
-fun SolicitudItem(
-    solicitud: SolicitudPendienteUI
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when (solicitud.estado) {
-                            EstadoSolicitud.PENDIENTE -> MaterialTheme.colorScheme.tertiary
-                            EstadoSolicitud.APROBADA -> MaterialTheme.colorScheme.primary
-                            EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.error
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
+            // Icono con badge
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = when (solicitud.estado) {
-                        EstadoSolicitud.PENDIENTE -> Icons.Default.Pending
-                        EstadoSolicitud.APROBADA -> Icons.Default.Check
-                        EstadoSolicitud.RECHAZADA -> Icons.Default.Close
-                    },
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    imageVector = Icons.Default.NotificationsActive,
+                    contentDescription = "Solicitudes pendientes",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
                 )
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
                 Text(
-                    text = solicitud.alumnoNombre ?: "DNI: ${solicitud.alumnoDni}",
+                    text = "Solicitudes de vinculación:",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Text(
-                    text = "Centro: ${solicitud.centroNombre ?: solicitud.centroId}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Text(
-                    text = "Estado: ${
-                        when (solicitud.estado) {
-                            EstadoSolicitud.PENDIENTE -> "Pendiente"
-                            EstadoSolicitud.APROBADA -> "Aprobada"
-                            EstadoSolicitud.RECHAZADA -> "Rechazada"
-                        }
-                    }",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = when (solicitud.estado) {
-                        EstadoSolicitud.PENDIENTE -> MaterialTheme.colorScheme.tertiary
-                        EstadoSolicitud.APROBADA -> MaterialTheme.colorScheme.primary
-                        EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.error
-                    }
+                    fontWeight = FontWeight.Medium
                 )
             }
             
-            Text(
-                text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(solicitud.fechaSolicitud),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Contadores de estado
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (pendientes > 0) {
+                    StatusBadge(
+                        count = pendientes,
+                        label = "pendientes",
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+                
+                if (aprobadas > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    StatusBadge(
+                        count = aprobadas,
+                        label = "aprobadas",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                if (rechazadas > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    StatusBadge(
+                        count = rechazadas,
+                        label = "rechazadas",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
     }
 }
 
 /**
- * Diálogo para crear una nueva solicitud de vinculación
- *
- * @param centros Lista de centros disponibles para vinculación
- * @param onDismiss Callback al cerrar el diálogo
- * @param onSubmit Callback al enviar la solicitud (DNI, CentroID)
- * @param isLoading Indica si se está procesando el envío
+ * Pequeña insignia para mostrar conteo de solicitudes por estado
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NuevaSolicitudDialog(
-    centros: List<Centro>,
-    onDismiss: () -> Unit,
-    onSubmit: (String, String) -> Unit,
-    isLoading: Boolean = false
+fun StatusBadge(
+    count: Int,
+    label: String,
+    color: Color
 ) {
-    var alumnoDni by remember { mutableStateOf("") }
-    var centroSeleccionado by remember { mutableStateOf<Centro?>(null) }
-    var showCentrosDropdown by remember { mutableStateOf(false) }
-    var dniError by remember { mutableStateOf<String?>(null) }
-    
-    // Función de validación de DNI
-    fun validateDni(dni: String): Boolean {
-        val dniPattern = Regex("^\\d{8}[A-HJ-NP-TV-Z]$")
-        if (!dniPattern.matches(dni.uppercase())) return false
-        val letras = "TRWAGMYFPDXBNJZSQVHLCKE"
-        val numero = dni.substring(0, 8).toIntOrNull() ?: return false
-        return dni.uppercase()[8] == letras[numero % 23]
-    }
-    
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PersonAdd,
-                    contentDescription = null,
-                    tint = FamiliarColor,
-                    modifier = Modifier.size(36.dp)
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Text(
-                    text = "Nueva solicitud de vinculación",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Text(
-                    text = "Introduce los datos del alumno que deseas vincular",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.height(20.dp))
-                
-                // Campo DNI
-                OutlinedTextField(
-                    value = alumnoDni,
-                    onValueChange = { 
-                        alumnoDni = it.uppercase()
-                        dniError = if (it.isNotBlank() && !validateDni(it)) {
-                            "Formato de DNI inválido"
-                        } else null
-                    },
-                    label = { Text("DNI del alumno") },
-                    placeholder = { Text("Ejemplo: 12345678A") },
-                    leadingIcon = { 
-                        Icon(
-                            imageVector = Icons.Default.Badge, 
-                            contentDescription = null
-                        )
-                    },
-                    isError = dniError != null,
-                    supportingText = { 
-                        if (dniError != null) {
-                            Text(dniError!!, color = MaterialTheme.colorScheme.error)
-                        }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Selector de centro
-                ExposedDropdownMenuBox(
-                    expanded = showCentrosDropdown,
-                    onExpandedChange = { showCentrosDropdown = !showCentrosDropdown },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = centroSeleccionado?.nombre ?: "",
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("Centro educativo") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCentrosDropdown) },
-                        leadingIcon = { 
-                            Icon(
-                                imageVector = Icons.Default.School, 
-                                contentDescription = null
-                            )
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        placeholder = { Text("Selecciona un centro") },
-                        singleLine = true
-                    )
-                    
-                    ExposedDropdownMenu(
-                        expanded = showCentrosDropdown,
-                        onDismissRequest = { showCentrosDropdown = false }
-                    ) {
-                        centros.forEach { centro ->
-                            DropdownMenuItem(
-                                text = { Text(centro.nombre) },
-                                onClick = {
-                                    centroSeleccionado = centro
-                                    showCentrosDropdown = false
-                                }
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Cancelar")
-                    }
-                    
-                    Button(
-                        onClick = {
-                            if (alumnoDni.isNotBlank() && validateDni(alumnoDni) && centroSeleccionado != null) {
-                                onSubmit(alumnoDni, centroSeleccionado!!.id)
-                            }
-                        },
-                        enabled = alumnoDni.isNotBlank() && dniError == null && centroSeleccionado != null && !isLoading,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = FamiliarColor)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Enviar")
-                        }
-                    }
-                }
-            }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(color.copy(alpha = 0.2f))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "$count",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            
+            Spacer(modifier = Modifier.width(2.dp))
+            
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = color
+            )
         }
     }
 }

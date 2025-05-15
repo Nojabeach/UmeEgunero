@@ -189,10 +189,10 @@ class FamiliarDashboardViewModel @Inject constructor(
                     if (familiarResult is Result.Success) {
                         val familiar = familiarResult.data
                         if (familiar != null) {
-                            // Actualizar con timestamp actual de actualización
+                            // Actualizar estado con el timestamp actual como hora de última actualización
                             _uiState.update { it.copy(
                                 familiar = familiar,
-                                ultimaActualizacion = Date()
+                                ultimaActualizacion = Date() // Actualizar timestamp
                             ) }
 
                             // Cargar hijos vinculados usando el DNI como ID familiar
@@ -207,68 +207,34 @@ class FamiliarDashboardViewModel @Inject constructor(
                             // Cargar registros sin leer
                             cargarRegistrosSinLeer(familiarId)
                         } else {
-                            Timber.e("No se encontró información del familiar con ID: $familiarId")
-                            
-                            // Intentar crear objeto Familiar básico con los datos del usuario
-                            if (usuario != null) {
-                                val familiarBasico = Familiar(
-                                    id = usuario.dni,
-                                    nombre = usuario.nombre,
-                                    apellidos = usuario.apellidos ?: ""
-                                )
-                                _uiState.update { it.copy(familiar = familiarBasico) }
-                                
-                                // Cargar hijos vinculados con el DNI
-                                cargarHijosVinculados(usuario.dni)
-                                cargarSolicitudesPendientes(usuario.dni)
-                                cargarTotalMensajesNoLeidos(usuario.dni)
-                                cargarRegistrosSinLeer(usuario.dni)
-                            } else {
-                                _uiState.update {
-                                    it.copy(
-                                        isLoading = false,
-                                        error = "No se encontró información del familiar"
-                                    )
-                                }
-                            }
-                        }
-                    } else if (familiarResult is Result.Error) {
-                        Timber.e(familiarResult.exception, "Error al cargar datos del familiar: ${familiarResult.exception?.message}")
-                        
-                        // Intentar alternativa con objeto familiar básico
-                        if (usuario != null) {
-                            val familiarBasico = Familiar(
-                                id = usuario.dni,
-                                nombre = usuario.nombre,
-                                apellidos = usuario.apellidos ?: ""
-                            )
-                            _uiState.update { it.copy(familiar = familiarBasico) }
-                            
-                            // Cargar hijos vinculados con el DNI
-                            cargarHijosVinculados(usuario.dni)
-                            cargarSolicitudesPendientes(usuario.dni)
-                            cargarTotalMensajesNoLeidos(usuario.dni)
-                            cargarRegistrosSinLeer(usuario.dni)
-                        } else {
+                            Timber.e("Familiar nulo en resultado exitoso")
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
-                                    error = "Error al cargar datos: ${familiarResult.exception?.message}"
+                                    error = "No se encontró el perfil de familiar"
                                 )
                             }
                         }
+                    } else if (familiarResult is Result.Error) {
+                        Timber.e(familiarResult.exception, "Error al cargar familiar")
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = familiarResult.exception?.message ?: "Error desconocido"
+                            )
+                        }
                     }
                 } else {
-                    Timber.e("Usuario no identificado (ID nulo)")
+                    Timber.e("ID de usuario nulo")
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = "Usuario no identificado"
+                            error = "No hay usuario autenticado"
                         )
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error inesperado: ${e.message}")
+                Timber.e(e, "Error inesperado al cargar datos del familiar")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -677,6 +643,8 @@ class FamiliarDashboardViewModel @Inject constructor(
                 cargarRegistrosActividad(hijo.dni)
             }
         }
+        // También actualizamos la última hora de actualización
+        _uiState.update { it.copy(ultimaActualizacion = Date()) }
     }
 
     /**
@@ -770,10 +738,15 @@ class FamiliarDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Marca como consumido el flag de solicitud enviada
+     * Actualiza el estado para mostrar un mensaje de confirmación tras crear una solicitud
      */
     fun resetSolicitudEnviada() {
-        _uiState.update { it.copy(solicitudEnviada = false) }
+        _uiState.update { 
+            it.copy(
+                solicitudEnviada = false,
+                ultimaActualizacion = Date() // Actualizar también el timestamp
+            )
+        }
     }
 
     /**
