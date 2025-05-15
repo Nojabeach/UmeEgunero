@@ -93,7 +93,10 @@ data class FamiliarDashboardUiState(
     val solicitudEnviada: Boolean = false,
     
     // Lista de centros educativos disponibles
-    val centros: List<Centro> = emptyList()
+    val centros: List<Centro> = emptyList(),
+    
+    // Timestamp de la última actualización de datos
+    val ultimaActualizacion: Date? = null
 )
 
 /**
@@ -186,7 +189,11 @@ class FamiliarDashboardViewModel @Inject constructor(
                     if (familiarResult is Result.Success) {
                         val familiar = familiarResult.data
                         if (familiar != null) {
-                            _uiState.update { it.copy(familiar = familiar) }
+                            // Actualizar con timestamp actual de actualización
+                            _uiState.update { it.copy(
+                                familiar = familiar,
+                                ultimaActualizacion = Date()
+                            ) }
 
                             // Cargar hijos vinculados usando el DNI como ID familiar
                             cargarHijosVinculados(familiarId)

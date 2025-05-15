@@ -27,83 +27,191 @@ import java.text.SimpleDateFormat
 import java.util.*
 import timber.log.Timber
 import com.tfg.umeegunero.ui.theme.FamiliarColor
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
+import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.EventoRepository
+import com.tfg.umeegunero.util.Result
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+// Modelo de datos para un evento
+data class Evento(
+    val id: String,
+    val titulo: String,
+    val descripcion: String,
+    val fecha: Long,
+    val ubicacion: String,
+    val tipo: TipoEvento
+)
+
+enum class TipoEvento(val color: Color, val icon: ImageVector) {
+    REUNION(Color(0xFF1976D2), Icons.Default.Groups),
+    EXCURSION(Color(0xFF43A047), Icons.Default.DirectionsBus),
+    FIESTA(Color(0xFFE53935), Icons.Default.Celebration),
+    SALUD(Color(0xFF8E24AA), Icons.Default.HealthAndSafety),
+    FESTIVO(Color(0xFFFF9800), Icons.Default.Event),
+    OTRO(Color(0xFF757575), Icons.Default.Info)
+}
+
+/**
+ * Estado UI para la pantalla de calendario
+ */
+data class CalendarioUiState(
+    val isLoading: Boolean = true,
+    val error: String? = null,
+    val eventos: List<Evento> = emptyList(),
+    val fechaSeleccionada: Calendar = Calendar.getInstance()
+)
+
+/**
+ * ViewModel para la pantalla de calendario
+ */
+@HiltViewModel
+class CalendarioFamiliaViewModel @Inject constructor(
+    private val eventoRepository: EventoRepository,
+    private val authRepository: AuthRepository
+) : ViewModel() {
+    
+    private val _uiState = MutableStateFlow(CalendarioUiState())
+    val uiState: StateFlow<CalendarioUiState> = _uiState.asStateFlow()
+    
+    init {
+        cargarEventos()
+    }
+    
+    /**
+     * Carga los eventos desde Firestore
+     */
+    fun cargarEventos() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                val usuario = authRepository.getCurrentUser()
+                if (usuario == null) {
+                    _uiState.update { it.copy(
+                        error = "No se pudo obtener la información del usuario",
+                        isLoading = false
+                    ) }
+                    return@launch
+                }
+                
+                // Obtener eventos del centro al que pertenece el familiar
+                // Esto requiere primero obtener hijos del familiar, luego sus centros
+                val resultado = eventoRepository.obtenerEventosPorCentro("centro_default")
+                
+                if (resultado is Result.Success<*>) {
+                    val eventosFirestore = resultado.data as List<com.tfg.umeegunero.data.model.Evento>
+                    
+                    // Convertir a nuestro modelo local
+                    val eventos = eventosFirestore.map { evento ->
+                        Evento(
+                            id = evento.id,
+                            titulo = evento.titulo,
+                            descripcion = evento.descripcion,
+                            fecha = evento.fecha.seconds * 1000, // Convertir a milisegundos
+                            ubicacion = evento.ubicacion ?: "",
+                            tipo = when (evento.tipo.toString().lowercase()) {
+                                "reunion" -> TipoEvento.REUNION
+                                "excursion" -> TipoEvento.EXCURSION
+                                "fiesta" -> TipoEvento.FIESTA
+                                "salud" -> TipoEvento.SALUD
+                                "festivo" -> TipoEvento.FESTIVO
+                                else -> TipoEvento.OTRO
+                            }
+                        )
+                    }
+                    
+                    _uiState.update { it.copy(
+                        eventos = eventos,
+                        isLoading = false
+                    ) }
+                } else {
+                    _uiState.update { it.copy(
+                        error = "Error al cargar los eventos",
+                        isLoading = false
+                    ) }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar eventos")
+                _uiState.update { it.copy(
+                    error = "Error: ${e.message}",
+                    isLoading = false
+                ) }
+            }
+        }
+    }
+    
+    /**
+     * Actualiza la fecha seleccionada
+     */
+    fun seleccionarFecha(fecha: Calendar) {
+        _uiState.update { it.copy(fechaSeleccionada = fecha) }
+    }
+    
+    /**
+     * Cambia al mes anterior
+     */
+    fun mesAnterior() {
+        val nuevaFecha = _uiState.value.fechaSeleccionada.clone() as Calendar
+        nuevaFecha.add(Calendar.MONTH, -1)
+        _uiState.update { it.copy(fechaSeleccionada = nuevaFecha) }
+    }
+    
+    /**
+     * Cambia al mes siguiente
+     */
+    fun mesSiguiente() {
+        val nuevaFecha = _uiState.value.fechaSeleccionada.clone() as Calendar
+        nuevaFecha.add(Calendar.MONTH, 1)
+        _uiState.update { it.copy(fechaSeleccionada = nuevaFecha) }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarioFamiliaScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: CalendarioFamiliaViewModel = hiltViewModel()
 ) {
-    // Estado para la fecha seleccionada
-    var fechaSeleccionada by remember { mutableStateOf(Calendar.getInstance()) }
+    val uiState by viewModel.uiState.collectAsState()
     val haptic = LocalHapticFeedback.current
     
-    // Lista de eventos de ejemplo
-    val eventos = remember {
-        listOf(
-            Evento(
-                id = "1",
-                titulo = "Reunión con padres",
-                descripcion = "Reunión trimestral para hablar sobre el progreso de los niños",
-                fecha = Calendar.getInstance().timeInMillis,
-                ubicacion = "Sala de reuniones",
-                tipo = TipoEvento.REUNION
-            ),
-            Evento(
-                id = "2",
-                titulo = "Excursión al zoológico",
-                descripcion = "Visita educativa al zoológico de la ciudad",
-                fecha = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 2) }.timeInMillis,
-                ubicacion = "Zoológico de la ciudad",
-                tipo = TipoEvento.EXCURSION
-            ),
-            Evento(
-                id = "3",
-                titulo = "Fiesta de primavera",
-                descripcion = "Celebración de la llegada de la primavera con actividades especiales",
-                fecha = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 5) }.timeInMillis,
-                ubicacion = "Patio principal",
-                tipo = TipoEvento.FIESTA
-            ),
-            Evento(
-                id = "4",
-                titulo = "Vacunación",
-                descripcion = "Jornada de vacunación para todos los niños",
-                fecha = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 10) }.timeInMillis,
-                ubicacion = "Enfermería",
-                tipo = TipoEvento.SALUD
-            ),
-            Evento(
-                id = "5",
-                titulo = "Festivo local",
-                descripcion = "Día festivo por fiestas patronales",
-                fecha = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 15) }.timeInMillis,
-                ubicacion = "",
-                tipo = TipoEvento.FESTIVO
+    // SnackbarHostState para mostrar mensajes de error
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Efecto para mostrar errores en el Snackbar
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
             )
-        )
+        }
     }
     
     // Filtrado de eventos para el día seleccionado
-    val eventosDiaSeleccionado = eventos.filter { evento ->
+    val eventosDiaSeleccionado = uiState.eventos.filter { evento ->
         val fechaEvento = Calendar.getInstance().apply { timeInMillis = evento.fecha }
-        fechaEvento.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
-        fechaEvento.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH) &&
-        fechaEvento.get(Calendar.DAY_OF_MONTH) == fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
+        fechaEvento.get(Calendar.YEAR) == uiState.fechaSeleccionada.get(Calendar.YEAR) &&
+        fechaEvento.get(Calendar.MONTH) == uiState.fechaSeleccionada.get(Calendar.MONTH) &&
+        fechaEvento.get(Calendar.DAY_OF_MONTH) == uiState.fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
     }
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Calendario Escolar") },
+                title = { Text("Calendario") },
                 navigationIcon = {
-                    IconButton(onClick = { 
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
-                        navController.popBackStack() 
-                    }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -113,27 +221,11 @@ fun CalendarioFamiliaScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = FamiliarColor,
                     titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                ),
-                actions = {
-                    IconButton(onClick = { 
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
-                        /* Filtrar eventos */ 
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filtrar",
-                            tint = Color.White
-                        )
-                    }
-                }
+                    navigationIconContentColor = Color.White
+                )
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { /* Crear nuevo evento */ },
@@ -147,89 +239,108 @@ fun CalendarioFamiliaScreen(
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-        ) {
-            // Calendario simplificado
-            CalendarioHeader(
-                fechaSeleccionada = fechaSeleccionada,
-                onPrevMonth = {
-                    try {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al realizar feedback háptico")
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = FamiliarColor)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                // Calendario simplificado
+                CalendarioHeader(
+                    fechaSeleccionada = uiState.fechaSeleccionada,
+                    onPrevMonth = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        viewModel.mesAnterior()
+                    },
+                    onNextMonth = {
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al realizar feedback háptico")
+                        }
+                        viewModel.mesSiguiente()
                     }
-                    fechaSeleccionada = fechaSeleccionada.clone() as Calendar
-                    fechaSeleccionada.add(Calendar.MONTH, -1)
-                },
-                onNextMonth = {
-                    try {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al realizar feedback háptico")
+                )
+                
+                CalendarioGrid(
+                    fechaSeleccionada = uiState.fechaSeleccionada,
+                    onDaySelected = { dia ->
+                        val fechaSeleccionada = uiState.fechaSeleccionada.clone() as Calendar
+                        fechaSeleccionada.set(Calendar.DAY_OF_MONTH, dia)
+                        viewModel.seleccionarFecha(fechaSeleccionada)
+                    },
+                    eventos = uiState.eventos,
+                    haptic = haptic
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Mostrar eventos del día seleccionado
+                Text(
+                    text = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("es", "ES"))
+                        .format(uiState.fechaSeleccionada.time)
+                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (eventosDiaSeleccionado.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Event,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = "No hay eventos para este día",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
-                    fechaSeleccionada = fechaSeleccionada.clone() as Calendar
-                    fechaSeleccionada.add(Calendar.MONTH, 1)
-                }
-            )
-            
-            CalendarioGrid(
-                fechaSeleccionada = fechaSeleccionada,
-                onDaySelected = { dia ->
-                    try {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al realizar feedback háptico")
-                    }
-                    fechaSeleccionada = fechaSeleccionada.clone() as Calendar
-                    fechaSeleccionada.set(Calendar.DAY_OF_MONTH, dia)
-                },
-                eventos = eventos,
-                haptic = haptic
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Lista de eventos para el día seleccionado
-            Text(
-                text = "Eventos del día",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            if (eventosDiaSeleccionado.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No hay eventos para este día",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn {
-                    items(eventosDiaSeleccionado) { evento ->
-                        EventoItem(
-                            evento = evento,
-                            onClick = {
-                                try {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error al realizar feedback háptico")
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(eventosDiaSeleccionado) { evento ->
+                            EventoItem(
+                                evento = evento,
+                                onClick = {
+                                    // Aquí iría la navegación al detalle del evento
                                 }
-                                // Navegar a detalle de evento
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                            )
+                        }
                     }
                 }
             }
@@ -501,25 +612,6 @@ fun EventoItem(
             )
         }
     }
-}
-
-// Modelos de datos para el calendario
-data class Evento(
-    val id: String,
-    val titulo: String,
-    val descripcion: String,
-    val fecha: Long,
-    val ubicacion: String,
-    val tipo: TipoEvento
-)
-
-enum class TipoEvento(val color: Color, val icon: ImageVector) {
-    REUNION(Color(0xFF1976D2), Icons.Default.Groups),
-    EXCURSION(Color(0xFF43A047), Icons.Default.DirectionsBus),
-    FIESTA(Color(0xFFE53935), Icons.Default.Celebration),
-    SALUD(Color(0xFF8E24AA), Icons.Default.HealthAndSafety),
-    FESTIVO(Color(0xFFFF9800), Icons.Default.Event),
-    OTRO(Color(0xFF757575), Icons.Default.Info)
 }
 
 // Extensión para capitalizar la primera letra

@@ -397,7 +397,8 @@ fun FamiliaDashboardScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Notifications,
-                                contentDescription = "Notificaciones"
+                                contentDescription = "Ver notificaciones",
+                                tint = Color.White
                             )
                         }
                     }
@@ -967,8 +968,13 @@ fun SolicitudesPendientesCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // Uso de items para calcular altura dinámica
+            val itemHeight = 84.dp // Altura aproximada de cada item
+            val maxHeight = 200.dp
+            val calculatedHeight = if (solicitudes.size * itemHeight.value > maxHeight.value) maxHeight else itemHeight * solicitudes.size
+            
             LazyColumn(
-                modifier = Modifier.heightIn(max = 200.dp),
+                modifier = Modifier.height(calculatedHeight),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(solicitudes) { solicitud ->
@@ -1278,12 +1284,12 @@ fun ResumenActividadCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (ultimoRegistro != null) {
+            if (ultimoRegistro != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     val fecha = ultimoRegistro.fecha
                     val fechaFormateada = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                         .format(Date(fecha.seconds * 1000))
@@ -1310,11 +1316,9 @@ fun ResumenActividadCard(
                         Text("Ver detalle")
                     }
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            if (ultimoRegistro != null) {
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
                 // Mostrar información básica del registro en una fila
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1378,19 +1382,41 @@ fun ResumenActividadCard(
                     )
                 }
             } else {
-                // No hay registros disponibles
+                // Estado mejorado cuando no hay registros
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No hay registros de actividad disponibles",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Sin registros",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "No hay registros de actividad disponibles",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "Los registros se actualizarán cuando el centro los añada",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
         }

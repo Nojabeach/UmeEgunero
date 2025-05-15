@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,6 +32,25 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.ExperimentalFoundationApi
 import com.tfg.umeegunero.ui.theme.FamiliarColor
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.Timestamp
+import com.tfg.umeegunero.data.model.MessageStatus
+import com.tfg.umeegunero.data.model.MessageType
+import com.tfg.umeegunero.data.model.UnifiedMessage
+import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
+import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.util.Result
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // Enumeración de tipos de notificación
 enum class TipoNotificacion(val color: Color) {
@@ -64,46 +84,285 @@ data class Notificacion(
     val accion: String? = null // URL, ruta de navegación o null
 )
 
+/**
+ * Estado UI para la pantalla de notificaciones del familiar
+ */
+data class NotificacionesFamiliaUiState(
+    val isLoading: Boolean = true,
+    val error: String? = null,
+    val notificaciones: List<Notificacion> = emptyList(),
+    val notificacionesFiltradas: List<Notificacion> = emptyList(),
+    val filtroSeleccionado: FiltroNotificacion = FiltroNotificacion.TODAS,
+    val modoSeleccion: Boolean = false,
+    val notificacionesSeleccionadas: Set<String> = emptySet()
+)
+
+/**
+ * ViewModel para la pantalla de notificaciones del familiar
+ */
+@HiltViewModel
+class NotificacionesFamiliaViewModel @Inject constructor(
+    private val messageRepository: UnifiedMessageRepository,
+    private val authRepository: AuthRepository
+) : ViewModel() {
+    
+    private val _uiState = MutableStateFlow(NotificacionesFamiliaUiState())
+    val uiState: StateFlow<NotificacionesFamiliaUiState> = _uiState.asStateFlow()
+    
+    init {
+        cargarNotificaciones()
+    }
+    
+    /**
+     * Carga las notificaciones del usuario desde Firestore
+     */
+    fun cargarNotificaciones() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                val usuario = authRepository.getCurrentUser()
+                if (usuario == null) {
+                    _uiState.update { it.copy(
+                        error = "No se pudo obtener la información del usuario",
+                        isLoading = false
+                    ) }
+                    return@launch
+                }
+                
+                // Simulamos obtener mensajes
+                // En una implementación real, usaríamos el repositorio
+                val mensajes = listOf(
+                    UnifiedMessage(
+                        id = "1",
+                        title = "Recordatorio de reunión",
+                        content = "Le recordamos la reunión de padres mañana a las 17:00h",
+                        type = MessageType.ANNOUNCEMENT,
+                        timestamp = Timestamp.now(),
+                        senderName = "Centro Escolar",
+                        status = MessageStatus.UNREAD
+                    ),
+                    UnifiedMessage(
+                        id = "2",
+                        title = "Nota: Evaluación trimestral",
+                        content = "Se han publicado las calificaciones del trimestre",
+                        type = MessageType.ANNOUNCEMENT,
+                        timestamp = Timestamp(Date(System.currentTimeMillis() - 86400000)),
+                        senderName = "Profesora de Matemáticas",
+                        status = MessageStatus.READ
+                    ),
+                    UnifiedMessage(
+                        id = "3",
+                        title = "Material necesario",
+                        content = "Para la actividad de mañana, recordad traer ropa cómoda",
+                        type = MessageType.DAILY_RECORD,
+                        timestamp = Timestamp(Date(System.currentTimeMillis() - 172800000)),
+                        senderName = "Profesora de Educación Física",
+                        status = MessageStatus.UNREAD
+                    )
+                )
+                
+                // Convertir mensajes a notificaciones
+                val notificaciones = mensajes.map { mensaje ->
+                    Notificacion(
+                        id = mensaje.id,
+                        titulo = mensaje.title,
+                        mensaje = mensaje.content,
+                        fecha = mensaje.timestamp.toDate(),
+                        tipo = when (mensaje.type) {
+                            MessageType.CHAT -> TipoNotificacion.MENSAJE
+                            MessageType.ANNOUNCEMENT -> TipoNotificacion.GENERAL
+                            MessageType.DAILY_RECORD -> TipoNotificacion.TAREA
+                            MessageType.ATTENDANCE -> TipoNotificacion.ASISTENCIA
+                            else -> TipoNotificacion.GENERAL
+                        },
+                        leida = mensaje.status != MessageStatus.UNREAD,
+                        remitente = mensaje.senderName
+                    )
+                }.sortedByDescending { it.fecha }
+                
+                _uiState.update { it.copy(
+                    notificaciones = notificaciones,
+                    notificacionesFiltradas = notificaciones,
+                    isLoading = false
+                ) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar notificaciones")
+                _uiState.update { it.copy(
+                    error = "Error: ${e.message}",
+                    isLoading = false
+                ) }
+            }
+        }
+    }
+    
+    /**
+     * Cambia el filtro de notificaciones
+     */
+    fun cambiarFiltro(filtro: FiltroNotificacion) {
+        _uiState.update { currentState ->
+            val notificacionesFiltradas = when (filtro) {
+                FiltroNotificacion.TODAS -> currentState.notificaciones
+                FiltroNotificacion.NO_LEIDAS -> currentState.notificaciones.filter { !it.leida }
+                FiltroNotificacion.MENSAJES -> currentState.notificaciones.filter { it.tipo == TipoNotificacion.MENSAJE }
+                FiltroNotificacion.TAREAS -> currentState.notificaciones.filter { it.tipo == TipoNotificacion.TAREA }
+                FiltroNotificacion.EVENTOS -> currentState.notificaciones.filter { it.tipo == TipoNotificacion.EVENTO }
+                FiltroNotificacion.OTROS -> currentState.notificaciones.filter { 
+                    it.tipo != TipoNotificacion.MENSAJE && 
+                    it.tipo != TipoNotificacion.TAREA && 
+                    it.tipo != TipoNotificacion.EVENTO 
+                }
+            }
+            
+            currentState.copy(
+                filtroSeleccionado = filtro,
+                notificacionesFiltradas = notificacionesFiltradas
+            )
+        }
+    }
+    
+    /**
+     * Marca una notificación como leída
+     */
+    fun marcarComoLeida(id: String) {
+        viewModelScope.launch {
+            try {
+                // En una implementación real, actualizar en Firestore
+                // messageRepository.markMessageAsRead(id)
+                
+                // Actualizar en la UI
+                _uiState.update { state ->
+                    val notificacionesActualizadas = state.notificaciones.map { 
+                        if (it.id == id) it.copy(leida = true) else it 
+                    }
+                    
+                    // Aplicar filtro actual a las notificaciones actualizadas
+                    val filtradas = when (state.filtroSeleccionado) {
+                        FiltroNotificacion.TODAS -> notificacionesActualizadas
+                        FiltroNotificacion.NO_LEIDAS -> notificacionesActualizadas.filter { !it.leida }
+                        FiltroNotificacion.MENSAJES -> notificacionesActualizadas.filter { it.tipo == TipoNotificacion.MENSAJE }
+                        FiltroNotificacion.TAREAS -> notificacionesActualizadas.filter { it.tipo == TipoNotificacion.TAREA }
+                        FiltroNotificacion.EVENTOS -> notificacionesActualizadas.filter { it.tipo == TipoNotificacion.EVENTO }
+                        FiltroNotificacion.OTROS -> notificacionesActualizadas.filter { 
+                            it.tipo != TipoNotificacion.MENSAJE && 
+                            it.tipo != TipoNotificacion.TAREA && 
+                            it.tipo != TipoNotificacion.EVENTO 
+                        }
+                    }
+                    
+                    state.copy(
+                        notificaciones = notificacionesActualizadas,
+                        notificacionesFiltradas = filtradas
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al marcar notificación como leída")
+            }
+        }
+    }
+    
+    /**
+     * Cambia el modo de selección
+     */
+    fun cambiarModoSeleccion(activar: Boolean) {
+        _uiState.update { it.copy(
+            modoSeleccion = activar,
+            notificacionesSeleccionadas = if (!activar) emptySet() else it.notificacionesSeleccionadas
+        ) }
+    }
+    
+    /**
+     * Alternar selección de una notificación
+     */
+    fun toggleSeleccion(id: String) {
+        _uiState.update { state ->
+            val seleccionadas = state.notificacionesSeleccionadas.toMutableSet()
+            if (seleccionadas.contains(id)) {
+                seleccionadas.remove(id)
+            } else {
+                seleccionadas.add(id)
+            }
+            state.copy(notificacionesSeleccionadas = seleccionadas)
+        }
+    }
+    
+    /**
+     * Eliminar notificaciones seleccionadas
+     */
+    fun eliminarSeleccionadas() {
+        viewModelScope.launch {
+            val idsAEliminar = _uiState.value.notificacionesSeleccionadas
+            
+            if (idsAEliminar.isEmpty()) return@launch
+            
+            _uiState.update { it.copy(isLoading = true) }
+            
+            try {
+                // Eliminar en Firestore (llamadas en paralelo)
+                idsAEliminar.forEach { id ->
+                    messageRepository.deleteMessage(id)
+                }
+                
+                // Actualizar la UI
+                _uiState.update { state ->
+                    val notificacionesActualizadas = state.notificaciones.filter { 
+                        !idsAEliminar.contains(it.id) 
+                    }
+                    
+                    // Aplicar filtro actual a las notificaciones actualizadas
+                    val filtradas = when (state.filtroSeleccionado) {
+                        FiltroNotificacion.TODAS -> notificacionesActualizadas
+                        FiltroNotificacion.NO_LEIDAS -> notificacionesActualizadas.filter { !it.leida }
+                        FiltroNotificacion.MENSAJES -> notificacionesActualizadas.filter { it.tipo == TipoNotificacion.MENSAJE }
+                        FiltroNotificacion.TAREAS -> notificacionesActualizadas.filter { it.tipo == TipoNotificacion.TAREA }
+                        FiltroNotificacion.EVENTOS -> notificacionesActualizadas.filter { it.tipo == TipoNotificacion.EVENTO }
+                        FiltroNotificacion.OTROS -> notificacionesActualizadas.filter { 
+                            it.tipo != TipoNotificacion.MENSAJE && 
+                            it.tipo != TipoNotificacion.TAREA && 
+                            it.tipo != TipoNotificacion.EVENTO 
+                        }
+                    }
+                    
+                    state.copy(
+                        notificaciones = notificacionesActualizadas,
+                        notificacionesFiltradas = filtradas,
+                        notificacionesSeleccionadas = emptySet(),
+                        modoSeleccion = false,
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al eliminar notificaciones")
+                _uiState.update { it.copy(
+                    error = "Error al eliminar notificaciones: ${e.message}",
+                    isLoading = false
+                ) }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun NotificacionesFamiliaScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: NotificacionesFamiliaViewModel = hiltViewModel()
 ) {
-    // Estado para las notificaciones
-    val notificacionesBase = remember { generarNotificacionesDePrueba() }
-    
-    // Estado para el filtro seleccionado
-    var filtroSeleccionado by rememberSaveable { mutableStateOf(FiltroNotificacion.TODAS) }
-    
-    // Estado para el modo de selección
-    var modoSeleccion by rememberSaveable { mutableStateOf(false) }
-    
-    // Estado para las notificaciones seleccionadas
-    var notificacionesSeleccionadas by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    val uiState by viewModel.uiState.collectAsState()
     
     // Estado para mostrar diálogo de confirmación de eliminación
     var mostrarDialogoConfirmacion by rememberSaveable { mutableStateOf(false) }
     
-    // Función para marcar una notificación como leída
-    val marcarComoLeida = { id: String ->
-        // En un entorno real, esto haría una llamada a la base de datos
-        // Por ahora simulamos el cambio en la UI
-        notificacionesBase.find { it.id == id }?.let {
-            it.copy(leida = true)
-        }
-    }
+    // SnackbarHostState para mostrar mensajes de error
+    val snackbarHostState = remember { SnackbarHostState() }
     
-    // Filtrar notificaciones según el filtro seleccionado
-    val notificacionesFiltradas = when (filtroSeleccionado) {
-        FiltroNotificacion.TODAS -> notificacionesBase
-        FiltroNotificacion.NO_LEIDAS -> notificacionesBase.filter { !it.leida }
-        FiltroNotificacion.MENSAJES -> notificacionesBase.filter { it.tipo == TipoNotificacion.MENSAJE }
-        FiltroNotificacion.TAREAS -> notificacionesBase.filter { it.tipo == TipoNotificacion.TAREA }
-        FiltroNotificacion.EVENTOS -> notificacionesBase.filter { it.tipo == TipoNotificacion.EVENTO }
-        FiltroNotificacion.OTROS -> notificacionesBase.filter { 
-            it.tipo != TipoNotificacion.MENSAJE && 
-            it.tipo != TipoNotificacion.TAREA && 
-            it.tipo != TipoNotificacion.EVENTO 
+    // Efecto para mostrar errores en el Snackbar
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
         }
     }
     
@@ -112,20 +371,11 @@ fun NotificacionesFamiliaScreen(
         AlertDialog(
             onDismissRequest = { mostrarDialogoConfirmacion = false },
             title = { Text("Eliminar notificaciones") },
-            text = { 
-                Text(
-                    "¿Estás seguro de que quieres eliminar ${notificacionesSeleccionadas.size} ${if (notificacionesSeleccionadas.size == 1) "notificación" else "notificaciones"}?"
-                ) 
-            },
+            text = { Text("¿Estás seguro de eliminar ${uiState.notificacionesSeleccionadas.size} notificaciones?") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // Eliminar notificaciones seleccionadas (simulación)
-                        // notificacionesBase.removeAll { it.id in notificacionesSeleccionadas }
-                        
-                        // Resetear estados
-                        modoSeleccion = false
-                        notificacionesSeleccionadas = emptySet()
+                        viewModel.eliminarSeleccionadas()
                         mostrarDialogoConfirmacion = false
                     }
                 ) {
@@ -160,180 +410,180 @@ fun NotificacionesFamiliaScreen(
                 ),
                 actions = {
                     // Modo de selección
-                    if (modoSeleccion) {
-                        // Contador de seleccionados
+                    if (uiState.modoSeleccion) {
+                        // Indicador de cantidad seleccionada
                         Text(
-                            text = "${notificacionesSeleccionadas.size} seleccionadas",
-                            modifier = Modifier.padding(horizontal = 8.dp),
+                            text = "${uiState.notificacionesSeleccionadas.size} seleccionadas",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = Color.White
                         )
                         
-                        // Botón para cancelar la selección
-                        IconButton(onClick = { 
-                            modoSeleccion = false
-                            notificacionesSeleccionadas = emptySet()
-                        }) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        // Botón para eliminar
+                        IconButton(
+                            onClick = { 
+                                if (uiState.notificacionesSeleccionadas.isNotEmpty()) {
+                                    mostrarDialogoConfirmacion = true
+                                }
+                            },
+                            enabled = uiState.notificacionesSeleccionadas.isNotEmpty()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Eliminar seleccionados",
+                                tint = if (uiState.notificacionesSeleccionadas.isEmpty()) 
+                                    Color.White.copy(alpha = 0.5f) else Color.White
+                            )
+                        }
+                        
+                        // Botón para cancelar selección
+                        IconButton(onClick = { viewModel.cambiarModoSeleccion(false) }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Cancelar selección"
                             )
                         }
-                        
-                        // Botón para eliminar seleccionadas
-                        IconButton(
-                            onClick = { mostrarDialogoConfirmacion = true },
-                            enabled = notificacionesSeleccionadas.isNotEmpty()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Eliminar seleccionadas"
-                            )
-                        }
                     } else {
-                        // Botón para marcar todo como leído
-                        IconButton(onClick = {
-                            // En un entorno real, esto haría una llamada a la base de datos
-                            // notificacionesBase.forEach { it.leida = true }
-                        }) {
+                        // Botón para activar modo selección
+                        IconButton(onClick = { viewModel.cambiarModoSeleccion(true) }) {
                             Icon(
-                                imageVector = Icons.Default.DoneAll,
-                                contentDescription = "Marcar todo como leído"
+                                imageVector = Icons.Default.CheckBox,
+                                contentDescription = "Seleccionar"
                             )
                         }
                     }
                 }
             )
         },
-        snackbarHost = { SnackbarHost(SnackbarHostState()) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Barra de filtros
-            FiltrosNotificacionesBar(
-                filtroSeleccionado = filtroSeleccionado,
-                onFiltroSelected = { filtroSeleccionado = it }
-            )
-            
-            // Contenido principal
-            if (notificacionesFiltradas.isEmpty()) {
-                // Mensaje cuando no hay notificaciones
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            // Filtros
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                FiltroNotificacion.values().forEach { filtro ->
+                    SegmentedButton(
+                        selected = uiState.filtroSeleccionado == filtro,
+                        onClick = { viewModel.cambiarFiltro(filtro) },
+                        shape = when (filtro) {
+                            FiltroNotificacion.TODAS -> MaterialTheme.shapes.small 
+                                .copy(topStart = CornerSize(8.dp), bottomStart = CornerSize(8.dp))
+                            FiltroNotificacion.OTROS -> MaterialTheme.shapes.small
+                                .copy(topEnd = CornerSize(8.dp), bottomEnd = CornerSize(8.dp))
+                            else -> MaterialTheme.shapes.small
+                        }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = null,
-                            modifier = Modifier.size(72.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
                         Text(
-                            text = "No hay notificaciones",
-                            style = MaterialTheme.typography.headlineSmall,
-                            textAlign = TextAlign.Center
+                            text = when (filtro) {
+                                FiltroNotificacion.TODAS -> "Todas"
+                                FiltroNotificacion.NO_LEIDAS -> "No leídas"
+                                FiltroNotificacion.MENSAJES -> "Mensajes"
+                                FiltroNotificacion.TAREAS -> "Tareas"
+                                FiltroNotificacion.EVENTOS -> "Eventos"
+                                FiltroNotificacion.OTROS -> "Otros"
+                            }
                         )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "Las notificaciones importantes aparecerán aquí",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                // Lista de notificaciones
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    items(notificacionesFiltradas) { notificacion ->
-                        NotificacionItem(
-                            notificacion = notificacion,
-                            isSelected = notificacionesSeleccionadas.contains(notificacion.id),
-                            selectionMode = modoSeleccion,
-                            onNotificacionClick = {
-                                if (modoSeleccion) {
-                                    // En modo selección, togglear selección
-                                    notificacionesSeleccionadas = if (notificacionesSeleccionadas.contains(notificacion.id)) {
-                                        notificacionesSeleccionadas - notificacion.id
-                                    } else {
-                                        notificacionesSeleccionadas + notificacion.id
-                                    }
-                                } else {
-                                    // En modo normal, abrir detalle (falta implementar)
-                                    if (notificacion.accion != null) {
-                                        // Navegar a la acción correspondiente (ej: detalle de evento)
-                                        // Aquí iría un navController.navigate(notificacion.accion)
-                                    }
-                                }
-                            },
-                            onLongClick = {
-                                // Activar modo selección
-                                if (!modoSeleccion) {
-                                    modoSeleccion = true
-                                    notificacionesSeleccionadas = setOf(notificacion.id)
-                                }
-                            },
-                            onMarcarLeida = { marcarComoLeida(notificacion.id) }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    
-                    // Espacio adicional al final de la lista
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun FiltrosNotificacionesBar(
-    filtroSeleccionado: FiltroNotificacion,
-    onFiltroSelected: (FiltroNotificacion) -> Unit
-) {
-    ScrollableTabRow(
-        selectedTabIndex = filtroSeleccionado.ordinal,
-        edgePadding = 16.dp,
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = FamiliarColor
-    ) {
-        FiltroNotificacion.values().forEach { filtro ->
-            Tab(
-                selected = filtroSeleccionado == filtro,
-                onClick = { onFiltroSelected(filtro) },
-                text = { 
+    ) { paddingValues ->
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = FamiliarColor)
+            }
+        } else if (uiState.notificacionesFiltradas.isEmpty()) {
+            // Estado vacío
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = FamiliarColor.copy(alpha = 0.5f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
                     Text(
-                        text = when (filtro) {
-                            FiltroNotificacion.TODAS -> "Todas"
-                            FiltroNotificacion.NO_LEIDAS -> "No leídas"
-                            FiltroNotificacion.MENSAJES -> "Mensajes"
-                            FiltroNotificacion.TAREAS -> "Tareas"
-                            FiltroNotificacion.EVENTOS -> "Eventos"
-                            FiltroNotificacion.OTROS -> "Otros"
-                        }
+                        text = "No hay notificaciones",
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Cuando recibas notificaciones, aparecerán aquí",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(
+                    items = uiState.notificacionesFiltradas,
+                    key = { it.id }
+                ) { notificacion ->
+                    val isSelected = uiState.notificacionesSeleccionadas.contains(notificacion.id)
+                    
+                    NotificacionItem(
+                        notificacion = notificacion,
+                        isSelected = isSelected,
+                        isSelectionMode = uiState.modoSeleccion,
+                        onClick = {
+                            if (uiState.modoSeleccion) {
+                                viewModel.toggleSeleccion(notificacion.id)
+                            } else {
+                                // Marcar como leída y navegar si es necesario
+                                if (!notificacion.leida) {
+                                    viewModel.marcarComoLeida(notificacion.id)
+                                }
+                                
+                                // Navegación según tipo
+                                notificacion.accion?.let { accion ->
+                                    // Implementar navegación según la acción
+                                }
+                            }
+                        },
+                        onLongClick = {
+                            // Si no estamos en modo selección, activarlo y seleccionar este item
+                            if (!uiState.modoSeleccion) {
+                                viewModel.cambiarModoSeleccion(true)
+                                viewModel.toggleSeleccion(notificacion.id)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItemPlacement()
+                    )
+                }
+            }
         }
     }
 }
@@ -342,106 +592,70 @@ fun FiltrosNotificacionesBar(
 @Composable
 fun NotificacionItem(
     notificacion: Notificacion,
-    isSelected: Boolean = false,
-    selectionMode: Boolean = false,
-    onNotificacionClick: () -> Unit,
-    onLongClick: () -> Unit = {},
-    onMarcarLeida: () -> Unit
+    isSelected: Boolean,
+    isSelectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
-                onClick = { 
-                    onNotificacionClick() 
-                    if (!notificacion.leida && !selectionMode) {
-                        onMarcarLeida()
-                    }
-                },
-                onLongClick = { onLongClick() }
+                onClick = onClick,
+                onLongClick = onLongClick
             ),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                isSelected -> MaterialTheme.colorScheme.primaryContainer
-                !notificacion.leida -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-                else -> MaterialTheme.colorScheme.surface
-            }
+            containerColor = if (isSelected) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else if (!notificacion.leida) 
+                MaterialTheme.colorScheme.surface
+            else 
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (!notificacion.leida) 2.dp else 0.dp
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Checkbox o icono dependiendo del modo
-            if (selectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onNotificacionClick() },
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-            } else {
-                // Icono de tipo de notificación
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(notificacion.tipo.color.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = when (notificacion.tipo) {
-                            TipoNotificacion.MENSAJE -> Icons.Default.Message
-                            TipoNotificacion.TAREA -> Icons.Default.Assignment
-                            TipoNotificacion.EVENTO -> Icons.Default.Event
-                            TipoNotificacion.CALIFICACION -> Icons.Default.Star
-                            TipoNotificacion.ASISTENCIA -> Icons.Default.Person
-                            TipoNotificacion.GENERAL -> Icons.Default.Notifications
-                        },
-                        contentDescription = notificacion.tipo.name,
-                        tint = notificacion.tipo.color,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+            // Indicador de tipo de notificación
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(notificacion.tipo.color)
+            )
             
             Spacer(modifier = Modifier.width(16.dp))
             
+            // Contenido principal
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+                // Cabecera: título y fecha
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Título con indicador de no leído
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    Text(
+                        text = notificacion.titulo,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = if (!notificacion.leida) FontWeight.Bold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = notificacion.titulo,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = if (!notificacion.leida) FontWeight.Bold else FontWeight.Normal,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        
-                        if (!notificacion.leida) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(notificacion.tipo.color)
-                            )
-                        }
-                    }
+                    )
                     
-                    // Fecha
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    // Fecha formateada
                     Text(
                         text = formatDate(notificacion.fecha),
                         style = MaterialTheme.typography.bodySmall,
@@ -451,7 +665,7 @@ fun NotificacionItem(
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                // Remitente
+                // Remitente (si existe)
                 if (notificacion.remitente.isNotEmpty()) {
                     Text(
                         text = "De: ${notificacion.remitente}",
@@ -475,146 +689,50 @@ fun NotificacionItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            
+            // Indicador de selección
+            if (isSelectionMode) {
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Icon(
+                    imageVector = if (isSelected) 
+                        Icons.Default.CheckCircle 
+                    else 
+                        Icons.Default.RadioButtonUnchecked,
+                    contentDescription = if (isSelected) "Seleccionado" else "No seleccionado",
+                    tint = if (isSelected) 
+                        MaterialTheme.colorScheme.primary
+                    else 
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
         }
     }
 }
 
 // Formato de fecha para notificaciones
-private fun formatDate(date: Date): String {
+fun formatDate(date: Date): String {
     val now = Calendar.getInstance()
-    val notifDate = Calendar.getInstance().apply { time = date }
+    val notificationDate = Calendar.getInstance().apply { time = date }
     
     return when {
-        // Hoy - mostrar hora
-        now.get(Calendar.DAY_OF_YEAR) == notifDate.get(Calendar.DAY_OF_YEAR) &&
-                now.get(Calendar.YEAR) == notifDate.get(Calendar.YEAR) -> {
+        // Hoy: mostrar solo la hora
+        now.get(Calendar.YEAR) == notificationDate.get(Calendar.YEAR) &&
+        now.get(Calendar.DAY_OF_YEAR) == notificationDate.get(Calendar.DAY_OF_YEAR) -> {
             SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
         }
-        // Ayer
-        now.get(Calendar.DAY_OF_YEAR) - notifDate.get(Calendar.DAY_OF_YEAR) == 1 &&
-                now.get(Calendar.YEAR) == notifDate.get(Calendar.YEAR) -> {
-            "Ayer"
+        // Ayer: mostrar "Ayer" y la hora
+        now.get(Calendar.YEAR) == notificationDate.get(Calendar.YEAR) &&
+        now.get(Calendar.DAY_OF_YEAR) - notificationDate.get(Calendar.DAY_OF_YEAR) == 1 -> {
+            "Ayer ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)}"
         }
-        // Esta semana - mostrar día
-        now.get(Calendar.WEEK_OF_YEAR) == notifDate.get(Calendar.WEEK_OF_YEAR) &&
-                now.get(Calendar.YEAR) == notifDate.get(Calendar.YEAR) -> {
-            SimpleDateFormat("EEEE", Locale("es", "ES")).format(date).capitalize()
+        // Este año: mostrar día y mes
+        now.get(Calendar.YEAR) == notificationDate.get(Calendar.YEAR) -> {
+            SimpleDateFormat("d MMM", Locale("es")).format(date)
         }
-        // Otros casos - mostrar fecha completa
+        // Otros años: mostrar día, mes y año
         else -> {
-            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
+            SimpleDateFormat("d MMM yyyy", Locale("es")).format(date)
         }
     }
-}
-
-// Generar datos de prueba
-private fun generarNotificacionesDePrueba(): List<Notificacion> {
-    val calendar = Calendar.getInstance()
-    val ahora = calendar.time
-    
-    // Ayer
-    calendar.add(Calendar.DAY_OF_YEAR, -1)
-    val ayer = calendar.time
-    
-    // Hace 2 días
-    calendar.add(Calendar.DAY_OF_YEAR, -1)
-    val haceDosDias = calendar.time
-    
-    // Hace una semana
-    calendar.time = ahora
-    calendar.add(Calendar.DAY_OF_YEAR, -7)
-    val haceSemana = calendar.time
-    
-    // Fecha futura para evento próximo
-    calendar.time = ahora
-    calendar.add(Calendar.DAY_OF_YEAR, 5)
-    val fechaFutura = calendar.time
-    
-    return listOf(
-        Notificacion(
-            id = "1",
-            titulo = "Reunión de padres y profesores",
-            mensaje = "Se ha programado una reunión para discutir el progreso del primer trimestre el próximo lunes a las 17:00.",
-            fecha = ahora,
-            tipo = TipoNotificacion.EVENTO,
-            leida = false,
-            remitente = "Javier Fernández (Director)",
-            accion = "eventos/123"
-        ),
-        Notificacion(
-            id = "2",
-            titulo = "Nuevo mensaje del tutor",
-            mensaje = "Pablo ha mostrado un gran avance en matemáticas este mes. Estamos muy contentos con su progreso.",
-            fecha = ahora,
-            tipo = TipoNotificacion.MENSAJE,
-            leida = false,
-            remitente = "Ana García (Tutora)",
-            accion = "mensajes/456"
-        ),
-        Notificacion(
-            id = "3",
-            titulo = "Recordatorio de excursión",
-            mensaje = "Recuerde enviar la autorización firmada para la excursión al Museo de Ciencias antes del jueves.",
-            fecha = ayer,
-            tipo = TipoNotificacion.TAREA,
-            leida = true,
-            remitente = "Secretaría",
-            accion = "tareas/789"
-        ),
-        Notificacion(
-            id = "4",
-            titulo = "Comida de hoy",
-            mensaje = "Su hijo ha comido muy bien hoy: primer plato completo, segundo plato parcial y postre completo.",
-            fecha = ayer,
-            tipo = TipoNotificacion.GENERAL,
-            leida = true,
-            remitente = "Comedor escolar"
-        ),
-        Notificacion(
-            id = "5",
-            titulo = "Día no lectivo",
-            mensaje = "Le recordamos que el próximo viernes 24 es día no lectivo por festividad local.",
-            fecha = haceDosDias,
-            tipo = TipoNotificacion.EVENTO,
-            leida = true,
-            remitente = "Dirección del centro",
-            accion = "calendario/festivos"
-        ),
-        Notificacion(
-            id = "6",
-            titulo = "Taller de lectura",
-            mensaje = "Invitamos a los padres al taller de fomento de lectura que se realizará el próximo sábado de 10:00 a 12:00.",
-            fecha = haceSemana,
-            tipo = TipoNotificacion.EVENTO,
-            leida = true,
-            remitente = "Departamento de Lengua",
-            accion = "eventos/789"
-        ),
-        Notificacion(
-            id = "7",
-            titulo = "Festival de fin de curso",
-            mensaje = "Comenzamos los preparativos para el festival de fin de curso. Próximamente más información.",
-            fecha = fechaFutura,
-            tipo = TipoNotificacion.EVENTO,
-            leida = false,
-            remitente = "Coordinación de Actividades",
-            accion = "eventos/101"
-        ),
-        Notificacion(
-            id = "8",
-            titulo = "Solicitud de tutoría",
-            mensaje = "La profesora Carmen solicita una tutoría para hablar sobre el rendimiento en la asignatura de inglés.",
-            fecha = ahora,
-            tipo = TipoNotificacion.MENSAJE,
-            leida = false,
-            remitente = "Carmen Vázquez (Profesora de inglés)",
-            accion = "tutorias/202"
-        )
-    )
-}
-
-// Extensión para capitalizar la primera letra
-private fun String.capitalize(): String {
-    return if (this.isEmpty()) this
-    else this.substring(0, 1).uppercase() + this.substring(1)
 } 
