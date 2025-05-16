@@ -65,7 +65,10 @@ data class PerfilUiState(
     val usuario: Usuario? = null,
     val direccion: Direccion = Direccion(),
     val avatarUrl: String? = null,
-    val loadingCiudad: Boolean = false
+    val loadingCiudad: Boolean = false,
+    
+    // Estado para forzar el tipo de usuario como administrador de aplicación
+    val forzarRolAdminApp: Boolean? = null
 )
 
 /**
@@ -89,6 +92,23 @@ class PerfilViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(PerfilUiState())
     val uiState: StateFlow<PerfilUiState> = _uiState.asStateFlow()
+
+    /**
+     * Establece manualmente si el usuario es administrador de aplicación
+     * Se usa para preservar el rol independientemente de lo que se obtenga de la BD
+     */
+    fun setIsAdminApp(isAdminApp: Boolean) {
+        Timber.d("PerfilViewModel - Forzando rol admin app: $isAdminApp")
+        _uiState.update { it.copy(forzarRolAdminApp = isAdminApp) }
+    }
+
+    /**
+     * Determina si el usuario es administrador de aplicación
+     * Usa el valor forzado si está disponible, o lo determina a partir de los perfiles
+     */
+    fun esAdminApp(): Boolean {
+        return _uiState.value.forzarRolAdminApp ?: (_uiState.value.usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: false)
+    }
 
     /**
      * Inicia la carga del perfil del usuario

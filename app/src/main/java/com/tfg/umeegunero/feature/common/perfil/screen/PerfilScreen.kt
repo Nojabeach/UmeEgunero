@@ -70,6 +70,7 @@ import timber.log.Timber
  * 
  * @param navController Controlador de navegación para gestionar la navegación entre pantallas
  * @param viewModel ViewModel que contiene la lógica de negocio
+ * @param isAdminApp Si el usuario es administrador de la aplicación
  * 
  * @author Maitane (Estudiante 2º DAM)
  */
@@ -78,8 +79,15 @@ import timber.log.Timber
 fun PerfilScreen(
     viewModel: PerfilViewModel = hiltViewModel(),
     navController: NavController,
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    isAdminApp: Boolean = false
 ) {
+    // Establecer el valor de isAdminApp en el ViewModel
+    LaunchedEffect(isAdminApp) {
+        Timber.d("PerfilScreen recibió isAdminApp=$isAdminApp")
+        viewModel.setIsAdminApp(isAdminApp)
+    }
+
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -92,9 +100,11 @@ fun PerfilScreen(
     var showContent by remember { mutableStateOf(false) }
     
     // Obtener color específico del tipo de usuario unificado
-    val userColor = remember(uiState.usuario) {
-        val tipoUsuario = uiState.usuario?.perfiles?.firstOrNull()?.tipo
-        getUserColor(tipoUsuario)
+    val esAdmin = viewModel.esAdminApp()
+    val userColor = if (esAdmin) {
+        AdminColor
+    } else {
+        getUserColor(uiState.usuario?.perfiles?.firstOrNull()?.tipo)
     }
     
     // Cargar perfil al inicio
@@ -215,6 +225,7 @@ fun PerfilScreen(
                         uiState = uiState,
                         editMode = editMode,
                         userColor = userColor,
+                        viewModel = viewModel,
                         onChangePassword = { showChangePasswordDialog = true },
                         onLogout = { showLogoutConfirmDialog = true },
                         onValueChange = { field, value ->
@@ -534,6 +545,7 @@ fun ProfileField(
  * @param uiState Estado actual de la UI
  * @param editMode Si estamos en modo edición
  * @param userColor Color correspondiente al tipo de usuario
+ * @param viewModel ViewModel asociado a la pantalla
  * @param onChangePassword Acción al solicitar cambio de contraseña
  * @param onLogout Acción al solicitar cierre de sesión
  * @param onValueChange Acción al cambiar valores
@@ -546,6 +558,7 @@ private fun PerfilContent(
     uiState: PerfilUiState,
     editMode: Boolean,
     userColor: Color,
+    viewModel: PerfilViewModel,
     onChangePassword: () -> Unit,
     onLogout: () -> Unit,
     onValueChange: (String, String) -> Unit,
@@ -564,6 +577,7 @@ private fun PerfilContent(
             userColor = userColor,
             editMode = editMode,
             onAvatarChange = onAvatarChange,
+            viewModel = viewModel,
             modifier = Modifier.fillMaxWidth()
         )
         
@@ -607,18 +621,23 @@ private fun PerfilHeaderCard(
     userColor: Color,
     editMode: Boolean,
     onAvatarChange: (Uri) -> Unit,
+    viewModel: PerfilViewModel,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val tipoDisplay = uiState.usuario?.perfiles?.firstOrNull()?.tipo?.let { tipo ->
-        when (tipo) {
-            TipoUsuario.ADMIN_APP -> "Administrador del sistema"
-            TipoUsuario.ADMIN_CENTRO -> "Administrador de centro"
-            TipoUsuario.PROFESOR -> "Profesor"
-            TipoUsuario.FAMILIAR -> "Familiar"
-            TipoUsuario.ALUMNO -> "Alumno"
-            TipoUsuario.DESCONOCIDO -> "Usuario"
-            else -> "Usuario"
+        if (viewModel.esAdminApp()) {
+            "Administrador del sistema"
+        } else {
+            when (tipo) {
+                TipoUsuario.ADMIN_APP -> "Administrador del sistema"
+                TipoUsuario.ADMIN_CENTRO -> "Administrador de centro"
+                TipoUsuario.PROFESOR -> "Profesor"
+                TipoUsuario.FAMILIAR -> "Familiar"
+                TipoUsuario.ALUMNO -> "Alumno"
+                TipoUsuario.DESCONOCIDO -> "Usuario"
+                else -> "Usuario"
+            }
         }
     } ?: "Usuario"
     
@@ -666,10 +685,8 @@ private fun PerfilHeaderCard(
                     .size(100.dp)
                     .border(4.dp, Color.White, CircleShape)
             ) {
-                // Determinar si el usuario es administrador explícitamente
-                val esAdmin = uiState.usuario?.perfiles?.any { 
-                    it.tipo == TipoUsuario.ADMIN_APP 
-                } == true
+                // Determinar si el usuario es administrador usando el método del ViewModel
+                val esAdmin = viewModel.esAdminApp()
                 
                 // Registrar en log para depuración
                 LaunchedEffect(esAdmin) {

@@ -318,7 +318,7 @@ fun Navigation(
                     }
                 },
                 onNavigateToProfile = {
-                    navController.navigate(AppScreens.Perfil.route) {
+                    navController.navigate(AppScreens.Perfil.createRoute(true)) {
                         launchSingleTop = true
                     }
                 }
@@ -454,11 +454,15 @@ fun Navigation(
             )
         }
         
-        // Pantalla de perfil
-        composable(route = AppScreens.Perfil.route) {
+        // Perfil
+        composable(
+            route = AppScreens.Perfil.route,
+            arguments = AppScreens.Perfil.arguments
+        ) { backStackEntry ->
+            val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
             PerfilScreen(
                 navController = navController,
-                onNavigateBack = { navController.popBackStack() }
+                isAdminApp = isAdminApp
             )
         }
         
@@ -645,7 +649,7 @@ fun Navigation(
                     }
                 },
                 onNavigateToProfile = {
-                    navController.navigate(AppScreens.Perfil.route) {
+                    navController.navigate(AppScreens.Perfil.createRoute(isAdminApp)) {
                         launchSingleTop = true
                     }
                 }

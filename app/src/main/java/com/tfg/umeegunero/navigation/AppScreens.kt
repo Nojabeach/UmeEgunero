@@ -259,8 +259,20 @@ sealed class AppScreens(val route: String) {
     /** Pantalla de configuración de la aplicación */
     object Config : AppScreens("config")
     
-    /** Pantalla de perfil del usuario */
-    object Perfil : AppScreens("perfil")
+    /** 
+     * Pantalla de perfil del usuario 
+     * @param isAdminApp Indica si el usuario es administrador de la aplicación
+     */
+    object Perfil : AppScreens("perfil/{isAdminApp}") {
+        fun createRoute(isAdminApp: Boolean) = "perfil/$isAdminApp"
+        
+        val arguments = listOf(
+            navArgument("isAdminApp") { 
+                type = NavType.BoolType
+                defaultValue = false
+            }
+        )
+    }
     
     /** 
      * Pantalla de cambio de contraseña
