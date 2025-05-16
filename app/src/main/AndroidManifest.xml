@@ -50,6 +50,18 @@
             </intent-filter>
         </activity>
         
+        <!-- Actividad para subir avatar de administrador -->
+        <activity
+            android:name=".admin.SubirAvatarAdminActivity"
+            android:exported="true"
+            android:label="Subir Avatar Admin"
+            android:theme="@style/Theme.UmeEgunero">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
         <!-- Firebase Cloud Messaging Service -->
         <service
             android:name=".notification.UmeEguneroMessagingService"

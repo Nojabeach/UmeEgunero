@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 
 /**
  * Estado UI para la pantalla de login.
@@ -462,6 +464,9 @@ class LoginViewModel @Inject constructor(
                                     )
                                 }
                                 Timber.d("Login exitoso para $email como $userType")
+                                
+                                // Actualizar token FCM en Firestore
+                                actualizarTokenFCM(usuario.dni)
                             } else {
                                 // No tiene el perfil adecuado
                                 _uiState.update {
@@ -514,6 +519,83 @@ class LoginViewModel @Inject constructor(
                         error = "Error inesperado. Por favor, intenta de nuevo."
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * Actualiza el token FCM del usuario en Firestore al iniciar sesión
+     * Esto asegura que siempre tengamos el token más reciente asociado al usuario
+     * para poder enviar notificaciones push.
+     */
+    private fun actualizarTokenFCM(dni: String) {
+        viewModelScope.launch {
+            try {
+                // Obtener el token actual de FirebaseMessaging
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (!task.isSuccessful) {
+                        Timber.e(task.exception, "Error al obtener token FCM para actualizar en login")
+                        return@addOnCompleteListener
+                    }
+                    
+                    val token = task.result
+                    if (token.isBlank()) {
+                        Timber.d("Token FCM obtenido está vacío")
+                        return@addOnCompleteListener
+                    }
+                    
+                    Timber.d("Token FCM obtenido: $token para usuario con DNI: $dni")
+                    
+                    // Generar un ID único para el dispositivo
+                    val deviceId = "device_${System.currentTimeMillis()}"
+                    
+                    // Estructura para actualizar el token FCM en las preferencias de notificaciones
+                    val tokenUpdate = mapOf(
+                        "preferencias.notificaciones.fcmToken" to token,
+                        "preferencias.notificaciones.deviceId" to deviceId,
+                        "preferencias.notificaciones.lastUpdated" to com.google.firebase.Timestamp.now()
+                    )
+                    
+                    // Actualizar el documento con el DNI como ID
+                    FirebaseFirestore.getInstance()
+                        .collection("usuarios")
+                        .document(dni)
+                        .update(tokenUpdate)
+                        .addOnSuccessListener {
+                            Timber.d("Token FCM actualizado correctamente en login para usuario: $dni")
+                        }
+                        .addOnFailureListener { e ->
+                            Timber.e(e, "Error al actualizar token FCM en login para usuario: $dni")
+                            
+                            // Si el error es porque no existe el campo preferencias.notificaciones,
+                            // intentamos crearlo con una estructura completa
+                            val initialData = mapOf(
+                                "preferencias" to mapOf(
+                                    "notificaciones" to mapOf(
+                                        "fcmToken" to token,
+                                        "deviceId" to deviceId,
+                                        "lastUpdated" to com.google.firebase.Timestamp.now(),
+                                        "push" to true, // Habilitamos push por defecto al registrar token
+                                        "email" to true, // Habilitamos email por defecto también
+                                        "fcmTokens" to mapOf(deviceId to token) // Guardar en el mapa de tokens
+                                    )
+                                )
+                            )
+                            
+                            FirebaseFirestore.getInstance()
+                                .collection("usuarios")
+                                .document(dni)
+                                .set(initialData, com.google.firebase.firestore.SetOptions.merge())
+                                .addOnSuccessListener {
+                                    Timber.d("Preferencias de notificaciones creadas para usuario: $dni")
+                                }
+                                .addOnFailureListener { innerE ->
+                                    Timber.e(innerE, "Error al crear preferencias de notificaciones: $dni")
+                                }
+                        }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error general al actualizar token FCM: ${e.message}")
             }
         }
     }

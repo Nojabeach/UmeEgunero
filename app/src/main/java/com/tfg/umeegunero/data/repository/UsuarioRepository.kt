@@ -229,10 +229,42 @@ open class UsuarioRepository @Inject constructor(
     }
 
     /**
-     * Cierra la sesión actual
+     * Cierra la sesión actual y limpia los tokens FCM
      */
     fun cerrarSesion() {
-        firebaseAuth.signOut()
+        try {
+            // Intentar limpiar el token FCM antes de cerrar sesión
+            val currentUser = firebaseAuth.currentUser
+            if (currentUser != null) {
+                // Buscar el DNI del usuario por su email
+                currentUser.email?.let { email ->
+                    val userQuery = usuariosCollection.whereEqualTo("email", email)
+                    // Ejecutar la consulta de forma síncrona usando runBlocking si es necesario
+                    // Aquí usamos una operación asíncrona sin esperar el resultado
+                    userQuery.get().addOnSuccessListener { snapshot ->
+                        if (!snapshot.isEmpty) {
+                            val userDoc = snapshot.documents.first()
+                            val dni = userDoc.id
+                            
+                            // Limpiar los tokens FCM
+                            usuariosCollection.document(dni)
+                                .update("preferencias.notificaciones.fcmTokens", mapOf<String, String>())
+                                .addOnSuccessListener {
+                                    Timber.d("Tokens FCM limpiados correctamente al cerrar sesión para usuario $dni")
+                                }
+                                .addOnFailureListener { e ->
+                                    Timber.e(e, "Error al limpiar tokens FCM al cerrar sesión para usuario $dni")
+                                }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al limpiar tokens FCM antes de cerrar sesión: ${e.message}")
+        } finally {
+            // Siempre cerrar sesión en Firebase Auth, incluso si falla la limpieza de tokens
+            firebaseAuth.signOut()
+        }
     }
     
     /**
@@ -2592,6 +2624,31 @@ open class UsuarioRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al registrar último acceso: ${e.message}")
             Result.Error(e)
+        }
+    }
+
+    /**
+     * Guarda un usuario en Firestore sin crear una cuenta de autenticación en Firebase
+     * Útil para alumnos y otros usuarios que no requieren acceso directo al sistema
+     *
+     * @param usuario Usuario a guardar
+     * @return Resultado de la operación
+     */
+    suspend fun saveUsuarioSinAuth(usuario: Usuario): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Verificar que el DNI no esté vacío
+            if (usuario.dni.isBlank()) {
+                return@withContext Result.Error(Exception("El DNI no puede estar vacío"))
+            }
+            
+            // Guardar el usuario en Firestore usando el DNI como ID del documento
+            usuariosCollection.document(usuario.dni).set(usuario).await()
+            
+            Timber.d("Usuario guardado sin autenticación: ${usuario.dni}")
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al guardar usuario sin autenticación: ${usuario.dni}")
+            return@withContext Result.Error(e)
         }
     }
 }

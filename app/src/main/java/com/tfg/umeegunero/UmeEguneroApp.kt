@@ -77,6 +77,9 @@ class UmeEguneroApp : Application(), Configuration.Provider {
         // Crear admin de debug automáticamente si no existe (solo en debug)
         if (BuildConfig.DEBUG) {
             debugUtils.ensureDebugAdminApp()
+            
+            // Iniciar proceso de subida del avatar de administrador
+            subirAvatarAdminInicio()
         }
     }
     
@@ -175,6 +178,28 @@ class UmeEguneroApp : Application(), Configuration.Provider {
         
         Timber.d("Sincronización periódica configurada")
         Timber.d("Revisión periódica de eventos configurada")
+    }
+    
+    /**
+     * Sube el avatar del administrador al inicio de la aplicación
+     */
+    private fun subirAvatarAdminInicio() {
+        try {
+            Timber.d("Iniciando subida de avatar de administrador...")
+            
+            // Usar nuestra clase AdminTools para subir el avatar
+            val adminTools = com.tfg.umeegunero.admin.AdminTools(this)
+            
+            // Intentar desde recursos primero (que es donde está realmente la imagen)
+            adminTools.subirAvatarAdministradorDesdeRecursos()
+            
+            // Alternativamente, también intentamos desde assets como respaldo
+            adminTools.subirAvatarAdministradorDesdeAssets()
+            
+            Timber.d("Proceso de subida de avatar de administrador iniciado exitosamente")
+        } catch (e: Exception) {
+            Timber.e(e, "Error al iniciar subida de avatar de administrador")
+        }
     }
     
     companion object {

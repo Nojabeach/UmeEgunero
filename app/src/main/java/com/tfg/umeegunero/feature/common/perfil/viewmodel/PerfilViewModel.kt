@@ -1,14 +1,20 @@
 package com.tfg.umeegunero.feature.common.perfil.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.StorageRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,7 +64,7 @@ data class PerfilUiState(
     // Datos adicionales
     val usuario: Usuario? = null,
     val direccion: Direccion = Direccion(),
-    val fotoPerfil: String? = null,
+    val avatarUrl: String? = null,
     val loadingCiudad: Boolean = false
 )
 
@@ -75,64 +81,56 @@ data class PerfilUiState(
  */
 @HiltViewModel
 class PerfilViewModel @Inject constructor(
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val storageRepository: StorageRepository,
+    private val authRepository: AuthRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PerfilUiState())
     val uiState: StateFlow<PerfilUiState> = _uiState.asStateFlow()
 
     /**
-     * Carga los datos del perfil del usuario actual
+     * Inicia la carga del perfil del usuario
      */
-    fun cargarPerfil() {
+    fun cargarUsuario() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true) }
             
             try {
-                usuarioRepository.getUsuarioActual().collectLatest<Result<Usuario>> { result ->
-                    when (result) {
-                        is Result.Success<*> -> {
-                            val usuario = result.data as? Usuario
-                            if (usuario != null) {
-                                _uiState.update { it.copy(
-                                    usuario = usuario,
-                                    isLoading = false,
-                                    nombre = usuario.nombre,
-                                    apellidos = usuario.apellidos,
-                                    telefono = usuario.telefono ?: "",
-                                    direccion = usuario.direccion ?: Direccion(),
-                                    fotoPerfil = null
-                                ) }
-                                actualizarPerfil(usuario)
-                            }
-                        }
-                        is Result.Error -> {
-                            _uiState.update { it.copy(
-                                isLoading = false,
-                                error = result.exception?.message ?: "Error al cargar los datos del usuario"
-                            ) }
-                        }
-                        is Result.Loading<*> -> {
-                            _uiState.update { it.copy(isLoading = true) }
-                        }
-                    }
+                // Obtener usuario actual directamente desde AuthRepository
+                val usuarioActual = authRepository.getUsuarioActual()
+                
+                if (usuarioActual != null) {
+                    Timber.d("Usuario actual obtenido: ${usuarioActual.nombre} ${usuarioActual.apellidos}, avatar: ${usuarioActual.avatarUrl}")
+                    
+                    // Actualizar directamente el perfil con los datos que tenemos
+                    actualizarPerfil(usuarioActual)
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = "No se pudo obtener el usuario actual") }
+                    Timber.e("No se pudo obtener el usuario actual")
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = e.message ?: "Error al cargar los datos del usuario"
-                ) }
+                _uiState.update { it.copy(isLoading = false, error = "Error al cargar usuario: ${e.message}") }
+                Timber.e(e, "Excepción al cargar usuario actual")
             }
         }
     }
-    
+
     /**
      * Actualiza el estado según los datos del usuario
      */
     private fun actualizarPerfil(usuario: Usuario) {
+        // Usar la URL de avatar que viene directamente de Firestore
+        val avatarUrl = usuario.avatarUrl
+        
+        Timber.d("Avatar URL desde Firestore: $avatarUrl")
+        
         _uiState.update {
             it.copy(
                 isLoading = false,
+                usuario = usuario,
+                avatarUrl = avatarUrl,
                 nombre = usuario.nombre,
                 apellidos = usuario.apellidos,
                 telefono = usuario.telefono ?: "",
@@ -144,12 +142,10 @@ class PerfilViewModel @Inject constructor(
                 direccionCP = usuario.direccion?.codigoPostal ?: "",
                 direccionCiudad = usuario.direccion?.ciudad ?: "",
                 direccionProvincia = usuario.direccion?.provincia ?: "",
-                
-                // Coordenadas
                 latitud = usuario.direccion?.latitud ?: "",
                 longitud = usuario.direccion?.longitud ?: "",
                 
-                // Guardar valores originales
+                // Datos para detectar cambios
                 nombreOriginal = usuario.nombre,
                 apellidosOriginal = usuario.apellidos,
                 telefonoOriginal = usuario.telefono ?: "",
@@ -160,120 +156,12 @@ class PerfilViewModel @Inject constructor(
                 direccionCiudadOriginal = usuario.direccion?.ciudad ?: "",
                 direccionProvinciaOriginal = usuario.direccion?.provincia ?: "",
                 latitudOriginal = usuario.direccion?.latitud ?: "",
-                longitudOriginal = usuario.direccion?.longitud ?: "",
-                
-                // Actualizar datos adicionales
-                usuario = usuario,
-                direccion = usuario.direccion ?: Direccion(),
-                fotoPerfil = null
+                longitudOriginal = usuario.direccion?.longitud ?: ""
             )
         }
-    }
-    
-    /**
-     * Obtiene el nombre de la ciudad basado en el código postal
-     * Simula una llamada a la API
-     */
-    fun obtenerCiudadPorCP(cp: String) {
-        viewModelScope.launch {
-            if (cp.length != 5) return@launch
-            
-            _uiState.update { it.copy(loadingCiudad = true) }
-            
-            try {
-                // Simulación de API con un delay
-                delay(800)
-                
-                // Datos de ejemplo
-                val cpData = mapOf(
-                    "28001" to Pair("Madrid", "Madrid"),
-                    "08001" to Pair("Barcelona", "Barcelona"),
-                    "46001" to Pair("Valencia", "Valencia"),
-                    "41001" to Pair("Sevilla", "Sevilla"),
-                    "50001" to Pair("Zaragoza", "Zaragoza"),
-                    "30001" to Pair("Murcia", "Murcia"),
-                    "07001" to Pair("Palma de Mallorca", "Islas Baleares"),
-                    "35001" to Pair("Las Palmas de Gran Canaria", "Las Palmas"),
-                    "48001" to Pair("Bilbao", "Vizcaya"),
-                    "03001" to Pair("Alicante", "Alicante")
-                )
-                
-                val (ciudad, provincia) = cpData[cp] ?: Pair("", "")
-                
-                if (ciudad.isNotEmpty()) {
-                    _uiState.update { it.copy(
-                        direccionCiudad = ciudad,
-                        direccionProvincia = provincia,
-                        loadingCiudad = false
-                    ) }
-                    
-                    // Auto-obtener coordenadas si la ciudad fue encontrada
-                    obtenerCoordenadasDeDireccion()
-                } else {
-                    _uiState.update { it.copy(loadingCiudad = false) }
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    loadingCiudad = false,
-                    error = "Error al buscar la ciudad: ${e.message}"
-                ) }
-            }
-        }
-    }
-    
-    /**
-     * Obtiene las coordenadas geográficas basado en la dirección actual
-     * Simula una llamada a la API de geolocalización
-     */
-    fun obtenerCoordenadasDeDireccion() {
-        viewModelScope.launch {
-            // Verifica que haya suficiente información en la dirección
-            val direccion = uiState.value
-            if (direccion.direccionCalle.isEmpty() || 
-                direccion.direccionCiudad.isEmpty() || 
-                direccion.direccionCP.isEmpty()) {
-                _uiState.update { it.copy(
-                    error = "Completa la dirección para obtener las coordenadas"
-                ) }
-                return@launch
-            }
-            
-            _uiState.update { it.copy(isLoading = true) }
-            
-            try {
-                // Simulación de API con un delay
-                delay(1000)
-                
-                // Generación de coordenadas de ejemplo basadas en la ciudad
-                val coordenadasPorCiudad = mapOf(
-                    "Madrid" to Pair("40.4168", "-3.7038"),
-                    "Barcelona" to Pair("41.3851", "2.1734"),
-                    "Valencia" to Pair("39.4699", "-0.3763"),
-                    "Sevilla" to Pair("37.3891", "-5.9845"),
-                    "Zaragoza" to Pair("41.6488", "-0.8891"),
-                    "Murcia" to Pair("37.9922", "-1.1307"),
-                    "Palma de Mallorca" to Pair("39.5696", "2.6502"),
-                    "Las Palmas de Gran Canaria" to Pair("28.1235", "-15.4366"),
-                    "Bilbao" to Pair("43.2630", "-2.9350"),
-                    "Alicante" to Pair("38.3452", "-0.4815")
-                )
-                
-                val ciudadActual = direccion.direccionCiudad
-                val (latitud, longitud) = coordenadasPorCiudad[ciudadActual] ?: Pair("40.4168", "-3.7038") // Default a Madrid
-                
-                _uiState.update { it.copy(
-                    latitud = latitud,
-                    longitud = longitud,
-                    isLoading = false,
-                    success = "Coordenadas obtenidas correctamente"
-                ) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = "Error al obtener coordenadas: ${e.message}"
-                ) }
-            }
-        }
+        
+        // Registrar información actualizada para depuración
+        Timber.d("actualizarPerfil - avatarUrl actualizado en uiState: ${_uiState.value.avatarUrl}")
     }
     
     /**
@@ -472,7 +360,38 @@ class PerfilViewModel @Inject constructor(
     fun cerrarSesion() {
         viewModelScope.launch {
             try {
-                // En un entorno real, aquí haríamos la llamada al repositorio
+                // Obtenemos el contexto de la aplicación
+                val sharedPreferences = context.getSharedPreferences("user_preferences", Context.MODE_PRIVATE)
+                
+                // Limpiar el flag de admin en SharedPreferences
+                sharedPreferences.edit()
+                    .remove("is_admin_app")
+                    .remove("user_email")
+                    .remove("remember_user")
+                    .apply()
+                
+                // Llamar al repositorio para cerrar la sesión en Firebase
+                usuarioRepository.cerrarSesion()
+                
+                // También desregistrar el token FCM (es buena práctica al cerrar sesión)
+                try {
+                    // Obtener colección de usuarios para actualizar tokens FCM
+                    val usuarioActual = _uiState.value.usuario
+                    if (usuarioActual != null) {
+                        FirebaseFirestore.getInstance()
+                            .collection("usuarios")
+                            .document(usuarioActual.dni)
+                            .update("preferencias.notificaciones.fcmTokens", mapOf<String, String>())
+                            .addOnSuccessListener {
+                                Timber.d("Tokens FCM limpiados correctamente al cerrar sesión")
+                            }
+                            .addOnFailureListener { e ->
+                                Timber.e(e, "Error al limpiar tokens FCM al cerrar sesión")
+                            }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al limpiar tokens FCM: ${e.message}")
+                }
                 
                 // Limpiar el estado
                 _uiState.update { PerfilUiState() }
@@ -496,5 +415,161 @@ class PerfilViewModel @Inject constructor(
      */
     fun clearMensaje() {
         _uiState.update { it.copy(success = null) }
+    }
+    
+    /**
+     * Obtiene la ciudad correspondiente al código postal proporcionado
+     * @param codigoPostal Código postal a consultar
+     */
+    fun obtenerCiudadPorCP(codigoPostal: String) {
+        // Solo procesar si el CP tiene 5 dígitos
+        if (codigoPostal.length == 5) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(loadingCiudad = true) }
+                
+                try {
+                    // Simulación: En producción esto consultaría una API real
+                    delay(500) // Simula el tiempo de respuesta de una API
+                    
+                    // Códigos postales de ejemplo:
+                    val ciudades = mapOf(
+                        "48015" to "Bilbao",
+                        "48950" to "Erandio",
+                        "48080" to "Bilbao",
+                        "28001" to "Madrid",
+                        "08001" to "Barcelona"
+                    )
+                    
+                    // Buscar en el mapa o devolver vacío
+                    val ciudad = ciudades[codigoPostal] ?: ""
+                    
+                    if (ciudad.isNotEmpty()) {
+                        _uiState.update { 
+                            it.copy(
+                                direccionCiudad = ciudad,
+                                loadingCiudad = false
+                            ) 
+                        }
+                    } else {
+                        _uiState.update { it.copy(loadingCiudad = false) }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener ciudad por CP: ${e.message}")
+                    _uiState.update { it.copy(loadingCiudad = false) }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Obtiene las coordenadas geográficas para una dirección completa
+     */
+    fun obtenerCoordenadasDeDireccion() {
+        viewModelScope.launch {
+            val state = _uiState.value
+            val direccionCompleta = "${state.direccionCalle} ${state.direccionNumero}, ${state.direccionCP} ${state.direccionCiudad}, ${state.direccionProvincia}"
+            
+            if (direccionCompleta.isBlank()) {
+                return@launch
+            }
+            
+            _uiState.update { it.copy(isLoading = true) }
+            
+            try {
+                // Simulación: En producción consultaría una API de geocodificación
+                delay(1000) // Simula tiempo de respuesta
+                
+                // Coordenadas ficticias para propósitos de demostración
+                val latitud = "43.2630" // Coordenadas aproximadas para Bilbao
+                val longitud = "-2.9350"
+                
+                _uiState.update { 
+                    it.copy(
+                        latitud = latitud,
+                        longitud = longitud,
+                        isLoading = false,
+                        success = "Coordenadas obtenidas correctamente"
+                    ) 
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener coordenadas: ${e.message}")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al obtener coordenadas: ${e.message}"
+                    ) 
+                }
+            }
+        }
+    }
+    
+    /**
+     * Sube una nueva imagen de perfil para el usuario
+     * @param uri URI de la imagen a subir
+     */
+    fun subirAvatar(uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                val usuario = uiState.value.usuario ?: throw Exception("No hay usuario activo")
+                
+                // Ruta donde se guardará el avatar en Firebase Storage
+                val rutaAlmacenamiento = "avatares"
+                val nombreArchivo = "${usuario.dni}.jpg"
+                
+                storageRepository.subirArchivo(uri, rutaAlmacenamiento, nombreArchivo).collect { result ->
+                    when (result) {
+                        is Result.Loading -> {
+                            _uiState.update { it.copy(isLoading = true) }
+                        }
+                        is Result.Success -> {
+                            val urlAvatar = result.data as String
+                            
+                            // Actualizar el usuario en Firestore con la nueva URL
+                            val usuarioActualizado = usuario.copy(avatarUrl = urlAvatar)
+                            val resultadoActualizacion = usuarioRepository.actualizarUsuario(usuarioActualizado)
+                            
+                            when (resultadoActualizacion) {
+                                is Result.Success -> {
+                                    _uiState.update { 
+                                        it.copy(
+                                            isLoading = false,
+                                            avatarUrl = urlAvatar,
+                                            usuario = usuarioActualizado,
+                                            success = "Imagen de perfil actualizada correctamente"
+                                        ) 
+                                    }
+                                }
+                                is Result.Error -> {
+                                    _uiState.update { 
+                                        it.copy(
+                                            isLoading = false,
+                                            error = resultadoActualizacion.exception?.message ?: "Error al actualizar imagen de perfil"
+                                        ) 
+                                    }
+                                }
+                                else -> {}
+                            }
+                        }
+                        is Result.Error -> {
+                            _uiState.update { 
+                                it.copy(
+                                    isLoading = false, 
+                                    error = result.exception?.message ?: "Error al subir imagen de perfil"
+                                ) 
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false, 
+                        error = "Error al subir imagen de perfil: ${e.message}"
+                    ) 
+                }
+            }
+        }
     }
 } 

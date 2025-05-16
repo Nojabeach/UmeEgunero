@@ -430,28 +430,63 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun getUsuarioActual(): Usuario? {
         val firebaseUser = getFirebaseUser() ?: return null
         
+        // Si no tenemos email, no podemos buscar al usuario
+        if (firebaseUser.email.isNullOrEmpty()) {
+            Timber.e("El usuario de Firebase no tiene email: ${firebaseUser.uid}")
+            return null
+        }
+        
         return try {
+            // Buscar por email directamente, que es el método más confiable para identificar usuarios
+            // ya que el firebaseUid puede cambiar
+            val email = firebaseUser.email!!
+            Timber.d("Buscando usuario por email: $email (firebaseUid: ${firebaseUser.uid})")
+            
             val userDoc = firestore.collection("usuarios")
-                .whereEqualTo("uid", firebaseUser.uid)
+                .whereEqualTo("email", email)
                 .limit(1)
                 .get()
                 .await()
                 
             if (userDoc.isEmpty) {
-                Timber.e("Usuario no encontrado en Firestore: ${firebaseUser.uid}")
+                Timber.e("Usuario no encontrado en Firestore por email: $email")
                 return null
             }
             
             // Convertir el documento a objeto Usuario
-            val usuario = userDoc.documents.first().toObject(Usuario::class.java)
+            val documento = userDoc.documents.first()
+            val usuario = documento.toObject(Usuario::class.java)
             
             if (usuario == null) {
-                Timber.e("Error al convertir documento a Usuario: ${userDoc.documents.first().id}")
+                Timber.e("Error al convertir documento a Usuario: ${documento.id}")
+                return null
             }
             
-            usuario
+            // Asignar el ID del documento (DNI) al campo documentId del objeto Usuario
+            usuario.documentId = documento.id
+            Timber.d("Usuario recuperado correctamente: ${usuario.nombre} ${usuario.apellidos} (DNI: ${usuario.documentId})")
+            
+            // Actualizamos el firebaseUid en el usuario si es diferente
+            if (usuario.firebaseUid != firebaseUser.uid) {
+                Timber.d("Actualizando firebaseUid del usuario ${usuario.documentId} de ${usuario.firebaseUid} a ${firebaseUser.uid}")
+                
+                try {
+                    // Actualizamos en Firestore el firebaseUid
+                    firestore.collection("usuarios").document(usuario.documentId)
+                        .update("firebaseUid", firebaseUser.uid)
+                        .await()
+                    
+                    // Devolvemos el usuario con el firebaseUid actualizado
+                    usuario.copy(firebaseUid = firebaseUser.uid)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al actualizar firebaseUid, pero continuamos con el usuario encontrado")
+                    usuario
+                }
+            } else {
+                usuario
+            }
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener usuario actual")
+            Timber.e(e, "Error al obtener usuario actual: ${e.message}")
             null
         }
     }

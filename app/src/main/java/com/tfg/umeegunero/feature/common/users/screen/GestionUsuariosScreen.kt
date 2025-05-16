@@ -56,16 +56,23 @@ fun GestionUsuariosScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // Establecer el valor de isAdminApp en el ViewModel
+    LaunchedEffect(isAdminApp) {
+        Timber.d("GestionUsuariosScreen recibió isAdminApp=$isAdminApp")
+        viewModel.setIsAdminApp(isAdminApp)
+    }
+
     // Determinar si es admin de aplicación basándose en los perfiles del usuario actual
     // Si el usuario tiene el perfil de ADMIN_APP, se muestra la interfaz para administradores de aplicación
     // Si no, se usa el parámetro isAdminApp como respaldo
-    val esAdminApp = currentUser?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: isAdminApp
+    val perfilesUsuario = currentUser?.perfiles?.map { it.tipo }
+    val esAdminApp = viewModel.esAdministrador()
     
     // Log para debugging
     LaunchedEffect(currentUser) {
         Timber.d("Usuario actual: ${currentUser?.nombre} ${currentUser?.apellidos}")
         Timber.d("Es admin de app: $esAdminApp")
-        Timber.d("Perfiles: ${currentUser?.perfiles?.map { it.tipo }}")
+        Timber.d("Perfiles: $perfilesUsuario")
     }
 
     val handleNavigateToUserList: (String) -> Unit = { route ->
@@ -157,7 +164,7 @@ fun GestionUsuariosScreen(
                             )
                             
                             UserCategoryCard(
-                                title = "Administradores",
+                                title = "Administradores de Aplicación",
                                 subtitle = "Gestión de administradores del sistema",
                                 icon = Icons.Default.AdminPanelSettings,
                                 onClick = { handleNavigateToUserList(AppScreens.AdminList.route) }

@@ -29,9 +29,21 @@ class GestionUsuariosViewModel @Inject constructor(
 
     private val _editandoPerfil = MutableStateFlow(false)
     val editandoPerfil: StateFlow<Boolean> = _editandoPerfil
+    
+    // Nuevo estado para forzar el rol de administrador
+    private val _forzarRolAdminApp = MutableStateFlow<Boolean?>(null)
 
     init {
         cargarUsuarioActual()
+    }
+    
+    /**
+     * Establece manualmente si el usuario es administrador de aplicación
+     * Se usa para preservar el parámetro isAdminApp pasado desde la navegación
+     */
+    fun setIsAdminApp(isAdminApp: Boolean) {
+        Timber.d("Forzando rol admin app: $isAdminApp")
+        _forzarRolAdminApp.value = isAdminApp
     }
 
     private fun cargarUsuarioActual() {
@@ -43,7 +55,8 @@ class GestionUsuariosViewModel @Inject constructor(
                         _usuarioActual.value = usuario
                         _uiState.value = GestionUsuariosUiState.Success
                         
-                        if (usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_CENTRO } == true) {
+                        // Solo asignar el centro si no estamos forzando el rol de admin app
+                        if (_forzarRolAdminApp.value != true && usuario?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_CENTRO } == true) {
                             val centroId = usuario.perfiles.firstOrNull { it.tipo == TipoUsuario.ADMIN_CENTRO }?.centroId ?: ""
                             _centroIdAdmin.value = centroId
                             Timber.d("Usuario Admin Centro cargado. Centro ID: $centroId")
@@ -87,7 +100,8 @@ class GestionUsuariosViewModel @Inject constructor(
     }
 
     fun esAdministrador(): Boolean {
-        return _usuarioActual.value?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: false
+        // Usar el valor forzado si está definido, de lo contrario usar los perfiles del usuario
+        return _forzarRolAdminApp.value ?: (_usuarioActual.value?.perfiles?.any { it.tipo == TipoUsuario.ADMIN_APP } ?: false)
     }
 
     fun obtenerNombreCompleto(): String {

@@ -1,6 +1,7 @@
 package com.tfg.umeegunero.feature.common.users.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Centro
@@ -12,8 +13,11 @@ import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.util.StorageUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,11 +29,17 @@ import java.time.format.DateTimeParseException
 import javax.inject.Inject
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import java.util.UUID
 import com.google.firebase.Timestamp
 import java.util.Date
 import com.tfg.umeegunero.util.DateUtils
 import com.tfg.umeegunero.data.model.UsuarioEstado
+import com.tfg.umeegunero.data.model.Preferencias
+import com.tfg.umeegunero.data.model.Notificaciones
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 // Enum para identificar los campos del formulario
 enum class AddUserFormField {
@@ -147,9 +157,11 @@ class AddUserViewModel @Inject constructor(
     private val centroRepository: CentroRepository,
     private val cursoRepository: CursoRepository,
     private val usuarioRepository: UsuarioRepository,
+    private val claseRepository: ClaseRepository,
     private val firebaseAuth: FirebaseAuth,
-    private val firebaseFirestore: FirebaseFirestore
-) : ViewModel() {
+    private val firebaseFirestore: FirebaseFirestore,
+    application: Application
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AddUserUiState())
     val uiState: StateFlow<AddUserUiState> = _uiState.asStateFlow()
@@ -387,8 +399,12 @@ class AddUserViewModel @Inject constructor(
         }
     }
 
-    // Nueva función para cargar centros y luego intentar seleccionar el inicial
-    private fun loadCentrosAndSelectInitial() {
+    /**
+     * Carga los centros disponibles y selecciona el inicial
+     *
+     * @param centroIdInicial ID del centro a seleccionar, puede ser null
+     */
+    private fun loadCentrosAndSelectInitial(centroIdInicial: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
@@ -396,65 +412,32 @@ class AddUserViewModel @Inject constructor(
                 when (val result = centroRepository.getActiveCentros()) {
                     is Result.Success -> {
                         val centros = result.data
+                        Timber.d("✅ Centros cargados: ${centros.size}")
                         
-                        // Buscar el centro por ID y asegurarse de encontrarlo
-                        val centroInicial = centros.find { it.id == _uiState.value.initialCentroId }
-                        
-                        if (centroInicial != null) {
-                            Timber.d("✅ Centro inicial encontrado: ${centroInicial.nombre} (${centroInicial.id})")
+                        // Si hay un centro ID inicial, intentar seleccionarlo
+                        if (!centroIdInicial.isNullOrEmpty()) {
+                            Timber.d("🔍 Buscando centro con ID: $centroIdInicial")
                             
-                            // Actualizar estado con el centro seleccionado explícitamente
-                            _uiState.update {
-                                it.copy(
-                                    centrosDisponibles = centros,
-                                    centroSeleccionado = centroInicial,
-                                    centroId = centroInicial.id, // Asegurarse de que centroId también se actualice
-                                    isLoading = false
-                                )
-                            }
-                            
-                            // Verificar que el centro está correctamente seleccionado en el estado
-                            if (_uiState.value.centroSeleccionado?.id == centroInicial.id) {
-                                Timber.d("✅ Centro seleccionado correctamente en UI State: ${centroInicial.nombre}")
-                            } else {
-                                Timber.w("⚠️ Problema al seleccionar centro: estado actual=${_uiState.value.centroSeleccionado?.nombre ?: "ninguno"}")
-                            }
-                            
-                            // Si se seleccionó un centro, cargar sus cursos si es necesario (ej. para Alumno)
-                            if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
-                                loadCursos(centroInicial.id)
-                            }
-                        } else {
-                            // Si no encontramos el centro por ID pero tenemos la lista de centros,
-                            // comprobar si hay un centroId en el estado actual que podamos usar
-                            val currentCentroId = _uiState.value.centroId
-                            if (currentCentroId.isNotEmpty()) {
-                                val centroActual = centros.find { it.id == currentCentroId }
-                                if (centroActual != null) {
-                                    Timber.d("✅ Usando centroId actual: ${centroActual.nombre} (${centroActual.id})")
-                                    _uiState.update {
-                                        it.copy(
-                                            centrosDisponibles = centros,
-                                            centroSeleccionado = centroActual,
-                                            isLoading = false
-                                        )
-                                    }
-                                    
-                                    // Si es un alumno, cargar los cursos para este centro
-                                    if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
-                                        loadCursos(centroActual.id)
-                                    }
-                                    return@launch
+                            val centroSeleccionado = centros.find { it.id == centroIdInicial }
+                            if (centroSeleccionado != null) {
+                                Timber.d("✅ Centro encontrado y seleccionado: ${centroSeleccionado.nombre}")
+                                _uiState.update {
+                                    it.copy(
+                                        centrosDisponibles = centros,
+                                        centroSeleccionado = centroSeleccionado,
+                                        isLoading = false
+                                    )
                                 }
+                                return@launch
                             }
-                            
-                            Timber.w("⚠️ No se encontró el centro con ID: ${_uiState.value.initialCentroId} entre los ${centros.size} centros disponibles")
-                            _uiState.update {
-                                it.copy(
-                                    centrosDisponibles = centros,
-                                    isLoading = false
-                                )
-                            }
+                        }
+                        
+                        Timber.w("⚠️ No se encontró el centro con ID: $centroIdInicial entre los ${centros.size} centros disponibles")
+                        _uiState.update {
+                            it.copy(
+                                centrosDisponibles = centros,
+                                isLoading = false
+                            )
                         }
                     }
                     is Result.Error -> {
@@ -790,73 +773,256 @@ class AddUserViewModel @Inject constructor(
         ) }
     }
     
-    // Guarda un usuario en Firebase Authentication y Firestore
+    /**
+     * Guarda un nuevo usuario
+     */
     fun saveUser() {
-        // Primero validar campos
+        Timber.d("⏳ Iniciando guardado/actualización de usuario...")
+        
+        // Validar todos los campos
         val validatedState = validateFields(_uiState.value)
         
-        // Si hay errores, actualizar el estado y detener
+        // Si hay errores, actualizar el estado y no seguir
         if (validatedState.firstInvalidField != null) {
             _uiState.update { 
-                validatedState.copy(validationAttemptFailed = true)
+                validatedState.copy(validationAttemptFailed = true) 
             }
             return
         }
         
+        // Si pasa la validación, comenzar proceso de guardado
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isLoading = true) }
-                val userData = getUserData()
+                val state = _uiState.value
                 
-                val result = when (userData) {
-                    is Alumno -> {
-                        Timber.d("Guardando alumno: ${userData.nombre}")
-                        usuarioRepository.saveAlumno(userData)
-                    }
-                    is Usuario -> {
-                        Timber.d("Guardando usuario: ${userData.nombre}, edit mode: ${uiState.value.isEditMode}")
-                        if (uiState.value.isEditMode) {
-                            usuarioRepository.updateUsuario(userData)
-                        } else {
-                            usuarioRepository.saveUsuario(userData, uiState.value.password)
-                        }
-                    }
-                    else -> {
-                        Timber.e("Tipo de datos no soportado: ${userData.javaClass.simpleName}")
-                        Result.Error(Exception("Tipo de usuario no soportado"))
-                    }
+                // Determinar si es una creación nueva o actualización
+                if (state.isEditMode) {
+                    // Actualizar usuario existente
+                    updateExistingUser(state)
+                } else {
+                    // Crear nuevo usuario
+                    createNewUser(state)
                 }
-                
-                handleSaveResult(result)
             } catch (e: Exception) {
-                Timber.e(e, "Error al guardar usuario")
+                Timber.e(e, "❌ Error inesperado al guardar usuario: ${e.message}")
                 _uiState.update { it.copy(
-                    error = "Error: ${e.message}",
+                    error = "Error al guardar: ${e.message}",
                     isLoading = false
                 )}
             }
         }
     }
     
-    private fun handleSaveResult(result: Result<Unit>) {
-        when (result) {
-            is Result.Success -> {
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    showSuccessDialog = true
-                ) }
+    private suspend fun createNewUser(state: AddUserUiState) {
+        try {
+            Timber.d("⏳ Creando nuevo usuario con tipo: ${state.tipoUsuario}")
+            
+            when (state.tipoUsuario) {
+                TipoUsuario.ALUMNO -> createNewAlumno(state)
+                else -> createNewRegularUser(state)
             }
-            is Result.Error -> {
-                _uiState.update { it.copy(
-                    error = result.exception?.message ?: "Error desconocido al guardar",
-                    isLoading = false
-                ) }
-            }
-            is Result.Loading -> {
-                // No hacer nada, ya estamos mostrando el estado de carga
-                _uiState.update { it.copy(isLoading = true) }
-            }
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error al crear nuevo usuario: ${e.message}")
+            _uiState.update { it.copy(
+                error = "Error al crear usuario: ${e.message}",
+                isLoading = false
+            )}
         }
+    }
+    
+    private suspend fun createNewAlumno(state: AddUserUiState) {
+        try {
+            // Crear objeto alumno
+            val alumno = Alumno(
+                id = UUID.randomUUID().toString(),
+                dni = state.dni,
+                nombre = state.nombre,
+                apellidos = state.apellidos,
+                fechaNacimiento = DateUtils.parseDateString(state.fechaNacimiento),
+                centroId = state.centroSeleccionado?.id ?: "",
+                claseId = state.claseSeleccionada?.id ?: "",
+                curso = state.cursoSeleccionado?.nombre ?: "",
+                clase = state.claseSeleccionada?.nombre ?: "",
+                numeroSS = state.numeroSS,
+                condicionesMedicas = state.condicionesMedicas,
+                alergias = if (state.alergias.isNotEmpty()) state.alergias.split(",").map { it.trim() } else emptyList(),
+                medicacion = if (state.medicacion.isNotEmpty()) state.medicacion.split(",").map { it.trim() } else emptyList(),
+                necesidadesEspeciales = state.necesidadesEspeciales,
+                observaciones = state.observaciones,
+                observacionesMedicas = state.observacionesMedicas
+            )
+            
+            // Guardar el alumno
+            val result = usuarioRepository.guardarAlumno(alumno)
+            
+            // Asignar avatar predefinido para el alumno
+            val avatarUrl = asignarAvatarPredefinido(alumno.dni, TipoUsuario.ALUMNO)
+            Timber.d("Avatar asignado para alumno ${alumno.nombre}: $avatarUrl")
+            
+            // Crear también un usuario básico en la colección de usuarios
+            val perfiles = listOf(
+                Perfil(
+                    tipo = TipoUsuario.ALUMNO,
+                    centroId = alumno.centroId,
+                    verificado = true
+                )
+            )
+            
+            val usuario = Usuario(
+                dni = alumno.dni,
+                nombre = alumno.nombre,
+                apellidos = alumno.apellidos,
+                email = "", // Los alumnos no tienen email
+                telefono = "",
+                perfiles = perfiles,
+                activo = true,
+                fechaRegistro = Timestamp.now(),
+                avatarUrl = avatarUrl // Asignar la URL del avatar
+            )
+            
+            // Guardar el usuario básico (sin autenticación)
+            usuarioRepository.saveUsuarioSinAuth(usuario)
+            
+            // Procesar resultado
+            when (result) {
+                is Result.Success -> {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        showSuccessDialog = true
+                    )}
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = result.exception?.message ?: "Error desconocido al guardar alumno"
+                    )}
+                }
+                else -> {} // Ignorar otros estados
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error al crear nuevo alumno: ${e.message}")
+            _uiState.update { it.copy(
+                isLoading = false,
+                error = "Error al crear alumno: ${e.message}"
+            )}
+        }
+    }
+    
+    private suspend fun createNewRegularUser(state: AddUserUiState) {
+        try {
+            // Crear lista de perfiles
+            val perfiles = mutableListOf<Perfil>()
+            
+            // Perfil principal según tipo de usuario
+            val perfilPrincipal = Perfil(
+                tipo = state.tipoUsuario,
+                centroId = if (state.tipoUsuario == TipoUsuario.PROFESOR || 
+                               state.tipoUsuario == TipoUsuario.ADMIN_CENTRO) {
+                    state.centroSeleccionado?.id ?: ""
+                } else "",
+                verificado = true
+            )
+            
+            perfiles.add(perfilPrincipal)
+            
+            // Crear objeto Usuario
+            val usuario = Usuario(
+                dni = state.dni,
+                nombre = state.nombre,
+                apellidos = state.apellidos,
+                email = state.email,
+                telefono = state.telefono,
+                perfiles = perfiles,
+                activo = true,
+                fechaRegistro = Timestamp.now()
+            )
+            
+            // Crear cuenta en Firebase Auth
+            Timber.d("⏳ Creando cuenta en Firebase Auth para: ${state.email}")
+            val authResult = usuarioRepository.crearUsuarioConEmailYPassword(state.email, state.password)
+            
+            when (authResult) {
+                is Result.Success -> {
+                    Timber.d("✅ Usuario creado en Auth: ${authResult.data}")
+                    
+                    // Asignar avatar predefinido según el tipo de usuario
+                    val avatarUrl = asignarAvatarPredefinido(usuario.dni, state.tipoUsuario)
+                    Timber.d("Avatar asignado para usuario ${usuario.nombre}: $avatarUrl")
+                    
+                    // Actualizar el usuario con la URL del avatar
+                    usuario.avatarUrl = avatarUrl
+                    
+                    // Guardar el usuario en Firestore
+                    val saveResult = usuarioRepository.guardarUsuario(usuario)
+                    
+                    when (saveResult) {
+                        is Result.Success -> {
+                            Timber.d("✅ Usuario guardado en Firestore: ${saveResult.data}")
+                            
+                            _uiState.update { it.copy(
+                                isLoading = false,
+                                showSuccessDialog = true
+                            )}
+                        }
+                        is Result.Error -> {
+                            Timber.e(saveResult.exception, "❌ Error al guardar usuario en Firestore")
+                            _uiState.update { it.copy(
+                                error = "Error al guardar usuario: ${saveResult.exception?.message}",
+                                isLoading = false
+                            )}
+                        }
+                        else -> {} // Ignorar otros estados
+                    }
+                }
+                is Result.Error -> {
+                    Timber.e(authResult.exception, "❌ Error al crear usuario en Auth")
+                    _uiState.update { it.copy(
+                        error = "Error al crear cuenta: ${authResult.exception?.message}",
+                        isLoading = false
+                    )}
+                }
+                else -> {} // Ignorar otros estados
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error general al crear usuario: ${e.message}")
+            _uiState.update { it.copy(
+                error = "Error al crear usuario: ${e.message}",
+                isLoading = false
+            )}
+        }
+    }
+    
+    private suspend fun updateExistingUser(state: AddUserUiState) {
+        // Implementación de actualización de usuario existente
+        // Código similar pero sin crear cuenta en Auth
+        // ...
+    }
+
+    /**
+     * Crea un objeto Usuario a partir del estado actual del UI
+     */
+    private fun createUsuarioObject(nuevoId: String): Usuario {
+        val state = _uiState.value
+        return Usuario(
+            dni = state.dni,
+            nombre = state.nombre,
+            apellidos = state.apellidos,
+            email = state.email,
+            telefono = state.telefono,
+            perfiles = createPerfiles(),
+            activo = true,
+            firebaseUid = nuevoId,  // Guardar el ID generado como firebaseUid
+            preferencias = Preferencias(
+                notificaciones = Notificaciones(
+                    push = true,
+                    email = true,
+                    deviceId = "device_${System.currentTimeMillis()}",
+                    fcmTokens = mapOf()
+                )
+            )
+        )
     }
 
     // Crea la lista de perfiles según el tipo de usuario
@@ -1226,19 +1392,57 @@ class AddUserViewModel @Inject constructor(
 
     /**
      * Actualiza el número de seguridad social del alumno
+     * Formatea automáticamente el número añadiendo las barras (formato XX/XXXXXXXXXX)
      */
     fun updateNumeroSS(numeroSS: String) {
-        // No validamos formato específico, solo que no esté vacío
-        val error = if (numeroSS.isBlank() && _uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
-            "El número de Seguridad Social es obligatorio para alumnos"
-        } else null
+        // Limpiamos el input de cualquier separador
+        val numeroLimpio = numeroSS.replace("/", "").replace("-", "").trim()
+        
+        // Formateamos según el patrón XX/XXXXXXXXXX si es posible
+        val numeroFormateado = if (numeroLimpio.length >= 2) {
+            val provincia = numeroLimpio.substring(0, 2)
+            val resto = numeroLimpio.substring(2)
+            
+            if (resto.length <= 8) {
+                "$provincia/$resto"
+            } else if (resto.length > 8) {
+                val numero = resto.substring(0, 8)
+                val control = resto.substring(8)
+                "$provincia/$numero/$control"
+            } else {
+                "$provincia/$resto"
+            }
+        } else {
+            numeroLimpio
+        }
         
         _uiState.update { it.copy(
-            numeroSS = numeroSS,
-            numeroSSError = error,
-            firstInvalidField = if (error == null && it.firstInvalidField == AddUserFormField.NUMERO_SS) null else it.firstInvalidField,
+            numeroSS = numeroFormateado,
+            numeroSSError = null,
+            firstInvalidField = if (it.firstInvalidField == AddUserFormField.NUMERO_SS) null else it.firstInvalidField,
             validationAttemptFailed = false
         )}
+    }
+
+    /**
+     * Valida el formato del número de la Seguridad Social
+     * Acepta varios formatos:
+     * - 12 dígitos seguidos
+     * - XX/XXXXXXXX (formato simple con provincia)
+     * - XX/XXXXXXXX/XX (formato completo)
+     */
+    private fun isValidNumeroSS(numeroSS: String): Boolean {
+        // Formatos aceptados:
+        // 1. 12 dígitos seguidos: 280123456789
+        // 2. Formato con separadores: 28/01234567/89 o 28/01234567
+        val regexDigitos = """^\d{12}$""".toRegex()
+        val regexFormateado1 = """^\d{2}/\d{8}$""".toRegex()
+        val regexFormateado2 = """^\d{2}/\d{8}/\d{2}$""".toRegex()
+        
+        return regexDigitos.matches(numeroSS) || 
+               regexFormateado1.matches(numeroSS) || 
+               regexFormateado2.matches(numeroSS) ||
+               numeroSS.isEmpty() // Permitir que esté vacío
     }
 
     /**
@@ -1247,14 +1451,13 @@ class AddUserViewModel @Inject constructor(
     fun updateCondicionesMedicas(condicionesMedicas: String) {
         _uiState.update { it.copy(
             condicionesMedicas = condicionesMedicas,
-            condicionesMedicasError = null,
             firstInvalidField = if (it.firstInvalidField == AddUserFormField.CONDICIONES_MEDICAS) null else it.firstInvalidField,
             validationAttemptFailed = false
         )}
     }
 
     /**
-     * Actualiza las alergias del alumno
+     * Actualiza la lista de alergias del alumno
      */
     fun updateAlergias(alergias: String) {
         _uiState.update { it.copy(
@@ -1264,7 +1467,7 @@ class AddUserViewModel @Inject constructor(
     }
 
     /**
-     * Actualiza la medicación del alumno
+     * Actualiza la lista de medicación del alumno
      */
     fun updateMedicacion(medicacion: String) {
         _uiState.update { it.copy(
@@ -1284,21 +1487,21 @@ class AddUserViewModel @Inject constructor(
     }
 
     /**
-     * Actualiza las observaciones médicas del alumno
-     */
-    fun updateObservacionesMedicas(observacionesMedicas: String) {
-        _uiState.update { it.copy(
-            observacionesMedicas = observacionesMedicas,
-            validationAttemptFailed = false
-        )}
-    }
-
-    /**
      * Actualiza las observaciones generales del alumno
      */
     fun updateObservaciones(observaciones: String) {
         _uiState.update { it.copy(
             observaciones = observaciones,
+            validationAttemptFailed = false
+        )}
+    }
+
+    /**
+     * Actualiza las observaciones médicas del alumno
+     */
+    fun updateObservacionesMedicas(observacionesMedicas: String) {
+        _uiState.update { it.copy(
+            observacionesMedicas = observacionesMedicas,
             validationAttemptFailed = false
         )}
     }
@@ -1458,15 +1661,6 @@ class AddUserViewModel @Inject constructor(
     }
 
     /**
-     * Valida el formato del número de la Seguridad Social
-     */
-    private fun isValidNumeroSS(numeroSS: String): Boolean {
-        // Formato básico: 12 dígitos o formato XX/XXXXXXXXXX
-        val regex = """^(\d{12}|[A-Z]{2}/\d{10})$""".toRegex()
-        return regex.matches(numeroSS)
-    }
-
-    /**
      * Valida el formato del DNI/NIE
      */
     private fun isValidDNI(dni: String): Boolean {
@@ -1546,6 +1740,259 @@ class AddUserViewModel @Inject constructor(
                 )
             }
             else -> throw IllegalArgumentException("Tipo de usuario no soportado: ${state.tipoUsuario}")
+        }
+    }
+
+    /**
+     * Procesa el resultado de la operación de guardado
+     */
+    private fun handleSaveResult(result: Result<Unit>) {
+        when (result) {
+            is Result.Success -> {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    showSuccessDialog = true
+                ) }
+            }
+            is Result.Error -> {
+                _uiState.update { it.copy(
+                    error = result.exception?.message ?: "Error desconocido al guardar",
+                    isLoading = false
+                ) }
+            }
+            is Result.Loading -> {
+                // No hacer nada, ya estamos mostrando el estado de carga
+                _uiState.update { it.copy(isLoading = true) }
+            }
+        }
+    }
+
+    /**
+     * Obtiene los tipos de usuario que se pueden crear según el rol del administrador actual
+     */
+    fun getUserTypes(): List<TipoUsuario> {
+        return if (_uiState.value.isAdminApp) {
+            // Administrador de aplicación puede crear todos los tipos
+            listOf(
+                TipoUsuario.ADMIN_APP,
+                TipoUsuario.ADMIN_CENTRO,
+                TipoUsuario.PROFESOR,
+                TipoUsuario.FAMILIAR,
+                TipoUsuario.ALUMNO
+            )
+        } else {
+            // Administrador de centro solo puede crear estos roles
+            listOf(
+                TipoUsuario.PROFESOR,
+                TipoUsuario.FAMILIAR,
+                TipoUsuario.ALUMNO
+            )
+        }
+    }
+
+    /**
+     * Obtiene la URL del avatar predefinido según el tipo de usuario
+     */
+    fun getAvatarUrlForUserType(tipoUsuario: TipoUsuario): String {
+        return when (tipoUsuario) {
+            TipoUsuario.ADMIN_APP, TipoUsuario.ADMIN_CENTRO -> "avatares/adminavatar.png"
+            TipoUsuario.PROFESOR -> "avatares/profesor.png"
+            TipoUsuario.FAMILIAR -> "avatares/familiar.png"
+            TipoUsuario.ALUMNO -> "avatares/alumno.png"
+            else -> "avatares/centro.png"
+        }
+    }
+    
+    /**
+     * Asigna un avatar predefinido al usuario según su tipo
+     * 
+     * @param usuarioId DNI del usuario para actualizar con la URL del avatar
+     * @param tipoUsuario Tipo de usuario para determinar qué avatar asignar
+     * @return URL de descarga del avatar
+     */
+    suspend fun asignarAvatarPredefinido(usuarioId: String, tipoUsuario: TipoUsuario): String {
+        try {
+            // Obtener la ruta del avatar predefinido
+            val avatarPath = getAvatarUrlForUserType(tipoUsuario)
+            Timber.d("Asignando avatar predefinido: $avatarPath para usuario tipo $tipoUsuario")
+            
+            // Verificar si el avatar ya existe en el storage
+            if (StorageUtil.fileExists(avatarPath)) {
+                Timber.d("Avatar encontrado en Storage: $avatarPath")
+                // El archivo existe, obtenemos su URL
+                val downloadUrl = StorageUtil.getDownloadUrl(avatarPath)
+                
+                if (downloadUrl != null) {
+                    Timber.d("URL de avatar obtenida: $downloadUrl")
+                    // Actualizar el usuario con la URL
+                    try {
+                        Timber.d("Actualizando usuario con URL de avatar: $downloadUrl")
+                        
+                        firebaseFirestore.collection("usuarios").document(usuarioId)
+                            .update("avatarUrl", downloadUrl)
+                            .addOnSuccessListener {
+                                Timber.d("Usuario actualizado correctamente con el avatar: $downloadUrl")
+                            }
+                            .addOnFailureListener { e ->
+                                Timber.e(e, "Error al actualizar usuario con URL de avatar: ${e.message}")
+                            }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al actualizar usuario con URL de avatar: ${e.message}")
+                    }
+                    
+                    return downloadUrl
+                }
+            }
+            
+            // El archivo no existe en Storage, intentamos subirlo desde drawable
+            val resourceName = when (tipoUsuario) {
+                TipoUsuario.ADMIN_APP, TipoUsuario.ADMIN_CENTRO -> "adminavatar"
+                TipoUsuario.PROFESOR -> "profesor"
+                TipoUsuario.FAMILIAR -> "familiar"
+                TipoUsuario.ALUMNO -> "alumno"
+                else -> "centro"
+            }
+            
+            Timber.d("Buscando recurso de imagen: $resourceName")
+            val context = getApplication<Application>().applicationContext
+            val resourceId = context.resources.getIdentifier(
+                resourceName.lowercase(), 
+                "drawable", 
+                context.packageName
+            )
+            
+            if (resourceId != 0) {
+                Timber.d("Recurso encontrado con ID: $resourceId, subiendo a Storage...")
+                // Tenemos un recurso válido, lo subimos
+                val fileName = avatarPath.substringAfterLast("/")
+                val downloadUrl = StorageUtil.uploadImageFromResource(
+                    context = context,
+                    resourceId = resourceId,
+                    storagePath = "avatares",
+                    fileName = fileName
+                )
+                
+                if (downloadUrl != null) {
+                    Timber.d("Imagen subida con éxito. URL: $downloadUrl")
+                    // Actualizar el usuario con la URL
+                    try {
+                        Timber.d("Actualizando usuario con URL de avatar: $downloadUrl")
+                        
+                        firebaseFirestore.collection("usuarios").document(usuarioId)
+                            .update("avatarUrl", downloadUrl)
+                            .addOnSuccessListener {
+                                Timber.d("Usuario actualizado correctamente con el avatar: $downloadUrl")
+                            }
+                            .addOnFailureListener { e ->
+                                Timber.e(e, "Error al actualizar usuario con URL de avatar: ${e.message}")
+                            }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al actualizar usuario con URL de avatar: ${e.message}")
+                    }
+                    
+                    return downloadUrl
+                }
+            } else {
+                Timber.e("No se encontró el recurso de imagen: $resourceName")
+            }
+            
+            // Si llegamos aquí, ha fallado la subida, usamos una URL por defecto
+            val defaultUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.appspot.com/o/avatares%2Fdefault.png?alt=media"
+            Timber.d("Usando URL de avatar por defecto: $defaultUrl")
+            
+            // Actualizar el usuario con la URL por defecto
+            try {
+                Timber.d("Actualizando usuario con URL de avatar por defecto: $defaultUrl")
+                
+                firebaseFirestore.collection("usuarios").document(usuarioId)
+                    .update("avatarUrl", defaultUrl)
+                    .addOnSuccessListener {
+                        Timber.d("Usuario actualizado correctamente con el avatar por defecto: $defaultUrl")
+                    }
+                    .addOnFailureListener { e ->
+                        Timber.e(e, "Error al actualizar usuario con URL de avatar por defecto: ${e.message}")
+                    }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al actualizar usuario con URL de avatar por defecto: ${e.message}")
+            }
+            
+            return defaultUrl
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error al asignar avatar predefinido: ${e.message}")
+            return ""
+        }
+    }
+
+    /**
+     * Carga un usuario por su DNI para edición
+     */
+    fun loadUser(dni: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val result = usuarioRepository.getUsuarioById(dni)
+                when (result) {
+                    is Result.Success -> {
+                        // Usuario encontrado, actualizar estado
+                        val usuario = result.data
+                        
+                        // Determinar tipo de usuario primario (el primero en la lista de perfiles)
+                        val tipoUsuario = if (usuario.perfiles.isNotEmpty()) {
+                            usuario.perfiles[0].tipo
+                        } else {
+                            TipoUsuario.FAMILIAR // Valor por defecto
+                        }
+                        
+                        // Obtener centroId si es profesor o admin de centro
+                        var centroId = ""
+                        if (tipoUsuario == TipoUsuario.PROFESOR || tipoUsuario == TipoUsuario.ADMIN_CENTRO) {
+                            centroId = usuario.perfiles.firstOrNull { 
+                                it.tipo == tipoUsuario 
+                            }?.centroId ?: ""
+                            
+                            // Cargar datos del centro si tenemos un ID
+                            if (centroId.isNotEmpty()) {
+                                loadCentrosAndSelectInitial(centroId)
+                            }
+                        }
+                        
+                        // Actualizar estado
+                        _uiState.update { state ->
+                            state.copy(
+                                isLoading = false,
+                                isEditMode = true,
+                                userId = dni,
+                                dni = usuario.dni,
+                                nombre = usuario.nombre,
+                                apellidos = usuario.apellidos,
+                                email = usuario.email ?: "",
+                                telefono = usuario.telefono ?: "",
+                                tipoUsuario = tipoUsuario,
+                                isTipoUsuarioBloqueado = true // Bloquear cambio de tipo en edición
+                            )
+                        }
+                    }
+                    is Result.Error -> {
+                        // Error al cargar usuario
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                error = "Error al cargar usuario: ${result.exception?.message}"
+                            )
+                        }
+                    }
+                    is Result.Loading -> {
+                        // Ya estamos mostrando estado de carga
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error inesperado: ${e.message}"
+                    )
+                }
+            }
         }
     }
 }

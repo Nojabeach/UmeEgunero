@@ -54,6 +54,11 @@ import java.util.*
 import com.google.firebase.Timestamp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.tfg.umeegunero.ui.components.UserAvatar
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import timber.log.Timber
 
 /**
  * Pantalla que muestra el perfil del usuario con diseño moderno Material 3
@@ -92,9 +97,9 @@ fun PerfilScreen(
         getUserColor(tipoUsuario)
     }
     
-    // Lanzar efectos
+    // Cargar perfil al inicio
     LaunchedEffect(Unit) {
-        viewModel.cargarPerfil()
+        viewModel.cargarUsuario()
         showContent = true
     }
     
@@ -229,6 +234,9 @@ fun PerfilScreen(
                         },
                         onGetCoordinates = {
                             viewModel.obtenerCoordenadasDeDireccion()
+                        },
+                        onAvatarChange = { uri ->
+                            viewModel.subirAvatar(uri)
                         },
                         modifier = Modifier
                             .fillMaxSize()
@@ -530,6 +538,7 @@ fun ProfileField(
  * @param onLogout Acción al solicitar cierre de sesión
  * @param onValueChange Acción al cambiar valores
  * @param onGetCoordinates Acción para obtener coordenadas
+ * @param onAvatarChange Acción para cambiar el avatar
  * @param modifier Modificador para personalizar el layout
  */
 @Composable
@@ -541,6 +550,7 @@ private fun PerfilContent(
     onLogout: () -> Unit,
     onValueChange: (String, String) -> Unit,
     onGetCoordinates: () -> Unit,
+    onAvatarChange: (Uri) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -552,6 +562,8 @@ private fun PerfilContent(
         PerfilHeaderCard(
             uiState = uiState,
             userColor = userColor,
+            editMode = editMode,
+            onAvatarChange = onAvatarChange,
             modifier = Modifier.fillMaxWidth()
         )
         
@@ -593,8 +605,11 @@ private fun PerfilContent(
 private fun PerfilHeaderCard(
     uiState: PerfilUiState,
     userColor: Color,
+    editMode: Boolean,
+    onAvatarChange: (Uri) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val tipoDisplay = uiState.usuario?.perfiles?.firstOrNull()?.tipo?.let { tipo ->
         when (tipo) {
             TipoUsuario.ADMIN_APP -> "Administrador del sistema"
@@ -606,6 +621,13 @@ private fun PerfilHeaderCard(
             else -> "Usuario"
         }
     } ?: "Usuario"
+    
+    // Lanzador para seleccionar imagen
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { onAvatarChange(it) }
+    }
 
     Card(
         modifier = modifier,
@@ -638,21 +660,51 @@ private fun PerfilHeaderCard(
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Avatar
+            // Avatar del usuario
             Box(
                 modifier = Modifier
                     .size(100.dp)
-                    .clip(CircleShape)
-                    .background(userColor)
-                    .border(4.dp, Color.White, CircleShape),
-                contentAlignment = Alignment.Center
+                    .border(4.dp, Color.White, CircleShape)
             ) {
-                Text(
-                    text = uiState.nombre.firstOrNull()?.toString()?.uppercase() ?: "U",
-                    color = Color.White,
-                    fontSize = 42.sp,
-                    fontWeight = FontWeight.Bold
+                // Determinar si el usuario es administrador explícitamente
+                val esAdmin = uiState.usuario?.perfiles?.any { 
+                    it.tipo == TipoUsuario.ADMIN_APP 
+                } == true
+                
+                // Registrar en log para depuración
+                LaunchedEffect(esAdmin) {
+                    Timber.d("PerfilScreen - Usuario es administrador: $esAdmin")
+                    Timber.d("PerfilScreen - Avatar URL: ${uiState.usuario?.avatarUrl}")
+                    Timber.d("PerfilScreen - Nombre completo: ${uiState.nombre} ${uiState.apellidos}")
+                }
+                
+                UserAvatar(
+                    imageUrl = uiState.usuario?.avatarUrl,
+                    userName = "${uiState.nombre} ${uiState.apellidos}",
+                    size = 100.dp,
+                    borderWidth = 0.dp,
+                    isAdmin = esAdmin
                 )
+                
+                // Botón para cambiar avatar (solo en modo edición)
+                if (editMode) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .clickable { imagePicker.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Cambiar imagen de perfil",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(8.dp))

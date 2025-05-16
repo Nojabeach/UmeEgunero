@@ -352,22 +352,45 @@ fun Navigation(
             )
         }
         
-        // Pantalla para añadir usuario
+        // Pantalla para crear/editar usuarios
         composable(
             route = AppScreens.AddUser.route,
-            arguments = AppScreens.AddUser.arguments
+            arguments = listOf(
+                navArgument(AppScreens.AddUser.ARG_IS_ADMIN_APP) { 
+                    type = NavType.BoolType 
+                    defaultValue = false
+                },
+                navArgument(AppScreens.AddUser.ARG_TIPO_USUARIO) {
+                    type = NavType.StringType
+                    nullable = true
+                },
+                navArgument(AppScreens.AddUser.ARG_CENTRO_ID) {
+                    type = NavType.StringType
+                    nullable = true
+                },
+                navArgument(AppScreens.AddUser.ARG_CENTRO_BLOQUEADO) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+                navArgument(AppScreens.AddUser.ARG_DNI_USUARIO) {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            )
         ) { backStackEntry ->
-            val isAdminApp = backStackEntry.arguments?.getBoolean(AppScreens.AddUser.ARG_IS_ADMIN_APP) ?: false
-            val tipoUsuarioStr = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_TIPO_USUARIO)
-            val centroId = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_CENTRO_ID)
-            val centroBloqueado = backStackEntry.arguments?.getBoolean(AppScreens.AddUser.ARG_CENTRO_BLOQUEADO) ?: false
+            val isAdminAppParam = backStackEntry.arguments?.getBoolean(AppScreens.AddUser.ARG_IS_ADMIN_APP) ?: false
+            val tipoUsuarioParam = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_TIPO_USUARIO)
+            val centroIdParam = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_CENTRO_ID)
+            val bloqueadoParam = backStackEntry.arguments?.getBoolean(AppScreens.AddUser.ARG_CENTRO_BLOQUEADO) ?: false
+            val dniParam = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_DNI_USUARIO)
             
             AddUserScreen(
                 navController = navController,
-                isAdminApp = isAdminApp,
-                tipoPreseleccionado = tipoUsuarioStr,
-                centroIdInicial = centroId,
-                centroBloqueadoInicial = centroBloqueado
+                centroIdParam = centroIdParam,
+                bloqueadoParam = bloqueadoParam,
+                tipoUsuarioParam = tipoUsuarioParam,
+                dniParam = dniParam,
+                isAdminAppParam = isAdminAppParam
             )
         }
         
@@ -697,38 +720,14 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val dni = backStackEntry.arguments?.getString("dni") ?: ""
-            val viewModel: com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel = hiltViewModel()
             
+            // Usar el componente AddUserScreen con los parámetros correctos
             com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
-                uiState = viewModel.uiState.collectAsState().value,
-                onUpdateDni = viewModel::updateDni,
-                onUpdateEmail = viewModel::updateEmail,
-                onUpdatePassword = viewModel::updatePassword,
-                onUpdateConfirmPassword = viewModel::updateConfirmPassword,
-                onUpdateNombre = viewModel::updateNombre,
-                onUpdateApellidos = viewModel::updateApellidos,
-                onUpdateTelefono = viewModel::updateTelefono,
-                onUpdateTipoUsuario = viewModel::updateTipoUsuario,
-                onUpdateCentroSeleccionado = viewModel::updateCentroSeleccionado,
-                onCursoSelectedAlumno = viewModel::onCursoSelected,
-                onUpdateClaseSeleccionada = viewModel::updateClaseSeleccionada,
-                onUpdateFechaNacimiento = viewModel::updateFechaNacimiento,
-                onSaveUser = viewModel::saveUser,
-                onClearError = viewModel::clearError,
-                onNavigateBack = { navController.popBackStack() },
-                onAttemptSaveAndFocusError = viewModel::attemptSaveAndFocusError,
-                onClearValidationAttemptTrigger = viewModel::clearValidationAttemptTrigger,
-                onDismissSuccessDialog = viewModel::dismissSuccessDialog,
-                viewModelRef = viewModel
+                navController = navController,
+                dniParam = dni,
+                isAdminAppParam = false, // Por defecto, no es administrador de aplicación
+                bloqueadoParam = false // No bloquear centro por defecto
             )
-            
-            // Cargar los datos del usuario para edición
-            LaunchedEffect(dni) {
-                if (dni.isNotBlank()) {
-                    // Temporalmente comentado hasta implementar la función
-                    //viewModel.loadUserForEdit(dni)
-                }
-            }
         }
 
         // Pantalla de detalle de usuario

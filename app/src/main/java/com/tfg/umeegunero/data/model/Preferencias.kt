@@ -38,10 +38,17 @@ data class Preferencias(
  * 
  * @property push Indica si las notificaciones push están habilitadas (notificaciones en dispositivo)
  * @property email Indica si las notificaciones por correo electrónico están habilitadas
+ * @property fcmToken Token de Firebase Cloud Messaging para enviar notificaciones push a este dispositivo
+ * @property deviceId Identificador único del dispositivo para asociar el token FCM
+ * @property lastUpdated Fecha de la última actualización del token FCM
  * 
  * @see Preferencias Clase que contiene estas configuraciones de notificaciones
  */
 data class Notificaciones(
     val push: Boolean = true,
-    val email: Boolean = true
+    val email: Boolean = true,
+    val fcmToken: String = "",
+    val deviceId: String = "device_${System.currentTimeMillis()}",
+    val lastUpdated: com.google.firebase.Timestamp = com.google.firebase.Timestamp.now(),
+    val fcmTokens: Map<String, String> = emptyMap()
 ) 

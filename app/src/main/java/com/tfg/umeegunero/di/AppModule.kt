@@ -2,6 +2,7 @@ package com.tfg.umeegunero.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.work.WorkerFactory
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
@@ -10,11 +11,15 @@ import com.tfg.umeegunero.data.local.database.AppDatabase
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
+import com.tfg.umeegunero.data.repository.StorageRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.service.NotificationService
 import com.tfg.umeegunero.notification.AppNotificationManager
 import com.tfg.umeegunero.notification.NotificationHelper
 import com.tfg.umeegunero.data.service.EmailNotificationService
+import com.tfg.umeegunero.util.SyncManager
 import io.ktor.client.HttpClient
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -91,6 +96,24 @@ object AppModule {
     fun provideConversacionDao(database: AppDatabase): ConversacionDao {
         return database.conversacionDao()
     }
+
+    /**
+     * Proporciona una instancia del administrador de notificaciones.
+     */
+    @Provides
+    @Singleton
+    fun provideAppNotificationManager(@ApplicationContext context: Context): AppNotificationManager {
+        return AppNotificationManager(context)
+    }
+
+    /**
+     * Proporciona una instancia del administrador de sincronización.
+     */
+    @Provides
+    @Singleton
+    fun provideSyncManager(@ApplicationContext context: Context): SyncManager {
+        return SyncManager(context)
+    }
 }
 
 @Module
@@ -117,4 +140,15 @@ object NotificationModule {
     ): NotificationHelper {
         return NotificationHelper(context, preferenciasRepository, notificationService, notificationManager)
     }
+}
+
+/**
+ * Módulo de Hilt para la integración con WorkManager
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class WorkManagerModule {
+    
+    @Binds
+    abstract fun bindWorkerFactory(factory: androidx.hilt.work.HiltWorkerFactory): WorkerFactory
 } 

@@ -51,7 +51,9 @@ data class Usuario(
     var avatarUrl: String? = null,
     val firebaseUid: String = "",
     val preferenciasNotificacion: PreferenciasNotificacion? = null,
-    val nombreAlumno: String? = null
+    val nombreAlumno: String? = null,
+    val estado: String? = null,
+    val metadata: Map<String, Any>? = null
 ) {
     @field:DocumentId
     var documentId: String = dni
