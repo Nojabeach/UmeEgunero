@@ -30,6 +30,7 @@ import com.tfg.umeegunero.network.ImgBBClient
 import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
 import com.tfg.umeegunero.data.local.dao.ConversacionDao
 import com.tfg.umeegunero.data.repository.ChatRepository
+import com.tfg.umeegunero.util.DefaultAvatarsManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -238,5 +239,14 @@ object RepositoryModule {
         authRepository: AuthRepository
     ): ChatRepository {
         return ChatRepository(chatMensajeDao, conversacionDao, firestore, storage, authRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDefaultAvatarsManager(
+        @ApplicationContext context: Context,
+        storageRepository: StorageRepository
+    ): DefaultAvatarsManager {
+        return DefaultAvatarsManager(context, storageRepository)
     }
 } 

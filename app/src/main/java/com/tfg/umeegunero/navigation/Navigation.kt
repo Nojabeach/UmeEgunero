@@ -1003,9 +1003,11 @@ fun Navigation(
             )
         }
 
-        composable(route = AppScreens.NotificacionesFamilia.route) {
-            com.tfg.umeegunero.feature.familiar.screen.NotificacionesFamiliaScreen(
-                navController = navController
+        composable(route = AppScreens.NotificacionesFamiliar.route) {
+            com.tfg.umeegunero.feature.familiar.screen.NotificacionesFamiliarScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
             )
         }
         

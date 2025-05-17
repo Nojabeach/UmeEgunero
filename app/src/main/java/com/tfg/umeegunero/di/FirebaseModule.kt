@@ -82,7 +82,7 @@ object FirebaseModule {
     ): UsuarioRepository {
         // Usado para evitar la dependencia circular
         // Usaremos otros métodos de inyección en la clase UsuarioRepository
-        return UsuarioRepository(firebaseAuth, firestore, remoteConfigService)
+        return UsuarioRepository(firebaseAuth, firestore, remoteConfigService, null)
     }
 
     @Provides

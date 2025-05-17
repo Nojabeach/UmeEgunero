@@ -403,7 +403,7 @@ fun FamiliaDashboardScreen(
                             Timber.e(e, "Error al realizar feedback háptico")
                         }
                         showNavigateToNotificacionesDialog = false
-                        navController.navigate(AppScreens.NotificacionesFamilia.route)
+                        navController.navigate(AppScreens.NotificacionesFamiliar.route)
                     }
                 ) {
                     Text("Sí")
@@ -778,7 +778,7 @@ fun FamiliaDashboardScreen(
                             titulo = "Notificaciones",
                             descripcion = "Revisa notificaciones y recordatorios importantes",
                             icono = Icons.Default.Notifications,
-                            onClick = { navController.navigate(AppScreens.NotificacionesFamilia.route) },
+                            onClick = { navController.navigate(AppScreens.NotificacionesFamiliar.route) },
                             badgeCount = uiState.registrosSinLeer
                         )
                     }

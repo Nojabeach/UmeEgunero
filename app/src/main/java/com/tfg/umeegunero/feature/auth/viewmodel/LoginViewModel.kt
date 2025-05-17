@@ -19,6 +19,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
+import com.tfg.umeegunero.data.service.AvatarService
 
 /**
  * Estado UI para la pantalla de login.
@@ -109,6 +110,7 @@ data class LoginUiState(
  * @property solicitudRepository Repositorio para operaciones de solicitudes
  * @property sharedPreferences Preferencias para persistencia de credenciales
  * @property uiState Estado actual de la UI
+ * @property avatarService Servicio para operaciones de avatar
  * 
  * @see LoginUiState
  * @see UsuarioRepository
@@ -117,7 +119,8 @@ data class LoginUiState(
 class LoginViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val solicitudRepository: SolicitudRepository,
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences,
+    private val avatarService: AvatarService
 ) : ViewModel() {
 
     // Constantes para las preferencias
@@ -296,7 +299,7 @@ class LoginViewModel @Inject constructor(
      * @param userType Tipo de usuario que intenta iniciar sesión (ADMIN_APP, ADMIN_CENTRO, PROFESOR, FAMILIAR)
      * @param rememberUser Si se debe recordar al usuario para futuros inicios de sesión
      */
-    fun login(userType: TipoUsuario, rememberUser: Boolean = false) {
+    fun login(userType: TipoUsuario, rememberUser: Boolean) {
         val email = _uiState.value.email.trim()
         val password = _uiState.value.password
 
@@ -370,6 +373,18 @@ class LoginViewModel @Inject constructor(
                             Timber.d("¿Tiene perfil $tipoUsuarioFirebase? $tienePerfil")
 
                             if (tienePerfil) {
+                                // Verificar si el usuario tiene avatar, y si no, asignarle uno predeterminado
+                                if (usuario.avatarUrl.isNullOrEmpty()) {
+                                    Timber.d("Usuario sin avatar, asignando uno predeterminado")
+                                    try {
+                                        val avatarUrl = avatarService.asignarAvatarPredeterminadoAUsuario(usuario.dni)
+                                        Timber.d("Avatar predeterminado asignado: $avatarUrl")
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al asignar avatar predeterminado: ${e.message}")
+                                        // No interrumpir el flujo principal por este error secundario
+                                    }
+                                }
+
                                 // Si es familiar, verificamos si tiene solicitudes pendientes
                                 if (tipoUsuarioFirebase == TipoUsuario.FAMILIAR) {
                                     // Verificar si necesita aceptar permisos de notificación

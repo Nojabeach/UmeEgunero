@@ -2,13 +2,16 @@ package com.tfg.umeegunero.di
 
 import android.content.Context
 import com.tfg.umeegunero.data.service.EmailNotificationService
+import com.tfg.umeegunero.data.service.AvatarService
 import com.tfg.umeegunero.util.security.SecureTokenManager
+import com.tfg.umeegunero.util.DefaultAvatarsManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
+import com.google.firebase.firestore.FirebaseFirestore
 import javax.inject.Singleton
 
 /**
@@ -37,5 +40,14 @@ object ServiceModule {
         @ApplicationContext context: Context
     ): EmailNotificationService {
         return EmailNotificationService(httpClient, secureTokenManager, context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAvatarService(
+        firestore: FirebaseFirestore,
+        defaultAvatarsManager: DefaultAvatarsManager
+    ): AvatarService {
+        return AvatarService(firestore, defaultAvatarsManager)
     }
 } 

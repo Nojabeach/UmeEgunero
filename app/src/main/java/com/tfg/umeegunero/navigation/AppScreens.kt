@@ -547,11 +547,11 @@ sealed class AppScreens(val route: String) {
             "chat_familia/$conversacionId/$participanteId"
     }
     
-    /** Pantalla de conversaciones para la familia */
+    /** Conversaciones para la familia */
     object ConversacionesFamilia : AppScreens("conversaciones_familia")
     
     /** Notificaciones para familiares */
-    object NotificacionesFamilia : AppScreens("notificaciones_familia")
+    object NotificacionesFamiliar : AppScreens("notificaciones_familiar")
     
     /** Comunicados para familiares */
     object ComunicadosFamilia : AppScreens("comunicados_familia")

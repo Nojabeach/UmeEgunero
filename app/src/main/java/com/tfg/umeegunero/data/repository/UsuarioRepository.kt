@@ -35,6 +35,7 @@ import android.util.Log
 import com.tfg.umeegunero.data.service.RemoteConfigService
 import com.google.firebase.firestore.FieldValue
 import android.content.Context
+import com.tfg.umeegunero.util.DefaultAvatarsManager
 
 /**
  * Repositorio para gestionar operaciones relacionadas con usuarios en la aplicación UmeEgunero.
@@ -56,7 +57,8 @@ import android.content.Context
 open class UsuarioRepository @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val remoteConfigService: RemoteConfigService
+    private val remoteConfigService: RemoteConfigService,
+    private val defaultAvatarsManager: DefaultAvatarsManager?
 ) {
     // Se inyectará después para evitar la dependencia circular
     @set:Inject
@@ -84,7 +86,8 @@ open class UsuarioRepository @Inject constructor(
             val repo = object : UsuarioRepository(
                 FirebaseAuth.getInstance(),
                 FirebaseFirestore.getInstance(),
-                RemoteConfigService()
+                RemoteConfigService(),
+                null  // No intentamos crear el DefaultAvatarsManager aquí porque depende de contexto
             ) {
                 override suspend fun getAlumnoPorId(alumnoId: String): Result<Alumno> {
                     return Result.Success(
@@ -2419,64 +2422,16 @@ open class UsuarioRepository @Inject constructor(
      * @return URL del avatar o cadena vacía en caso de error
      */
     private suspend fun obtenerAvatarPorDefecto(tipoUsuario: TipoUsuario, context: Context? = null): String {
-        try {
-            val resourceName = when (tipoUsuario) {
-                TipoUsuario.ADMIN_APP -> "AdminAvatar.png"
-                TipoUsuario.ADMIN_CENTRO -> "centro.png"
-                TipoUsuario.PROFESOR -> "profesor.png"
-                TipoUsuario.FAMILIAR -> "familiar.png"
-                TipoUsuario.ALUMNO -> "alumno.png"
-                else -> "default.png"
+        return defaultAvatarsManager?.obtenerAvatarPredeterminado(tipoUsuario) ?: run {
+            // URL por defecto para cuando no tenemos el manager (por ejemplo en mock)
+            when (tipoUsuario) {
+                TipoUsuario.ADMIN_APP -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/AdminAvatar.png?alt=media"
+                TipoUsuario.ADMIN_CENTRO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/centro.png?alt=media&token=ac002e24-dbd1-41a5-8c26-4959c714c649"
+                TipoUsuario.PROFESOR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/profesor.png?alt=media&token=89b1bae9-dddc-476f-b6dc-184ec0b55eaf"
+                TipoUsuario.FAMILIAR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/familiar.png?alt=media&token=0d69c88f-4eb1-4e94-a20a-624d91c38379"
+                TipoUsuario.ALUMNO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/alumno.png?alt=media&token=bb66f9aa-8c9c-4f1a-b262-c0fa8c285a0d"
+                else -> ""
             }
-            
-            // Verificar si el avatar ya existe en Storage
-            val avatarPath = "avatares/${resourceName.lowercase()}"
-            val storageRef = FirebaseStorage.getInstance().reference.child(avatarPath)
-            
-            try {
-                // Intentar obtener URL si ya existe
-                return storageRef.downloadUrl.await().toString()
-            } catch (e: Exception) {
-                Timber.d("Avatar no encontrado en storage, intentando subir desde assets")
-                
-                // Si se proporcionó un contexto, intentar subir desde los assets
-                if (context != null) {
-                    try {
-                        // Crear archivo temporal desde assets
-                        val tempFile = java.io.File.createTempFile("avatar", ".png")
-                        tempFile.deleteOnExit()
-                        
-                        // Copiar desde assets 
-                        try {
-                            context.assets.open("images/$resourceName").use { input ->
-                                java.io.FileOutputStream(tempFile).use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                        } catch (assetError: Exception) {
-                            Timber.w("No se encontró $resourceName, usando imagen por defecto")
-                            // Usar otra imagen default si no se encuentra la específica
-                            context.assets.open("images/default.png").use { input ->
-                                java.io.FileOutputStream(tempFile).use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                        }
-                        
-                        // Subir a Firebase Storage
-                        val result = storageRef.putFile(android.net.Uri.fromFile(tempFile)).await()
-                        return result.storage.downloadUrl.await().toString()
-                    } catch (uploadError: Exception) {
-                        Timber.e(uploadError, "Error al subir avatar: ${uploadError.message}")
-                    }
-                }
-                
-                Timber.d("No se pudo obtener avatar, retornando URL por defecto")
-                return "" // URL vacía para manejar en la UI
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener avatar por defecto: ${e.message}")
-            return ""
         }
     }
 
@@ -2746,30 +2701,16 @@ open class UsuarioRepository @Inject constructor(
      * Obtiene una URL de avatar por defecto para un tipo de usuario
      */
     private suspend fun obtenerAvatarPorDefecto(tipoUsuario: TipoUsuario): String {
-        try {
-            val resourceName = when (tipoUsuario) {
-                TipoUsuario.ADMIN_APP -> "AdminAvatar.png"
-                TipoUsuario.ADMIN_CENTRO -> "centro.png"
-                TipoUsuario.PROFESOR -> "profesor.png"
-                TipoUsuario.FAMILIAR -> "familiar.png"
-                TipoUsuario.ALUMNO -> "alumno.png"
-                else -> "default.png"
+        return defaultAvatarsManager?.obtenerAvatarPredeterminado(tipoUsuario) ?: run {
+            // URL por defecto para cuando no tenemos el manager (por ejemplo en mock)
+            when (tipoUsuario) {
+                TipoUsuario.ADMIN_APP -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/AdminAvatar.png?alt=media"
+                TipoUsuario.ADMIN_CENTRO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/centro.png?alt=media&token=ac002e24-dbd1-41a5-8c26-4959c714c649"
+                TipoUsuario.PROFESOR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/profesor.png?alt=media&token=89b1bae9-dddc-476f-b6dc-184ec0b55eaf"
+                TipoUsuario.FAMILIAR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/familiar.png?alt=media&token=0d69c88f-4eb1-4e94-a20a-624d91c38379"
+                TipoUsuario.ALUMNO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/alumno.png?alt=media&token=bb66f9aa-8c9c-4f1a-b262-c0fa8c285a0d"
+                else -> ""
             }
-            
-            // Verificar si el avatar ya existe en Storage
-            val avatarPath = "avatares/${resourceName.lowercase()}"
-            val storageRef = FirebaseStorage.getInstance().reference.child(avatarPath)
-            
-            try {
-                // Intentar obtener URL si ya existe
-                return storageRef.downloadUrl.await().toString()
-            } catch (e: Exception) {
-                Timber.d("Avatar no encontrado en storage, retornando URL por defecto")
-                return "" // URL vacía para manejar en la UI
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener avatar por defecto: ${e.message}")
-            return ""
         }
     }
 
