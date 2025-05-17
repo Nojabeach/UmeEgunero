@@ -15,11 +15,15 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import com.google.android.gms.tasks.Task
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import com.google.android.gms.tasks.Tasks
 
 /**
  * Clase de utilidad para operaciones relacionadas con Firebase Storage
  */
 object StorageUtil {
+
+    private const val STORAGE_BUCKET = "umeegunero.firebasestorage.app"
+    private val storage = FirebaseStorage.getInstance()
 
     /**
      * Sube una imagen desde los recursos al Firebase Storage
@@ -37,114 +41,100 @@ object StorageUtil {
         fileName: String
     ): String? = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Iniciando subida de imagen desde recurso: $resourceId a $storagePath/$fileName")
+            Timber.d("Subiendo imagen desde recurso con ID: $resourceId a storage/$storagePath/$fileName")
             
-            // Cargar la imagen desde los recursos
+            // Comprobamos que el recurso existe
+            if (resourceId == 0) {
+                Timber.e("El recurso no existe (resourceId = 0)")
+                return@withContext null
+            }
+
+            // Referencia al archivo en Firebase Storage
+            val storageRef = storage.reference
+            val fileRef = storageRef.child("$storagePath/$fileName")
+            
+            Timber.d("Referencia a Firebase Storage: gs://$STORAGE_BUCKET/$storagePath/$fileName")
+
+            // Cargar el recurso a un bitmap
             val bitmap = BitmapFactory.decodeResource(context.resources, resourceId)
             if (bitmap == null) {
-                Timber.e("No se pudo decodificar el recurso $resourceId")
+                Timber.e("No se pudo cargar el bitmap desde el recurso: $resourceId")
                 return@withContext null
             }
             
+            Timber.d("Bitmap cargado correctamente: ${bitmap.width}x${bitmap.height}")
+
             // Convertir el bitmap a bytes
             val baos = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
-            val imageData = baos.toByteArray()
-            Timber.d("Imagen convertida a ${imageData.size} bytes")
-            
-            // Subir los bytes a Firebase Storage
-            val storageRef = FirebaseStorage.getInstance().reference
-            val imageRef = storageRef.child("$storagePath/$fileName")
-            
-            // Subir la imagen
-            Timber.d("Subiendo imagen a Firebase Storage...")
-            imageRef.putBytes(imageData).awaitTaskCompletionWithResult()
-            
-            // Obtener la URL de descarga
-            val downloadUrl = imageRef.downloadUrl.awaitTaskResult()
-            Timber.d("✅ Imagen subida exitosamente: $downloadUrl")
-            return@withContext downloadUrl.toString()
-        } catch (e: IOException) {
-            Timber.e(e, "❌ Error IO al subir imagen: ${e.message}")
-            return@withContext null
+            val data = baos.toByteArray()
+
+            // Subir el archivo
+            Timber.d("Iniciando subida a Firebase Storage...")
+            try {
+                val uploadTask = fileRef.putBytes(data)
+                val taskSnapshot = Tasks.await(uploadTask)
+                val downloadUrl = Tasks.await(taskSnapshot.storage.downloadUrl)
+                
+                Timber.d("Imagen subida con éxito. URL: $downloadUrl")
+                return@withContext downloadUrl.toString()
+            } catch (e: Exception) {
+                Timber.e(e, "Error al subir archivo a Firebase Storage: ${e.message}")
+                return@withContext null
+            }
         } catch (e: Exception) {
-            Timber.e(e, "❌ Error general al subir imagen: ${e.message}")
+            Timber.e(e, "Error en uploadImageFromResource: ${e.message}")
             return@withContext null
         }
     }
-    
+
     /**
      * Verifica si un archivo existe en Firebase Storage
      *
-     * @param storagePath Ruta completa del archivo en Firebase Storage
-     * @return true si el archivo existe, false si no
+     * @param path Ruta del archivo en Storage
+     * @return true si el archivo existe, false en caso contrario
      */
-    suspend fun fileExists(storagePath: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun fileExists(path: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Verificando si el archivo existe: $storagePath")
-            val storageRef = FirebaseStorage.getInstance().reference.child(storagePath)
-            // Intentar obtener metadatos del archivo
-            storageRef.metadata.awaitTaskCompletion()
-            Timber.d("✅ Archivo existe en storage: $storagePath")
-            return@withContext true
+            Timber.d("Comprobando si existe el archivo en Storage: $path")
+            val storageRef = storage.reference.child(path)
+            
+            try {
+                val metadata = Tasks.await(storageRef.metadata)
+                Timber.d("Archivo encontrado: $path, tamaño: ${metadata.sizeBytes} bytes")
+                return@withContext true
+            } catch (e: Exception) {
+                Timber.d("Archivo no encontrado en Storage: $path")
+                return@withContext false
+            }
         } catch (e: Exception) {
-            Timber.d("❌ Archivo no existe en storage: $storagePath - ${e.message}")
+            Timber.e(e, "Error al comprobar si existe el archivo: ${e.message}")
             return@withContext false
         }
     }
-    
+
     /**
      * Obtiene la URL de descarga de un archivo en Firebase Storage
      *
-     * @param storagePath Ruta completa del archivo en Firebase Storage
-     * @return URL de descarga o null si no se puede obtener
+     * @param path Ruta del archivo en Storage
+     * @return URL de descarga o null si no se encuentra
      */
-    suspend fun getDownloadUrl(storagePath: String): String? = withContext(Dispatchers.IO) {
+    suspend fun getDownloadUrl(path: String): String? = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Obteniendo URL de descarga para: $storagePath")
-            val storageRef = FirebaseStorage.getInstance().reference.child(storagePath)
-            val downloadUrl = storageRef.downloadUrl.awaitTaskResult()
-            Timber.d("✅ URL de descarga obtenida: $downloadUrl")
-            return@withContext downloadUrl.toString()
+            Timber.d("Obteniendo URL de descarga para: $path")
+            val storageRef = storage.reference.child(path)
+            
+            try {
+                val uri = Tasks.await(storageRef.downloadUrl)
+                Timber.d("URL de descarga obtenida: $uri")
+                return@withContext uri.toString()
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener URL de descarga: ${e.message}")
+                return@withContext null
+            }
         } catch (e: Exception) {
-            Timber.e(e, "❌ Error al obtener URL de descarga para: $storagePath")
+            Timber.e(e, "Error en getDownloadUrl: ${e.message}")
             return@withContext null
-        }
-    }
-    
-    /**
-     * Extensión que convierte una Task<Void> de Firebase en una suspending function
-     */
-    private suspend fun <T> Task<T>.awaitTaskCompletion() = suspendCancellableCoroutine<Unit> { continuation ->
-        addOnSuccessListener {
-            if (!continuation.isCompleted) continuation.resume(Unit)
-        }
-        addOnFailureListener { exception ->
-            if (!continuation.isCompleted) continuation.resumeWithException(exception)
-        }
-    }
-    
-    /**
-     * Extensión que convierte una Task<T> de Firebase en una suspending function
-     */
-    private suspend fun <T> Task<T>.awaitTaskResult(): T = suspendCancellableCoroutine { continuation ->
-        addOnSuccessListener { result ->
-            if (!continuation.isCompleted) continuation.resume(result)
-        }
-        addOnFailureListener { exception ->
-            if (!continuation.isCompleted) continuation.resumeWithException(exception)
-        }
-    }
-    
-    /**
-     * Extensión que convierte una Task<Any> de Firebase en una suspending function que devuelve el resultado
-     */
-    private suspend fun <T> Task<T>.awaitTaskCompletionWithResult(): T = suspendCancellableCoroutine { continuation ->
-        addOnSuccessListener { result ->
-            if (!continuation.isCompleted) continuation.resume(result)
-        }
-        addOnFailureListener { exception ->
-            if (!continuation.isCompleted) continuation.resumeWithException(exception)
         }
     }
 } 

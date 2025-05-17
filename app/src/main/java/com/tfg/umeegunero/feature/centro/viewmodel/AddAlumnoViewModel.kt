@@ -1,5 +1,7 @@
 package com.tfg.umeegunero.feature.centro.viewmodel
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
@@ -24,6 +26,12 @@ import java.util.Locale
 import javax.inject.Inject
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.Timestamp
+import com.tfg.umeegunero.data.model.Perfil
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Usuario
+import com.google.android.gms.tasks.Tasks
 
 /**
  * Estado UI para la pantalla de añadir alumno
@@ -83,11 +91,13 @@ class AddAlumnoViewModel @Inject constructor(
     private val cursoRepository: CursoRepository,
     private val claseRepository: ClaseRepository,
     private val authRepository: AuthRepository,
-    private val firestore: FirebaseFirestore
-) : ViewModel() {
+    private val firestore: FirebaseFirestore,
+    application: Application
+) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(AddAlumnoUiState())
     val uiState: StateFlow<AddAlumnoUiState> = _uiState.asStateFlow()
     private val alumnosCollection = firestore.collection("alumnos")
+    private val usuariosCollection = firestore.collection("usuarios")
     
     init {
         // Obtener el centro del administrador actual
@@ -295,7 +305,32 @@ class AddAlumnoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // 1. Obtenemos el profesor asociado a la clase seleccionada (si existe)
+                // 1. Primero obtener la URL del avatar para ALUMNO
+                Timber.d("Obteniendo URL del avatar para ALUMNO")
+                val avatarUrl = try {
+                    val resourceName = "alumno.png"
+                    
+                    // Verificar si el avatar ya existe en Storage
+                    val avatarPath = "avatares/${resourceName.lowercase()}"
+                    val storageRef = FirebaseStorage.getInstance().reference.child(avatarPath)
+                    
+                    try {
+                        // Intentar obtener URL si ya existe
+                        val downloadTask = storageRef.downloadUrl
+                        Tasks.await(downloadTask).toString()
+                    } catch (e: Exception) {
+                        // Si no existe, subir desde los assets
+                        Timber.d("Avatar no encontrado en Storage, usando uno predeterminado")
+                        "" // Devolvemos cadena vacía y dejamos que el repositorio maneje esto
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener avatar: ${e.message}")
+                    "" // URL vacía en caso de error general
+                }
+                
+                Timber.d("URL de avatar obtenida: $avatarUrl")
+                
+                // 2. Obtenemos el profesor asociado a la clase seleccionada (si existe)
                 val claseId = _uiState.value.claseSeleccionada?.id ?: ""
                 var profesorId = ""
                 
@@ -311,7 +346,7 @@ class AddAlumnoViewModel @Inject constructor(
                     }
                 }
                 
-                // 2. Crear objeto Alumno con los campos correctos
+                // 3. Crear objeto Alumno con los campos correctos
                 val nuevoAlumno = Alumno(
                     // id se autogenera o usa dni? Usaremos dni como ID del documento
                     dni = _uiState.value.dni,
@@ -330,23 +365,38 @@ class AddAlumnoViewModel @Inject constructor(
                     condicionesMedicas = _uiState.value.condicionesMedicas,
                     observaciones = _uiState.value.observaciones,
                     activo = true, // Marcar como activo por defecto
-                    profesorId = profesorId // Asignamos el profesor vinculado a la clase
-                    // Otros campos como email, telefono, familiares, profesorIds se gestionarán aparte si es necesario
+                    profesorId = profesorId, // Asignamos el profesor vinculado a la clase
+                    avatarUrl = avatarUrl // Incluimos la URL del avatar
                 )
                 
-                // 3. Guardar directamente en la colección "alumnos" usando DNI como ID
-                alumnosCollection.document(nuevoAlumno.dni).set(nuevoAlumno).await()
-                
-                // 4. Si llegamos aquí, la operación fue exitosa
-                _uiState.update { it.copy(isLoading = false, success = true) }
-                
-                // 5. Registrar el resultado en logs
-                if (profesorId.isNotEmpty()) {
-                    Timber.d("Alumno ${nuevoAlumno.dni} asignado automáticamente al profesor: $profesorId")
-                } else {
-                    Timber.d("Alumno guardado correctamente con DNI: ${nuevoAlumno.dni} (sin profesor asignado)")
+                // 4. Guardar el alumno usando el método del repositorio con el contexto
+                val context = getApplication<Application>().applicationContext
+                when (val result = usuarioRepository.guardarAlumno(nuevoAlumno, context)) {
+                    is Result.Success -> {
+                        // 5. La operación fue exitosa
+                        _uiState.update { it.copy(isLoading = false, success = true) }
+                        
+                        // 6. Registrar el resultado en logs
+                        if (profesorId.isNotEmpty()) {
+                            Timber.d("Alumno ${nuevoAlumno.dni} asignado automáticamente al profesor: $profesorId")
+                        } else {
+                            Timber.d("Alumno guardado correctamente con DNI: ${nuevoAlumno.dni} (sin profesor asignado)")
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false, 
+                                error = "Error al guardar alumno: ${result.exception?.message}"
+                            )
+                        }
+                        Timber.e(result.exception, "Error al guardar alumno en repositorio")
+                    }
+                    is Result.Loading -> {
+                        // Mantener estado de carga
+                        Timber.d("Guardando alumno... (estado en progreso)")
+                    }
                 }
-                
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(

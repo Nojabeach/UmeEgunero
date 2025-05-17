@@ -24,7 +24,7 @@ class DebugUtils @Inject constructor(
     // Credenciales para el admin por defecto
     private val DEFAULT_ADMIN_EMAIL = "admin@eguneroko.com"
     private val DEFAULT_ADMIN_PASSWORD = "Lloreria2025"
-    private val DEFAULT_ADMIN_DNI = "12345678P"
+    private val DEFAULT_ADMIN_DNI = "45678698P"
 
     /**
      * Comprueba si hay un admin en el sistema, si no lo crea
@@ -204,6 +204,21 @@ class DebugUtils @Inject constructor(
                     Timber.d("Ya existe al menos un usuario ADMIN_APP en Firestore")
                     return@launch
                 }
+                
+                // Verificar también si existe algún administrador protegido por DNI
+                val protectedAdminDNIs = listOf("45678698P")
+                for (protectedDNI in protectedAdminDNIs) {
+                    try {
+                        val result = usuarioRepository.getUsuarioPorDni(protectedDNI)
+                        if (result is Result.Success) {
+                            Timber.d("Administrador protegido con DNI $protectedDNI encontrado. No se creará uno nuevo.")
+                            return@launch
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al verificar administrador protegido con DNI $protectedDNI")
+                    }
+                }
+                
                 Timber.d("No existe ningún ADMIN_APP, creando usuario de debug...")
                 // Crear perfil de admin
                 val perfil = Perfil(
@@ -212,7 +227,7 @@ class DebugUtils @Inject constructor(
                 )
                 // Crear usuario admin
                 val admin = Usuario(
-                    dni = "12345678B",
+                    dni = "45678698P",
                     email = "admin@eguneroko.com",
                     nombre = "Maitane",
                     apellidos = "",

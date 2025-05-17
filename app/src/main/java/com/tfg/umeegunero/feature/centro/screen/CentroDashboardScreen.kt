@@ -551,7 +551,7 @@ fun CentroDashboardScreen(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         showPerfilDialog = false
                         try {
-                            navController.navigate(AppScreens.Perfil.route)
+                            navController.navigate(AppScreens.Perfil.createRoute(false))
                         } catch (e: Exception) {
                             scope.launch {
                                 snackbarHostState.showSnackbar("Error al navegar al perfil: ${e.message}")

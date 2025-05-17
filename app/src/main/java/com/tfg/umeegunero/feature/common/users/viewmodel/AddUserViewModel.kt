@@ -40,6 +40,12 @@ import com.tfg.umeegunero.data.model.Notificaciones
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import android.net.Uri
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import com.google.android.gms.tasks.Tasks
+import android.content.Context
 
 // Enum para identificar los campos del formulario
 enum class AddUserFormField {
@@ -165,6 +171,9 @@ class AddUserViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AddUserUiState())
     val uiState: StateFlow<AddUserUiState> = _uiState.asStateFlow()
+    
+    // Instancia de Firebase Storage para operaciones de almacenamiento
+    private val storage = FirebaseStorage.getInstance()
 
     /**
      * Inicializa el ViewModel con los parámetros recibidos de la navegación.
@@ -834,7 +843,30 @@ class AddUserViewModel @Inject constructor(
     
     private suspend fun createNewAlumno(state: AddUserUiState) {
         try {
-            // Crear objeto alumno
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            Timber.d("Creando nuevo alumno con DNI: ${state.dni}")
+            
+            // PASO 1: Obtener la URL del avatar antes de crear el alumno
+            Timber.d("PASO 1: Subiendo avatar para el alumno")
+            val avatarUrl = withContext(Dispatchers.IO) {
+                try {
+                    val url = subirAvatarDesdeAssets(TipoUsuario.ALUMNO)
+                    Timber.d("Avatar de alumno subido correctamente: $url")
+                    url
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al subir avatar de alumno: ${e.message}, intentando método alternativo")
+                    try {
+                        val urlAlternativa = subirAvatarDesdeDrawable(TipoUsuario.ALUMNO)
+                        Timber.d("Avatar de alumno subido con método alternativo: $urlAlternativa")
+                        urlAlternativa
+                    } catch (e2: Exception) {
+                        Timber.e(e2, "Error en método alternativo para subir avatar: ${e2.message}")
+                        ""
+                    }
+                }
+            }
+            
+            // PASO 2: Crear objeto alumno CON la URL del avatar
             val alumno = Alumno(
                 id = UUID.randomUUID().toString(),
                 dni = state.dni,
@@ -851,58 +883,40 @@ class AddUserViewModel @Inject constructor(
                 medicacion = if (state.medicacion.isNotEmpty()) state.medicacion.split(",").map { it.trim() } else emptyList(),
                 necesidadesEspeciales = state.necesidadesEspeciales,
                 observaciones = state.observaciones,
-                observacionesMedicas = state.observacionesMedicas
+                observacionesMedicas = state.observacionesMedicas,
+                avatarUrl = avatarUrl // URL del avatar
             )
             
-            // Guardar el alumno
-            val result = usuarioRepository.guardarAlumno(alumno)
+            Timber.d("Alumno creado: ${alumno.nombre} ${alumno.apellidos} con DNI: ${alumno.dni}, avatar: $avatarUrl")
             
-            // Asignar avatar predefinido para el alumno
-            val avatarUrl = asignarAvatarPredefinido(alumno.dni, TipoUsuario.ALUMNO)
-            Timber.d("Avatar asignado para alumno ${alumno.nombre}: $avatarUrl")
-            
-            // Crear también un usuario básico en la colección de usuarios
-            val perfiles = listOf(
-                Perfil(
-                    tipo = TipoUsuario.ALUMNO,
-                    centroId = alumno.centroId,
-                    verificado = true
-                )
-            )
-            
-            val usuario = Usuario(
-                dni = alumno.dni,
-                nombre = alumno.nombre,
-                apellidos = alumno.apellidos,
-                email = "", // Los alumnos no tienen email
-                telefono = "",
-                perfiles = perfiles,
-                activo = true,
-                fechaRegistro = Timestamp.now(),
-                avatarUrl = avatarUrl // Asignar la URL del avatar
-            )
-            
-            // Guardar el usuario básico (sin autenticación)
-            usuarioRepository.saveUsuarioSinAuth(usuario)
-            
-            // Procesar resultado
-            when (result) {
-                is Result.Success -> {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        showSuccessDialog = true
-                    )}
+            // PASO 3: Guardar el alumno en Firestore
+            withContext(Dispatchers.IO) {
+                try {
+                    // Obtener el contexto para pasarlo al repositorio
+                    val context = getApplication<Application>().applicationContext
+                    val result = usuarioRepository.guardarAlumno(alumno, context)
+                    
+                    if (result is Result.Error) {
+                        throw result.exception ?: Exception("Error desconocido al guardar alumno")
+                    }
+                    
+                    Timber.d("Alumno guardado correctamente en Firestore con avatar")
+                    
+                    // Ya no necesitamos crear un usuario básico aquí, lo hace guardarAlumno
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al guardar alumno en Firestore: ${e.message}")
+                    throw e
                 }
-                is Result.Error -> {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        error = result.exception?.message ?: "Error desconocido al guardar alumno"
-                    )}
-                }
-                else -> {} // Ignorar otros estados
             }
+            
+            // Actualizar UI
+            _uiState.update { it.copy(
+                isLoading = false,
+                success = true,
+                error = null
+            )}
         } catch (e: Exception) {
-            Timber.e(e, "❌ Error al crear nuevo alumno: ${e.message}")
+            Timber.e(e, "Error general al crear alumno: ${e.message}")
             _uiState.update { it.copy(
                 isLoading = false,
                 error = "Error al crear alumno: ${e.message}"
@@ -910,90 +924,300 @@ class AddUserViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Crea un usuario regular (no alumno)
+     */
     private suspend fun createNewRegularUser(state: AddUserUiState) {
         try {
-            // Crear lista de perfiles
-            val perfiles = mutableListOf<Perfil>()
+            _uiState.update { it.copy(isLoading = true, error = null) }
             
-            // Perfil principal según tipo de usuario
+            Timber.d("Creando nuevo usuario regular. Tipo seleccionado: ${state.tipoUsuario}")
+            
+            // Verificar que tenemos un tipo de usuario seleccionado
+            if (state.tipoUsuario == null) {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = "Debe seleccionar un tipo de usuario"
+                )}
+                return
+            }
+            
+            // Verificar si es admin de centro y tiene centro seleccionado
+            if (state.tipoUsuario == TipoUsuario.ADMIN_CENTRO && state.centroSeleccionado == null) {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = "Debe seleccionar un centro para el administrador"
+                )}
+                return
+            }
+
+            // Si es profesor, debe tener centro seleccionado
+            if (state.tipoUsuario == TipoUsuario.PROFESOR && state.centroSeleccionado == null) {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = "Debe seleccionar un centro para el profesor"
+                )}
+                return
+            }
+            
+            // PASO 1: Obtener la URL del avatar antes de crear el usuario
+            Timber.d("PASO 1: Subiendo avatar para el tipo de usuario: ${state.tipoUsuario}")
+            val avatarUrl = withContext(Dispatchers.IO) {
+                try {
+                    // Especial para admin de centro - subir como centro.png
+                    if (state.tipoUsuario == TipoUsuario.ADMIN_CENTRO) {
+                        Timber.d("Subiendo avatar para ADMIN_CENTRO")
+                    }
+                    val url = subirAvatarDesdeAssets(state.tipoUsuario)
+                    Timber.d("Avatar subido correctamente: $url")
+                    url
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al subir avatar: ${e.message}, intentando método alternativo")
+                    // Intentar método alternativo si falla
+                    try {
+                        val urlAlternativa = subirAvatarDesdeDrawable(state.tipoUsuario)
+                        Timber.d("Avatar subido correctamente con método alternativo: $urlAlternativa")
+                        urlAlternativa
+                    } catch (e2: Exception) {
+                        Timber.e(e2, "Error en método alternativo para subir avatar: ${e2.message}")
+                        // Devolver URL por defecto en caso de fallo total
+                        ""
+                    }
+                }
+            }
+            
+            // PASO 2: Crear cuenta en Firebase Authentication
+            Timber.d("PASO 2: Creando cuenta en Firebase Authentication para ${state.email}")
+            val authResult = withContext(Dispatchers.IO) {
+                try {
+                    val task = firebaseAuth.createUserWithEmailAndPassword(state.email, state.password)
+                    Tasks.await(task)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al crear usuario en Firebase Auth: ${e.message}")
+                    throw e
+                }
+            }
+            
+            val firebaseUid = authResult.user?.uid ?: throw Exception("Error al obtener UID de Firebase Auth")
+            Timber.d("Cuenta creada en Firebase Authentication con UID: $firebaseUid")
+            
+            // PASO 3: Crear el perfil principal
+            Timber.d("PASO 3: Creando perfil principal para tipo ${state.tipoUsuario}")
             val perfilPrincipal = Perfil(
                 tipo = state.tipoUsuario,
-                centroId = if (state.tipoUsuario == TipoUsuario.PROFESOR || 
-                               state.tipoUsuario == TipoUsuario.ADMIN_CENTRO) {
-                    state.centroSeleccionado?.id ?: ""
-                } else "",
+                centroId = state.centroSeleccionado?.id ?: "",
                 verificado = true
             )
             
-            perfiles.add(perfilPrincipal)
-            
-            // Crear objeto Usuario
+            Timber.d("Perfil principal creado: ${perfilPrincipal.tipo} para centro: ${perfilPrincipal.centroId}")
+
+            // PASO 4: Crear objeto usuario CON la URL del avatar ya incluida
+            Timber.d("PASO 4: Creando usuario en Firestore con avatarUrl: $avatarUrl")
             val usuario = Usuario(
                 dni = state.dni,
                 nombre = state.nombre,
                 apellidos = state.apellidos,
-                email = state.email,
                 telefono = state.telefono,
-                perfiles = perfiles,
+                email = state.email,
+                perfiles = listOf(perfilPrincipal),
+                avatarUrl = avatarUrl, // Ya incluimos la URL del avatar
+                firebaseUid = firebaseUid, // Incluimos el UID de Firebase
+                fechaRegistro = Timestamp.now(),
                 activo = true,
-                fechaRegistro = Timestamp.now()
+                preferencias = Preferencias(
+                    notificaciones = Notificaciones(
+                        push = true,
+                        email = true,
+                        deviceId = "device_${System.currentTimeMillis()}",
+                        fcmTokens = mapOf()
+                    )
+                )
             )
             
-            // Crear cuenta en Firebase Auth
-            Timber.d("⏳ Creando cuenta en Firebase Auth para: ${state.email}")
-            val authResult = usuarioRepository.crearUsuarioConEmailYPassword(state.email, state.password)
-            
-            when (authResult) {
-                is Result.Success -> {
-                    Timber.d("✅ Usuario creado en Auth: ${authResult.data}")
+            Timber.d("Usuario creado: ${usuario.nombre} ${usuario.apellidos} con DNI: ${usuario.dni}, tipo: ${perfilPrincipal.tipo}, avatar: $avatarUrl")
+
+            // PASO 5: Guardar en Firestore
+            withContext(Dispatchers.IO) {
+                try {
+                    val task = firebaseFirestore.collection("usuarios")
+                        .document(usuario.dni)
+                        .set(usuario)
+                    Tasks.await(task)
                     
-                    // Asignar avatar predefinido según el tipo de usuario
-                    val avatarUrl = asignarAvatarPredefinido(usuario.dni, state.tipoUsuario)
-                    Timber.d("Avatar asignado para usuario ${usuario.nombre}: $avatarUrl")
+                    Timber.d("Usuario guardado correctamente en Firestore con avatar")
                     
-                    // Actualizar el usuario con la URL del avatar
-                    usuario.avatarUrl = avatarUrl
-                    
-                    // Guardar el usuario en Firestore
-                    val saveResult = usuarioRepository.guardarUsuario(usuario)
-                    
-                    when (saveResult) {
-                        is Result.Success -> {
-                            Timber.d("✅ Usuario guardado en Firestore: ${saveResult.data}")
+                    // Si es ADMIN_CENTRO, actualizar también el centro con el mismo avatar
+                    if (state.tipoUsuario == TipoUsuario.ADMIN_CENTRO && state.centroSeleccionado != null) {
+                        val centroId = state.centroSeleccionado.id
+                        Timber.d("Actualizando centro con ID: $centroId, logo: $avatarUrl")
+                        
+                        try {
+                            val updateTask = firebaseFirestore.collection("centros").document(centroId)
+                                .update("logo", avatarUrl)
+                            Tasks.await(updateTask)
                             
-                            _uiState.update { it.copy(
-                                isLoading = false,
-                                showSuccessDialog = true
-                            )}
+                            Timber.d("Centro actualizado correctamente con el logo: $avatarUrl")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al actualizar centro con logo: ${e.message}")
                         }
-                        is Result.Error -> {
-                            Timber.e(saveResult.exception, "❌ Error al guardar usuario en Firestore")
-                            _uiState.update { it.copy(
-                                error = "Error al guardar usuario: ${saveResult.exception?.message}",
-                                isLoading = false
-                            )}
-                        }
-                        else -> {} // Ignorar otros estados
                     }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al guardar usuario en Firestore: ${e.message}")
+                    throw e
                 }
-                is Result.Error -> {
-                    Timber.e(authResult.exception, "❌ Error al crear usuario en Auth")
-                    _uiState.update { it.copy(
-                        error = "Error al crear cuenta: ${authResult.exception?.message}",
-                        isLoading = false
-                    )}
-                }
-                else -> {} // Ignorar otros estados
             }
-        } catch (e: Exception) {
-            Timber.e(e, "❌ Error general al crear usuario: ${e.message}")
+            
+            // Actualizar UI
             _uiState.update { it.copy(
-                error = "Error al crear usuario: ${e.message}",
-                isLoading = false
+                isLoading = false,
+                success = true,
+                error = null
+            )}
+        } catch (e: Exception) {
+            Timber.e(e, "Error general al crear usuario: ${e.message}")
+            _uiState.update { it.copy(
+                isLoading = false,
+                error = "Error al crear usuario: ${e.message}"
             )}
         }
     }
     
+    /**
+     * Sube un avatar desde los assets para un tipo de usuario específico
+     */
+    private suspend fun subirAvatarDesdeAssets(tipoUsuario: TipoUsuario): String {
+        val resourceName = when (tipoUsuario) {
+            TipoUsuario.ADMIN_APP -> "AdminAvatar.png"
+            TipoUsuario.ADMIN_CENTRO -> "centro.png"
+            TipoUsuario.PROFESOR -> "profesor.png"
+            TipoUsuario.FAMILIAR -> "familiar.png"
+            TipoUsuario.ALUMNO -> "alumno.png"
+            else -> "default.png"
+        }
+        
+        Timber.d("Buscando imagen en assets/images: $resourceName")
+        val context = getApplication<Application>().applicationContext
+        
+        // Crear archivo temporal desde los assets
+        val archivoTemporal = File(context.cacheDir, resourceName)
+        
+        try {
+            // Intentar abrir el stream del asset
+            try {
+                context.assets.open("images/$resourceName").use { inputStream ->
+                    FileOutputStream(archivoTemporal).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            } catch (e: IOException) {
+                // Si no encuentra la imagen específica, usar AdminAvatar.png como fallback
+                Timber.d("⚠️ No se encontró images/$resourceName, usando AdminAvatar.png como fallback")
+                context.assets.open("images/AdminAvatar.png").use { inputStream ->
+                    FileOutputStream(archivoTemporal).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            }
+            
+            // Convertir a Uri y subir
+            val uri = Uri.fromFile(archivoTemporal)
+            
+            // Construir la ruta en Firebase Storage
+            val storagePath = "avatares"
+            
+            // Asegurarnos de usar el nombre correcto aunque hayamos usado un fallback
+            val storageFileName = when (tipoUsuario) {
+                TipoUsuario.ADMIN_CENTRO -> "centro.png"
+                TipoUsuario.PROFESOR -> "profesor.png"
+                TipoUsuario.FAMILIAR -> "familiar.png"
+                TipoUsuario.ALUMNO -> "alumno.png"
+                TipoUsuario.ADMIN_APP -> "adminavatar.png"
+                else -> "default.png"
+            }
+            
+            // Subir a Firebase Storage
+            val avatarRef = storage.reference.child("$storagePath/$storageFileName")
+            
+            val uploadTask = avatarRef.putFile(uri)
+            val taskSnapshot = Tasks.await(uploadTask)
+            val downloadUrl = Tasks.await(taskSnapshot.storage.downloadUrl)
+            
+            Timber.d("✅ Imagen subida con éxito desde assets. URL: $downloadUrl")
+            
+            // Limpiar archivo temporal
+            try {
+                if (archivoTemporal.exists()) {
+                    archivoTemporal.delete()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al eliminar archivo temporal")
+            }
+            
+            return downloadUrl.toString()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al subir avatar desde assets: ${e.message}")
+            throw e
+        }
+    }
+    
+    /**
+     * Sube un avatar desde los recursos drawable para un tipo de usuario específico
+     */
+    private suspend fun subirAvatarDesdeDrawable(tipoUsuario: TipoUsuario): String {
+        val resourceName = when (tipoUsuario) {
+            TipoUsuario.ADMIN_APP -> "adminavatar"
+            TipoUsuario.ADMIN_CENTRO -> "centro"
+            TipoUsuario.PROFESOR -> "profesor"
+            TipoUsuario.FAMILIAR -> "familiar"
+            TipoUsuario.ALUMNO -> "alumno"
+            else -> "default"
+        }
+        
+        val context = getApplication<Application>().applicationContext
+        var resourceId = context.resources.getIdentifier(
+            resourceName.lowercase(), 
+            "drawable", 
+            context.packageName
+        )
+        
+        if (resourceId == 0) {
+            // Intentar buscar en drawable-nodpi si no se encuentra en drawable
+            resourceId = context.resources.getIdentifier(
+                resourceName.lowercase(),
+                "drawable-nodpi",
+                context.packageName
+            )
+        }
+        
+        if (resourceId == 0) {
+            throw Exception("No se encontró recurso para $resourceName")
+        }
+        
+        // Tenemos un recurso válido, lo subimos
+        val fileName = when (tipoUsuario) {
+            TipoUsuario.ADMIN_CENTRO -> "centro.png"
+            TipoUsuario.PROFESOR -> "profesor.png"
+            TipoUsuario.FAMILIAR -> "familiar.png"
+            TipoUsuario.ALUMNO -> "alumno.png"
+            TipoUsuario.ADMIN_APP -> "adminavatar.png"
+            else -> "default.png"
+        }
+        
+        val downloadUrl = StorageUtil.uploadImageFromResource(
+            context = context,
+            resourceId = resourceId,
+            storagePath = "avatares",
+            fileName = fileName
+        )
+        
+        if (downloadUrl != null) {
+            Timber.d("Imagen subida con éxito desde drawable. URL: $downloadUrl")
+            return downloadUrl
+        } else {
+            throw Exception("Error al subir imagen desde drawable")
+        }
+    }
+
     private suspend fun updateExistingUser(state: AddUserUiState) {
         // Implementación de actualización de usuario existente
         // Código similar pero sin crear cuenta en Auth
@@ -1736,7 +1960,8 @@ class AddUserViewModel @Inject constructor(
                     medicacion = if (state.medicacion.isNotEmpty()) state.medicacion.split(",").map { it.trim() } else emptyList(),
                     necesidadesEspeciales = state.necesidadesEspeciales,
                     observaciones = state.observaciones,
-                    observacionesMedicas = state.observacionesMedicas
+                    observacionesMedicas = state.observacionesMedicas,
+                    avatarUrl = getAvatarUrlForUserType(TipoUsuario.ALUMNO) // URL predeterminada para alumno
                 )
             }
             else -> throw IllegalArgumentException("Tipo de usuario no soportado: ${state.tipoUsuario}")
@@ -1794,13 +2019,16 @@ class AddUserViewModel @Inject constructor(
      * Obtiene la URL del avatar predefinido según el tipo de usuario
      */
     fun getAvatarUrlForUserType(tipoUsuario: TipoUsuario): String {
-        return when (tipoUsuario) {
-            TipoUsuario.ADMIN_APP, TipoUsuario.ADMIN_CENTRO -> "avatares/adminavatar.png"
+        val avatarPath = when (tipoUsuario) {
+            TipoUsuario.ADMIN_APP -> "avatares/adminavatar.png"
+            TipoUsuario.ADMIN_CENTRO -> "avatares/centro.png" // Cambiado para usar el avatar específico de centro
             TipoUsuario.PROFESOR -> "avatares/profesor.png"
             TipoUsuario.FAMILIAR -> "avatares/familiar.png"
             TipoUsuario.ALUMNO -> "avatares/alumno.png"
-            else -> "avatares/centro.png"
+            else -> "avatares/default.png" // Avatar por defecto para otros tipos desconocidos
         }
+        Timber.d("Avatar seleccionado para tipo $tipoUsuario: $avatarPath")
+        return avatarPath
     }
     
     /**
@@ -1844,22 +2072,125 @@ class AddUserViewModel @Inject constructor(
                 }
             }
             
-            // El archivo no existe en Storage, intentamos subirlo desde drawable
+            // Si el avatar no existe en Storage, intentamos subirlo desde los assets
             val resourceName = when (tipoUsuario) {
-                TipoUsuario.ADMIN_APP, TipoUsuario.ADMIN_CENTRO -> "adminavatar"
-                TipoUsuario.PROFESOR -> "profesor"
-                TipoUsuario.FAMILIAR -> "familiar"
-                TipoUsuario.ALUMNO -> "alumno"
-                else -> "centro"
+                TipoUsuario.ADMIN_APP -> "AdminAvatar.png"
+                TipoUsuario.ADMIN_CENTRO -> "centro.png"
+                TipoUsuario.PROFESOR -> "profesor.png"
+                TipoUsuario.FAMILIAR -> "familiar.png"
+                TipoUsuario.ALUMNO -> "alumno.png"
+                else -> "default.png"
             }
             
-            Timber.d("Buscando recurso de imagen: $resourceName")
+            Timber.d("Buscando imagen en assets/images: $resourceName")
             val context = getApplication<Application>().applicationContext
-            val resourceId = context.resources.getIdentifier(
-                resourceName.lowercase(), 
+            
+            try {
+                // Crear archivo temporal desde los assets
+                val archivoTemporal = File(context.cacheDir, resourceName)
+                
+                try {
+                    try {
+                        // Intentar abrir el stream del asset
+                        context.assets.open("images/$resourceName").use { inputStream ->
+                            // Escribir al archivo temporal
+                            FileOutputStream(archivoTemporal).use { outputStream ->
+                                inputStream.copyTo(outputStream)
+                            }
+                        }
+                        
+                        Timber.d("✅ Archivo de assets copiado a temporal: ${archivoTemporal.absolutePath}")
+                    } catch (e: IOException) {
+                        // Si no encuentra centro.png, usar AdminAvatar.png como fallback para ADMIN_CENTRO
+                        if (tipoUsuario == TipoUsuario.ADMIN_CENTRO) {
+                            Timber.d("⚠️ No se encontró images/centro.png, usando AdminAvatar.png como fallback")
+                            context.assets.open("images/AdminAvatar.png").use { inputStream ->
+                                // Escribir al archivo temporal
+                                FileOutputStream(archivoTemporal).use { outputStream ->
+                                    inputStream.copyTo(outputStream)
+                                }
+                            }
+                        } else {
+                            throw e // Reenviar la excepción si no es un ADMIN_CENTRO
+                        }
+                    }
+                    
+                    // Convertir a Uri y subir
+                    val uri = Uri.fromFile(archivoTemporal)
+                    
+                    // Construir la ruta en Firebase Storage
+                    val storagePath = "avatares"
+                    
+                    // Asegurarnos de usar el nombre correcto aunque hayamos usado un fallback
+                    val storageFileName = when (tipoUsuario) {
+                        TipoUsuario.ADMIN_CENTRO -> "centro.png"
+                        else -> resourceName
+                    }
+                    
+                    // Subir a Firebase Storage
+                    val avatarRef = storage.reference.child("$storagePath/$storageFileName")
+                    
+                    val uploadTask = avatarRef.putFile(uri)
+                    val taskSnapshot = Tasks.await(uploadTask)
+                    val downloadUrl = Tasks.await(taskSnapshot.storage.downloadUrl)
+                    
+                    Timber.d("✅ Imagen subida con éxito desde assets. URL: $downloadUrl")
+                    
+                    // Limpiar archivo temporal
+                    try {
+                        if (archivoTemporal.exists()) {
+                            archivoTemporal.delete()
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al eliminar archivo temporal")
+                    }
+                    
+                    // Actualizar el usuario con la URL
+                    try {
+                        Timber.d("Actualizando usuario con URL de avatar: $downloadUrl")
+                        
+                        firebaseFirestore.collection("usuarios").document(usuarioId)
+                            .update("avatarUrl", downloadUrl)
+                            .addOnSuccessListener {
+                                Timber.d("Usuario actualizado correctamente con el avatar: $downloadUrl")
+                            }
+                            .addOnFailureListener { e ->
+                                Timber.e(e, "Error al actualizar usuario con URL de avatar: ${e.message}")
+                            }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al actualizar usuario con URL de avatar: ${e.message}")
+                    }
+                    
+                    return downloadUrl.toString()
+                } catch (e: IOException) {
+                    Timber.e(e, "❌ Error al acceder al asset: images/$resourceName - ${e.message}")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "❌ Error general al cargar avatar desde assets: ${e.message}")
+            }
+            
+            // Si llegamos aquí, intentamos el método anterior con resources
+            Timber.d("Intentando método alternativo con recursos de drawable...")
+            var resourceId = context.resources.getIdentifier(
+                resourceName.substringBefore(".").lowercase(), 
                 "drawable", 
                 context.packageName
             )
+            
+            if (resourceId == 0) {
+                // Intentar buscar en drawable-nodpi si no se encuentra en drawable
+                Timber.d("Recurso no encontrado en drawable, buscando en drawable-nodpi: $resourceName")
+                val resourceIdNodpi = context.resources.getIdentifier(
+                    resourceName.lowercase(),
+                    "drawable-nodpi",
+                    context.packageName
+                )
+                
+                if (resourceIdNodpi != 0) {
+                    Timber.d("Recurso encontrado en drawable-nodpi con ID: $resourceIdNodpi")
+                    resourceId = resourceIdNodpi
+                }
+            }
             
             if (resourceId != 0) {
                 Timber.d("Recurso encontrado con ID: $resourceId, subiendo a Storage...")
@@ -1893,7 +2224,7 @@ class AddUserViewModel @Inject constructor(
                     return downloadUrl
                 }
             } else {
-                Timber.e("No se encontró el recurso de imagen: $resourceName")
+                Timber.e("No se encontró el recurso de imagen: $resourceName (ni en drawable ni en drawable-nodpi)")
             }
             
             // Si llegamos aquí, ha fallado la subida, usamos una URL por defecto
@@ -1918,7 +2249,7 @@ class AddUserViewModel @Inject constructor(
             
             return defaultUrl
         } catch (e: Exception) {
-            Timber.e(e, "❌ Error al asignar avatar predefinido: ${e.message}")
+            Timber.e(e, "Error al asignar avatar predefinido: ${e.message}")
             return ""
         }
     }

@@ -205,10 +205,19 @@ class CentroDashboardViewModel @Inject constructor(
                             // Buscar el perfil ADMIN_CENTRO para obtener el centroId
                             val perfilCentro = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
                             
-                            // Usar el centroId correcto
-                            val centroId = "aa7b64ad-9b83-4f89-a0e0-ee50ba97ecc2"
+                            // Usar el centroId del perfil de administrador de centro
+                            val centroId = perfilCentro?.centroId ?: ""
                             
-                            Timber.d("Usando centroId fijo: $centroId")
+                            Timber.d("Usando centroId del perfil del administrador: $centroId")
+                            
+                            // Verificar que tenemos un centroId válido
+                            if (centroId.isEmpty()) {
+                                _uiState.update { it.copy(
+                                    error = "No se encontró centro asociado a este administrador",
+                                    isLoading = false
+                                ) }
+                                return@launch
+                            }
                             
                             // Cargar los datos del centro
                             when (val centroResult = centroRepository.getCentroById(centroId)) {

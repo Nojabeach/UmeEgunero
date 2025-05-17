@@ -72,7 +72,8 @@ data class Alumno(
     val familiares: List<Familiar> = emptyList(),
     val presente: Boolean = false,
     val asistenciaHoy: Boolean? = null,
-    val ultimaAsistencia: Date? = null
+    val ultimaAsistencia: Date? = null,
+    val avatarUrl: String = ""
 ) {
     // Propiedad computada para obtener el nombre completo
     val nombreCompleto: String
