@@ -575,9 +575,379 @@ fun AddUserScreenContent(
                     }
                 }
                 
-                // Aquí iría el resto de los componentes del formulario...
-                // (DNI, nombre, apellidos, email, contraseña, etc.)
-                // ... (omitido por brevedad)
+                // DNI, Nombre, Apellidos
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp).padding(end = 8.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Información Personal",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // DNI
+                        OutlinedTextField(
+                            value = uiState.dni,
+                            onValueChange = { viewModel.updateDni(it) },
+                            label = { Text("DNI/NIE") },
+                            isError = uiState.dniError != null,
+                            supportingText = {
+                                if (uiState.dniError != null) {
+                                    Text(text = uiState.dniError!!)
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onNext = { nombreFocusRequester.requestFocus() }
+                            ),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Badge,
+                                    contentDescription = null,
+                                    tint = if (uiState.dniError != null) 
+                                        MaterialTheme.colorScheme.error 
+                                    else 
+                                        MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            singleLine = true,
+                            enabled = !uiState.isEditMode,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(dniFocusRequester)
+                        )
+
+                        // Nombre
+                        OutlinedTextField(
+                            value = uiState.nombre,
+                            onValueChange = { viewModel.updateNombre(it) },
+                            label = { Text("Nombre") },
+                            isError = uiState.nombreError != null,
+                            supportingText = {
+                                if (uiState.nombreError != null) {
+                                    Text(text = uiState.nombreError!!)
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onNext = { apellidosFocusRequester.requestFocus() }
+                            ),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = if (uiState.nombreError != null) 
+                                        MaterialTheme.colorScheme.error 
+                                    else 
+                                        MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(nombreFocusRequester)
+                        )
+
+                        // Apellidos
+                        OutlinedTextField(
+                            value = uiState.apellidos,
+                            onValueChange = { viewModel.updateApellidos(it) },
+                            label = { Text("Apellidos") },
+                            isError = uiState.apellidosError != null,
+                            supportingText = {
+                                if (uiState.apellidosError != null) {
+                                    Text(text = uiState.apellidosError!!)
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onNext = { telefonoFocusRequester.requestFocus() }
+                            ),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = if (uiState.apellidosError != null) 
+                                        MaterialTheme.colorScheme.error 
+                                    else 
+                                        MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(apellidosFocusRequester)
+                        )
+
+                        // Teléfono
+                        OutlinedTextField(
+                            value = uiState.telefono,
+                            onValueChange = { viewModel.updateTelefono(it) },
+                            label = { Text("Teléfono") },
+                            isError = uiState.telefonoError != null,
+                            supportingText = {
+                                if (uiState.telefonoError != null) {
+                                    Text(text = uiState.telefonoError!!)
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Phone,
+                                imeAction = ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onNext = { 
+                                    if (uiState.tipoUsuario != TipoUsuario.ALUMNO) {
+                                        emailFocusRequester.requestFocus() 
+                                    } else {
+                                        fechaNacimientoFocusRequester.requestFocus()
+                                    }
+                                }
+                            ),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = null,
+                                    tint = if (uiState.telefonoError != null) 
+                                        MaterialTheme.colorScheme.error 
+                                    else 
+                                        MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            visualTransformation = PhoneNumberVisualTransformation(),
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(telefonoFocusRequester)
+                        )
+                    }
+                }
+
+                // Mostrar campos específicos para no alumnos (email, contraseña)
+                AnimatedVisibility(
+                    visible = uiState.tipoUsuario != TipoUsuario.ALUMNO,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Email,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp).padding(end = 8.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Cuenta",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Email
+                            OutlinedTextField(
+                                value = uiState.email,
+                                onValueChange = { viewModel.updateEmail(it) },
+                                label = { Text("Email") },
+                                isError = uiState.emailError != null,
+                                supportingText = {
+                                    if (uiState.emailError != null) {
+                                        Text(text = uiState.emailError!!)
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Email,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { passwordFocusRequester.requestFocus() }
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Email,
+                                        contentDescription = null,
+                                        tint = if (uiState.emailError != null) 
+                                            MaterialTheme.colorScheme.error 
+                                        else 
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(emailFocusRequester)
+                            )
+
+                            // Contraseña
+                            OutlinedTextField(
+                                value = uiState.password,
+                                onValueChange = { viewModel.updatePassword(it) },
+                                label = { Text("Contraseña") },
+                                isError = uiState.passwordError != null,
+                                supportingText = {
+                                    if (uiState.passwordError != null) {
+                                        Text(text = uiState.passwordError!!)
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { confirmPasswordFocusRequester.requestFocus() }
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = if (uiState.passwordError != null) 
+                                            MaterialTheme.colorScheme.error 
+                                        else 
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                trailingIcon = {
+                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        Icon(
+                                            imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(passwordFocusRequester)
+                            )
+
+                            // Confirmar contraseña
+                            OutlinedTextField(
+                                value = uiState.confirmPassword,
+                                onValueChange = { viewModel.updateConfirmPassword(it) },
+                                label = { Text("Confirmar Contraseña") },
+                                isError = uiState.confirmPasswordError != null,
+                                supportingText = {
+                                    if (uiState.confirmPasswordError != null) {
+                                        Text(text = uiState.confirmPasswordError!!)
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { keyboardController?.hide() }
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.LockOpen,
+                                        contentDescription = null,
+                                        tint = if (uiState.confirmPasswordError != null) 
+                                            MaterialTheme.colorScheme.error 
+                                        else 
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                trailingIcon = {
+                                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                        Icon(
+                                            imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(confirmPasswordFocusRequester)
+                            )
+                        }
+                    }
+                }
+
+                // Mostrar campos específicos para alumnos
+                AnimatedVisibility(
+                    visible = uiState.tipoUsuario == TipoUsuario.ALUMNO,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    AlumnoFields(
+                        fechaNacimiento = uiState.fechaNacimiento,
+                        fechaNacimientoError = uiState.fechaNacimientoError,
+                        cursoSeleccionado = uiState.cursoSeleccionado,
+                        cursosDisponibles = uiState.cursosDisponibles,
+                        claseSeleccionada = uiState.claseSeleccionada,
+                        clasesDisponibles = uiState.clasesDisponibles,
+                        numeroSS = uiState.numeroSS ?: "",
+                        numeroSSError = uiState.numeroSSError,
+                        condicionesMedicas = uiState.condicionesMedicas ?: "",
+                        condicionesMedicasError = uiState.condicionesMedicasError,
+                        alergias = uiState.alergias ?: "",
+                        medicacion = uiState.medicacion ?: "",
+                        necesidadesEspeciales = uiState.necesidadesEspeciales ?: "",
+                        observaciones = uiState.observaciones ?: "",
+                        observacionesMedicas = uiState.observacionesMedicas ?: "",
+                        isLoading = uiState.isLoading,
+                        onUpdateFechaNacimiento = { viewModel.updateFechaNacimiento(it) },
+                        onCursoSelected = { viewModel.updateCursoSeleccionado(it) },
+                        onUpdateClaseSeleccionada = { viewModel.updateClaseSeleccionada(it) },
+                        onUpdateNumeroSS = { viewModel.updateNumeroSS(it) },
+                        onUpdateCondicionesMedicas = { viewModel.updateCondicionesMedicas(it) },
+                        onUpdateAlergias = { viewModel.updateAlergias(it) },
+                        onUpdateMedicacion = { viewModel.updateMedicacion(it) },
+                        onUpdateNecesidadesEspeciales = { viewModel.updateNecesidadesEspeciales(it) },
+                        onUpdateObservaciones = { viewModel.updateObservaciones(it) },
+                        onUpdateObservacionesMedicas = { viewModel.updateObservacionesMedicas(it) },
+                        fechaNacimientoFocusRequester = fechaNacimientoFocusRequester,
+                        cursoFocusRequester = cursoFocusRequester,
+                        claseFocusRequester = claseFocusRequester,
+                        numeroSSFocusRequester = FocusRequester(),
+                        condicionesMedicasFocusRequester = FocusRequester(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 
                 // Mensaje de éxito
                 if (uiState.showSuccessDialog) {
@@ -1174,7 +1544,7 @@ fun AlumnoFields(
                     )
                 },
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
+                    keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Next
                 ),
                 keyboardActions = KeyboardActions(
@@ -1191,7 +1561,8 @@ fun AlumnoFields(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(numeroSSFocusRequester),
-                singleLine = true
+                singleLine = true,
+                visualTransformation = SeguridadSocialVisualTransformation()
             )
 
             // Alergias
@@ -1421,6 +1792,85 @@ class PhoneNumberVisualTransformation : VisualTransformation {
 
         return TransformedText(AnnotatedString(formattedNumber), offsetMapping)
     }
+}
+
+/**
+ * Transformación visual para formato de número de Seguridad Social: XX/XXXXXXXX/XX
+ */
+class SeguridadSocialVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        // Sólo trabajamos con dígitos
+        val digitsOnly = text.text.filter { it.isDigit() }
+        
+        // Aplicar el formato XX/XXXXXXXX/XX
+        val formattedText = buildString {
+            for (i in digitsOnly.indices) {
+                // Agregar dígito
+                append(digitsOnly[i])
+                
+                // Agregar barras en las posiciones correctas (después del 2do y 10mo dígito)
+                if (i == 1 && i < digitsOnly.lastIndex) {
+                    append('/')
+                } else if (i == 9 && i < digitsOnly.lastIndex) {
+                    append('/')
+                }
+            }
+        }
+        
+        // Un mapeo simple que mantenga posición correcta del cursor
+        val offsetTranslator = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 0) return 0
+                
+                // Contar sólo dígitos hasta el offset
+                val digits = text.text.take(offset).count { it.isDigit() }
+                if (digits <= 0) return 0
+                
+                // Añadir barras según posición
+                var result = digits
+                if (digits > 2) result += 1  // Primera barra después del 2do dígito
+                if (digits > 10) result += 1 // Segunda barra después del 10mo dígito
+                
+                return result.coerceAtMost(formattedText.length)
+            }
+            
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 0) return 0
+                if (offset > formattedText.length) return text.length
+                
+                // Contar cuántos dígitos hay antes del offset transformado
+                val digitsBeforeOffset = formattedText.take(offset).count { it.isDigit() }
+                
+                // Encontrar esa posición en el texto original
+                var count = 0
+                for (i in text.text.indices) {
+                    if (text.text[i].isDigit()) {
+                        count++
+                        if (count == digitsBeforeOffset) {
+                            return i + 1
+                        }
+                    }
+                }
+                return text.length
+            }
+        }
+        
+        return TransformedText(AnnotatedString(formattedText), offsetTranslator)
+    }
+}
+
+// Extensión para encontrar la N-ésima ocurrencia de un carácter que cumple un predicado
+private fun String.indexOfNth(predicate: (Char) -> Boolean, indexSelector: (Int) -> Boolean): Int? {
+    var count = 0
+    this.forEachIndexed { i, c ->
+        if (predicate(c)) {
+            if (indexSelector(count)) {
+                return i
+            }
+            count++
+        }
+    }
+    return null
 }
 
 /**
