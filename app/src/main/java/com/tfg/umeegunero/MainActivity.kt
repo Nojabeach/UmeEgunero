@@ -55,6 +55,8 @@ import java.io.File
 import java.io.FileOutputStream
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.os.Handler
+import android.os.Looper
 
 /**
  * Clase simple para representar datos de notificación
@@ -396,8 +398,6 @@ class MainActivity : ComponentActivity() {
                                 
                                 // 4. Cerrar sesión después de verificar
                                 FirebaseAuth.getInstance().signOut()
-                                
-                                showErrorToast("Administrador verificado y sincronizado correctamente")
                             }
                             .addOnFailureListener { e ->
                                 Timber.e(e, "❌ Error al iniciar sesión con administrador: ${e.message}")
@@ -417,7 +417,6 @@ class MainActivity : ComponentActivity() {
                                                     .addOnSuccessListener {
                                                         Timber.d("UID actualizado correctamente en Firestore")
                                                         FirebaseAuth.getInstance().signOut()
-                                                        showErrorToast("Administrador creado y sincronizado correctamente")
                                                     }
                                             }
                                         }
@@ -425,9 +424,9 @@ class MainActivity : ComponentActivity() {
                                             Timber.e(createError, "❌ Error al crear administrador en Authentication: ${createError.message}")
                                             
                                             if (createError is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
-                                                showErrorToast("El email ya está en uso por otra cuenta. Posible conflicto de cuentas.")
+                                                // showErrorToast("El email ya está en uso por otra cuenta. Posible conflicto de cuentas.")
                                             } else {
-                                                showErrorToast("Error al crear el administrador. Verifique la contraseña en Firebase Remote Config.")
+                                                // showErrorToast("Error al crear el administrador. Verifique la contraseña en Firebase Remote Config.")
                                             }
                                         }
                                 }
@@ -462,7 +461,7 @@ class MainActivity : ComponentActivity() {
                 
                 if (password.isBlank()) {
                     Timber.w("No se ha configurado SMTP_PASSWORD en Firebase Remote Config")
-                    showErrorToast("Es necesario configurar la clave SMTP_PASSWORD en Firebase Remote Config para crear un administrador")
+                    // showErrorToast("Es necesario configurar la clave SMTP_PASSWORD en Firebase Remote Config para crear un administrador")
                     return@addOnCompleteListener
                 }
                 
@@ -504,7 +503,7 @@ class MainActivity : ComponentActivity() {
                                                 if (existeEnFirestore) {
                                                     // Existe en Auth y en Firestore, pero no es Admin
                                                     Timber.w("El email $EMAIL_ADMIN_DEFAULT ya está en uso por otro usuario que no es administrador")
-                                                    showErrorToast("El email $EMAIL_ADMIN_DEFAULT ya está en uso por otro usuario que no es administrador. Por favor, utiliza otro email para el administrador.")
+                                                    // showErrorToast("El email $EMAIL_ADMIN_DEFAULT ya está en uso por otro usuario que no es administrador. Por favor, utiliza otro email para el administrador.")
                                                     return@addOnSuccessListener
                                                 } else {
                                                     // Existe en Auth pero no en Firestore - Caso anómalo
@@ -555,7 +554,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                 } else {
                                     Timber.e(authTask.exception, "Error al verificar email en Firebase Auth: ${authTask.exception?.message}")
-                                    showErrorToast("Error al verificar disponibilidad del email en Firebase. Verifica la conexión a internet.")
+                                    // showErrorToast("Error al verificar disponibilidad del email en Firebase. Verifica la conexión a internet.")
                                 }
                             }
                     }
@@ -565,7 +564,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 // Error al obtener la configuración
                 Timber.e(task.exception, "Error al obtener la configuración de Remote Config: ${task.exception?.message}")
-                showErrorToast("No se pudo obtener la configuración desde Firebase Remote Config. Verifica la conexión y que SMTP_PASSWORD esté configurado.")
+                // showErrorToast("No se pudo obtener la configuración desde Firebase Remote Config. Verifica la conexión y que SMTP_PASSWORD esté configurado.")
             }
         }
     }
@@ -588,7 +587,7 @@ class MainActivity : ComponentActivity() {
                     }
                 } else {
                     Timber.e(createTask.exception, "No se pudo crear el usuario administrador en Firebase Auth: ${createTask.exception?.message}")
-                    showErrorToast("Error al crear el usuario administrador. Verifica que SMTP_PASSWORD esté configurada correctamente en Firebase Remote Config.")
+                    // showErrorToast("Error al crear el usuario administrador. Verifica que SMTP_PASSWORD esté configurada correctamente en Firebase Remote Config.")
                 }
             }
     }
@@ -681,7 +680,10 @@ class MainActivity : ComponentActivity() {
             .set(adminData)
             .addOnSuccessListener {
                 Timber.d("✅ Usuario administrador creado correctamente en Firestore")
-                showErrorToast("Administrador por defecto creado con email: $email - Puede iniciar sesión ahora")
+                // Notificar que se ha creado el administrador
+                Handler(Looper.getMainLooper()).postDelayed({ 
+                    // showErrorToast("Administrador por defecto creado con email: $email - Puede iniciar sesión ahora")
+                }, 800)
                 
                 // Después de crear el usuario, iniciar sesión con sus credenciales para conseguir permisos de escritura
                 // y luego subir el avatar

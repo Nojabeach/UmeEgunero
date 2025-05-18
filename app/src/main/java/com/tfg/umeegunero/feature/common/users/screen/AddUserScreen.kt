@@ -151,6 +151,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.ui.focus.onFocusChanged
 
 /**
  * ViewModel de muestra para el preview
@@ -1490,6 +1491,10 @@ fun AlumnoFields(
     condicionesMedicasFocusRequester: FocusRequester = FocusRequester(),
     modifier: Modifier = Modifier
 ) {
+    // Estado para controlar si el campo de Número SS tiene el foco
+    var isNumeroSSFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current // Para quitar el foco
+
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -1529,41 +1534,67 @@ fun AlumnoFields(
             )
 
             // Número de la Seguridad Social
-            OutlinedTextField(
-                value = numeroSS,
-                onValueChange = onUpdateNumeroSS,
-                label = { Text("Número de Seguridad Social") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.VerifiedUser,
-                        contentDescription = null,
-                        tint = if (numeroSSError != null)
-                            MaterialTheme.colorScheme.error
-                        else
-                            MaterialTheme.colorScheme.primary
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (isNumeroSSFocused || numeroSS.length != 12) { // Mostrar TextField si está enfocado o no tiene 12 dígitos
+                    OutlinedTextField(
+                        value = numeroSS,
+                        onValueChange = { newValue ->
+                            val newDigitsOnly = newValue.filter { it.isDigit() }.take(12)
+                            onUpdateNumeroSS(newDigitsOnly)
+                        },
+                        label = { Text("Número de Seguridad Social") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.VerifiedUser,
+                                contentDescription = null,
+                                tint = if (numeroSSError != null)
+                                    MaterialTheme.colorScheme.error
+                                else
+                                    MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = if (numeroSS.length == 12) ImeAction.Done else ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = {
+                                condicionesMedicasFocusRequester.requestFocus()
+                            },
+                            onDone = {
+                                focusManager.clearFocus()
+                            }
+                        ),
+                        isError = numeroSSError != null,
+                        supportingText = {
+                            if (numeroSSError != null) {
+                                Text(text = numeroSSError)
+                            } else {
+                                Text(if (numeroSS.length == 12) "Nº SS completo" else "Introduce los 12 dígitos (Opcional)")
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(numeroSSFocusRequester)
+                            .onFocusChanged { focusState ->
+                                isNumeroSSFocused = focusState.isFocused
+                            },
+                        singleLine = true,
+                        visualTransformation = VisualTransformation.None
                     )
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { condicionesMedicasFocusRequester.requestFocus() }
-                ),
-                isError = numeroSSError != null,
-                supportingText = {
-                    if (numeroSSError != null) {
-                        Text(text = numeroSSError)
-                    } else {
-                        Text("Ejemplo: 28/12345678/90")
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(numeroSSFocusRequester),
-                singleLine = true,
-                visualTransformation = SeguridadSocialVisualTransformation()
-            )
+                } else { // Mostrar Texto si NO está enfocado
+                    Text(
+                        text = numeroSS,
+                        style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { numeroSSFocusRequester.requestFocus() }
+                            .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                            .padding(16.dp)
+                    )
+                }
+            }
 
             // Alergias
             OutlinedTextField(
@@ -1582,7 +1613,7 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Text("Alergias a alimentos, materiales, etc. (separadas por comas)")
+                    Text("Alergias a alimentos, materiales, etc. (separadas por comas) (Opcional)")
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1607,7 +1638,7 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Text("Medicamentos que toma regularmente (separados por comas)")
+                    Text("Medicamentos que toma regularmente (separados por comas) (Opcional)")
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1639,7 +1670,7 @@ fun AlumnoFields(
                     if (condicionesMedicasError != null) {
                         Text(text = condicionesMedicasError)
                     } else {
-                        Text("Enfermedades, discapacidades u otras condiciones médicas relevantes")
+                        Text("Enfermedades, discapacidades u otras condiciones médicas relevantes (Opcional)")
                     }
                 },
                 modifier = Modifier
@@ -1666,7 +1697,7 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Text("Necesidades educativas especiales o adaptaciones requeridas")
+                    Text("Necesidades educativas especiales o adaptaciones requeridas (Opcional)")
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1691,7 +1722,7 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Text("Otras observaciones relevantes sobre la salud")
+                    Text("Otras observaciones relevantes sobre la salud (Opcional)")
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1719,7 +1750,7 @@ fun AlumnoFields(
                     onNext = { cursoFocusRequester.requestFocus() }
                 ),
                 supportingText = {
-                    Text("Cualquier otra información relevante sobre el alumno")
+                    Text("Información adicional relevante (Opcional)")
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1799,62 +1830,37 @@ class PhoneNumberVisualTransformation : VisualTransformation {
  */
 class SeguridadSocialVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        // Sólo trabajamos con dígitos
-        val digitsOnly = text.text.filter { it.isDigit() }
-        
-        // Aplicar el formato XX/XXXXXXXX/XX
+        val digitsOnly = text.text.filter { it.isDigit() }.take(12)
+
         val formattedText = buildString {
-            for (i in digitsOnly.indices) {
-                // Agregar dígito
-                append(digitsOnly[i])
-                
-                // Agregar barras en las posiciones correctas (después del 2do y 10mo dígito)
-                if (i == 1 && i < digitsOnly.lastIndex) {
-                    append('/')
-                } else if (i == 9 && i < digitsOnly.lastIndex) {
+            digitsOnly.forEachIndexed { index, char ->
+                append(char)
+                if ((index == 1 && digitsOnly.length > 2) || (index == 9 && digitsOnly.length > 10)) {
                     append('/')
                 }
             }
         }
-        
-        // Un mapeo simple que mantenga posición correcta del cursor
+
         val offsetTranslator = object : OffsetMapping {
-            override fun originalToTransformed(offset: Int): Int {
-                if (offset <= 0) return 0
-                
-                // Contar sólo dígitos hasta el offset
-                val digits = text.text.take(offset).count { it.isDigit() }
-                if (digits <= 0) return 0
-                
-                // Añadir barras según posición
-                var result = digits
-                if (digits > 2) result += 1  // Primera barra después del 2do dígito
-                if (digits > 10) result += 1 // Segunda barra después del 10mo dígito
-                
-                return result.coerceAtMost(formattedText.length)
+            override fun originalToTransformed(originalOffset: Int): Int {
+                // `originalOffset` es la posición en `digitsOnly`
+                // Si hay 'n' dígitos, ¿cuántas barras hay ANTES de esos 'n' dígitos?
+                var slashesBefore = 0
+                if (originalOffset > 2) slashesBefore++ // Primera barra después del 2º dígito
+                if (originalOffset > 10) slashesBefore++ // Segunda barra después del 10º dígito
+
+                // La posición transformada es la original + las barras que van antes.
+                return (originalOffset + slashesBefore).coerceAtMost(formattedText.length)
             }
-            
-            override fun transformedToOriginal(offset: Int): Int {
-                if (offset <= 0) return 0
-                if (offset > formattedText.length) return text.length
-                
-                // Contar cuántos dígitos hay antes del offset transformado
-                val digitsBeforeOffset = formattedText.take(offset).count { it.isDigit() }
-                
-                // Encontrar esa posición en el texto original
-                var count = 0
-                for (i in text.text.indices) {
-                    if (text.text[i].isDigit()) {
-                        count++
-                        if (count == digitsBeforeOffset) {
-                            return i + 1
-                        }
-                    }
-                }
-                return text.length
+
+            override fun transformedToOriginal(transformedOffset: Int): Int {
+                // `transformedOffset` es la posición en `formattedText` (con barras)
+                // Contamos cuántos dígitos hay hasta esa posición en el texto formateado.
+                // Ese es el `originalOffset` efectivo.
+                return formattedText.take(transformedOffset).count { it.isDigit() }
+                                 .coerceAtMost(digitsOnly.length)
             }
         }
-        
         return TransformedText(AnnotatedString(formattedText), offsetTranslator)
     }
 }

@@ -1616,32 +1616,13 @@ class AddUserViewModel @Inject constructor(
 
     /**
      * Actualiza el número de seguridad social del alumno
-     * Formatea automáticamente el número añadiendo las barras (formato XX/XXXXXXXXXX)
      */
     fun updateNumeroSS(numeroSS: String) {
-        // Limpiamos el input de cualquier separador
-        val numeroLimpio = numeroSS.replace("/", "").replace("-", "").trim()
-        
-        // Formateamos según el patrón XX/XXXXXXXXXX si es posible
-        val numeroFormateado = if (numeroLimpio.length >= 2) {
-            val provincia = numeroLimpio.substring(0, 2)
-            val resto = numeroLimpio.substring(2)
-            
-            if (resto.length <= 8) {
-                "$provincia/$resto"
-            } else if (resto.length > 8) {
-                val numero = resto.substring(0, 8)
-                val control = resto.substring(8)
-                "$provincia/$numero/$control"
-            } else {
-                "$provincia/$resto"
-            }
-        } else {
-            numeroLimpio
-        }
+        // Limpiamos el input de cualquier caracter no numérico
+        val numeroLimpio = numeroSS.filter { it.isDigit() }.take(12)
         
         _uiState.update { it.copy(
-            numeroSS = numeroFormateado,
+            numeroSS = numeroLimpio,
             numeroSSError = null,
             firstInvalidField = if (it.firstInvalidField == AddUserFormField.NUMERO_SS) null else it.firstInvalidField,
             validationAttemptFailed = false
