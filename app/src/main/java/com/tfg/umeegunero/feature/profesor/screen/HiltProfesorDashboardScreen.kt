@@ -190,7 +190,7 @@ fun HiltProfesorDashboardScreen(
             nombre = uiState.profesor?.nombre ?: "Profesor",
             alumnosPendientes = uiState.alumnosPendientes.size,
             onCrearRegistroActividad = {
-                navController.navigate(AppScreens.RegistroActividad.route)
+                navController.navigate(AppScreens.ListadoPreRegistroDiario.route)
             },
             navController = navController,
             modifier = Modifier.padding(paddingValues)
@@ -319,8 +319,8 @@ fun ProfesorDashboardContent(
             )
             
             ActionButton(
-                text = "Crear Actividad",
-                icon = Icons.Default.Add,
+                text = "Registro Diario",
+                icon = Icons.Default.Assignment,
                 onClick = onCrearRegistroActividad
             )
         }

@@ -560,9 +560,6 @@ sealed class AppScreens(val route: String) {
     /** Comunicados para familiares */
     object ComunicadosFamilia : AppScreens("comunicados_familia")
 
-    /** Registros de actividad diaria */
-    object RegistroActividad : AppScreens("registro_actividad")
-    
     /**
      * Sección: Actividades preescolares (2-3 años)
      */
