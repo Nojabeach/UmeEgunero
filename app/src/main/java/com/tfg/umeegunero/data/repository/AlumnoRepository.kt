@@ -648,20 +648,55 @@ class AlumnoRepositoryImpl @Inject constructor(
      */
     override suspend fun getAlumnoByDni(dni: String): Result<Alumno> = withContext(Dispatchers.IO) {
         try {
+            Timber.d("AlumnoRepository: Buscando alumno con DNI: $dni")
+            
+            if (dni.isBlank()) {
+                Timber.e("AlumnoRepository: El DNI está vacío")
+                return@withContext Result.Error(Exception("DNI vacío o nulo"))
+            }
+            
             val query = firestore.collection(COLLECTION_ALUMNOS)
                 .whereEqualTo("dni", dni)
                 .limit(1)
                 .get()
                 .await()
 
+            Timber.d("AlumnoRepository: Consulta ejecutada para DNI '$dni'. Documentos encontrados: ${query.size()}")
+            
             if (!query.isEmpty) {
                 val alumno = query.documents.first().toObject(Alumno::class.java)
-                return@withContext Result.Success(alumno!!)
+                if (alumno != null) {
+                    Timber.d("AlumnoRepository: Alumno encontrado: ${alumno.nombre} ${alumno.apellidos}")
+                    return@withContext Result.Success(alumno)
+                } else {
+                    Timber.e("AlumnoRepository: No se pudo convertir el documento a Alumno")
+                    return@withContext Result.Error(Exception("Error al convertir el documento a Alumno"))
+                }
             } else {
+                Timber.e("AlumnoRepository: No se encontró ningún alumno con DNI: $dni")
+                
+                // Intento de búsqueda alternativa usando el DNI como ID del documento
+                try {
+                    Timber.d("AlumnoRepository: Intentando búsqueda alternativa con DNI como ID del documento")
+                    val docSnapshot = firestore.collection(COLLECTION_ALUMNOS).document(dni).get().await()
+                    
+                    if (docSnapshot.exists()) {
+                        val alumno = docSnapshot.toObject(Alumno::class.java)
+                        if (alumno != null) {
+                            Timber.d("AlumnoRepository: Alumno encontrado con búsqueda alternativa: ${alumno.nombre} ${alumno.apellidos}")
+                            return@withContext Result.Success(alumno)
+                        }
+                    }
+                    
+                    Timber.e("AlumnoRepository: La búsqueda alternativa también falló para DNI: $dni")
+                } catch (e: Exception) {
+                    Timber.e(e, "AlumnoRepository: Error en búsqueda alternativa por ID: $dni")
+                }
+                
                 return@withContext Result.Error(Exception("No se encontró ningún alumno con DNI: $dni"))
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener alumno por DNI: $dni")
+            Timber.e(e, "AlumnoRepository: Error al obtener alumno por DNI: $dni")
             return@withContext Result.Error(e)
         }
     }

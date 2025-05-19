@@ -407,6 +407,20 @@ fun AddUserScreenContent(
             viewModel.clearError()
         }
     }
+
+    // Manejar el éxito
+    LaunchedEffect(uiState.success) {
+        if (uiState.success) {
+            snackbarHostState.showSnackbar(
+                message = if (uiState.isEditMode) "Usuario actualizado correctamente" else "Usuario creado correctamente",
+                duration = SnackbarDuration.Short
+            )
+            // Esperar un momento para que se vea el mensaje
+            delay(1000)
+            // Volver atrás
+            navController.popBackStack()
+        }
+    }
     
     // Manejar el scroll a campo con error
     LaunchedEffect(uiState.firstInvalidField, uiState.validationAttemptFailed) {
@@ -1570,7 +1584,10 @@ fun AlumnoFields(
                             if (numeroSSError != null) {
                                 Text(text = numeroSSError)
                             } else {
-                                Text(if (numeroSS.length == 12) "Nº SS completo" else "Introduce los 12 dígitos (Opcional)")
+                                Row {
+                                    Text(if (numeroSS.length == 12) "Nº SS completo" else "Introduce los 12 dígitos ")
+                                    Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                                }
                             }
                         },
                         modifier = Modifier
@@ -1613,7 +1630,10 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Text("Alergias a alimentos, materiales, etc. (separadas por comas) (Opcional)")
+                    Row {
+                        Text("Alergias a alimentos, materiales, etc. (separadas por comas) ")
+                        Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1638,7 +1658,10 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Text("Medicamentos que toma regularmente (separados por comas) (Opcional)")
+                    Row {
+                        Text("Medicamentos que toma regularmente (separados por comas) ")
+                        Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1670,7 +1693,10 @@ fun AlumnoFields(
                     if (condicionesMedicasError != null) {
                         Text(text = condicionesMedicasError)
                     } else {
-                        Text("Enfermedades, discapacidades u otras condiciones médicas relevantes (Opcional)")
+                        Row {
+                            Text("Enfermedades, discapacidades u otras condiciones médicas relevantes ")
+                            Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 },
                 modifier = Modifier
@@ -1697,7 +1723,10 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Text("Necesidades educativas especiales o adaptaciones requeridas (Opcional)")
+                    Row {
+                        Text("Necesidades educativas especiales o adaptaciones requeridas ")
+                        Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1722,7 +1751,10 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Text("Otras observaciones relevantes sobre la salud (Opcional)")
+                    Row {
+                        Text("Otras observaciones relevantes sobre la salud ")
+                        Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -1750,7 +1782,10 @@ fun AlumnoFields(
                     onNext = { cursoFocusRequester.requestFocus() }
                 ),
                 supportingText = {
-                    Text("Información adicional relevante (Opcional)")
+                    Row {
+                        Text("Información adicional relevante ")
+                        Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth(),

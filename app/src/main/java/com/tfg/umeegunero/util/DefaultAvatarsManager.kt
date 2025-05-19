@@ -34,11 +34,11 @@ class DefaultAvatarsManager @Inject constructor(
 
     // URLs para los avatares predeterminados
     private val defaultAvatarUrls = mapOf(
-        TipoUsuario.ADMIN_CENTRO to "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/centro.png?alt=media&token=ac002e24-dbd1-41a5-8c26-4959c714c649",
-        TipoUsuario.FAMILIAR to "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/familiar.png?alt=media&token=0d69c88f-4eb1-4e94-a20a-624d91c38379",
-        TipoUsuario.PROFESOR to "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/profesor.png?alt=media&token=89b1bae9-dddc-476f-b6dc-184ec0b55eaf",
-        TipoUsuario.ALUMNO to "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/alumno.png?alt=media&token=bb66f9aa-8c9c-4f1a-b262-c0fa8c285a0d",
-        TipoUsuario.ADMIN_APP to "avatares/adminavatar.png"
+        TipoUsuario.ADMIN_CENTRO to "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/%40centro.png?alt=media&token=ac002e24-dbd1-41a5-8c26-4959c714c649",
+        TipoUsuario.FAMILIAR to "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/%40familiar.png?alt=media&token=0d69c88f-4eb1-4e94-a20a-624d91c38379",
+        TipoUsuario.PROFESOR to "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/%40profesor.png?alt=media&token=89b1bae9-dddc-476f-b6dc-184ec0b55eaf",
+        TipoUsuario.ALUMNO to "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/%40alumno.png?alt=media&token=bb66f9aa-8c9c-4f1a-b262-c0fa8c285a0d",
+        TipoUsuario.ADMIN_APP to "avatares/@adminavatar.png"
     )
 
     /**
@@ -59,7 +59,8 @@ class DefaultAvatarsManager @Inject constructor(
 
             // Si no hay URL predeterminada, verificar si existe en Storage
             val resourceName = getResourceNameForType(tipoUsuario)
-            val avatarPath = "avatares/${resourceName.lowercase()}"
+            val avatarFileName = "@" + resourceName.replaceFirst("@", "") // Asegura el prefijo @
+            val avatarPath = "avatares/${avatarFileName.lowercase()}"
             val storageRef = storage.reference.child(avatarPath)
             
             try {
@@ -76,7 +77,7 @@ class DefaultAvatarsManager @Inject constructor(
                     if (tempFile != null) {
                         val uri = Uri.fromFile(tempFile)
                         var resultUrl = ""
-                        storageRepository.subirArchivo(uri, "avatares", resourceName.lowercase()).collect { result ->
+                        storageRepository.subirArchivo(uri, "avatares", avatarFileName.lowercase()).collect { result ->
                             if (result is com.tfg.umeegunero.util.Result.Success) {
                                 resultUrl = result.data as String
                                 Timber.d("Avatar subido exitosamente a Storage: $resultUrl")

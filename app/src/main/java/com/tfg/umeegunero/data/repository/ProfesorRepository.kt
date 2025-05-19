@@ -12,6 +12,8 @@ import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.model.Perfil
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.Clase
+import com.google.firebase.firestore.FieldValue
 
 /**
  * Repositorio para gestionar información de profesores en la aplicación UmeEgunero.
@@ -216,6 +218,257 @@ class ProfesorRepository @Inject constructor(
         firestore.collection("informes")
             .add(informe)
             .await()
+    }
+
+    /**
+     * Asigna un profesor a una clase específica
+     * 
+     * @param profesorId ID del profesor a asignar
+     * @param claseId ID de la clase a la que se asigna
+     * @return Result indicando el éxito o fracaso de la operación
+     */
+    suspend fun asignarProfesorAClase(profesorId: String, claseId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Validar que el profesor existe y es de tipo PROFESOR
+            val profesorResult = firestore.collection("usuarios")
+                .document(profesorId)
+                .get()
+                .await()
+
+            if (!profesorResult.exists()) {
+                return@withContext Result.Error(Exception("El profesor no existe"))
+            }
+
+            val perfiles = profesorResult.get("perfiles") as? List<Map<String, Any>> ?: emptyList()
+            val esProfesor = perfiles.any { 
+                (it["tipo"] as? String) == TipoUsuario.PROFESOR.toString() 
+            }
+
+            if (!esProfesor) {
+                return@withContext Result.Error(Exception("El usuario no es un profesor"))
+            }
+
+            // Validar que la clase existe
+            val claseResult = firestore.collection("clases")
+                .document(claseId)
+                .get()
+                .await()
+
+            if (!claseResult.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+
+            // Iniciar transacción
+            firestore.runTransaction { transaction ->
+                // Actualizar la clase con el nuevo profesor
+                transaction.update(
+                    firestore.collection("clases").document(claseId),
+                    mapOf(
+                        "profesorId" to profesorId,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+
+                // Actualizar el perfil del profesor
+                val profesorRef = firestore.collection("usuarios").document(profesorId)
+                val profesorDoc = transaction.get(profesorRef)
+                val perfilesActuales = profesorDoc.get("perfiles") as? List<Map<String, Any>> ?: emptyList()
+                
+                val perfilesActualizados = perfilesActuales.map { perfil ->
+                    if ((perfil["tipo"] as? String) == TipoUsuario.PROFESOR.toString()) {
+                        val clasesActuales = (perfil["clases"] as? List<String>) ?: emptyList()
+                        val nuevasClases = if (!clasesActuales.contains(claseId)) {
+                            clasesActuales + claseId
+                        } else {
+                            clasesActuales
+                        }
+                        perfil.toMutableMap().apply {
+                            put("clases", nuevasClases)
+                        }
+                    } else {
+                        perfil
+                    }
+                }
+
+                transaction.update(
+                    profesorRef,
+                    mapOf(
+                        "perfiles" to perfilesActualizados,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+            }.await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al asignar profesor a clase")
+            Result.Error(e)
+        }
+    }
+
+    /**
+     * Desasigna un profesor de una clase específica
+     * 
+     * @param profesorId ID del profesor a desasignar
+     * @param claseId ID de la clase de la que se desasigna
+     * @return Result indicando el éxito o fracaso de la operación
+     */
+    suspend fun desasignarProfesorDeClase(profesorId: String, claseId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Iniciar transacción
+            firestore.runTransaction { transaction ->
+                // Actualizar la clase eliminando el profesor
+                transaction.update(
+                    firestore.collection("clases").document(claseId),
+                    mapOf(
+                        "profesorId" to FieldValue.delete(),
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+
+                // Actualizar el perfil del profesor
+                val profesorRef = firestore.collection("usuarios").document(profesorId)
+                val profesorDoc = transaction.get(profesorRef)
+                val perfilesActuales = profesorDoc.get("perfiles") as? List<Map<String, Any>> ?: emptyList()
+                
+                val perfilesActualizados = perfilesActuales.map { perfil ->
+                    if ((perfil["tipo"] as? String) == TipoUsuario.PROFESOR.toString()) {
+                        val clasesActuales = (perfil["clases"] as? List<String>) ?: emptyList()
+                        val nuevasClases = clasesActuales.filter { it != claseId }
+                        perfil.toMutableMap().apply {
+                            put("clases", nuevasClases)
+                        }
+                    } else {
+                        perfil
+                    }
+                }
+
+                transaction.update(
+                    profesorRef,
+                    mapOf(
+                        "perfiles" to perfilesActualizados,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+            }.await()
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al desasignar profesor de clase")
+            Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene todas las clases asignadas a un profesor
+     * 
+     * @param profesorId ID del profesor
+     * @return Result con la lista de clases asignadas
+     */
+    suspend fun getClasesAsignadas(profesorId: String): Result<List<Clase>> = withContext(Dispatchers.IO) {
+        try {
+            val profesorDoc = firestore.collection("usuarios")
+                .document(profesorId)
+                .get()
+                .await()
+
+            if (!profesorDoc.exists()) {
+                return@withContext Result.Error(Exception("El profesor no existe"))
+            }
+
+            val perfiles = profesorDoc.get("perfiles") as? List<Map<String, Any>> ?: emptyList()
+            val perfilProfesor = perfiles.find { 
+                (it["tipo"] as? String) == TipoUsuario.PROFESOR.toString() 
+            }
+
+            val clasesIds = (perfilProfesor?.get("clases") as? List<String>) ?: emptyList()
+            
+            if (clasesIds.isEmpty()) {
+                return@withContext Result.Success(emptyList())
+            }
+
+            val clases = mutableListOf<Clase>()
+            for (claseId in clasesIds) {
+                val claseDoc = firestore.collection("clases")
+                    .document(claseId)
+                    .get()
+                    .await()
+
+                if (claseDoc.exists()) {
+                    val clase = claseDoc.toObject(Clase::class.java)
+                    if (clase != null) {
+                        clases.add(clase)
+                    }
+                }
+            }
+
+            Result.Success(clases)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener clases asignadas")
+            Result.Error(e)
+        }
+    }
+
+    /**
+     * Verifica si un profesor puede ser asignado a una clase
+     * 
+     * @param profesorId ID del profesor
+     * @param claseId ID de la clase
+     * @return Result con un booleano indicando si es posible la asignación
+     */
+    suspend fun puedeAsignarProfesorAClase(profesorId: String, claseId: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            // Verificar que el profesor existe y es de tipo PROFESOR
+            val profesorDoc = firestore.collection("usuarios")
+                .document(profesorId)
+                .get()
+                .await()
+
+            if (!profesorDoc.exists()) {
+                return@withContext Result.Error(Exception("El profesor no existe"))
+            }
+
+            val perfiles = profesorDoc.get("perfiles") as? List<Map<String, Any>> ?: emptyList()
+            val esProfesor = perfiles.any { 
+                (it["tipo"] as? String) == TipoUsuario.PROFESOR.toString() 
+            }
+
+            if (!esProfesor) {
+                return@withContext Result.Error(Exception("El usuario no es un profesor"))
+            }
+
+            // Verificar que la clase existe
+            val claseDoc = firestore.collection("clases")
+                .document(claseId)
+                .get()
+                .await()
+
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+
+            // Verificar que el profesor no está ya asignado a la clase
+            val profesorActual = claseDoc.getString("profesorId")
+            if (profesorActual == profesorId) {
+                return@withContext Result.Success(false)
+            }
+
+            // Verificar que el profesor no tiene demasiadas clases asignadas
+            val perfilProfesor = perfiles.find { 
+                (it["tipo"] as? String) == TipoUsuario.PROFESOR.toString() 
+            }
+            val clasesActuales = (perfilProfesor?.get("clases") as? List<String>) ?: emptyList()
+            
+            // Por ahora, limitamos a 5 clases por profesor
+            if (clasesActuales.size >= 5) {
+                return@withContext Result.Success(false)
+            }
+
+            Result.Success(true)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al verificar asignación de profesor")
+            Result.Error(e)
+        }
     }
 }
 

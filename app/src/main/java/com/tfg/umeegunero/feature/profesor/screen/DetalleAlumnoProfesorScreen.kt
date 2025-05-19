@@ -185,12 +185,23 @@ private fun DetalleAlumnoContent(
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Avatar Alumno",
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    if (alumno.avatarUrl.isNotBlank()) {
+                        // Cargar imagen real desde la URL
+                        AsyncImage(
+                            model = alumno.avatarUrl,
+                            contentDescription = "Avatar de ${alumno.nombre}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        // Fallback a icono para cuando no hay imagen
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Avatar Alumno",
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {

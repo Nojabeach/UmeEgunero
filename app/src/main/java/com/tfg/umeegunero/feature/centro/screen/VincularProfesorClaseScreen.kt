@@ -69,7 +69,7 @@ fun VincularProfesorClaseScreen(
             // Si no hay claseId, pero hay centroId, inicializar con centro
             val centro = viewModel.obtenerCentroPorId(centroId)
             if (centro != null) {
-                viewModel.seleccionarCentro(centro)
+                viewModel.seleccionarCentro(centro.id)
             } else {
                 // Mostrar error si no se puede obtener el centro
                 viewModel.mostrarError("No se pudo obtener la información del centro.")
@@ -169,7 +169,7 @@ fun VincularProfesorClaseScreen(
                         centros = uiState.centros,
                         centroSeleccionado = uiState.centroSeleccionado,
                         onCentroSelected = { centro -> 
-                            viewModel.seleccionarCentro(centro)
+                            viewModel.seleccionarCentro(centro.id)
                         }
                     )
                     
@@ -187,7 +187,7 @@ fun VincularProfesorClaseScreen(
                                 viewModel.seleccionarCurso(curso)
                             } else {
                                 // Si se recibe un curso vacío, recargar los datos
-                                val centroId = uiState.centroId
+                                val centroId = uiState.centroSeleccionado?.id ?: ""
                                 if (centroId.isNotEmpty()) {
                                     scope.launch {
                                         viewModel.cargarCursos(centroId)
@@ -238,10 +238,10 @@ fun VincularProfesorClaseScreen(
                                     
                                     if (asignada) {
                                         Timber.d("Mostrando diálogo de desasignación")
-                                        viewModel.mostrarDialogoConfirmarDesasignacion(true)
+                                        viewModel.mostrarDialogoConfirmarDesasignacion()
                                     } else {
                                         Timber.d("Mostrando diálogo de asignación")
-                                        viewModel.mostrarDialogoAsignarClases(true)
+                                        viewModel.mostrarDialogoAsignarClases()
                                     }
                                 },
                                 modifier = Modifier
@@ -372,10 +372,12 @@ fun VincularProfesorClaseScreen(
         DialogoConfirmacion(
             show = uiState.showAsignarClasesDialog,
             onConfirm = {
-                viewModel.asignarProfesorAClase()
+                val profesorId = uiState.profesorSeleccionado?.dni ?: ""
+                val claseId = uiState.claseSeleccionada?.id ?: ""
+                viewModel.asignarProfesorAClase(profesorId, claseId)
             },
             onDismiss = {
-                viewModel.mostrarDialogoAsignarClases(false)
+                viewModel.ocultarDialogoAsignarClases()
             },
             profesorSeleccionado = uiState.profesorSeleccionado,
             claseSeleccionada = uiState.claseSeleccionada,
@@ -388,10 +390,12 @@ fun VincularProfesorClaseScreen(
         DialogoConfirmacion(
             show = uiState.showConfirmarDesasignacionDialog,
             onConfirm = {
-                viewModel.desasignarProfesorDeClase()
+                val profesorId = uiState.profesorSeleccionado?.dni ?: ""
+                val claseId = uiState.claseSeleccionada?.id ?: ""
+                viewModel.desasignarProfesorDeClase(profesorId, claseId)
             },
             onDismiss = {
-                viewModel.mostrarDialogoConfirmarDesasignacion(false)
+                viewModel.ocultarDialogoConfirmarDesasignacion()
             },
             profesorSeleccionado = uiState.profesorSeleccionado,
             claseSeleccionada = uiState.claseSeleccionada,

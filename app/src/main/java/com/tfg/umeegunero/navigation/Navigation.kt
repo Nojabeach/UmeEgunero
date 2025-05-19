@@ -734,19 +734,38 @@ fun Navigation(
             )
         }
 
-        // Pantalla de detalle de usuario
+        // Pantalla de detalle de alumno (versión genérica)
         composable(
-            route = AppScreens.UserDetail.route,
-            arguments = listOf(
-                navArgument("dni") { type = NavType.StringType }
-            )
+            route = AppScreens.DetalleAlumno.route,
+            arguments = AppScreens.DetalleAlumno.arguments
         ) { backStackEntry ->
             val dni = backStackEntry.arguments?.getString("dni") ?: ""
-            com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
-                navController = navController,
-                userId = dni,
-                viewModel = hiltViewModel()
-            )
+            
+            // Determinar el tipo de usuario actual
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser != null) {
+                val email = currentUser.email ?: ""
+                // Usar pantalla completa para profesores y administradores
+                if (email.contains("profesor") || email.contains("admin") || email.contains("centro")) {
+                    // Si es profesor o administrador, mostrar la vista completa
+                    com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen(
+                        navController = navController,
+                        alumnoId = dni
+                    )
+                } else {
+                    // Solo para familiares mostrar una vista más limitada
+                    com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
+                        navController = navController,
+                        userId = dni
+                    )
+                }
+            } else {
+                // Si no hay usuario logueado, mostrar vista básica
+                com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
+                    navController = navController,
+                    userId = dni
+                )
+            }
         }
 
         // Pantallas de vinculación
@@ -1150,6 +1169,40 @@ fun Navigation(
                 navController = navController,
                 profesorId = participanteId
             )
+        }
+
+        // Pantalla de detalle de alumno
+        composable(
+            route = AppScreens.DetalleAlumno.route,
+            arguments = AppScreens.DetalleAlumno.arguments
+        ) { backStackEntry ->
+            val dni = backStackEntry.arguments?.getString("dni") ?: ""
+            
+            // Determinar el tipo de usuario actual
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser != null) {
+                val email = currentUser.email ?: ""
+                // Usar pantalla completa para profesores y administradores
+                if (email.contains("profesor") || email.contains("admin") || email.contains("centro")) {
+                    // Si es profesor o administrador, mostrar la vista completa
+                    com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen(
+                        navController = navController,
+                        alumnoId = dni
+                    )
+                } else {
+                    // Solo para familiares mostrar una vista más limitada
+                    com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
+                        navController = navController,
+                        userId = dni
+                    )
+                }
+            } else {
+                // Si no hay usuario logueado, mostrar vista básica
+                com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
+                    navController = navController,
+                    userId = dni
+                )
+            }
         }
     }
 } 

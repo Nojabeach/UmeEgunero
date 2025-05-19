@@ -965,9 +965,9 @@ open class UsuarioRepository @Inject constructor(
         try {
             // Obtener mensajes enviados por usuario1 a usuario2 sobre el alumno
             val query1 = mensajesCollection
+                .whereEqualTo("alumnoId", alumnoId)
                 .whereEqualTo("emisorId", usuario1Id)
                 .whereEqualTo("receptorId", usuario2Id)
-                .whereEqualTo("alumnoId", alumnoId)
                 .get()
                 .await()
 
@@ -975,9 +975,9 @@ open class UsuarioRepository @Inject constructor(
 
             // Obtener mensajes enviados por usuario2 a usuario1 sobre el alumno
             val query2 = mensajesCollection
+                .whereEqualTo("alumnoId", alumnoId)
                 .whereEqualTo("emisorId", usuario2Id)
                 .whereEqualTo("receptorId", usuario1Id)
-                .whereEqualTo("alumnoId", alumnoId)
                 .get()
                 .await()
 
@@ -1512,7 +1512,7 @@ open class UsuarioRepository @Inject constructor(
             )
             
             // Guardar usuario en la colección de usuarios
-            usuariosCollection.document(alumno.dni).set(usuario).await()
+            usuariosCollection.document(usuario.dni).set(usuario).await()
             
             return@withContext Result.Success(alumno.dni)
         } catch (e: Exception) {
@@ -1527,7 +1527,8 @@ open class UsuarioRepository @Inject constructor(
         try {
             val alumnosQuery = alumnosCollection
                 .whereEqualTo("centroId", centroId)
-                .get().await()
+                .get()
+                .await()
                 
             val alumnos = alumnosQuery.documents.mapNotNull { doc ->
                 // Obtenemos el DNI de cada alumno
@@ -1812,7 +1813,7 @@ open class UsuarioRepository @Inject constructor(
      * Resetea la contraseña de un usuario
      * @param dni DNI del usuario
      * @param nuevaPassword Nueva contraseña
-     * @return Result<Unit> Resultado de la operación
+     * @return Result<Unit> indicando éxito o fracaso de la operación
      */
     suspend fun resetearPassword(dni: String, nuevaPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -1820,15 +1821,16 @@ open class UsuarioRepository @Inject constructor(
             
             // 1. Buscar usuario por DNI
             val usuarioDoc = usuariosCollection.document(dni).get().await()
+            
             if (!usuarioDoc.exists()) {
-                Timber.e("Usuario no encontrado con DNI: $dni")
-                return@withContext Result.Error(Exception("Usuario no encontrado"))
+                return@withContext Result.Error(Exception("No se encontró el usuario con DNI: $dni"))
             }
-
+            
+            // 2. Obtener el usuario completo para poder procesar según sus perfiles
             val usuario = usuarioDoc.toObject(Usuario::class.java)
-                ?: return@withContext Result.Error(Exception("Error al convertir documento a usuario"))
-
-            // 2. Verificar si es administrador para la lógica de SMTP
+                ?: return@withContext Result.Error(Exception("Error al convertir el documento a Usuario"))
+            
+            // Verificar si es administrador para la lógica de SMTP
             val esAdmin = usuario.perfiles.any { it.tipo == TipoUsuario.ADMIN_APP }
 
             // 3. Actualizar contraseña en Firebase Auth
@@ -2297,29 +2299,24 @@ open class UsuarioRepository @Inject constructor(
                     TipoUsuario.ALUMNO -> "alumno.png"
                     else -> "default.png"
                 }
-                
+                // Usar siempre el prefijo '@' en el nombre del archivo
+                val avatarFileName = "@" + resourceName.replaceFirst("@", "")
                 // Verificar si el avatar ya existe en Storage
-                val avatarPath = "avatares/${resourceName.lowercase()}"
+                val avatarPath = "avatares/${avatarFileName.lowercase()}"
                 val storageRef = FirebaseStorage.getInstance().reference.child(avatarPath)
-                
                 try {
                     // Intentar obtener URL si ya existe
                     storageRef.downloadUrl.await().toString()
                 } catch (e: Exception) {
                     // Si no existe, subir desde los assets
                     Timber.d("Avatar no encontrado en Storage, subiendo desde assets: $resourceName")
-                    
-                    // Verificar si tenemos contexto
                     if (context == null) {
                         Timber.w("Contexto no disponible para subir avatar")
                         "" // URL vacía si no hay contexto
                     } else {
                         try {
-                            // Crear archivo temporal desde assets
                             val tempFile = java.io.File.createTempFile("avatar", ".png")
                             tempFile.deleteOnExit()
-                            
-                            // Copiar desde assets 
                             try {
                                 context.assets.open("images/$resourceName").use { input ->
                                     java.io.FileOutputStream(tempFile).use { output ->
@@ -2328,15 +2325,12 @@ open class UsuarioRepository @Inject constructor(
                                 }
                             } catch (assetError: Exception) {
                                 Timber.w("No se encontró $resourceName, usando imagen por defecto")
-                                // Usar otra imagen default si no se encuentra la específica
                                 context.assets.open("images/default.png").use { input ->
                                     java.io.FileOutputStream(tempFile).use { output ->
                                         input.copyTo(output)
                                     }
                                 }
                             }
-                            
-                            // Subir a Firebase Storage
                             val result = storageRef.putFile(android.net.Uri.fromFile(tempFile)).await()
                             result.storage.downloadUrl.await().toString()
                         } catch (uploadError: Exception) {
@@ -2565,7 +2559,7 @@ open class UsuarioRepository @Inject constructor(
      * 
      * @param usuario Objeto Usuario con los datos a guardar
      * @param password Contraseña para crear la cuenta de Firebase Auth
-     * @return Result con éxito o error
+     * @return Result que contiene el usuario creado o un error
      */
     suspend fun saveUsuario(usuario: Usuario, password: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -2576,8 +2570,8 @@ open class UsuarioRepository @Inject constructor(
             if (existingUser.exists()) {
                 return@withContext Result.Error(Exception("Ya existe un usuario con este DNI"))
             }
-            
-            // Crear usuario en Firebase Auth
+
+            // 2. Crear usuario en Firebase Auth
             val authResult = firebaseAuth.createUserWithEmailAndPassword(usuario.email, password).await()
             val uid = authResult.user?.uid ?: throw Exception("Error al crear usuario en Firebase Auth")
             Timber.d("Usuario creado en Firebase Auth con UID: $uid")
@@ -2603,7 +2597,7 @@ open class UsuarioRepository @Inject constructor(
      * Actualiza un usuario existente en Firestore
      * 
      * @param usuario Objeto Usuario con los datos actualizados
-     * @return Result con éxito o error
+     * @return Result que contiene el resultado de la operación
      */
     suspend fun updateUsuario(usuario: Usuario): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -2630,7 +2624,7 @@ open class UsuarioRepository @Inject constructor(
      * Guarda un nuevo alumno en Firestore
      * 
      * @param alumno Objeto Alumno con los datos a guardar
-     * @return Result con éxito o error
+     * @return Result que contiene el resultado de la operación
      */
     suspend fun saveAlumno(alumno: Alumno): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -2927,6 +2921,36 @@ open class UsuarioRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al guardar usuario sin autenticación: ${usuario.dni}")
             return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Actualiza las clases asignadas a un profesor
+     * @param profesorId ID del profesor
+     * @param claseId ID de la clase a añadir/eliminar
+     * @param esAsignacion true para añadir, false para eliminar
+     * @return Resultado de la operación
+     */
+    suspend fun actualizarClasesProfesor(profesorId: String, claseId: String, esAsignacion: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val usuarioRef = usuariosCollection.document(profesorId)
+            
+            if (esAsignacion) {
+                // Añadir la clase a la lista de clases del profesor
+                usuarioRef.update(
+                    "clasesIds", FieldValue.arrayUnion(claseId)
+                ).await()
+            } else {
+                // Eliminar la clase de la lista de clases del profesor
+                usuarioRef.update(
+                    "clasesIds", FieldValue.arrayRemove(claseId)
+                ).await()
+            }
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar clases del profesor $profesorId")
+            Result.Error(e)
         }
     }
 }

@@ -25,6 +25,7 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.feature.common.users.viewmodel.UserDetailViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import coil.compose.AsyncImage
 
 /**
  * Pantalla que muestra los detalles de un usuario
@@ -185,11 +186,26 @@ private fun UserHeader(usuario: Usuario) {
                     .background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = usuario.nombre.firstOrNull()?.uppercase() ?: "?",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
+                if (usuario.avatarUrl?.isNotBlank() == true) {
+                    // Cargar imagen real desde la URL
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        coil.compose.AsyncImage(
+                            model = usuario.avatarUrl,
+                            contentDescription = "Avatar de ${usuario.nombre}",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    // Fallback a inicial del nombre cuando no hay imagen
+                    Text(
+                        text = usuario.nombre.firstOrNull()?.uppercase() ?: "?",
+                        style = MaterialTheme.typography.displaySmall,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(16.dp))

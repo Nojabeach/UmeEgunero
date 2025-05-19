@@ -374,10 +374,14 @@ sealed class AppScreens(val route: String) {
     
     /**
      * Detalles de un alumno
-     * @param alumnoId Identificador único del alumno
+     * @param dni Identificador único del alumno
      */
-    object DetalleAlumno : AppScreens("detalle_alumno/{alumnoId}") {
-        fun createRoute(alumnoId: String) = "detalle_alumno/$alumnoId"
+    object DetalleAlumno : AppScreens("detalle_alumno/{dni}") {
+        fun createRoute(dni: String) = "detalle_alumno/$dni"
+
+        val arguments = listOf(
+            navArgument("dni") { type = NavType.StringType }
+        )
     }
     
     /**
