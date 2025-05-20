@@ -109,5 +109,19 @@ fun NavGraph(
                 )
             }
         }
+        
+        // Detalle de usuario (profesores y otros usuarios)
+        composable(
+            route = AppScreens.UserDetail.route,
+            arguments = listOf(
+                navArgument("dni") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val dni = backStackEntry.arguments?.getString("dni") ?: ""
+            com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
+                navController = navController,
+                userId = dni
+            )
+        }
     }
 } 

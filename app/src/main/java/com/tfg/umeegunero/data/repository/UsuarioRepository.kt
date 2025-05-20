@@ -2892,10 +2892,10 @@ open class UsuarioRepository @Inject constructor(
             userDoc.reference.update("ultimoAcceso", Timestamp.now()).await()
             
             Timber.d("Último acceso actualizado para usuario: ${userDoc.id}")
-            Result.Success(Unit)
+            return@withContext Result.Success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "Error al registrar último acceso: ${e.message}")
-            Result.Error(e)
+            return@withContext Result.Error(e)
         }
     }
 
@@ -2934,23 +2934,104 @@ open class UsuarioRepository @Inject constructor(
     suspend fun actualizarClasesProfesor(profesorId: String, claseId: String, esAsignacion: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val usuarioRef = usuariosCollection.document(profesorId)
+            val claseRef = clasesCollection.document(claseId)
             
-            if (esAsignacion) {
-                // Añadir la clase a la lista de clases del profesor
-                usuarioRef.update(
-                    "clasesIds", FieldValue.arrayUnion(claseId)
-                ).await()
-            } else {
-                // Eliminar la clase de la lista de clases del profesor
-                usuarioRef.update(
-                    "clasesIds", FieldValue.arrayRemove(claseId)
-                ).await()
+            // Verificar que ambos documentos existan
+            val usuarioDoc = usuarioRef.get().await()
+            val claseDoc = claseRef.get().await()
+            
+            if (!usuarioDoc.exists()) {
+                return@withContext Result.Error(Exception("El profesor con ID $profesorId no existe"))
             }
             
-            Result.Success(Unit)
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase con ID $claseId no existe"))
+            }
+            
+            // Realizar las actualizaciones en una transacción para garantizar atomicidad
+            firestore.runTransaction { transaction ->
+                if (esAsignacion) {
+                    // 1. Añadir la clase a la lista de clases del profesor
+                    // Verificar si el campo clasesIds existe
+                    val clasesIds = usuarioDoc.get("clasesIds") as? List<String>
+                    if (clasesIds == null) {
+                        // Si no existe, crear el campo con una lista que contenga la clase
+                        transaction.update(usuarioRef, "clasesIds", listOf(claseId))
+                    } else {
+                        // Si existe, añadir la clase a la lista
+                        transaction.update(
+                            usuarioRef, 
+                            "clasesIds", FieldValue.arrayUnion(claseId)
+                        )
+                    }
+                    
+                    // 2. Establecer al profesor como titular de la clase (si el campo está vacío)
+                    val profesorIdActual = claseDoc.getString("profesorId") ?: ""
+                    val profesorTitularIdActual = claseDoc.getString("profesorTitularId") ?: ""
+                    
+                    if (profesorIdActual.isEmpty()) {
+                        transaction.update(claseRef, "profesorId", profesorId)
+                    }
+                    
+                    if (profesorTitularIdActual.isEmpty()) {
+                        transaction.update(claseRef, "profesorTitularId", profesorId)
+                    } else if (profesorTitularIdActual != profesorId) {
+                        // Si ya hay un profesor titular distinto, añadir a lista de auxiliares
+                        // Verificar si la lista de profesores auxiliares existe
+                        val profesoresAuxiliares = claseDoc.get("profesoresAuxiliaresIds") as? List<String>
+                        if (profesoresAuxiliares == null) {
+                            // Si no existe, crear la lista con el nuevo profesor
+                            transaction.update(claseRef, "profesoresAuxiliaresIds", listOf(profesorId))
+                        } else {
+                            // Si existe, añadir el profesor a la lista existente
+                            transaction.update(
+                                claseRef, 
+                                "profesoresAuxiliaresIds", FieldValue.arrayUnion(profesorId)
+                            )
+                        }
+                    } else {
+                        // Si el profesor ya es titular, no hacemos nada
+                        Timber.d("El profesor $profesorId ya es titular de la clase $claseId")
+                    }
+                } else {
+                    // 1. Eliminar la clase de la lista de clases del profesor
+                    // Verificar si el campo clasesIds existe
+                    val clasesIds = usuarioDoc.get("clasesIds") as? List<String>
+                    if (clasesIds != null && clasesIds.contains(claseId)) {
+                        // Si existe y contiene la clase, eliminarla
+                        transaction.update(
+                            usuarioRef, 
+                            "clasesIds", FieldValue.arrayRemove(claseId)
+                        )
+                    }
+                    
+                    // 2. Quitar al profesor de la clase
+                    val profesorIdActual = claseDoc.getString("profesorId") ?: ""
+                    val profesorTitularIdActual = claseDoc.getString("profesorTitularId") ?: ""
+                    
+                    if (profesorIdActual == profesorId) {
+                        transaction.update(claseRef, "profesorId", "")
+                    }
+                    
+                    if (profesorTitularIdActual == profesorId) {
+                        transaction.update(claseRef, "profesorTitularId", "")
+                    }
+                    
+                    // Eliminar de la lista de auxiliares si está presente
+                    transaction.update(
+                        claseRef, 
+                        "profesoresAuxiliaresIds", FieldValue.arrayRemove(profesorId)
+                    )
+                }
+            }.await()
+            
+            // Registro detallado de la operación realizada
+            Timber.d("${if (esAsignacion) "Asignación" else "Desasignación"} completada: Profesor $profesorId - Clase $claseId")
+            
+            return@withContext Result.Success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error al actualizar clases del profesor $profesorId")
-            Result.Error(e)
+            Timber.e(e, "Error al ${if (esAsignacion) "asignar" else "desasignar"} profesor $profesorId a/de clase $claseId")
+            return@withContext Result.Error(e)
         }
     }
 }

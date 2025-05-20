@@ -170,6 +170,22 @@ interface AlumnoRepository {
      * @return Resultado con la lista de alumnos encontrados
      */
     suspend fun getAlumnosWithFamiliarId(familiarId: String): Result<List<Alumno>>
+
+    /**
+     * Actualiza la referencia a la clase en un alumno (asignación)
+     * @param alumnoId ID (DNI) del alumno
+     * @param claseId ID de la clase a asignar
+     * @return Resultado de la operación
+     */
+    suspend fun asignarClaseAAlumno(alumnoId: String, claseId: String): Result<Unit>
+    
+    /**
+     * Elimina la referencia a la clase en un alumno (desasignación)
+     * @param alumnoId ID (DNI) del alumno
+     * @param claseId ID de la clase a desasignar
+     * @return Resultado de la operación
+     */
+    suspend fun desasignarClaseDeAlumno(alumnoId: String, claseId: String): Result<Unit>
 }
 
 /**
@@ -826,6 +842,83 @@ class AlumnoRepositoryImpl @Inject constructor(
             
         } catch (e: Exception) {
             Timber.e(e, "Error al buscar alumnos con familiar ID: $familiarId")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Actualiza la referencia a la clase en un alumno (asignación)
+     * @param alumnoId ID (DNI) del alumno
+     * @param claseId ID de la clase a asignar
+     * @return Resultado de la operación
+     */
+    override suspend fun asignarClaseAAlumno(alumnoId: String, claseId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Actualizando clase $claseId para alumno $alumnoId")
+            
+            // Buscar el documento del alumno por su DNI
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("dni", alumnoId)
+                .limit(1)
+                .get()
+                .await()
+                
+            if (query.isEmpty) {
+                Timber.e("No se encontró el alumno con DNI: $alumnoId")
+                return@withContext Result.Error(Exception("Alumno no encontrado"))
+            }
+            
+            // Obtener la referencia al documento y actualizar el campo aulaId
+            val documentRef = query.documents.first().reference
+            documentRef.update("aulaId", claseId).await()
+            
+            // También guardarlo en el array aulaIds si existe
+            documentRef.update("aulaIds", com.google.firebase.firestore.FieldValue.arrayUnion(claseId)).await()
+            
+            Timber.d("Clase actualizada correctamente para el alumno $alumnoId")
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar clase para alumno $alumnoId")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Elimina la referencia a la clase en un alumno (desasignación)
+     * @param alumnoId ID (DNI) del alumno
+     * @param claseId ID de la clase a desasignar
+     * @return Resultado de la operación
+     */
+    override suspend fun desasignarClaseDeAlumno(alumnoId: String, claseId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Buscar primero el documento del alumno por su DNI
+            val query = firestore.collection(COLLECTION_ALUMNOS)
+                .whereEqualTo("dni", alumnoId)
+                .limit(1)
+                .get()
+                .await()
+                
+            if (query.isEmpty) {
+                Timber.w("No se encontró alumno con DNI: $alumnoId")
+                return@withContext Result.Error(Exception("Alumno no encontrado"))
+            }
+            
+            // Eliminar el campo aulaId del documento
+            val documentSnapshot = query.documents.first()
+            
+            // Firestore permite actualizar a null para eliminar campos
+            firestore.collection(COLLECTION_ALUMNOS)
+                .document(documentSnapshot.id)
+                .update("aulaId", null)
+                .await()
+            
+            // También eliminar el ID de la clase del array aulaIds si existe
+            documentSnapshot.reference.update("aulaIds", com.google.firebase.firestore.FieldValue.arrayRemove(claseId)).await()
+            
+            Timber.d("Clase eliminada para alumno: $alumnoId")
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar clase para alumno: $alumnoId")
             return@withContext Result.Error(e)
         }
     }

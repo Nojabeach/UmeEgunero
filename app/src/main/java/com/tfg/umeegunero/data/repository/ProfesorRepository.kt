@@ -376,12 +376,20 @@ class ProfesorRepository @Inject constructor(
                 return@withContext Result.Error(Exception("El profesor no existe"))
             }
 
+            // Obtenemos IDs de clases del perfil (método antiguo)
             val perfiles = profesorDoc.get("perfiles") as? List<Map<String, Any>> ?: emptyList()
             val perfilProfesor = perfiles.find { 
                 (it["tipo"] as? String) == TipoUsuario.PROFESOR.toString() 
             }
-
-            val clasesIds = (perfilProfesor?.get("clases") as? List<String>) ?: emptyList()
+            val clasesIdsFromPerfil = (perfilProfesor?.get("clases") as? List<String>) ?: emptyList()
+            
+            // Obtenemos IDs de clases a nivel de documento (método nuevo)
+            val clasesIdsFromDoc = profesorDoc.get("clasesIds") as? List<String> ?: emptyList()
+            
+            // Combinamos ambas fuentes de IDs de clases y eliminamos duplicados
+            val clasesIds = (clasesIdsFromPerfil + clasesIdsFromDoc).distinct()
+            
+            Timber.d("Clases IDs para profesor $profesorId: $clasesIds (${clasesIds.size} total)")
             
             if (clasesIds.isEmpty()) {
                 return@withContext Result.Success(emptyList())
@@ -397,14 +405,18 @@ class ProfesorRepository @Inject constructor(
                 if (claseDoc.exists()) {
                     val clase = claseDoc.toObject(Clase::class.java)
                     if (clase != null) {
-                        clases.add(clase)
+                        // Aseguramos que el ID está asignado correctamente
+                        val claseConId = clase.copy(id = claseDoc.id)
+                        clases.add(claseConId)
+                        Timber.d("Cargada clase ${claseConId.nombre} (ID: ${claseConId.id}) para profesor $profesorId")
                     }
                 }
             }
 
+            Timber.d("Total de clases cargadas para profesor $profesorId: ${clases.size}")
             Result.Success(clases)
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener clases asignadas")
+            Timber.e(e, "Error al obtener clases asignadas para profesor $profesorId: ${e.message}")
             Result.Error(e)
         }
     }

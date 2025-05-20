@@ -105,6 +105,22 @@ interface ClaseRepository {
      * Obtiene las clases de un profesor por su ID (alias para getClasesByProfesor)
      */
     suspend fun getClasesByProfesorId(profesorId: String): Result<List<Clase>>
+
+    /**
+     * Asigna un alumno a una clase
+     * @param claseId ID de la clase
+     * @param alumnoId ID (DNI) del alumno
+     * @return Resultado de la operación
+     */
+    suspend fun asignarAlumnoAClase(claseId: String, alumnoId: String): Result<Unit>
+    
+    /**
+     * Desasigna un alumno de una clase
+     * @param claseId ID de la clase
+     * @param alumnoId ID (DNI) del alumno
+     * @return Resultado de la operación
+     */
+    suspend fun desasignarAlumnoDeClase(claseId: String, alumnoId: String): Result<Unit>
 }
 
 /**
@@ -523,5 +539,87 @@ class ClaseRepositoryImpl @Inject constructor(
      */
     override suspend fun getClasesByProfesorId(profesorId: String): Result<List<Clase>> {
         return getClasesByProfesor(profesorId)
+    }
+
+    /**
+     * Asigna un alumno a una clase
+     * @param claseId ID de la clase
+     * @param alumnoId ID (DNI) del alumno
+     * @return Resultado de la operación
+     */
+    override suspend fun asignarAlumnoAClase(claseId: String, alumnoId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Asignando alumno $alumnoId a clase $claseId")
+            
+            // Verificar primero que la clase existe
+            val claseDoc = clasesCollection.document(claseId).get().await()
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+            
+            // Obtener la lista actual de alumnosIds o crear una nueva si no existe
+            val alumnosIds = (claseDoc.get("alumnosIds") as? List<String>)?.toMutableList() ?: mutableListOf()
+            
+            // Si el alumno ya está en la lista, no hacer nada
+            if (alumnosIds.contains(alumnoId)) {
+                Timber.d("El alumno $alumnoId ya está asignado a la clase $claseId")
+                return@withContext Result.Success(Unit)
+            }
+            
+            // Añadir el alumno a la lista
+            alumnosIds.add(alumnoId)
+            
+            // Actualizar el documento de la clase
+            clasesCollection.document(claseId)
+                .update("alumnosIds", alumnosIds)
+                .await()
+            
+            Timber.d("Alumno $alumnoId asignado correctamente a clase $claseId")
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al asignar alumno $alumnoId a clase $claseId")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Desasigna un alumno de una clase
+     * @param claseId ID de la clase
+     * @param alumnoId ID (DNI) del alumno
+     * @return Resultado de la operación
+     */
+    override suspend fun desasignarAlumnoDeClase(claseId: String, alumnoId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Desasignando alumno $alumnoId de clase $claseId")
+            
+            // Verificar primero que la clase existe
+            val claseDoc = clasesCollection.document(claseId).get().await()
+            if (!claseDoc.exists()) {
+                return@withContext Result.Error(Exception("La clase no existe"))
+            }
+            
+            // Obtener la lista actual de alumnosIds
+            val alumnosIds = (claseDoc.get("alumnosIds") as? List<String>)?.toMutableList() ?: mutableListOf()
+            
+            // Si el alumno no está en la lista, no hacer nada
+            if (!alumnosIds.contains(alumnoId)) {
+                Timber.d("El alumno $alumnoId no está asignado a la clase $claseId")
+                return@withContext Result.Success(Unit)
+            }
+            
+            // Eliminar el alumno de la lista
+            alumnosIds.remove(alumnoId)
+            
+            // Actualizar el documento de la clase
+            clasesCollection.document(claseId)
+                .update("alumnosIds", alumnosIds)
+                .await()
+            
+            Timber.d("Alumno $alumnoId desasignado correctamente de clase $claseId")
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al desasignar alumno $alumnoId de clase $claseId")
+            Result.Error(e)
+        }
     }
 }

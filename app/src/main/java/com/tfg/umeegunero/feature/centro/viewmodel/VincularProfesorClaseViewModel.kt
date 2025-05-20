@@ -168,20 +168,31 @@ class VincularProfesorClaseViewModel @Inject constructor(
             ) }
             
             try {
-                // Cargar clases asignadas al profesor
-                when (val result = profesorRepository.getClasesAsignadas(profesor.dni)) {
-                    is Result.Success<*> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val clasesAsignadas = result.data as List<Clase>
-                        _uiState.update { it.copy(clasesAsignadas = mapOf(profesor.dni to clasesAsignadas.associateWith { true })) }
-                    }
-                    is Result.Error -> {
-                        _uiState.update { it.copy(error = "Error al cargar clases asignadas: ${result.exception?.message}") }
-                    }
-                    is Result.Loading<*> -> {
-                        // Manejar estado de carga si es necesario
+                // Obtener el curso seleccionado actual
+                val cursoSeleccionado = _uiState.value.cursoSeleccionado
+                
+                if (cursoSeleccionado != null) {
+                    // Si hay un curso seleccionado, cargar las clases de ese curso y las asignadas al profesor
+                    cargarClasesProfesor(profesor)
+                } else {
+                    // Si no hay curso, sólo cargar las clases asignadas al profesor
+                    when (val result = profesorRepository.getClasesAsignadas(profesor.dni)) {
+                        is Result.Success<*> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            val clasesAsignadas = result.data as List<Clase>
+                            _uiState.update { it.copy(clasesAsignadas = mapOf(profesor.dni to clasesAsignadas.associateWith { true })) }
+                        }
+                        is Result.Error -> {
+                            _uiState.update { it.copy(error = "Error al cargar clases asignadas: ${result.exception?.message}") }
+                        }
+                        is Result.Loading<*> -> {
+                            // Manejar estado de carga si es necesario
+                        }
                     }
                 }
+                
+                // Registrar para depuración
+                Timber.d("Renderizando profesor: ${profesor.nombre} ${profesor.apellidos}, documentId: ${profesor.dni}")
             } catch (e: Exception) {
                 Timber.e(e, "Error al seleccionar profesor")
                 _uiState.update { it.copy(error = "Error al cargar datos del profesor: ${e.message}") }
@@ -293,26 +304,33 @@ class VincularProfesorClaseViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-            when (val result = claseRepository.getClasesByCursoId(cursoId)) {
+                when (val result = claseRepository.getClasesByCursoId(cursoId)) {
                     is Result.Success<*> -> {
                         @Suppress("UNCHECKED_CAST")
-                        _uiState.update { it.copy(clases = result.data as List<Clase>) }
+                        val clases = result.data as List<Clase>
+                        _uiState.update { it.copy(clases = clases) }
                     
-                    // Si hay un profesor seleccionado, recargamos sus clases
-                    val profesorSeleccionado = _uiState.value.profesorSeleccionado
-                    if (profesorSeleccionado != null) {
-                        seleccionarProfesor(profesorSeleccionado)
+                        // Si hay un profesor seleccionado, recargamos sus clases
+                        val profesorSeleccionado = _uiState.value.profesorSeleccionado
+                        if (profesorSeleccionado != null) {
+                            cargarClasesProfesor(profesorSeleccionado)
+                        } else {
+                            // Si no hay profesor seleccionado, al menos mostramos las clases del curso
+                            // con un mapa vacío de asignaciones
+                            _uiState.update { it.copy(
+                                clasesAsignadas = emptyMap()
+                            ) }
+                        }
                     }
-                }
-                is Result.Error -> {
-                    _uiState.update { it.copy(
-                        error = "Error al cargar clases: ${result.exception?.message}",
-                        clases = emptyList()
-                    ) }
-                }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = "Error al cargar clases: ${result.exception?.message}",
+                            clases = emptyList()
+                        ) }
+                    }
                     is Result.Loading<*> -> {
-                    // Manejar estado de carga si es necesario
-                }
+                        // Manejar estado de carga si es necesario
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar clases del curso")
@@ -462,6 +480,12 @@ class VincularProfesorClaseViewModel @Inject constructor(
             claseSeleccionada = null
         ) }
         cargarClasesPorCurso(curso.id)
+        
+        // Si hay un profesor seleccionado, recargar sus clases para este nuevo curso
+        val profesorSeleccionado = _uiState.value.profesorSeleccionado
+        if (profesorSeleccionado != null) {
+            cargarClasesProfesor(profesorSeleccionado)
+        }
     }
     
     /**
@@ -475,10 +499,30 @@ class VincularProfesorClaseViewModel @Inject constructor(
      * Verifica si un profesor está asignado a una clase
      */
     fun isProfesorAsignadoAClase(profesorId: String, claseId: String): Boolean {
-        val profesor = _uiState.value.profesorSeleccionado ?: return false
-        val clasesAsignadas = _uiState.value.clasesAsignadas[profesor.dni] ?: return false
+        if (profesorId.isEmpty() || claseId.isEmpty()) {
+            Timber.d("isProfesorAsignadoAClase: profesorId o claseId vacíos")
+            return false
+        }
         
-        return clasesAsignadas.entries.find { it.key.id == claseId }?.value ?: false
+        // Obtener el mapa de clases asignadas al profesor usando el DNI como clave
+        val clasesAsignadas = _uiState.value.clasesAsignadas[profesorId]
+        
+        if (clasesAsignadas == null) {
+            Timber.d("isProfesorAsignadoAClase: No hay mapa de clasesAsignadas para el profesor $profesorId")
+            return false
+        }
+        
+        // Buscar la clase específica en el mapa
+        val asignacion = clasesAsignadas.entries.find { it.key.id == claseId }
+        
+        if (asignacion == null) {
+            Timber.d("isProfesorAsignadoAClase: No se encontró la clase $claseId para el profesor $profesorId")
+            return false
+        }
+        
+        val resultado = asignacion.value
+        Timber.d("isProfesorAsignadoAClase: Profesor $profesorId - Clase $claseId - Asignado: $resultado")
+        return resultado
     }
     
     /**
@@ -503,57 +547,126 @@ class VincularProfesorClaseViewModel @Inject constructor(
     }
     
     /**
-     * Oculta el diálogo de confirmación para desasignar un profesor de una clase
+     * Oculta el diálogo de confirmación para desasignar un profesor
      */
     fun ocultarDialogoConfirmarDesasignacion() {
         _uiState.update { it.copy(showConfirmarDesasignacionDialog = false) }
     }
     
     /**
-     * Carga las clases asignadas a un profesor
+     * Carga las clases asignadas a un profesor y las clases disponibles en el curso seleccionado
      */
     private fun cargarClasesProfesor(profesor: Usuario) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             try {
-                val clasesResult = claseRepository.getClasesByProfesor(profesor.dni)
-                if (clasesResult is Result.Success<*>) {
-                    @Suppress("UNCHECKED_CAST")
-                    val clases = clasesResult.data as List<Clase>
-                    
-                    // Crear mapa de clases asignadas
-                    val clasesMap = mutableMapOf<Clase, Boolean>()
-                    clases.forEach { clase ->
-                        clasesMap[clase] = true
-                                }
-                                
-                    // Añadir clases no asignadas del curso seleccionado
-                    val cursoId = _uiState.value.cursoSeleccionado?.id
-                    if (cursoId != null && cursoId.isNotEmpty()) {
-                        val todasLasClasesResult = claseRepository.getClasesByCursoId(cursoId)
-                        if (todasLasClasesResult is Result.Success<*>) {
+                // Obtener las clases del curso seleccionado
+                val cursoSeleccionado = _uiState.value.cursoSeleccionado
+                if (cursoSeleccionado != null) {
+                    // Cargar todas las clases del curso
+                    when (val result = claseRepository.getClasesByCursoId(cursoSeleccionado.id)) {
+                        is Result.Success<*> -> {
                             @Suppress("UNCHECKED_CAST")
-                            val todasLasClases = todasLasClasesResult.data as List<Clase>
+                            val todasLasClases = result.data as List<Clase>
                             
-                            todasLasClases.forEach { clase ->
-                                if (!clasesMap.containsKey(clase)) {
-                                    clasesMap[clase] = false
+                            // Obtener las clases asignadas al profesor
+                            when (val resultClasesProfesor = profesorRepository.getClasesAsignadas(profesor.dni)) {
+                                is Result.Success<*> -> {
+                                    @Suppress("UNCHECKED_CAST")
+                                    val clasesAsignadas = resultClasesProfesor.data as List<Clase>
+                                    
+                                    // Mapear todas las clases del curso, indicando si el profesor está asignado o no
+                                    val clasesDelCursoConAsignacion = todasLasClases.associateWith { clase ->
+                                        clasesAsignadas.any { it.id == clase.id }
+                                    }
+                                    
+                                    // Actualizar el estado
+                                    _uiState.update { it.copy(
+                                        clasesAsignadas = mapOf(profesor.dni to clasesDelCursoConAsignacion)
+                                    ) }
+                                    
+                                    // Añadir logs detallados para depuración
+                                    Timber.d("Clases del curso: ${todasLasClases.size}, Clases asignadas: ${clasesAsignadas.size}")
+                                    clasesDelCursoConAsignacion.forEach { (clase, asignada) ->
+                                        Timber.d("Clase: ${clase.nombre} (${clase.id}), Asignada: $asignada")
+                                    }
                                 }
-    }
+                                is Result.Error -> {
+                                    Timber.e(resultClasesProfesor.exception, "Error al cargar clases del profesor: ${resultClasesProfesor.exception?.message}")
+                                    // Aunque haya error, actualizamos con un mapa vacío para evitar datos inconsistentes
+                                    _uiState.update { it.copy(
+                                        clasesAsignadas = mapOf(profesor.dni to emptyMap()),
+                                        error = "Error al cargar clases del profesor: ${resultClasesProfesor.exception?.message}"
+                                    ) }
+                                }
+                                is Result.Loading<*> -> { /* Estado de carga manejado por isLoading */ }
+                            }
                         }
+                        is Result.Error -> {
+                            Timber.e(result.exception, "Error al cargar clases del curso: ${result.exception?.message}")
+                            // Aunque haya error, actualizamos con un mapa vacío para evitar datos inconsistentes
+                            _uiState.update { it.copy(
+                                clasesAsignadas = mapOf(profesor.dni to emptyMap()),
+                                error = "Error al cargar clases del curso: ${result.exception?.message}"
+                            ) }
+                        }
+                        is Result.Loading<*> -> { /* Estado de carga manejado por isLoading */ }
                     }
-                    
-                    // Actualizar el estado de la UI
-                    val clasesAsignadas = _uiState.value.clasesAsignadas.toMutableMap()
-                    clasesAsignadas[profesor.dni] = clasesMap
-                    
-                    _uiState.update { it.copy(
-                        clasesAsignadas = clasesAsignadas
-                    ) }
+                } else {
+                    // Si no hay curso seleccionado, cargar todas las clases asignadas al profesor
+                    // sin filtrar por curso (para poder mostrar estadísticas generales)
+                    try {
+                        when (val resultClasesProfesor = profesorRepository.getClasesAsignadas(profesor.dni)) {
+                            is Result.Success<*> -> {
+                                @Suppress("UNCHECKED_CAST")
+                                val clasesAsignadas = resultClasesProfesor.data as List<Clase>
+                                
+                                // Crear un mapa con solo las clases asignadas
+                                val clasesConAsignacion = clasesAsignadas.associateWith { true }
+                                
+                                // Actualizar el estado
+                                _uiState.update { it.copy(
+                                    clasesAsignadas = mapOf(profesor.dni to clasesConAsignacion)
+                                ) }
+                                
+                                Timber.d("Sin curso seleccionado. Total clases asignadas al profesor: ${clasesAsignadas.size}")
+                            }
+                            is Result.Error -> {
+                                Timber.e(resultClasesProfesor.exception, "Error al cargar clases del profesor: ${resultClasesProfesor.exception?.message}")
+                                _uiState.update { it.copy(
+                                    clasesAsignadas = mapOf(profesor.dni to emptyMap()),
+                                    error = "Error al cargar clases del profesor: ${resultClasesProfesor.exception?.message}"
+                                ) }
+                            }
+                            is Result.Loading<*> -> { /* Estado de carga manejado por isLoading */ }
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error inesperado al cargar clases sin curso seleccionado: ${e.message}")
+                        _uiState.update { it.copy(
+                            clasesAsignadas = mapOf(profesor.dni to emptyMap()),
+                            error = "Error inesperado: ${e.message}"
+                        ) }
+                    }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar clases del profesor")
-                _uiState.update { it.copy(error = "Error al cargar clases: ${e.message}") }
+                Timber.e(e, "Error al cargar clases del profesor: ${e.message}")
+                _uiState.update { it.copy(
+                    error = "Error al cargar clases: ${e.message}",
+                    clasesAsignadas = mapOf(profesor.dni to emptyMap())  // Aseguramos un estado consistente
+                ) }
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+    
+    /**
+     * Muestra un mensaje en la UI
+     */
+    fun mostrarMensaje(mensaje: String) {
+        _uiState.update { it.copy(
+            mensaje = mensaje,
+            showSuccessMessage = true
+        ) }
     }
 } 

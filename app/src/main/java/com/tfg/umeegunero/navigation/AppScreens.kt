@@ -632,9 +632,52 @@ sealed class AppScreens(val route: String) {
     /** Creación rápida de usuarios */
     object CrearUsuarioRapido : AppScreens("gestion_centro/crear_usuario")
 
-    /** Pantalla para vincular profesores a clases */
-    object VincularProfesorClase : AppScreens("vincular_profesor_clase/{centroId}") {
-        fun createRoute(centroId: String) = "vincular_profesor_clase/$centroId"
+    /**
+     * Pantalla para vincular profesores a clases
+     * @param centroId Identificador del centro (opcional)
+     * @param claseId Identificador de la clase (opcional)
+     */
+    object VincularProfesorClase : AppScreens("vincular_profesor_clase?centroId={centroId}&claseId={claseId}") {
+        fun createRoute(centroId: String? = null, claseId: String? = null): String {
+            val params = mutableListOf<String>()
+            centroId?.let { params.add("centroId=$it") }
+            claseId?.let { params.add("claseId=$it") }
+            
+            return if (params.isEmpty()) {
+                "vincular_profesor_clase"
+            } else {
+                "vincular_profesor_clase?" + params.joinToString("&")
+            }
+        }
+        
+        val arguments = listOf(
+            navArgument("centroId") { type = NavType.StringType; nullable = true; defaultValue = null },
+            navArgument("claseId") { type = NavType.StringType; nullable = true; defaultValue = null }
+        )
+    }
+    
+    /**
+     * Pantalla para vincular alumnos a clases
+     * @param centroId Identificador del centro (opcional)
+     * @param claseId Identificador de la clase (opcional)
+     */
+    object VincularAlumnoClase : AppScreens("vincular_alumno_clase?centroId={centroId}&claseId={claseId}") {
+        fun createRoute(centroId: String? = null, claseId: String? = null): String {
+            val params = mutableListOf<String>()
+            centroId?.let { params.add("centroId=$it") }
+            claseId?.let { params.add("claseId=$it") }
+            
+            return if (params.isEmpty()) {
+                "vincular_alumno_clase"
+            } else {
+                "vincular_alumno_clase?" + params.joinToString("&")
+            }
+        }
+        
+        val arguments = listOf(
+            navArgument("centroId") { type = NavType.StringType; nullable = true; defaultValue = null },
+            navArgument("claseId") { type = NavType.StringType; nullable = true; defaultValue = null }
+        )
     }
     
     /** Pantalla de configuración de seguridad */

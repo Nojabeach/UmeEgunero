@@ -314,7 +314,6 @@ fun GestorAcademicoScreen(
                                         ) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(text = clase.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                                Text(text = "ID: ${clase.id}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 Text(text = "Aula: ${clase.aula}", style = MaterialTheme.typography.bodySmall)
                                             }
                                             IconButton(onClick = { expanded = true }) {
@@ -327,7 +326,7 @@ fun GestorAcademicoScreen(
                                             Spacer(modifier = Modifier.height(8.dp))
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.End
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
                                                 OutlinedButton(
                                                     onClick = { 
@@ -339,21 +338,39 @@ fun GestorAcademicoScreen(
                                                             centroBloqueado = true
                                                         ))
                                                     },
-                                                    modifier = Modifier.padding(end = 8.dp)
+                                                    modifier = Modifier.weight(1f)
                                                 ) {
-                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                                     Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Agregar Alumnos")
+                                                    Text("Nuevo", style = MaterialTheme.typography.bodySmall)
                                                 }
                                                 
                                                 OutlinedButton(
                                                     onClick = { 
-                                                        onNavigate("vincular_profesor_clase/${clase.id}?cursoId=${selectedCurso?.id ?: cursoId}")
-                                                    }
+                                                        onNavigate(AppScreens.VincularAlumnoClase.createRoute(
+                                                            centroId = selectedCentro?.id,
+                                                            claseId = clase.id
+                                                        ))
+                                                    },
+                                                    modifier = Modifier.weight(1f)
                                                 ) {
-                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                                     Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Vincular Profesor")
+                                                    Text("Alumnos", style = MaterialTheme.typography.bodySmall)
+                                                }
+                                                
+                                                OutlinedButton(
+                                                    onClick = { 
+                                                        onNavigate(AppScreens.VincularProfesorClase.createRoute(
+                                                            centroId = selectedCentro?.id,
+                                                            claseId = clase.id
+                                                        ))
+                                                    },
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Profesor", style = MaterialTheme.typography.bodySmall)
                                                 }
                                             }
                                         }

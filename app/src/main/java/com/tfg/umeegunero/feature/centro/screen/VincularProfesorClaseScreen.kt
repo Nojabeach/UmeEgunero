@@ -115,10 +115,22 @@ fun VincularProfesorClaseScreen(
                                 viewModel.cargarCursos(centroId)
                                 viewModel.cargarProfesores(centroId)
                                 if (uiState.cursoSeleccionado != null) {
+                                    // Usar directamente el método cargarClasesPorCurso que ahora
+                                    // también actualiza correctamente las clases del profesor
                                     viewModel.cargarClasesPorCurso(uiState.cursoSeleccionado!!.id)
+                                    
+                                    // Forzar actualización si hay un profesor seleccionado
+                                    if (uiState.profesorSeleccionado != null) {
+                                        viewModel.seleccionarProfesor(uiState.profesorSeleccionado!!)
+                                    }
                                 }
                             } else if (uiState.isAdminApp) {
                                 viewModel.cargarTodosCentros()
+                            }
+                            
+                            // Mostrar mensaje de feedback
+                            if (uiState.error == null) {
+                                viewModel.mostrarMensaje("Datos recargados correctamente")
                             }
                         }
                     }) {
@@ -184,7 +196,16 @@ fun VincularProfesorClaseScreen(
                         cursoSeleccionado = uiState.cursoSeleccionado,
                         onCursoSelected = { curso -> 
                             if (curso.id.isNotEmpty()) {
+                                // Seleccionar el curso y cargar sus clases
                                 viewModel.seleccionarCurso(curso)
+                                
+                                // Indica que hemos seleccionado un curso y forzar actualización de la UI
+                                scope.launch {
+                                    // No es necesario un delay, pero podemos indicar que se ha seleccionado el curso
+                                    if (uiState.error == null) {
+                                        viewModel.mostrarMensaje("Curso ${curso.nombre} seleccionado")
+                                    }
+                                }
                             } else {
                                 // Si se recibe un curso vacío, recargar los datos
                                 val centroId = uiState.centroSeleccionado?.id ?: ""
@@ -222,11 +243,11 @@ fun VincularProfesorClaseScreen(
                         // Lista de clases y asignaciones
                         if (uiState.profesorSeleccionado != null && uiState.cursoSeleccionado != null) {
                             ClasesList(
-                                profesorClases = uiState.clasesAsignadas[uiState.profesorSeleccionado?.documentId] ?: emptyMap(),
+                                profesorClases = uiState.clasesAsignadas[uiState.profesorSeleccionado?.dni] ?: emptyMap(),
                                 onClick = { clase ->
                                     viewModel.seleccionarClase(clase)
                                     
-                                    val profesorId = uiState.profesorSeleccionado?.documentId ?: ""
+                                    val profesorId = uiState.profesorSeleccionado?.dni ?: ""
                                     val claseId = clase.id
                                     
                                     // Añadir registros de depuración
@@ -290,7 +311,7 @@ fun VincularProfesorClaseScreen(
                     
                     // Información y estadísticas
                     if (uiState.profesorSeleccionado != null) {
-                        val clasesAsignadas = uiState.clasesAsignadas[uiState.profesorSeleccionado?.documentId]
+                        val clasesAsignadas = uiState.clasesAsignadas[uiState.profesorSeleccionado?.dni]
                         val totalClasesAsignadas = clasesAsignadas?.count { it.value } ?: 0
                         
                         Spacer(modifier = Modifier.height(8.dp))
@@ -1004,6 +1025,14 @@ fun ClasesList(
     onClick: (Clase) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Log para depuración
+    LaunchedEffect(profesorClases) {
+        Timber.d("Renderizando ClasesList con ${profesorClases.size} clases")
+        profesorClases.forEach { (clase, asignada) ->
+            Timber.d("Clase: ${clase.nombre} (ID: ${clase.id}), Asignada: $asignada")
+        }
+    }
+    
     if (profesorClases.isEmpty()) {
         Box(
             modifier = modifier

@@ -66,6 +66,8 @@ import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.UnifiedInboxView
 import com.google.firebase.auth.FirebaseAuth
 import com.tfg.umeegunero.feature.common.comunicacion.screen.MessageDetailScreen
 import com.tfg.umeegunero.feature.common.comunicacion.screen.ComunicadoDetailScreen
+import com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen
+import com.tfg.umeegunero.feature.centro.screen.VincularAlumnoClaseScreen
 
 /**
  * Navegación principal de la aplicación
@@ -768,40 +770,33 @@ fun Navigation(
             }
         }
 
-        // Pantallas de vinculación
+        // Vinculación de profesores a clases
         composable(
             route = AppScreens.VincularProfesorClase.route,
-            arguments = listOf(
-                navArgument("centroId") { type = NavType.StringType }
-            )
+            arguments = AppScreens.VincularProfesorClase.arguments
         ) { backStackEntry ->
-            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            val centroId = backStackEntry.arguments?.getString("centroId")
+            val claseId = backStackEntry.arguments?.getString("claseId")
             
-            com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen(
+            VincularProfesorClaseScreen(
                 onBack = { navController.popBackStack() },
-                centroId = centroId
+                centroId = centroId,
+                claseId = claseId
             )
         }
-
-        composable(route = AppScreens.VincularAlumnoFamiliar.route) {
-            com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
-                navController = navController
-            )
-        }
-
-        // Pantalla de detalle de alumno para profesor
+        
+        // Vinculación de alumnos a clases
         composable(
-            route = AppScreens.DetalleAlumnoProfesor.route,
-            arguments = listOf(
-                navArgument("alumnoId") { type = NavType.StringType }
-            )
+            route = AppScreens.VincularAlumnoClase.route,
+            arguments = AppScreens.VincularAlumnoClase.arguments
         ) { backStackEntry ->
-            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
-            Timber.d("Navegando a DetalleAlumnoProfesorScreen con alumnoId: $alumnoId")
-            com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen(
-                navController = navController,
-                alumnoId = alumnoId,
-                viewModel = hiltViewModel()
+            val centroId = backStackEntry.arguments?.getString("centroId")
+            val claseId = backStackEntry.arguments?.getString("claseId")
+            
+            VincularAlumnoClaseScreen(
+                onBack = { navController.popBackStack() },
+                centroId = centroId,
+                claseId = claseId
             )
         }
 
@@ -1171,38 +1166,26 @@ fun Navigation(
             )
         }
 
-        // Pantalla de detalle de alumno
+        // Pantalla de detalle de usuario (UserDetail)
         composable(
-            route = AppScreens.DetalleAlumno.route,
-            arguments = AppScreens.DetalleAlumno.arguments
+            route = AppScreens.UserDetail.route,
+            arguments = listOf(
+                navArgument("dni") { type = NavType.StringType }
+            )
         ) { backStackEntry ->
             val dni = backStackEntry.arguments?.getString("dni") ?: ""
-            
-            // Determinar el tipo de usuario actual
-            val currentUser = FirebaseAuth.getInstance().currentUser
-            if (currentUser != null) {
-                val email = currentUser.email ?: ""
-                // Usar pantalla completa para profesores y administradores
-                if (email.contains("profesor") || email.contains("admin") || email.contains("centro")) {
-                    // Si es profesor o administrador, mostrar la vista completa
-                    com.tfg.umeegunero.feature.profesor.screen.DetalleAlumnoProfesorScreen(
-                        navController = navController,
-                        alumnoId = dni
-                    )
-                } else {
-                    // Solo para familiares mostrar una vista más limitada
-                    com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
-                        navController = navController,
-                        userId = dni
-                    )
-                }
-            } else {
-                // Si no hay usuario logueado, mostrar vista básica
-                com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
-                    navController = navController,
-                    userId = dni
-                )
-            }
+            com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
+                navController = navController,
+                userId = dni
+            )
+        }
+
+        // Pantalla de historial de solicitudes
+        composable(route = AppScreens.HistorialSolicitudes.route) {
+            com.tfg.umeegunero.feature.centro.screen.HistorialSolicitudesScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
         }
     }
 } 
