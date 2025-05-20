@@ -586,6 +586,10 @@ class VincularAlumnoClaseViewModel @Inject constructor(
     /**
      * Cambia el modo de visualización de alumnos
      */
+    fun cambiarModoVisualizacion(modo: ModoVisualizacionAlumnos) {
+        _uiState.update { it.copy(modoVisualizacion = modo) }
+    }
+
     /**
      * Cicla entre los diferentes modos de visualización
      */

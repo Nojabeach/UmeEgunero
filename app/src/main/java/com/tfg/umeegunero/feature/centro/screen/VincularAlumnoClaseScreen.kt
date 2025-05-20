@@ -146,19 +146,6 @@ fun VincularAlumnoClaseScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
-        },
-        floatingActionButton = {
-            if (uiState.claseSeleccionada != null) {
-                FloatingActionButton(
-                    onClick = { viewModel.mostrarDialogoCrearAlumno() },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Crear nuevo alumno"
-                    )
-                }
-            }
         }
     ) { paddingValues ->
         if (uiState.isLoading) {
@@ -269,6 +256,48 @@ fun ContenidoPrincipal(
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
+                
+                // Botones para refrescar y crear alumnos
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Botón para crear alumnos
+                    OutlinedButton(
+                        onClick = { viewModel.mostrarDialogoCrearAlumno() },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Crear alumno",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Crear alumno")
+                    }
+                    
+                    // Botón para refrescar alumnos
+                    OutlinedButton(
+                        onClick = { viewModel.refrescarAlumnosCentro() },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Actualizar alumnos",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Actualizar alumnos")
+                    }
+                }
             }
             
             // Contenido principal (lista de alumnos)
@@ -441,36 +470,29 @@ fun ContenidoPrincipal(
             Spacer(modifier = Modifier.height(16.dp))
             
             // Lista de alumnos con el filtro actualizado - nuevo diseño
+            // Siempre mostramos todos los alumnos cuando se va a vincular para solucionar
+            // el problema de que no se pueden volver a vincular alumnos recién desvinculados
+            val alumnosAMostrar = when (uiState.modoVisualizacion) {
+                ModoVisualizacionAlumnos.TODOS -> uiState.alumnos
+                ModoVisualizacionAlumnos.VINCULADOS -> uiState.alumnosVinculados
+                ModoVisualizacionAlumnos.PENDIENTES -> uiState.alumnos.filter { alumno ->
+                    !uiState.alumnosVinculados.map { it.dni }.contains(alumno.dni)
+                }
+            }
+            
+            // Aplicamos el filtro de texto si existe
+            val alumnosFiltrados = if (uiState.textoFiltroAlumnos.isEmpty()) 
+                alumnosAMostrar
+            else 
+                alumnosAMostrar.filter { 
+                    it.nombreCompleto.contains(uiState.textoFiltroAlumnos, ignoreCase = true) ||
+                    it.dni.contains(uiState.textoFiltroAlumnos, ignoreCase = true)
+                }
+            
+            // Timber.d("Mostrando ${alumnosFiltrados.size} alumnos en modo ${uiState.modoVisualizacion}")
+            
             AlumnosList(
-                alumnos = when (uiState.modoVisualizacion) {
-                    ModoVisualizacionAlumnos.TODOS -> {
-                        if (uiState.textoFiltroAlumnos.isEmpty()) 
-                            uiState.alumnos 
-                        else 
-                            uiState.alumnos.filter { 
-                                it.nombreCompleto.contains(uiState.textoFiltroAlumnos, ignoreCase = true) ||
-                                it.dni.contains(uiState.textoFiltroAlumnos, ignoreCase = true)
-                            }
-                    }
-                    ModoVisualizacionAlumnos.VINCULADOS -> {
-                        if (uiState.textoFiltroAlumnos.isEmpty()) 
-                            uiState.alumnosVinculados 
-                        else 
-                            uiState.alumnosVinculados.filter { 
-                                it.nombreCompleto.contains(uiState.textoFiltroAlumnos, ignoreCase = true) ||
-                                it.dni.contains(uiState.textoFiltroAlumnos, ignoreCase = true)
-                            }
-                    }
-                    ModoVisualizacionAlumnos.PENDIENTES -> {
-                        if (uiState.textoFiltroAlumnos.isEmpty()) 
-                            uiState.alumnosDisponibles 
-                        else 
-                            uiState.alumnosDisponibles.filter { 
-                                it.nombreCompleto.contains(uiState.textoFiltroAlumnos, ignoreCase = true) ||
-                                it.dni.contains(uiState.textoFiltroAlumnos, ignoreCase = true)
-                            }
-                    }
-                },
+                alumnos = alumnosFiltrados,
                 alumnosVinculados = uiState.alumnosVinculados.map { it.dni },
                 textoFiltro = uiState.textoFiltroAlumnos,
                 onVincularClick = { alumno ->
@@ -1449,33 +1471,33 @@ fun AlumnoItem(
             
             Spacer(modifier = Modifier.height(2.dp))
             
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Fecha de Nacimiento: ${alumno.fechaNacimiento}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            // Fecha de nacimiento
+            Text(
+                text = "Fecha de Nacimiento: ${alumno.fechaNacimiento}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            // Etiqueta de vinculado en su propia línea
+            if (estaVinculado) {
+                Spacer(modifier = Modifier.height(4.dp))
                 
-                if (estaVinculado) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "Vinculado",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontWeight = FontWeight.Medium
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(4.dp)
                         )
-                    }
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "Vinculado",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }

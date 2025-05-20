@@ -21,6 +21,7 @@ import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.service.EmailNotificationService
+import com.tfg.umeegunero.data.service.TipoPlantilla
 import com.tfg.umeegunero.data.model.MessagePriority
 import com.tfg.umeegunero.data.model.MessageStatus
 import com.tfg.umeegunero.data.model.MessageType
@@ -265,10 +266,103 @@ class SolicitudRepository @Inject constructor(
                         if (familiarResultado is Result.Success) {
                             val familiar = familiarResultado.data
                             
-                            // Enviar email de aprobación
-                            val emailEnviado = emailNotificationService.sendApprovalEmail(
-                                email = familiar.email,
-                                nombre = familiar.nombre
+                            // Obtener información del alumno para personalizar el email
+                            val alumnoInfo = alumnoRepository.getAlumnoByDni(solicitud.alumnoDni)
+                            val nombreAlumno = if (alumnoInfo is Result.Success && alumnoInfo.data != null) {
+                                "${alumnoInfo.data.nombre} ${alumnoInfo.data.apellidos}".trim()
+                            } else {
+                                solicitud.alumnoNombre
+                            }
+                            
+                            // Contenido HTML personalizado para el email de aprobación
+                            val contenidoHtml = """
+                                <!DOCTYPE html>
+                                <html lang="es">
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <style>
+                                        body {
+                                            font-family: 'Segoe UI', Arial, sans-serif;
+                                            line-height: 1.6;
+                                            color: #333333;
+                                            margin: 0;
+                                            padding: 0;
+                                            background-color: #f5f5f5;
+                                        }
+                                        .container {
+                                            max-width: 600px;
+                                            margin: 0 auto;
+                                            padding: 20px;
+                                            background-color: #ffffff;
+                                            border-radius: 8px;
+                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                        }
+                                        .header {
+                                            background-color: #0D47A1;
+                                            color: white;
+                                            padding: 20px;
+                                            text-align: center;
+                                            border-radius: 8px 8px 0 0;
+                                        }
+                                        .content {
+                                            padding: 20px;
+                                        }
+                                        .footer {
+                                            text-align: center;
+                                            padding: 20px;
+                                            color: #666666;
+                                            font-size: 12px;
+                                        }
+                                        .button {
+                                            display: inline-block;
+                                            padding: 12px 24px;
+                                            background-color: #4CAF50;
+                                            color: white;
+                                            text-decoration: none;
+                                            border-radius: 4px;
+                                            margin-top: 20px;
+                                        }
+                                        .status {
+                                            background-color: #4CAF50;
+                                            color: white;
+                                            padding: 8px 16px;
+                                            border-radius: 20px;
+                                            display: inline-block;
+                                            margin: 10px 0;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="container">
+                                        <div class="header">
+                                            <h1>UmeEgunero</h1>
+                                        </div>
+                                        <div class="content">
+                                            <h2>¡Solicitud Aprobada!</h2>
+                                            <div class="status">APROBADA</div>
+                                            <p>Estimado/a ${familiar.nombre},</p>
+                                            <p>Nos complace informarle que su solicitud para vincularse con <strong>${nombreAlumno}</strong> en UmeEgunero ha sido <strong>aprobada</strong> por el centro.</p>
+                                            <p>Ya puede acceder a la plataforma para ver la información académica.</p>
+                                            <a href="https://umeegunero.com/login" class="button">Acceder a la plataforma</a>
+                                        </div>
+                                        <div class="footer">
+                                            <p>Este es un mensaje automático, por favor no responda a este email.</p>
+                                            <p>© 2024 UmeEgunero. Todos los derechos reservados.</p>
+                                        </div>
+                                    </div>
+                                </body>
+                                </html>
+                            """.trimIndent()
+                            
+                            // Enviar email personalizado de aprobación
+                            val asunto = "Solicitud Aprobada en UmeEgunero - Vinculación con ${nombreAlumno}"
+                            val emailEnviado = emailNotificationService.sendEmail(
+                                destinatario = familiar.email,
+                                nombre = familiar.nombre,
+                                tipoPlantilla = TipoPlantilla.NINGUNA,
+                                asuntoPersonalizado = asunto,
+                                contenido = contenidoHtml
                             )
                             
                             if (emailEnviado) {
@@ -281,6 +375,124 @@ class SolicitudRepository @Inject constructor(
                         }
                     } catch (e: Exception) {
                         Timber.e(e, "Error al enviar email de aprobación")
+                        // No interrumpimos el flujo principal si falla el envío de email
+                    }
+                } else if (nuevoEstado == EstadoSolicitud.RECHAZADA) {
+                    try {
+                        // Obtener datos del familiar para el email
+                        val familiarResultado = usuarioRepository.obtenerUsuarioPorId(solicitud.familiarId)
+                        if (familiarResultado is Result.Success) {
+                            val familiar = familiarResultado.data
+                            
+                            // Obtener información del alumno para personalizar el email
+                            val alumnoInfo = alumnoRepository.getAlumnoByDni(solicitud.alumnoDni)
+                            val nombreAlumno = if (alumnoInfo is Result.Success && alumnoInfo.data != null) {
+                                "${alumnoInfo.data.nombre} ${alumnoInfo.data.apellidos}".trim()
+                            } else {
+                                solicitud.alumnoNombre
+                            }
+                            
+                            // Contenido HTML personalizado para el email de rechazo
+                            val contenidoHtml = """
+                                <!DOCTYPE html>
+                                <html lang="es">
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <style>
+                                        body {
+                                            font-family: 'Segoe UI', Arial, sans-serif;
+                                            line-height: 1.6;
+                                            color: #333333;
+                                            margin: 0;
+                                            padding: 0;
+                                            background-color: #f5f5f5;
+                                        }
+                                        .container {
+                                            max-width: 600px;
+                                            margin: 0 auto;
+                                            padding: 20px;
+                                            background-color: #ffffff;
+                                            border-radius: 8px;
+                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                        }
+                                        .header {
+                                            background-color: #0D47A1;
+                                            color: white;
+                                            padding: 20px;
+                                            text-align: center;
+                                            border-radius: 8px 8px 0 0;
+                                        }
+                                        .content {
+                                            padding: 20px;
+                                        }
+                                        .footer {
+                                            text-align: center;
+                                            padding: 20px;
+                                            color: #666666;
+                                            font-size: 12px;
+                                        }
+                                        .status {
+                                            background-color: #F44336;
+                                            color: white;
+                                            padding: 8px 16px;
+                                            border-radius: 20px;
+                                            display: inline-block;
+                                            margin: 10px 0;
+                                        }
+                                        .contact-info {
+                                            background-color: #f8f9fa;
+                                            padding: 15px;
+                                            border-radius: 4px;
+                                            margin: 20px 0;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="container">
+                                        <div class="header">
+                                            <h1>UmeEgunero</h1>
+                                        </div>
+                                        <div class="content">
+                                            <h2>Estado de su Solicitud</h2>
+                                            <div class="status">RECHAZADA</div>
+                                            <p>Estimado/a ${familiar.nombre},</p>
+                                            <p>Lamentamos informarle que su solicitud para vincularse con <strong>${nombreAlumno}</strong> en UmeEgunero ha sido <strong>rechazada</strong> por el centro.</p>
+                                            ${if (observaciones.isNotEmpty()) "<p><strong>Motivo:</strong> $observaciones</p>" else ""}
+                                            <div class="contact-info">
+                                                <h3>¿Necesita más información?</h3>
+                                                <p>Por favor, póngase en contacto con la secretaría del centro para obtener más detalles sobre esta decisión.</p>
+                                            </div>
+                                        </div>
+                                        <div class="footer">
+                                            <p>Este es un mensaje automático, por favor no responda a este email.</p>
+                                            <p>© 2024 UmeEgunero. Todos los derechos reservados.</p>
+                                        </div>
+                                    </div>
+                                </body>
+                                </html>
+                            """.trimIndent()
+                            
+                            // Enviar email personalizado de rechazo
+                            val asunto = "Solicitud Rechazada en UmeEgunero - Vinculación con ${nombreAlumno}"
+                            val emailEnviado = emailNotificationService.sendEmail(
+                                destinatario = familiar.email,
+                                nombre = familiar.nombre,
+                                tipoPlantilla = TipoPlantilla.NINGUNA,
+                                asuntoPersonalizado = asunto,
+                                contenido = contenidoHtml
+                            )
+                            
+                            if (emailEnviado) {
+                                Timber.d("Email de rechazo enviado correctamente a ${familiar.email}")
+                            } else {
+                                Timber.w("No se pudo enviar el email de rechazo a ${familiar.email}")
+                            }
+                        } else {
+                            Timber.w("No se encontró información del familiar con ID ${solicitud.familiarId}")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al enviar email de rechazo")
                         // No interrumpimos el flujo principal si falla el envío de email
                     }
                 }

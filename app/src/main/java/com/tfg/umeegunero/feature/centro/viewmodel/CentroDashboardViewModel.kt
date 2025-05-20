@@ -400,24 +400,20 @@ class CentroDashboardViewModel @Inject constructor(
     
     /**
      * Procesa una solicitud de vinculación (aprobar o rechazar)
+     * Los emails se envían automáticamente a través del SolicitudRepository
      * 
      * @param solicitudId ID de la solicitud a procesar
      * @param aprobar true para aprobar, false para rechazar
-     * @param enviarEmail true para enviar email de confirmación
-     * @param emailFamiliar email del familiar para enviar la confirmación
      * @param observaciones Observaciones adicionales sobre la decisión (opcional)
      */
     fun procesarSolicitud(
         solicitudId: String, 
         aprobar: Boolean, 
-        enviarEmail: Boolean = true, 
-        emailFamiliar: String? = null,
         observaciones: String = ""
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            var errorProceso: String? = null // Variable para guardar error y continuar si es posible
-            var emailData: EmailIntentData? = null // Variable para guardar datos del email
+            var errorProceso: String? = null
 
             try {
                 val nuevoEstado = if (aprobar) EstadoSolicitud.APROBADA else EstadoSolicitud.RECHAZADA
@@ -426,7 +422,7 @@ class CentroDashboardViewModel @Inject constructor(
                 val adminId = _uiState.value.currentUser?.dni ?: ""
                 val nombreAdmin = _uiState.value.currentUser?.nombre ?: "Administrador"
                 
-                // Usar el nuevo método para procesar la solicitud
+                // Procesar la solicitud (el email se envía automáticamente en el repositorio)
                 val result = solicitudRepository.procesarSolicitud(
                     solicitudId = solicitudId,
                     nuevoEstado = nuevoEstado,
@@ -439,187 +435,19 @@ class CentroDashboardViewModel @Inject constructor(
                     val solicitud = _solicitudesPendientes.value.find { it.id == solicitudId }
 
                     if (aprobar && solicitud != null) {
-                        // Lógica de vinculación (simplificada, asumiendo éxito o manejando error internamente)
+                        // Lógica de vinculación
                         vincularFamiliarSiAprobado(solicitud)
                     }
-
-                    // Preparar email si se solicitó y tenemos los datos
-                    val emailDestino = emailFamiliar ?: buscarEmailFamiliar(solicitud?.familiarId ?: "")
-                    if (enviarEmail && emailDestino != null && solicitud != null) {
-                        val nombreFamiliar = solicitud.nombreFamiliar ?: "Familiar"
-                        val nombreAlumno = solicitud.alumnoNombre ?: "el/la alumno/a"
-                        val asunto: String
-                        val cuerpoHtml: String
-                        if (aprobar) {
-                            asunto = "Solicitud Aprobada en UmeEgunero"
-                            cuerpoHtml = """
-                                <!DOCTYPE html>
-                                <html lang="es">
-                                <head>
-                                    <meta charset="UTF-8">
-                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                    <style>
-                                        body {
-                                            font-family: 'Segoe UI', Arial, sans-serif;
-                                            line-height: 1.6;
-                                            color: #333333;
-                                            margin: 0;
-                                            padding: 0;
-                                            background-color: #f5f5f5;
-                                        }
-                                        .container {
-                                            max-width: 600px;
-                                            margin: 0 auto;
-                                            padding: 20px;
-                                            background-color: #ffffff;
-                                            border-radius: 8px;
-                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                        }
-                                        .header {
-                                            background-color: #0D47A1;
-                                            color: white;
-                                            padding: 20px;
-                                            text-align: center;
-                                            border-radius: 8px 8px 0 0;
-                                        }
-                                        .content {
-                                            padding: 20px;
-                                        }
-                                        .footer {
-                                            text-align: center;
-                                            padding: 20px;
-                                            color: #666666;
-                                            font-size: 12px;
-                                        }
-                                        .button {
-                                            display: inline-block;
-                                            padding: 12px 24px;
-                                            background-color: #4CAF50;
-                                            color: white;
-                                            text-decoration: none;
-                                            border-radius: 4px;
-                                            margin-top: 20px;
-                                        }
-                                        .status {
-                                            background-color: #4CAF50;
-                                            color: white;
-                                            padding: 8px 16px;
-                                            border-radius: 20px;
-                                            display: inline-block;
-                                            margin: 10px 0;
-                                        }
-                                    </style>
-                                </head>
-                                <body>
-                                    <div class="container">
-                                        <div class="header">
-                                            <h1>UmeEgunero</h1>
-                                        </div>
-                                        <div class="content">
-                                            <h2>¡Solicitud Aprobada!</h2>
-                                            <div class="status">APROBADA</div>
-                                            <p>Estimado/a $nombreFamiliar,</p>
-                                            <p>Nos complace informarle que su solicitud para vincularse con $nombreAlumno en UmeEgunero ha sido <strong>aprobada</strong> por el centro.</p>
-                                            <p>Ya puede acceder a la plataforma para ver la información académica.</p>
-                                            <a href="https://umeegunero.com/login" class="button">Acceder a la plataforma</a>
-                                        </div>
-                                        <div class="footer">
-                                            <p>Este es un mensaje automático, por favor no responda a este email.</p>
-                                            <p>© 2024 UmeEgunero. Todos los derechos reservados.</p>
-                                        </div>
-                                    </div>
-                                </body>
-                                </html>
-                            """.trimIndent()
-                        } else {
-                            asunto = "Solicitud Rechazada en UmeEgunero"
-                            cuerpoHtml = """
-                                <!DOCTYPE html>
-                                <html lang="es">
-                                <head>
-                                    <meta charset="UTF-8">
-                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                    <style>
-                                        body {
-                                            font-family: 'Segoe UI', Arial, sans-serif;
-                                            line-height: 1.6;
-                                            color: #333333;
-                                            margin: 0;
-                                            padding: 0;
-                                            background-color: #f5f5f5;
-                                        }
-                                        .container {
-                                            max-width: 600px;
-                                            margin: 0 auto;
-                                            padding: 20px;
-                                            background-color: #ffffff;
-                                            border-radius: 8px;
-                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                        }
-                                        .header {
-                                            background-color: #0D47A1;
-                                            color: white;
-                                            padding: 20px;
-                                            text-align: center;
-                                            border-radius: 8px 8px 0 0;
-                                        }
-                                        .content {
-                                            padding: 20px;
-                                        }
-                                        .footer {
-                                            text-align: center;
-                                            padding: 20px;
-                                            color: #666666;
-                                            font-size: 12px;
-                                        }
-                                        .status {
-                                            background-color: #F44336;
-                                            color: white;
-                                            padding: 8px 16px;
-                                            border-radius: 20px;
-                                            display: inline-block;
-                                            margin: 10px 0;
-                                        }
-                                        .contact-info {
-                                            background-color: #f8f9fa;
-                                            padding: 15px;
-                                            border-radius: 4px;
-                                            margin: 20px 0;
-                                        }
-                                    </style>
-                                </head>
-                                <body>
-                                    <div class="container">
-                                        <div class="header">
-                                            <h1>UmeEgunero</h1>
-                                        </div>
-                                        <div class="content">
-                                            <h2>Estado de su Solicitud</h2>
-                                            <div class="status">RECHAZADA</div>
-                                            <p>Estimado/a $nombreFamiliar,</p>
-                                            <p>Lamentamos informarle que su solicitud para vincularse con $nombreAlumno en UmeEgunero ha sido <strong>rechazada</strong> por el centro.</p>
-                                            <div class="contact-info">
-                                                <h3>¿Necesita más información?</h3>
-                                                <p>Por favor, póngase en contacto con la secretaría del centro para obtener más detalles sobre esta decisión.</p>
-                                            </div>
-                                        </div>
-                                        <div class="footer">
-                                            <p>Este es un mensaje automático, por favor no responda a este email.</p>
-                                            <p>© 2024 UmeEgunero. Todos los derechos reservados.</p>
-                                        </div>
-                                    </div>
-                                </body>
-                                </html>
-                            """.trimIndent()
-                        }
-                        emailData = EmailIntentData(emailDestino, asunto, cuerpoHtml)
-                    } else if (enviarEmail) {
-                        _emailStatus.value = "No se pudo preparar el email: dirección de correo no disponible"
-                    }
                     
-                    // Actualizar lista de solicitudes pendientes *después* de todo
-                    cargarSolicitudesPendientes() 
-
+                    // Actualizar lista de solicitudes pendientes
+                    cargarSolicitudesPendientes()
+                    
+                    _uiState.update { it.copy(
+                        error = if (aprobar) "Solicitud aprobada correctamente" else "Solicitud rechazada correctamente"
+                    ) }
+                    
+                    Timber.d("Solicitud ${solicitudId} ${if (aprobar) "aprobada" else "rechazada"} correctamente. " +
+                             "Email enviado automáticamente por el repositorio.")
                 } else if (result is Result.Error) {
                     Timber.e(result.exception, "Error al actualizar estado de solicitud")
                     errorProceso = "Error al procesar solicitud: ${result.exception?.message}"
@@ -635,16 +463,6 @@ class CentroDashboardViewModel @Inject constructor(
                     isLoading = false,
                     error = errorProceso
                 )
-            }
-            
-            // Lanzar intent de email si se preparó
-            emailData?.let { data ->
-                try {
-                    _lanzarEmailIntentEvent.emit(data)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al lanzar intent de email")
-                    _emailStatus.value = "Error al preparar el email"
-                }
             }
         }
     }

@@ -165,7 +165,6 @@ fun CentroDashboardScreen(
     }
     // Animación de entrada
     var showContent by remember { mutableStateOf(false) }
-    val context = LocalContext.current // Obtener contexto
     LaunchedEffect(Unit) { showContent = true }
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -189,28 +188,8 @@ fun CentroDashboardScreen(
         }
     }
     
-    // LaunchedEffect para observar eventos de email Intent
-    LaunchedEffect(Unit) {
-        viewModel.lanzarEmailIntentEvent.collect { emailData ->
-            scope.launch {
-                snackbarHostState.showSnackbar("Abriendo app de correo para enviar confirmación...")
-            }
-            // Crear y lanzar el Intent
-            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:") // Solo apps de email
-                putExtra(Intent.EXTRA_EMAIL, arrayOf(emailData.destinatario))
-                putExtra(Intent.EXTRA_SUBJECT, emailData.asunto)
-                putExtra(Intent.EXTRA_TEXT, emailData.cuerpo)
-            }
-            try {
-                context.startActivity(intent)
-            } catch (e: android.content.ActivityNotFoundException) {
-                scope.launch {
-                    snackbarHostState.showSnackbar("Error: No se encontró app de correo.")
-                }
-            }
-        }
-    }
+    // Los emails se envían automáticamente a través del SolicitudRepository
+    // No se necesita código adicional para gestionar el envío de correos
     
     // Obtener el ID del centro del usuario actual
     val centroId = uiState.currentUser?.perfiles?.firstOrNull { perfil -> 
@@ -965,8 +944,9 @@ fun CentroDashboardScreen(
                     onProcesarSolicitud = { solicitudId, aprobar ->
                         viewModel.procesarSolicitud(
                             solicitudId = solicitudId,
-                            aprobar = aprobar,
-                            enviarEmail = true
+                            aprobar = aprobar
+                            // No es necesario especificar enviarEmail=true, ya que los emails
+                            // se envían automáticamente a través del repositorio
                         )
                     }
                 )
@@ -1036,7 +1016,7 @@ fun SolicitudVinculacionItem(
         ) {
             // Información del alumno
             Text(
-                text = "Alumno: ${solicitud.alumnoNombre ?: "No especificado"}",
+                text = "Alumno: ${solicitud.alumnoNombre}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -1161,9 +1141,9 @@ fun SolicitudItem(
     onProcesarSolicitud: (solicitudId: String, aprobar: Boolean) -> Unit
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text("Familiar: ${solicitud.nombreFamiliar ?: solicitud.familiarId}", fontWeight = FontWeight.Bold)
+        Text("Familiar: ${solicitud.nombreFamiliar}", fontWeight = FontWeight.Bold)
         Text("Alumno DNI: ${solicitud.alumnoDni}")
-        Text("Relación: ${solicitud.tipoRelacion ?: "No especificada"}")
+        Text("Relación: ${solicitud.tipoRelacion}", fontWeight = FontWeight.Bold)
         Text("Fecha: ${solicitud.fechaSolicitud.toDate().let { SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(it) }}")
         Row(modifier = Modifier.padding(top = 8.dp)) {
             Button(onClick = { onProcesarSolicitud(solicitud.id, true) }) {
