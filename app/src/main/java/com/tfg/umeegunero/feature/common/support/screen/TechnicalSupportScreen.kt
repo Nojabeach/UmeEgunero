@@ -34,10 +34,22 @@ fun TechnicalSupportScreen(
     var message by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var showSuccessDialog by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    
+    // Observar el estado del ViewModel
+    val uiState by viewModel.uiState.collectAsState()
+    
+    // Efectos para mostrar diálogos según el estado
+    LaunchedEffect(uiState.success, uiState.error) {
+        if (uiState.success) {
+            showEmailDialog = false
+            // Limpiar los campos después de enviar
+            name = ""
+            email = ""
+            selectedTopic = ""
+            message = ""
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -207,9 +219,15 @@ fun TechnicalSupportScreen(
         }
     }
 
+    // Diálogo para enviar email
     if (showEmailDialog) {
         AlertDialog(
-            onDismissRequest = { showEmailDialog = false },
+            onDismissRequest = { 
+                if (!uiState.isLoading) {
+                    showEmailDialog = false 
+                    viewModel.clearState()
+                }
+            },
             title = { Text("Contactar con Soporte") },
             text = {
                 Column(
@@ -222,21 +240,27 @@ fun TechnicalSupportScreen(
                         value = name,
                         onValueChange = { name = it },
                         label = { Text("Nombre") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = name.isBlank() && uiState.error != null,
+                        enabled = !uiState.isLoading
                     )
                     
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
                         label = { Text("Email") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = email.isBlank() && uiState.error != null,
+                        enabled = !uiState.isLoading
                     )
                     
                     OutlinedTextField(
                         value = selectedTopic,
                         onValueChange = { selectedTopic = it },
                         label = { Text("Asunto") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = selectedTopic.isBlank() && uiState.error != null,
+                        enabled = !uiState.isLoading
                     )
                     
                     OutlinedTextField(
@@ -244,41 +268,74 @@ fun TechnicalSupportScreen(
                         onValueChange = { message = it },
                         label = { Text("Mensaje") },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 4
+                        minLines = 4,
+                        isError = message.isBlank() && uiState.error != null,
+                        enabled = !uiState.isLoading
                     )
+                    
+                    if (uiState.error != null) {
+                        Text(
+                            text = uiState.error ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    
+                    if (uiState.success) {
+                        Text(
+                            text = "¡Mensaje enviado correctamente! Te contactaremos lo antes posible.",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val emailMessage = """
-                            Nombre: $name
-                            Email: $email
-                            
-                            $message
-                        """.trimIndent()
-
                         coroutineScope.launch {
-                            viewModel.sendEmailSoporte(destinatario = EmailSoporteConstants.EMAIL_DESTINATARIO, nombre = name, asunto = selectedTopic, mensaje = emailMessage)
+                            viewModel.sendEmailSoporte(
+                                emailUsuario = email, 
+                                nombre = name, 
+                                asunto = selectedTopic, 
+                                mensaje = message
+                            )
                         }
                     },
-                    enabled = name.isNotBlank() && email.isNotBlank() && 
+                    enabled = !uiState.isLoading && name.isNotBlank() && email.isNotBlank() && 
                              selectedTopic.isNotBlank() && message.isNotBlank()
                 ) {
-                    Text("Enviar")
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(if (uiState.isLoading) "Enviando..." else "Enviar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEmailDialog = false }) {
+                TextButton(
+                    onClick = { 
+                        showEmailDialog = false 
+                        viewModel.clearState()
+                    },
+                    enabled = !uiState.isLoading
+                ) {
                     Text("Cancelar")
                 }
             }
         )
     }
 
-    if (showSuccessDialog) {
+    // Diálogo de éxito
+    if (uiState.success && !showEmailDialog) {
         AlertDialog(
-            onDismissRequest = { showSuccessDialog = false },
+            onDismissRequest = { viewModel.clearState() },
             title = { 
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -295,33 +352,7 @@ fun TechnicalSupportScreen(
             },
             text = { Text("Tu mensaje ha sido enviado correctamente. Te responderemos lo antes posible.") },
             confirmButton = {
-                TextButton(onClick = { showSuccessDialog = false }) {
-                    Text("OK")
-                }
-            }
-        )
-    }
-
-    if (showErrorDialog) {
-        AlertDialog(
-            onDismissRequest = { showErrorDialog = false },
-            title = { 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Error,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Error")
-                }
-            },
-            text = { Text(errorMessage) },
-            confirmButton = {
-                TextButton(onClick = { showErrorDialog = false }) {
+                TextButton(onClick = { viewModel.clearState() }) {
                     Text("OK")
                 }
             }

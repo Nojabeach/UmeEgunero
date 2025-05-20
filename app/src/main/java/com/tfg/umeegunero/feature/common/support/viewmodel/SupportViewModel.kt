@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import timber.log.Timber
 import com.tfg.umeegunero.data.model.EmailSoporteConstants
+import com.tfg.umeegunero.data.repository.ConfigRepository
 import com.tfg.umeegunero.data.service.EmailNotificationService
 import com.tfg.umeegunero.data.service.TipoPlantilla
 import com.tfg.umeegunero.util.Constants
@@ -22,7 +24,8 @@ import com.tfg.umeegunero.util.Constants
  */
 @HiltViewModel
 class SupportViewModel @Inject constructor(
-    private val emailService: EmailNotificationService
+    private val emailService: EmailNotificationService,
+    private val configRepository: ConfigRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(SupportUiState())
@@ -35,38 +38,48 @@ class SupportViewModel @Inject constructor(
     /**
      * Envía un email de soporte técnico al equipo de UmeEgunero.
      * 
-     * @param destinatario Email del usuario que envía el mensaje de soporte
+     * @param emailUsuario Email del usuario que envía el mensaje de soporte
      * @param nombre Nombre del usuario que envía el mensaje
      * @param asunto Asunto del mensaje de soporte
      * @param mensaje Contenido del mensaje de soporte
      */
-    fun sendEmailSoporte(destinatario: String, nombre: String, asunto: String, mensaje: String) {
-        _uiState.value = _uiState.value.copy(isLoading = true)
+    fun sendEmailSoporte(emailUsuario: String, nombre: String, asunto: String, mensaje: String) {
+        _uiState.update { it.copy(isLoading = true, error = null, success = false) }
+        
         viewModelScope.launch {
             try {
-                Timber.d("Enviando email de soporte a $destinatario") 
+                Timber.d("Obteniendo configuración de email de soporte")
+                val config = configRepository.getEmailSoporteConfig()
+                val emailDestino = config.emailDestino
                 
-                // Al usar la dirección de soporte como destinatario, el email del usuario se incluye en el contenido
-                val resultado = emailService.sendEmail(
-                    destinatario = Constants.EMAIL_SOPORTE,
-                    nombre = nombre,
-                    tipoPlantilla = TipoPlantilla.NINGUNA,
-                    asuntoPersonalizado = "Soporte UmeEgunero: $asunto"
+                Timber.d("Enviando email de soporte a $emailDestino") 
+                
+                // Usar el nuevo método específico para envío de soporte técnico
+                val resultado = emailService.enviarEmailSoporte(
+                    destinatario = emailDestino,
+                    nombreUsuario = nombre,
+                    emailUsuario = emailUsuario,
+                    asunto = asunto,
+                    mensaje = mensaje
                 )
                 
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    success = resultado,
-                    error = if (!resultado) "Error al enviar el correo" else null
-                )
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        success = resultado,
+                        error = if (!resultado) "Error al enviar el mensaje de soporte. Por favor, inténtelo de nuevo más tarde." else null
+                    )
+                }
 
             } catch (e: Exception) {
-                Timber.e(e, "Error en sendEmailSoporte")
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false, 
-                    success = false, 
-                    error = "Error inesperado al enviar el correo: ${e.message}"
-                )
+                Timber.e(e, "Error en sendEmailSoporte: ${e.message}")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false, 
+                        success = false, 
+                        error = "Error inesperado al enviar el mensaje: ${e.message ?: "Desconocido"}"
+                    )
+                }
             }
         }
     }
@@ -78,7 +91,7 @@ class SupportViewModel @Inject constructor(
      * al usuario realizar un nuevo intento de envío.
      */
     fun clearState() {
-        _uiState.value = SupportUiState()
+        _uiState.update { SupportUiState() }
     }
 }
 

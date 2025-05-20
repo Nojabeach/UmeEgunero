@@ -8,7 +8,7 @@ import com.google.firebase.firestore.DocumentId
  */
 data class EmailSoporteConfig(
     @DocumentId val id: String = "config_email_soporte",
-    val emailDestino: String = "maitanepruebas1@gmail.com",
+    val emailDestino: String = "UmeEgunero@gmail.com",
     val ultimaActualizacion: Timestamp = Timestamp.now()
 )
 
