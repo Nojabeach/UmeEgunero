@@ -193,7 +193,7 @@ class ClaseRepositoryImpl @Inject constructor(
                     val data = document.data
                     Timber.d("📄 Documento clase: id=${document.id}, data=$data")
                     
-                    val clase = document.toObject(Clase::class.java)?.copy(id = document.id)
+                    val clase = document.toObject<Clase>()?.copy(id = document.id)
                     clase?.also { Timber.d("✅ Clase mapeada: ${it.nombre} (${it.id})") }
                     clase
                 } catch (e: Exception) {
@@ -226,7 +226,7 @@ class ClaseRepositoryImpl @Inject constructor(
             try {
                 val clases = snapshot.documents.mapNotNull { document ->
                     try {
-                        val clase = document.toObject(Clase::class.java)?.copy(id = document.id)
+                        val clase = document.toObject<Clase>()?.copy(id = document.id)
                         Timber.d("📝 Clase actualizada: id=${document.id}, nombre=${clase?.nombre ?: "null"}")
                         clase
                     } catch (e: Exception) {
@@ -558,7 +558,11 @@ class ClaseRepositoryImpl @Inject constructor(
             }
             
             // Obtener la lista actual de alumnosIds o crear una nueva si no existe
-            val alumnosIds = (claseDoc.get("alumnosIds") as? List<String>)?.toMutableList() ?: mutableListOf()
+            val alumnosIdsAny = claseDoc.get("alumnosIds")
+            val alumnosIds = when {
+                alumnosIdsAny is List<*> -> alumnosIdsAny.filterIsInstance<String>().toMutableList()
+                else -> mutableListOf()
+            }
             
             // Si el alumno ya está en la lista, no hacer nada
             if (alumnosIds.contains(alumnoId)) {
@@ -590,35 +594,66 @@ class ClaseRepositoryImpl @Inject constructor(
      */
     override suspend fun desasignarAlumnoDeClase(claseId: String, alumnoId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Desasignando alumno $alumnoId de clase $claseId")
+            Timber.d("ClaseRepository: Desasignando alumno $alumnoId de clase $claseId")
             
             // Verificar primero que la clase existe
             val claseDoc = clasesCollection.document(claseId).get().await()
             if (!claseDoc.exists()) {
+                Timber.w("ClaseRepository: La clase $claseId no existe para desasignar alumno")
                 return@withContext Result.Error(Exception("La clase no existe"))
             }
             
             // Obtener la lista actual de alumnosIds
-            val alumnosIds = (claseDoc.get("alumnosIds") as? List<String>)?.toMutableList() ?: mutableListOf()
+            val alumnosIdsAny = claseDoc.get("alumnosIds")
+            val alumnosIds = when {
+                alumnosIdsAny is List<*> -> alumnosIdsAny.filterIsInstance<String>().toMutableList()
+                else -> mutableListOf()
+            }
+            
+            Timber.d("ClaseRepository: Lista actual de alumnos en clase $claseId: $alumnosIds")
             
             // Si el alumno no está en la lista, no hacer nada
             if (!alumnosIds.contains(alumnoId)) {
-                Timber.d("El alumno $alumnoId no está asignado a la clase $claseId")
+                Timber.d("ClaseRepository: El alumno $alumnoId no está asignado a la clase $claseId, no se requiere desasignación")
                 return@withContext Result.Success(Unit)
             }
             
-            // Eliminar el alumno de la lista
+            // Eliminar el alumno de la lista de alumnosIds
             alumnosIds.remove(alumnoId)
             
-            // Actualizar el documento de la clase
+            // Actualizar el documento de la clase con la nueva lista
             clasesCollection.document(claseId)
                 .update("alumnosIds", alumnosIds)
                 .await()
             
-            Timber.d("Alumno $alumnoId desasignado correctamente de clase $claseId")
+            Timber.d("ClaseRepository: Alumno $alumnoId desasignado correctamente de clase $claseId. Lista actualizada: $alumnosIds")
+            
+            // Adicionalmente, verificar y actualizar otros campos relacionados si existen
+            // Por ejemplo, si existe un mapeo directo alumno->clase en la clase
+            val alumnosMapAny = claseDoc.get("alumnosMap")
+            val alumnosMap = when {
+                alumnosMapAny is Map<*, *> -> alumnosMapAny.entries.associate { 
+                    (it.key as? String ?: "") to (it.value ?: Any())
+                }
+                else -> null
+            }
+            
+            if (alumnosMap != null && alumnosMap.containsKey(alumnoId)) {
+                // Crear un mapa actualizado sin el alumno
+                val updatedMap = alumnosMap.toMutableMap()
+                updatedMap.remove(alumnoId)
+                
+                // Actualizar el documento con el mapa actualizado
+                clasesCollection.document(claseId)
+                    .update("alumnosMap", updatedMap)
+                    .await()
+                    
+                Timber.d("ClaseRepository: Alumno $alumnoId también eliminado del mapa de alumnos en clase $claseId")
+            }
+            
             Result.Success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error al desasignar alumno $alumnoId de clase $claseId")
+            Timber.e(e, "ClaseRepository: Error al desasignar alumno $alumnoId de clase $claseId")
             Result.Error(e)
         }
     }

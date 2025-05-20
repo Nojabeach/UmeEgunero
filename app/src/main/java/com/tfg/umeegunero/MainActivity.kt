@@ -57,6 +57,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.os.Handler
 import android.os.Looper
+import android.net.Uri
+import java.io.IOException
 
 /**
  * Clase simple para representar datos de notificación
@@ -376,69 +378,101 @@ class MainActivity : ComponentActivity() {
                         Timber.d("Documento del administrador protegido encontrado en Firestore")
                         
                         // 2. Intentar iniciar sesión en Authentication
-                        FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
-                            .addOnSuccessListener { authResult ->
-                                Timber.d("✅ Sesión iniciada correctamente con administrador. UID: ${authResult.user?.uid}")
+                        FirebaseAuth.getInstance().fetchSignInMethodsForEmail(email)
+                            .addOnSuccessListener { result ->
+                                val signInMethods = result.signInMethods ?: emptyList<String>()
                                 
-                                // 3. Actualizar UID en Firestore si es necesario
-                                val uid = authResult.user?.uid
-                                if (uid != null) {
-                                    val currentUid = docSnapshot.getString("firebaseUid")
-                                    if (currentUid != uid) {
-                                        Timber.d("Actualizando UID en Firestore: $currentUid -> $uid")
-                                        firestore.collection("usuarios").document(dni)
-                                            .update("firebaseUid", uid)
-                                            .addOnSuccessListener {
-                                                Timber.d("UID actualizado correctamente en Firestore")
-                                            }
-                                    } else {
-                                        Timber.d("El UID ya está actualizado en Firestore")
-                                    }
-                                }
-                                
-                                // 4. Cerrar sesión después de verificar
-                                FirebaseAuth.getInstance().signOut()
-                            }
-                            .addOnFailureListener { e ->
-                                Timber.e(e, "❌ Error al iniciar sesión con administrador: ${e.message}")
-                                
-                                // 5. Si no se puede iniciar sesión porque no existe, intentar crearlo
-                                if (e is com.google.firebase.auth.FirebaseAuthInvalidUserException) {
-                                    Timber.d("El usuario no existe en Authentication. Intentando crearlo...")
-                                    FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
-                                        .addOnSuccessListener { createResult ->
-                                            Timber.d("✅ Usuario administrador creado en Authentication. UID: ${createResult.user?.uid}")
+                                if (signInMethods.isNotEmpty()) {
+                                    // El email ya existe en Authentication, intentar iniciar sesión
+                                    Timber.d("Email $email existe en Authentication, intentando iniciar sesión")
+                                    FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+                                        .addOnSuccessListener { authResult ->
+                                            Timber.d("✅ Sesión iniciada correctamente con administrador. UID: ${authResult.user?.uid}")
                                             
-                                            // Actualizar UID en Firestore
-                                            val newUid = createResult.user?.uid
-                                            if (newUid != null) {
-                                                firestore.collection("usuarios").document(dni)
-                                                    .update("firebaseUid", newUid)
-                                                    .addOnSuccessListener {
-                                                        Timber.d("UID actualizado correctamente en Firestore")
-                                                        FirebaseAuth.getInstance().signOut()
+                                            // 3. Actualizar UID en Firestore si es necesario
+                                            val uid = authResult.user?.uid
+                                            if (uid != null) {
+                                                val currentUid = docSnapshot.getString("firebaseUid")
+                                                if (currentUid != uid) {
+                                                    Timber.d("Actualizando UID en Firestore: $currentUid -> $uid")
+                                                    firestore.collection("usuarios").document(dni)
+                                                        .update("firebaseUid", uid)
+                                                        .addOnSuccessListener {
+                                                            Timber.d("UID actualizado correctamente en Firestore")
+                                                        }
+                                                } else {
+                                                    Timber.d("El UID ya está actualizado en Firestore")
+                                                }
+                                            }
+                                            
+                                            // 4. Cerrar sesión después de verificar
+                                            FirebaseAuth.getInstance().signOut()
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Timber.e(e, "❌ Error al iniciar sesión con administrador: ${e.message}")
+                                            
+                                            // Si ocurre un error con credenciales inválidas, intentar recrear la cuenta
+                                            if (e is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
+                                                Timber.d("Credenciales inválidas. Intentando eliminar y recrear la cuenta")
+                                                
+                                                // Paso 1: Eliminar métodos de autenticación existentes
+                                                val auth = FirebaseAuth.getInstance()
+                                                
+                                                // Paso 2: Crear usuario nuevo con el mismo email
+                                                auth.createUserWithEmailAndPassword(email, password)
+                                                    .addOnSuccessListener { createResult ->
+                                                        Timber.d("✅ Usuario administrador recreado en Authentication. UID: ${createResult.user?.uid}")
+                                                        
+                                                        // Actualizar UID en Firestore
+                                                        val newUid = createResult.user?.uid
+                                                        if (newUid != null) {
+                                                            firestore.collection("usuarios").document(dni)
+                                                                .update("firebaseUid", newUid)
+                                                                .addOnSuccessListener {
+                                                                    Timber.d("UID actualizado correctamente en Firestore")
+                                                                    FirebaseAuth.getInstance().signOut()
+                                                                }
+                                                        }
+                                                    }
+                                                    .addOnFailureListener { createError ->
+                                                        Timber.e(createError, "❌ Error al recrear administrador en Authentication: ${createError.message}")
                                                     }
                                             }
                                         }
-                                        .addOnFailureListener { createError ->
-                                            Timber.e(createError, "❌ Error al crear administrador en Authentication: ${createError.message}")
-                                            
-                                            if (createError is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
-                                                // showErrorToast("El email ya está en uso por otra cuenta. Posible conflicto de cuentas.")
-                                            } else {
-                                                // showErrorToast("Error al crear el administrador. Verifique la contraseña en Firebase Remote Config.")
-                                            }
+                            } else {
+                                // El email no existe en Authentication, intentar crearlo
+                                Timber.d("El usuario no existe en Authentication. Intentando crearlo...")
+                                FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+                                    .addOnSuccessListener { createResult ->
+                                        Timber.d("✅ Usuario administrador creado en Authentication. UID: ${createResult.user?.uid}")
+                                        
+                                        // Actualizar UID en Firestore
+                                        val newUid = createResult.user?.uid
+                                        if (newUid != null) {
+                                            firestore.collection("usuarios").document(dni)
+                                                .update("firebaseUid", newUid)
+                                                .addOnSuccessListener {
+                                                    Timber.d("UID actualizado correctamente en Firestore")
+                                                    FirebaseAuth.getInstance().signOut()
+                                                }
                                         }
-                                }
+                                    }
+                                    .addOnFailureListener { createError ->
+                                        Timber.e(createError, "❌ Error al crear administrador en Authentication: ${createError.message}")
+                                    }
                             }
-                    } else {
-                        Timber.d("No existe el documento del administrador protegido en Firestore. Debe crearse completo.")
-                        // Continuar con el flujo normal para crear el administrador desde cero
-                    }
+                        }
+                        .addOnFailureListener { e ->
+                            Timber.e(e, "Error al verificar métodos de autenticación para: $email")
+                        }
+                } else {
+                    Timber.d("No existe el documento del administrador protegido en Firestore. Debe crearse completo.")
+                    // Continuar con el flujo normal para crear el administrador desde cero
                 }
-                .addOnFailureListener { e ->
-                    Timber.e(e, "❌ Error al verificar el documento del administrador en Firestore: ${e.message}")
-                }
+            }
+            .addOnFailureListener { e ->
+                Timber.e(e, "❌ Error al verificar el documento del administrador en Firestore: ${e.message}")
+            }
         }
         
         // Inicializar y configurar Remote Config
@@ -639,8 +673,8 @@ class MainActivity : ComponentActivity() {
         // Timestamp actual para fechas
         val ahora = Timestamp.now()
         
-        // URL temporal del avatar - usando el dominio correcto de Firebase Storage
-        val defaultAvatarUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2Fadmin%2F${dniAdmin}.png?alt=media"
+        // URL temporal del avatar - usando la ruta correcta en avatares/
+        val defaultAvatarUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media"
         
         // Obtener el StorageRepository mediante inyección de dependencias
         // o directamente para este caso específico
@@ -665,7 +699,7 @@ class MainActivity : ComponentActivity() {
             "ultimoAcceso" to ahora,
             "direccion" to direccion,
             "preferencias" to preferencias,
-            "avatarUrl" to defaultAvatarUrl, // URL referencia a Firebase Storage
+            "avatarUrl" to defaultAvatarUrl, // URL referencia a Firebase Storage con ruta correcta
             "metadata" to mapOf(
                 "createdBy" to "SYSTEM",
                 "updatedAt" to ahora,
@@ -696,61 +730,103 @@ class MainActivity : ComponentActivity() {
                         subirAvatarDesdeRecursos(storageRepository, dniAdmin)
                     }
                 } else {
-                    // Necesitamos autenticarnos como usuario admin primero
-                    val password = FirebaseRemoteConfig.getInstance().getString("SMTP_PASSWORD")
-                    if (password.isNotBlank()) {
-                        Timber.d("Iniciando sesión como admin para subir avatar...")
-                        auth.signInWithEmailAndPassword(email, password)
-                            .addOnSuccessListener {
-                                Timber.d("Inicio de sesión exitoso, subiendo avatar...")
-                                lifecycleScope.launch {
-                                    subirAvatarDesdeRecursos(storageRepository, dniAdmin)
-                                    // Restaurar el usuario original después
-                                    auth.signOut()
-                                }
-                            }
-                            .addOnFailureListener { e ->
-                                Timber.e(e, "Error al iniciar sesión para subir avatar: ${e.message}")
-                            }
-                    } else {
-                        Timber.e("No se pudo obtener la contraseña para autenticación")
+                    // No estamos autenticados como el usuario, iniciar sesión
+                    Timber.d("Intentando iniciar sesión con el usuario creado para subir avatar...")
+                    // Obtener contraseña desde Remote Config
+                    val remoteConfig = FirebaseRemoteConfig.getInstance()
+                    val password = remoteConfig.getString("SMTP_PASSWORD")
+                    
+                    if (password.isBlank()) {
+                        Timber.e("No se ha podido obtener la contraseña desde Remote Config")
+                        return@addOnSuccessListener
                     }
+                    
+                    auth.signInWithEmailAndPassword(email, password)
+                        .addOnSuccessListener { 
+                            Timber.d("Inicio de sesión exitoso, subiendo avatar...")
+                            lifecycleScope.launch {
+                                subirAvatarDesdeRecursos(storageRepository, dniAdmin)
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Timber.e(e, "Error al iniciar sesión para subir avatar: ${e.message}")
+                        }
                 }
             }
             .addOnFailureListener { e ->
-                Timber.e(e, "❌ Error al crear usuario administrador en Firestore")
+                Timber.e(e, "❌ Error al crear documento de administrador en Firestore: ${e.message}")
             }
     }
     
     /**
-     * Sube un avatar desde los recursos de la aplicación a Firebase Storage
-     * y actualiza el documento del usuario con la URL del avatar
+     * Sube el avatar del administrador desde los recursos
      */
-    private suspend fun subirAvatarDesdeRecursos(
-        storageRepository: StorageRepository,
-        userId: String
-    ) = withContext(Dispatchers.IO) {
+    private suspend fun subirAvatarDesdeRecursos(storageRepository: StorageRepository, dniAdmin: String) {
         try {
-            // En lugar de buscar un archivo local que no existirá en el dispositivo,
-            // usaremos directamente la URL proporcionada
-            val avatarUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/AdminAvatar.png?alt=media&token=83de83e1-f266-40bd-8aec-d46aa02fcea6"
+            Timber.d("Iniciando subida de avatar desde recursos para administrador: $dniAdmin")
             
-            Timber.d("✅ Usando URL de avatar de administrador: $avatarUrl")
+            // Crear archivo temporal desde los assets
+            val archivoTemporal = File(applicationContext.cacheDir, "AdminAvatar.png")
             
-            // Actualizar directamente el documento en Firestore con la URL proporcionada
-            FirebaseFirestore.getInstance()
-                .collection("usuarios")
-                .document(userId)
-                .update("avatarUrl", avatarUrl)
-                .addOnSuccessListener {
-                    Timber.d("✅ URL de avatar actualizada correctamente en Firestore")
+            try {
+                // Intentar abrir el stream del asset
+                applicationContext.assets.open("images/AdminAvatar.png").use { inputStream ->
+                    FileOutputStream(archivoTemporal).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
                 }
-                .addOnFailureListener { e ->
-                    Timber.e(e, "❌ Error al actualizar avatar en Firestore: ${e.message}")
+                
+                Timber.d("Archivo copiado a temporal: ${archivoTemporal.absolutePath}")
+                
+                // Convertir a Uri y subir
+                val uri = Uri.fromFile(archivoTemporal)
+                
+                // Subir archivo a Storage en la ruta correcta
+                val rutaAlmacenamiento = "avatares"
+                val nombreArchivo = "@AdminAvatar.png"
+                
+                storageRepository.subirArchivo(uri, rutaAlmacenamiento, nombreArchivo).collect { result ->
+                    when (result) {
+                        is com.tfg.umeegunero.util.Result.Success -> {
+                            val urlAvatar = result.data as String
+                            Timber.d("Avatar subido correctamente a $rutaAlmacenamiento/$nombreArchivo. URL: $urlAvatar")
+                            
+                            // Actualizar URL en Firestore
+                            FirebaseFirestore.getInstance().collection("usuarios").document(dniAdmin)
+                                .update("avatarUrl", urlAvatar)
+                                .addOnSuccessListener {
+                                    Timber.d("URL de avatar actualizada correctamente en Firestore para: $dniAdmin")
+                                }
+                                .addOnFailureListener { e ->
+                                    Timber.e(e, "Error al actualizar URL de avatar en Firestore: ${e.message}")
+                                }
+                        }
+                        is com.tfg.umeegunero.util.Result.Error -> {
+                            val errorMessage = result.exception?.message ?: "Error desconocido"
+                            Timber.e(result.exception, "Error al subir avatar: $errorMessage")
+                        }
+                        is com.tfg.umeegunero.util.Result.Loading -> {
+                            Timber.d("Subiendo avatar...")
+                        }
+                    }
                 }
-            
+                
+                // Limpiar archivo temporal
+                try {
+                    if (archivoTemporal.exists()) {
+                        archivoTemporal.delete()
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al eliminar archivo temporal")
+                }
+            } catch (e: IOException) {
+                Timber.e(e, "Error al acceder al asset: ${e.message}")
+            }
         } catch (e: Exception) {
-            Timber.e(e, "❌ Error general al actualizar URL de avatar: ${e.message}")
+            Timber.e(e, "Error general al subir avatar de administrador: ${e.message}")
+        } finally {
+            // Cerrar sesión después de todo el proceso
+            FirebaseAuth.getInstance().signOut()
         }
     }
     
@@ -775,7 +851,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun actualizarAvatarAdministrador() {
         val firestore = FirebaseFirestore.getInstance()
-        val adminAvatarUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/AdminAvatar.png?alt=media&token=83de83e1-f266-40bd-8aec-d46aa02fcea6"
+        val adminAvatarUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media"
         
         // Buscar usuarios con perfil ADMIN_APP
         firestore.collection("usuarios")

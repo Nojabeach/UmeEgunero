@@ -75,10 +75,27 @@ class StorageRepository @Inject constructor(
             val tipoMime = context.contentResolver.getType(uri) ?: ""
             
             // Generar un nombre si no se proporciona
-            val nombre = nombreArchivo ?: generarNombreArchivo(uri)
+            var nombre = nombreArchivo ?: generarNombreArchivo(uri)
+            
+            // Asegurar que los avatares tengan el prefijo @ si están en la carpeta 'avatares'
+            if (ruta == "avatares" && !nombre.startsWith("@")) {
+                nombre = "@" + nombre
+                Timber.d("Asegurando prefijo @ para avatar: $nombre")
+            }
             
             // Crear referencia al archivo en Storage
             val fileRef = storageRef.child("$ruta/$nombre")
+            
+            // Verificar si el archivo ya existe
+            try {
+                val existingUrl = fileRef.downloadUrl.await().toString()
+                Timber.d("El archivo ya existe en Storage, devolviendo URL existente: $existingUrl")
+                emit(Result.Success(existingUrl))
+                return@flow
+            } catch (e: Exception) {
+                // El archivo no existe, continuamos con la subida
+                Timber.d("El archivo no existe en Storage, procediendo a subirlo")
+            }
             
             // Configurar metadatos
             val metadata = StorageMetadata.Builder()
@@ -93,11 +110,11 @@ class StorageRepository @Inject constructor(
             
             emit(Result.Success(downloadUrl))
         } catch (e: Exception) {
-            Timber.e(e, "Error al subir archivo")
+            Timber.e(e, "Error al subir archivo: ${e.message}")
             emit(Result.Error(e))
         }
     }.catch { e ->
-        Timber.e(e, "Exception en subirArchivo")
+        Timber.e(e, "Exception en subirArchivo: ${e.message}")
         emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     

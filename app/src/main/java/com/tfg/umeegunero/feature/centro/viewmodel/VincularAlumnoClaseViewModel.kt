@@ -23,6 +23,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import timber.log.Timber
 import javax.inject.Inject
+import kotlinx.coroutines.delay
+
+/**
+ * Enumeración para el modo de visualización de alumnos
+ */
+enum class ModoVisualizacionAlumnos {
+    TODOS,        // Mostrar todos los alumnos
+    VINCULADOS,   // Mostrar solo los alumnos vinculados
+    PENDIENTES    // Mostrar solo los alumnos pendientes de vincular
+}
 
 /**
  * Estado de la UI para la pantalla de vinculación de alumnos a clases
@@ -48,7 +58,7 @@ data class VincularAlumnoClaseUiState(
     val showSuccessMessage: Boolean = false,
     val isAdminApp: Boolean = false,
     val textoFiltroAlumnos: String = "",
-    val mostrarSoloVinculados: Boolean = false,
+    val modoVisualizacion: ModoVisualizacionAlumnos = ModoVisualizacionAlumnos.TODOS,
     val nuevoAlumno: NuevoAlumnoData = NuevoAlumnoData(),
     val capacidadClase: Int = 0,
     val alumnosEnClase: Int = 0
@@ -300,9 +310,9 @@ class VincularAlumnoClaseViewModel @Inject constructor(
                         ) }
                         
                         // Recargar los datos de la clase
-                        val clase = _uiState.value.claseSeleccionada
-                        if (clase != null) {
-                            seleccionarClase(clase)
+                        val claseActual = _uiState.value.claseSeleccionada
+                        if (claseActual != null) {
+                            seleccionarClase(claseActual)
                         }
                     }
                     is Result.Error -> {
@@ -338,34 +348,46 @@ class VincularAlumnoClaseViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // 1. Desasignar el alumno de la clase (actualizar alumnosIds en la clase)
+                Timber.d("ViewModel: Iniciando proceso de desasignación para alumno $alumnoId de clase $claseId")
+                
+                // 1. Primero desasignamos el alumno de la clase (actualizar alumnosIds en la clase)
                 val resultClase = claseRepository.desasignarAlumnoDeClase(claseId, alumnoId)
                 
-                // 2. Eliminar la referencia a la clase en el alumno
-                val resultAlumno = if (resultClase is Result.Success) {
-                    // Eliminar la referencia a la clase en el alumno usando el nuevo método
-                    alumnoRepository.desasignarClaseDeAlumno(alumnoId, claseId)
-                } else {
-                    resultClase
+                if (resultClase is Result.Error) {
+                    Timber.e(resultClase.exception, "ViewModel: Error al desasignar de la clase: ${resultClase.message}")
+                    _uiState.update { it.copy(
+                        error = resultClase.message ?: "Error al desasignar alumno de la clase",
+                        showConfirmarDesasignacionDialog = false,
+                        isLoading = false
+                    ) }
+                    return@launch
                 }
+                
+                Timber.d("ViewModel: Alumno correctamente desasignado de la clase, procediendo a actualizar alumno")
+                
+                // 2. Ahora eliminamos la referencia a la clase en el alumno
+                val resultAlumno = alumnoRepository.desasignarClaseDeAlumno(alumnoId, claseId)
                 
                 when (resultAlumno) {
                     is Result.Success -> {
+                        Timber.d("ViewModel: Desasignación completa exitosa para alumno $alumnoId de clase $claseId")
                         _uiState.update { it.copy(
                             mensaje = "Alumno desasignado correctamente de la clase",
                             showConfirmarDesasignacionDialog = false,
                             showSuccessMessage = true
                         ) }
                         
-                        // Recargar los datos de la clase
-                        val clase = _uiState.value.claseSeleccionada
-                        if (clase != null) {
-                            seleccionarClase(clase)
+                        // Recargar los datos de la clase para actualizar las listas
+                        delay(300) // Pequeña pausa para permitir la propagación de cambios en Firestore
+                        val claseActual = _uiState.value.claseSeleccionada
+                        if (claseActual != null) {
+                            seleccionarClase(claseActual)
                         }
                     }
                     is Result.Error -> {
+                        Timber.e(resultAlumno.exception, "ViewModel: Error al desasignar clase del alumno: ${resultAlumno.message}")
                         _uiState.update { it.copy(
-                            error = resultAlumno.message ?: "Error al desasignar alumno de la clase",
+                            error = resultAlumno.message ?: "Error al desasignar clase del alumno",
                             showConfirmarDesasignacionDialog = false
                         ) }
                     }
@@ -374,7 +396,7 @@ class VincularAlumnoClaseViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al desasignar alumno de clase")
+                Timber.e(e, "ViewModel: Error general al desasignar alumno de clase")
                 _uiState.update { it.copy(
                     error = "Error al desasignar alumno: ${e.message}",
                     showConfirmarDesasignacionDialog = false
@@ -477,10 +499,23 @@ class VincularAlumnoClaseViewModel @Inject constructor(
     }
     
     /**
-     * Cambia el modo de visualización entre todos los alumnos o solo los vinculados
+     * Cambia el modo de visualización de alumnos
      */
-    fun cambiarModoVisualizacion(mostrarSoloVinculados: Boolean) {
-        _uiState.update { it.copy(mostrarSoloVinculados = mostrarSoloVinculados) }
+    fun cambiarModoVisualizacion(modo: ModoVisualizacionAlumnos) {
+        _uiState.update { it.copy(modoVisualizacion = modo) }
+    }
+
+    /**
+     * Cicla entre los diferentes modos de visualización
+     */
+    fun ciclarModoVisualizacion() {
+        val currentMode = _uiState.value.modoVisualizacion
+        val nextMode = when (currentMode) {
+            ModoVisualizacionAlumnos.TODOS -> ModoVisualizacionAlumnos.VINCULADOS
+            ModoVisualizacionAlumnos.VINCULADOS -> ModoVisualizacionAlumnos.PENDIENTES
+            ModoVisualizacionAlumnos.PENDIENTES -> ModoVisualizacionAlumnos.TODOS
+        }
+        _uiState.update { it.copy(modoVisualizacion = nextMode) }
     }
     
     /**

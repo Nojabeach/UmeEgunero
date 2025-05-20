@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import coil.request.CachePolicy
 import coil.size.Size
 import timber.log.Timber
 
@@ -101,7 +102,9 @@ private fun AdminAvatar(
         model = ImageRequest.Builder(context)
             .data(ADMIN_AVATAR_URL)
             .size(Size.ORIGINAL)
-            .crossfade(true)
+            .crossfade(false)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
             .build()
     )
     
@@ -177,7 +180,9 @@ private fun RegularUserAvatar(
             model = ImageRequest.Builder(context)
                 .data(imageUrl)
                 .size(Size.ORIGINAL)
-                .crossfade(true)
+                .crossfade(false)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
                 .build()
         )
         

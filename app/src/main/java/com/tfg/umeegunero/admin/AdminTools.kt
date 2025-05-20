@@ -53,8 +53,8 @@ class AdminTools(private val context: Context) {
                     // Convertir a Uri y subir
                     val uri = Uri.fromFile(archivoTemporal)
                     
-                    // Subir a Firebase Storage
-                    val avatarRef = storageRef.child("AdminAvatar.png")
+                    // Subir a Firebase Storage - MODIFICADO: ruta correcta en avatares/
+                    val avatarRef = storageRef.child("avatares/@AdminAvatar.png")
                     
                     val uploadTask = avatarRef.putFile(uri)
                     uploadTask.addOnSuccessListener {
@@ -109,8 +109,8 @@ class AdminTools(private val context: Context) {
                 // Convertir a Uri
                 val uri = Uri.fromFile(archivoLocal)
                 
-                // Subir a Firebase Storage
-                val avatarRef = storageRef.child("AdminAvatar.png")
+                // Subir a Firebase Storage - MODIFICADO: ruta correcta en avatares/
+                val avatarRef = storageRef.child("avatares/@AdminAvatar.png")
                 
                 val uploadTask = avatarRef.putFile(uri)
                 uploadTask.addOnSuccessListener {
@@ -214,8 +214,8 @@ class AdminTools(private val context: Context) {
                     // Convertir a Uri y subir
                     val uri = Uri.fromFile(archivoTemporal)
                     
-                    // Subir a Firebase Storage
-                    val avatarRef = storageRef.child("AdminAvatar.png")
+                    // Subir a Firebase Storage - MODIFICADO: ruta correcta en avatares/
+                    val avatarRef = storageRef.child("avatares/@AdminAvatar.png")
                     
                     val uploadTask = avatarRef.putFile(uri)
                     uploadTask.addOnSuccessListener {

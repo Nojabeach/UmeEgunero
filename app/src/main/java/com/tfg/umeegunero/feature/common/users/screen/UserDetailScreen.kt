@@ -26,6 +26,8 @@ import com.tfg.umeegunero.feature.common.users.viewmodel.UserDetailViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.CachePolicy
 
 /**
  * Pantalla que muestra los detalles de un usuario
@@ -187,12 +189,18 @@ private fun UserHeader(usuario: Usuario) {
                 contentAlignment = Alignment.Center
             ) {
                 if (usuario.avatarUrl?.isNotBlank() == true) {
-                    // Cargar imagen real desde la URL
+                    // Cargar imagen real desde la URL con opciones optimizadas
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        coil.compose.AsyncImage(
-                            model = usuario.avatarUrl,
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(usuario.avatarUrl)
+                                .crossfade(false) // Desactivar animación para carga instantánea
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .build(),
                             contentDescription = "Avatar de ${usuario.nombre}",
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()

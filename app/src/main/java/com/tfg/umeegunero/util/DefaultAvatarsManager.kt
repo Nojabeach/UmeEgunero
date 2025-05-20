@@ -42,6 +42,20 @@ class DefaultAvatarsManager @Inject constructor(
     )
 
     /**
+     * Obtiene el nombre del recurso de imagen para un tipo de usuario
+     */
+    private fun getResourceNameForType(tipoUsuario: TipoUsuario): String {
+        return when (tipoUsuario) {
+            TipoUsuario.ADMIN_APP -> "AdminAvatar.png"
+            TipoUsuario.ADMIN_CENTRO -> "centro.png"
+            TipoUsuario.PROFESOR -> "profesor.png"
+            TipoUsuario.FAMILIAR -> "familiar.png"
+            TipoUsuario.ALUMNO -> "alumno.png"
+            else -> "default.png"
+        }
+    }
+
+    /**
      * Obtiene la URL del avatar predeterminado para un tipo de usuario específico.
      * Si el avatar no existe en Firebase Storage, lo sube desde los recursos locales.
      * 
@@ -77,7 +91,11 @@ class DefaultAvatarsManager @Inject constructor(
                     if (tempFile != null) {
                         val uri = Uri.fromFile(tempFile)
                         var resultUrl = ""
-                        storageRepository.subirArchivo(uri, "avatares", avatarFileName.lowercase()).collect { result ->
+                        
+                        // Asegurarse de que el nombre del archivo incluya el prefijo @
+                        val nombreArchivoFinal = "@" + resourceName.lowercase().replace("@", "")
+                        
+                        storageRepository.subirArchivo(uri, "avatares", nombreArchivoFinal).collect { result ->
                             if (result is com.tfg.umeegunero.util.Result.Success) {
                                 resultUrl = result.data as String
                                 Timber.d("Avatar subido exitosamente a Storage: $resultUrl")
@@ -102,49 +120,77 @@ class DefaultAvatarsManager @Inject constructor(
     }
 
     /**
-     * Obtiene el nombre del recurso de imagen para un tipo de usuario
-     */
-    private fun getResourceNameForType(tipoUsuario: TipoUsuario): String {
-        return when (tipoUsuario) {
-            TipoUsuario.ADMIN_APP -> "AdminAvatar.png"
-            TipoUsuario.ADMIN_CENTRO -> "centro.png"
-            TipoUsuario.PROFESOR -> "profesor.png"
-            TipoUsuario.FAMILIAR -> "familiar.png"
-            TipoUsuario.ALUMNO -> "alumno.png"
-            else -> "default.png"
-        }
-    }
-
-    /**
      * Crea un archivo temporal a partir de un recurso en resources/images
      */
     private fun crearArchivoTemporalDesdeRecursos(resourceName: String): File? {
         try {
-            // Primero intentamos con la ruta resources/images
+            // Archivo temporal que vamos a crear
             val tempFile = File(context.cacheDir, resourceName)
+            
+            // 1. Intentar cargar desde la ruta absoluta en resources/images
+            val resourcesDir = "/Users/maitane/AndroidStudioProjects/UmeEgunero/app/src/main/resources/images"
+            val resourceFile = File("$resourcesDir/$resourceName")
+            
+            if (resourceFile.exists()) {
+                Timber.d("🔍 Encontrado archivo en ruta absoluta: ${resourceFile.absolutePath}")
+                resourceFile.copyTo(tempFile, overwrite = true)
+                return tempFile
+            }
+            
+            // 2. Intentar desde assets/resources/images
             try {
                 context.assets.open("resources/images/$resourceName").use { input ->
                     FileOutputStream(tempFile).use { output ->
                         input.copyTo(output)
                     }
                 }
+                Timber.d("🔍 Archivo cargado desde assets/resources/images/$resourceName")
                 return tempFile
             } catch (e: IOException) {
-                // Si falla, intentamos con la ruta images
+                // No se encontró en resources/images, continuar con otras rutas
+                Timber.d("🔍 No se encontró en assets/resources/images/$resourceName: ${e.message}")
+            }
+            
+            // 3. Intentar desde assets/images
+            try {
+                context.assets.open("images/$resourceName").use { input ->
+                    FileOutputStream(tempFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                Timber.d("🔍 Archivo cargado desde assets/images/$resourceName")
+                return tempFile
+            } catch (e2: IOException) {
+                // No se encontró en images, verificar si existe un fallback genérico
+                Timber.d("🔍 No se encontró en assets/images/$resourceName: ${e2.message}")
+                
+                // 4. Intentar con la versión default o AdminAvatar.png como último recurso
                 try {
-                    context.assets.open("images/$resourceName").use { input ->
+                    context.assets.open("images/default.png").use { input ->
                         FileOutputStream(tempFile).use { output ->
                             input.copyTo(output)
                         }
                     }
+                    Timber.d("🔍 Usando imagen default.png como fallback")
                     return tempFile
-                } catch (e2: IOException) {
-                    Timber.e(e2, "Error al crear archivo temporal desde images/: ${e2.message}")
-                    return null
+                } catch (e3: IOException) {
+                    // Como último recurso, intentar con AdminAvatar.png
+                    try {
+                        context.assets.open("images/AdminAvatar.png").use { input ->
+                            FileOutputStream(tempFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        Timber.d("🔍 Usando imagen AdminAvatar.png como fallback final")
+                        return tempFile
+                    } catch (e4: IOException) {
+                        Timber.e(e4, "❌ Error: No se encontró ninguna imagen fallback")
+                        return null
+                    }
                 }
             }
         } catch (e: IOException) {
-            Timber.e(e, "Error al crear archivo temporal desde recursos: ${e.message}")
+            Timber.e(e, "❌ Error general al crear archivo temporal desde recursos: ${e.message}")
             return null
         }
     }

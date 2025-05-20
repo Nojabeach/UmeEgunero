@@ -1082,7 +1082,8 @@ class AddCentroViewModel @Inject constructor(
             nombre = admin.nombre,
             apellidos = admin.apellidos,
             telefono = admin.telefono,
-            perfiles = listOf(perfil)
+            perfiles = listOf(perfil),
+            avatarUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40centro.png?alt=media&token=69a60931-e98c-45f6-b783-aca87946ecdc"
         )
         
         // Guardar usuario en Firestore

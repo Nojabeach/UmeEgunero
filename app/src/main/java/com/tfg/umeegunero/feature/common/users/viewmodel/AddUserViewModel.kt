@@ -1098,23 +1098,52 @@ class AddUserViewModel @Inject constructor(
         Timber.d("Buscando imagen en assets/images: $resourceName")
         val context = getApplication<Application>().applicationContext
         
-        // Crear archivo temporal desde los assets
+        // También intentar buscar en resources/images - ruta alternativa
+        val resourcesDir = "/Users/maitane/AndroidStudioProjects/UmeEgunero/app/src/main/resources/images"
+        val resourceFile = File("$resourcesDir/$resourceName")
+        
+        // Comprobar si el avatar ya existe en Firebase Storage
+        try {
+            val storageFilePath = "avatares/@${resourceName.lowercase().replace("@", "")}"
+            val storageRef = FirebaseStorage.getInstance().reference.child(storageFilePath)
+            
+            try {
+                val existingUrl = Tasks.await(storageRef.downloadUrl).toString()
+                Timber.d("Avatar ya existe en Storage: $existingUrl")
+                return existingUrl
+            } catch (e: Exception) {
+                Timber.d("Avatar no encontrado en Storage, se procederá a subirlo: ${e.message}")
+                // Continuamos con la subida
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al verificar existencia del avatar: ${e.message}")
+            // Continuamos con la subida
+        }
+        
+        // Crear archivo temporal desde los assets o resources
         val archivoTemporal = File(context.cacheDir, resourceName)
         
         try {
-            // Intentar abrir el stream del asset
-            try {
-                context.assets.open("images/$resourceName").use { inputStream ->
-                    FileOutputStream(archivoTemporal).use { outputStream ->
-                        inputStream.copyTo(outputStream)
+            // Intentar primero con recursos externos
+            if (resourceFile.exists()) {
+                Timber.d("Usando imagen de resources/images: ${resourceFile.absolutePath}")
+                resourceFile.copyTo(archivoTemporal, overwrite = true)
+            } else {
+                // Intentar abrir el stream del asset desde assets/images
+                try {
+                    context.assets.open("images/$resourceName").use { inputStream ->
+                        FileOutputStream(archivoTemporal).use { outputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
                     }
-                }
-            } catch (e: IOException) {
-                // Si no encuentra la imagen específica, usar AdminAvatar.png como fallback
-                Timber.d("⚠️ No se encontró images/$resourceName, usando AdminAvatar.png como fallback")
-                context.assets.open("images/AdminAvatar.png").use { inputStream ->
-                    FileOutputStream(archivoTemporal).use { outputStream ->
-                        inputStream.copyTo(outputStream)
+                    Timber.d("Imagen cargada desde assets/images: $resourceName")
+                } catch (e: IOException) {
+                    // Si no encuentra la imagen específica, usar AdminAvatar.png como fallback
+                    Timber.d("⚠️ No se encontró images/$resourceName, usando AdminAvatar.png como fallback")
+                    context.assets.open("images/AdminAvatar.png").use { inputStream ->
+                        FileOutputStream(archivoTemporal).use { outputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
                     }
                 }
             }
@@ -1126,12 +1155,13 @@ class AddUserViewModel @Inject constructor(
             val storagePath = "avatares"
             
             // Asegurarnos de usar el nombre correcto aunque hayamos usado un fallback
-            val storageFileName = when (tipoUsuario) {
+            // IMPORTANTE: Añadir el prefijo @ al nombre del archivo para mantener la convención
+            val storageFileName = "@" + when (tipoUsuario) {
+                TipoUsuario.ADMIN_APP -> "adminavatar.png"
                 TipoUsuario.ADMIN_CENTRO -> "centro.png"
                 TipoUsuario.PROFESOR -> "profesor.png"
                 TipoUsuario.FAMILIAR -> "familiar.png"
                 TipoUsuario.ALUMNO -> "alumno.png"
-                TipoUsuario.ADMIN_APP -> "adminavatar.png"
                 else -> "default.png"
             }
             
@@ -1229,6 +1259,17 @@ class AddUserViewModel @Inject constructor(
      */
     private fun createUsuarioObject(nuevoId: String): Usuario {
         val state = _uiState.value
+        
+        // Obtener la URL del avatar según el tipo de usuario
+        val avatarUrl = when(state.tipoUsuario) {
+            TipoUsuario.ADMIN_APP -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media&token=1b86693e-cecc-45be-9669-69b21a6c909a"
+            TipoUsuario.ADMIN_CENTRO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40centro.png?alt=media&token=69a60931-e98c-45f6-b783-aca87946ecdc"
+            TipoUsuario.PROFESOR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40profesor.png?alt=media"
+            TipoUsuario.FAMILIAR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40familiar.png?alt=media"
+            TipoUsuario.ALUMNO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40alumno.png?alt=media"
+            else -> ""
+        }
+        
         return Usuario(
             dni = state.dni,
             nombre = state.nombre,
@@ -1238,6 +1279,7 @@ class AddUserViewModel @Inject constructor(
             perfiles = createPerfiles(),
             activo = true,
             firebaseUid = nuevoId,  // Guardar el ID generado como firebaseUid
+            avatarUrl = avatarUrl,  // Añadir la URL del avatar
             preferencias = Preferencias(
                 notificaciones = Notificaciones(
                     push = true,
@@ -1908,48 +1950,6 @@ class AddUserViewModel @Inject constructor(
     }
     
     /**
-     * Crea un objeto Usuario o Alumno a partir del estado actual del UI
-     */
-    private fun getUserData(): Any {
-        val state = _uiState.value
-        return when (state.tipoUsuario) {
-            TipoUsuario.ADMIN_APP, TipoUsuario.ADMIN_CENTRO, TipoUsuario.PROFESOR, TipoUsuario.FAMILIAR -> {
-                Usuario(
-                    dni = state.dni,
-                    nombre = state.nombre,
-                    apellidos = state.apellidos,
-                    email = state.email,
-                    telefono = state.telefono,
-                    perfiles = createPerfiles(),
-                    activo = true
-                )
-            }
-            TipoUsuario.ALUMNO -> {
-                Alumno(
-                    id = state.userId.ifEmpty { UUID.randomUUID().toString() },
-                    dni = state.dni,
-                    nombre = state.nombre,
-                    apellidos = state.apellidos,
-                    fechaNacimiento = DateUtils.parseDateString(state.fechaNacimiento),
-                    centroId = state.centroSeleccionado?.id ?: "",
-                    claseId = state.claseSeleccionada?.id ?: "",
-                    curso = state.cursoSeleccionado?.nombre ?: "",
-                    clase = state.claseSeleccionada?.nombre ?: "",
-                    numeroSS = state.numeroSS,
-                    condicionesMedicas = state.condicionesMedicas,
-                    alergias = if (state.alergias.isNotEmpty()) state.alergias.split(",").map { it.trim() } else emptyList(),
-                    medicacion = if (state.medicacion.isNotEmpty()) state.medicacion.split(",").map { it.trim() } else emptyList(),
-                    necesidadesEspeciales = state.necesidadesEspeciales,
-                    observaciones = state.observaciones,
-                    observacionesMedicas = state.observacionesMedicas,
-                    avatarUrl = getAvatarUrlForUserType(TipoUsuario.ALUMNO) // URL predeterminada para alumno
-                )
-            }
-            else -> throw IllegalArgumentException("Tipo de usuario no soportado: ${state.tipoUsuario}")
-        }
-    }
-
-    /**
      * Procesa el resultado de la operación de guardado
      */
     private fun handleSaveResult(result: Result<Unit>) {
@@ -2305,6 +2305,65 @@ class AddUserViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    private fun isValidFecha(fecha: String): Boolean {
+        val regex = Regex("^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/(19|20)\\d\\d$")
+        return regex.matches(fecha)
+    }
+    
+    /**
+     * Crea un objeto Usuario o Alumno a partir del estado actual del UI
+     */
+    private fun getUserData(): Any {
+        val state = _uiState.value
+        
+        // Obtener la URL del avatar según el tipo de usuario
+        val avatarUrl = when(state.tipoUsuario) {
+            TipoUsuario.ADMIN_APP -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media&token=1b86693e-cecc-45be-9669-69b21a6c909a"
+            TipoUsuario.ADMIN_CENTRO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40centro.png?alt=media&token=69a60931-e98c-45f6-b783-aca87946ecdc"
+            TipoUsuario.PROFESOR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40profesor.png?alt=media"
+            TipoUsuario.FAMILIAR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40familiar.png?alt=media"
+            TipoUsuario.ALUMNO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40alumno.png?alt=media"
+            else -> ""
+        }
+
+        return when (state.tipoUsuario) {
+            TipoUsuario.ADMIN_APP, TipoUsuario.ADMIN_CENTRO, TipoUsuario.PROFESOR, TipoUsuario.FAMILIAR -> {
+                Usuario(
+                    dni = state.dni,
+                    nombre = state.nombre,
+                    apellidos = state.apellidos,
+                    email = state.email,
+                    telefono = state.telefono,
+                    perfiles = createPerfiles(),
+                    activo = true,
+                    avatarUrl = avatarUrl // URL predeterminada según tipo de usuario
+                )
+            }
+            TipoUsuario.ALUMNO -> {
+                Alumno(
+                    id = state.userId.ifEmpty { UUID.randomUUID().toString() },
+                    dni = state.dni,
+                    nombre = state.nombre,
+                    apellidos = state.apellidos,
+                    fechaNacimiento = DateUtils.parseDateString(state.fechaNacimiento),
+                    centroId = state.centroSeleccionado?.id ?: "",
+                    claseId = state.claseSeleccionada?.id ?: "",
+                    curso = state.cursoSeleccionado?.nombre ?: "",
+                    clase = state.claseSeleccionada?.nombre ?: "",
+                    numeroSS = state.numeroSS,
+                    condicionesMedicas = state.condicionesMedicas,
+                    alergias = if (state.alergias.isNotEmpty()) state.alergias.split(",").map { it.trim() } else emptyList(),
+                    medicacion = if (state.medicacion.isNotEmpty()) state.medicacion.split(",").map { it.trim() } else emptyList(),
+                    necesidadesEspeciales = state.necesidadesEspeciales,
+                    observaciones = state.observaciones,
+                    observacionesMedicas = state.observacionesMedicas,
+                    avatarUrl = avatarUrl // URL predeterminada para alumno
+                )
+            }
+            else -> throw IllegalArgumentException("Tipo de usuario no soportado: ${state.tipoUsuario}")
         }
     }
 }

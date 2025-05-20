@@ -411,13 +411,12 @@ fun AddUserScreenContent(
     // Manejar el éxito
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
+            // Mostrar mensaje y navegar inmediatamente sin esperar
             snackbarHostState.showSnackbar(
                 message = if (uiState.isEditMode) "Usuario actualizado correctamente" else "Usuario creado correctamente",
                 duration = SnackbarDuration.Short
             )
-            // Esperar un momento para que se vea el mensaje
-            delay(1000)
-            // Volver atrás
+            // Volver atrás inmediatamente sin delay
             navController.popBackStack()
         }
     }
@@ -1613,6 +1612,43 @@ fun AlumnoFields(
                 }
             }
 
+            // Condiciones médicas
+            OutlinedTextField(
+                value = condicionesMedicas,
+                onValueChange = onUpdateCondicionesMedicas,
+                label = { Text("Condiciones Médicas") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.MedicalServices,
+                        contentDescription = null,
+                        tint = if (condicionesMedicasError != null)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Next
+                ),
+                isError = condicionesMedicasError != null,
+                supportingText = {
+                    if (condicionesMedicasError != null) {
+                        Text(text = condicionesMedicasError)
+                    } else {
+                        Column {
+                            Text("Enfermedades, discapacidades u otras condiciones médicas relevantes")
+                            Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(condicionesMedicasFocusRequester),
+                minLines = 2,
+                maxLines = 3
+            )
+
             // Alergias
             OutlinedTextField(
                 value = alergias,
@@ -1630,8 +1666,8 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Row {
-                        Text("Alergias a alimentos, materiales, etc. (separadas por comas) ")
+                    Column {
+                        Text("Alergias a alimentos, materiales, etc. (separadas por comas)")
                         Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
                     }
                 },
@@ -1658,50 +1694,13 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Row {
-                        Text("Medicamentos que toma regularmente (separados por comas) ")
+                    Column {
+                        Text("Medicamentos que toma regularmente (separados por comas)")
                         Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
-                minLines = 2,
-                maxLines = 3
-            )
-
-            // Condiciones médicas
-            OutlinedTextField(
-                value = condicionesMedicas,
-                onValueChange = onUpdateCondicionesMedicas,
-                label = { Text("Condiciones Médicas") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.MedicalServices,
-                        contentDescription = null,
-                        tint = if (condicionesMedicasError != null)
-                            MaterialTheme.colorScheme.error
-                        else
-                            MaterialTheme.colorScheme.primary
-                    )
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
-                isError = condicionesMedicasError != null,
-                supportingText = {
-                    if (condicionesMedicasError != null) {
-                        Text(text = condicionesMedicasError)
-                    } else {
-                        Row {
-                            Text("Enfermedades, discapacidades u otras condiciones médicas relevantes ")
-                            Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(condicionesMedicasFocusRequester),
                 minLines = 2,
                 maxLines = 3
             )
@@ -1723,8 +1722,8 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Row {
-                        Text("Necesidades educativas especiales o adaptaciones requeridas ")
+                    Column {
+                        Text("Necesidades educativas especiales o adaptaciones requeridas")
                         Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
                     }
                 },
@@ -1751,8 +1750,8 @@ fun AlumnoFields(
                     imeAction = ImeAction.Next
                 ),
                 supportingText = {
-                    Row {
-                        Text("Otras observaciones relevantes sobre la salud ")
+                    Column {
+                        Text("Otras observaciones relevantes sobre la salud")
                         Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
                     }
                 },
@@ -1782,8 +1781,8 @@ fun AlumnoFields(
                     onNext = { cursoFocusRequester.requestFocus() }
                 ),
                 supportingText = {
-                    Row {
-                        Text("Información adicional relevante ")
+                    Column {
+                        Text("Información adicional relevante")
                         Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
                     }
                 },

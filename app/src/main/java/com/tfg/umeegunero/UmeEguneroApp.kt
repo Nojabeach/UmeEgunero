@@ -7,6 +7,8 @@ import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.ktx.Firebase
@@ -31,7 +33,7 @@ import javax.inject.Inject
  * Timber para logging, y configurar canales de notificación.
  */
 @HiltAndroidApp
-class UmeEguneroApp : Application(), Configuration.Provider {
+class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory {
 
     @Inject
     lateinit var notificationManager: AppNotificationManager
@@ -45,11 +47,23 @@ class UmeEguneroApp : Application(), Configuration.Provider {
     @Inject
     lateinit var debugUtils: DebugUtils
     
+    @Inject
+    lateinit var imageLoader: ImageLoader
+    
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
+    
+    /**
+     * Devuelve el ImageLoader personalizado para la aplicación.
+     * Esto hace que Coil use nuestro ImageLoader optimizado en toda la app.
+     */
+    override fun newImageLoader(): ImageLoader {
+        Timber.d("Usando ImageLoader optimizado global")
+        return imageLoader
+    }
 
     override fun onCreate() {
         super.onCreate()

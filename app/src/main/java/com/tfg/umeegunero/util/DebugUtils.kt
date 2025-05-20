@@ -15,6 +15,7 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 
 @Singleton
 class DebugUtils @Inject constructor(
@@ -23,7 +24,6 @@ class DebugUtils @Inject constructor(
 
     // Credenciales para el admin por defecto
     private val DEFAULT_ADMIN_EMAIL = "admin@eguneroko.com"
-    private val DEFAULT_ADMIN_PASSWORD = "Lloreria2025"
     private val DEFAULT_ADMIN_DNI = "45678698P"
 
     /**
@@ -32,12 +32,21 @@ class DebugUtils @Inject constructor(
     fun ensureAdminExists() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Obtener la contraseña de Remote Config
+                val remoteConfig = FirebaseRemoteConfig.getInstance()
+                val password = remoteConfig.getString("SMTP_PASSWORD")
+                
+                if (password.isBlank()) {
+                    Log.w("DebugUtils", "No se ha configurado la contraseña en Remote Config")
+                    return@launch
+                }
+                
                 // Intento de login para ver si ya existe
                 try {
                     Log.d("DebugUtils", "Probando login de admin...")
                     val authResult = FirebaseAuth.getInstance().signInWithEmailAndPassword(
                         DEFAULT_ADMIN_EMAIL,
-                        DEFAULT_ADMIN_PASSWORD
+                        password
                     ).await()
 
                     // Si llega aquí, el admin ya existe
@@ -52,7 +61,7 @@ class DebugUtils @Inject constructor(
 
                     try {
                         // Creamos el admin
-                        createDefaultAdmin()
+                        createDefaultAdmin(password)
                     } catch (createError: Exception) {
                         // Si falla la creación, miramos si es por permisos o porque ya existe
                         Log.e("DebugUtils", "Error al crear admin: ${createError.message}")
@@ -79,7 +88,7 @@ class DebugUtils @Inject constructor(
     /**
      * Crea el admin por defecto
      */
-    private suspend fun createDefaultAdmin() {
+    private suspend fun createDefaultAdmin(password: String) {
         try {
             // 1. Crear usuario en Firebase Authentication
             val firebaseAuth = FirebaseAuth.getInstance()
@@ -87,7 +96,7 @@ class DebugUtils @Inject constructor(
             Log.d("DebugUtils", "Creando usuario en Authentication...")
             val authResult = firebaseAuth.createUserWithEmailAndPassword(
                 DEFAULT_ADMIN_EMAIL,
-                DEFAULT_ADMIN_PASSWORD
+                password
             ).await()
 
             val uid = authResult.user?.uid ?: throw Exception("No se pudo obtener el UID del usuario creado")
@@ -108,7 +117,8 @@ class DebugUtils @Inject constructor(
                 telefono = "+34600000000",
                 fechaRegistro = Timestamp.now(),
                 perfiles = listOf(perfil),
-                activo = true
+                activo = true,
+                avatarUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media&token=1b86693e-cecc-45be-9669-69b21a6c909a"
             )
 
             // 4. Guardar en Firestore
@@ -219,6 +229,28 @@ class DebugUtils @Inject constructor(
                     }
                 }
                 
+                // Obtener la contraseña de Remote Config
+                val remoteConfig = FirebaseRemoteConfig.getInstance()
+                val password = remoteConfig.getString("SMTP_PASSWORD")
+                
+                if (password.isBlank()) {
+                    Timber.w("No se ha configurado la contraseña en Remote Config")
+                    return@launch
+                }
+                
+                // Intentar crear el usuario en Firebase Authentication primero
+                try {
+                    val authResult = FirebaseAuth.getInstance().createUserWithEmailAndPassword(
+                        DEFAULT_ADMIN_EMAIL,
+                        password
+                    ).await()
+                    
+                    Timber.d("Usuario ADMIN_APP creado en Authentication con UID: ${authResult.user?.uid}")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al crear usuario ADMIN_APP en Authentication")
+                    // Continuar de todas formas para crear en Firestore
+                }
+                
                 Timber.d("No existe ningún ADMIN_APP, creando usuario de debug...")
                 // Crear perfil de admin
                 val perfil = Perfil(
@@ -234,7 +266,8 @@ class DebugUtils @Inject constructor(
                     telefono = "944831879",
                     fechaRegistro = com.google.firebase.Timestamp.now(),
                     perfiles = listOf(perfil),
-                    activo = true
+                    activo = true,
+                    avatarUrl = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media&token=1b86693e-cecc-45be-9669-69b21a6c909a"
                 )
                 // Guardar en Firestore
                 val saveResult = usuarioRepository.guardarUsuario(admin)

@@ -54,6 +54,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.HorizontalDivider
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.tfg.umeegunero.feature.centro.viewmodel.ModoVisualizacionAlumnos
+import androidx.compose.foundation.shape.CircleShape
 
 /**
  * Pantalla para vincular alumnos a clases
@@ -299,122 +301,190 @@ fun ContenidoPrincipal(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Barra de búsqueda y filtros
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedTextField(
-                        value = uiState.textoFiltroAlumnos,
-                        onValueChange = { viewModel.actualizarFiltroAlumnos(it) },
-                        placeholder = { Text("Buscar alumnos...") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Buscar"
-                            )
-                        },
-                        trailingIcon = {
-                            if (uiState.textoFiltroAlumnos.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.actualizarFiltroAlumnos("") }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "Limpiar búsqueda"
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Search
-                        )
+                    // Título de la sección
+                    Text(
+                        text = "Filtrar y buscar alumnos",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                     
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    // Botón de filtro para mostrar solo vinculados o todos
-                    FilterChip(
-                        selected = uiState.mostrarSoloVinculados,
-                        onClick = { viewModel.cambiarModoVisualizacion(!uiState.mostrarSoloVinculados) },
-                        label = { Text(if (uiState.mostrarSoloVinculados) "Vinculados" else "Todos") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.FilterList,
-                                contentDescription = "Filtrar alumnos"
-                            )
-                        }
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Lista de alumnos
-                AlumnosList(
-                    alumnos = if (uiState.mostrarSoloVinculados) 
-                                uiState.alumnosVinculados 
-                              else 
-                                if (uiState.textoFiltroAlumnos.isEmpty()) 
-                                    uiState.alumnos 
-                                else 
-                                    uiState.alumnos.filter { 
-                                        it.nombreCompleto.contains(uiState.textoFiltroAlumnos, ignoreCase = true) ||
-                                        it.dni.contains(uiState.textoFiltroAlumnos, ignoreCase = true)
-                                    },
-                    alumnosVinculados = uiState.alumnosVinculados.map { it.dni },
-                    textoFiltro = uiState.textoFiltroAlumnos,
-                    onVincularClick = { alumno ->
-                        viewModel.seleccionarAlumno(alumno)
-                        viewModel.mostrarDialogoAsignar()
-                    },
-                    onDesvincularClick = { alumno ->
-                        viewModel.seleccionarAlumno(alumno)
-                        viewModel.mostrarDialogoConfirmarDesasignacion()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                )
-            } else {
-                // Mensaje de selección
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .background(
-                            color = MaterialTheme.colorScheme.surface,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                    // Contenedor de filtros con fondo
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(size = 48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = if (uiState.cursoSeleccionado != null)
-                                "Selecciona una clase para gestionar sus alumnos"
-                            else
-                                "Selecciona un curso y una clase para gestionar los alumnos",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Barra de búsqueda con icono y bordes redondeados
+                            OutlinedTextField(
+                                value = uiState.textoFiltroAlumnos,
+                                onValueChange = { viewModel.actualizarFiltroAlumnos(it) },
+                                placeholder = { Text("Buscar por nombre o DNI...") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "Buscar",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (uiState.textoFiltroAlumnos.isNotEmpty()) {
+                                        IconButton(onClick = { viewModel.actualizarFiltroAlumnos("") }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Clear,
+                                                contentDescription = "Limpiar búsqueda",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Search
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                                )
+                            )
+                            
+                            // Filtros en chips horizontales
+                            Text(
+                                text = "Mostrar",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = uiState.modoVisualizacion == ModoVisualizacionAlumnos.TODOS,
+                                    onClick = { viewModel.cambiarModoVisualizacion(ModoVisualizacionAlumnos.TODOS) },
+                                    label = { Text("Todos") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedLeadingIconColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                                
+                                FilterChip(
+                                    selected = uiState.modoVisualizacion == ModoVisualizacionAlumnos.VINCULADOS,
+                                    onClick = { viewModel.cambiarModoVisualizacion(ModoVisualizacionAlumnos.VINCULADOS) },
+                                    label = { Text("Vinculados") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        selectedLeadingIconColor = MaterialTheme.colorScheme.secondary
+                                    )
+                                )
+                                
+                                FilterChip(
+                                    selected = uiState.modoVisualizacion == ModoVisualizacionAlumnos.PENDIENTES,
+                                    onClick = { viewModel.cambiarModoVisualizacion(ModoVisualizacionAlumnos.PENDIENTES) },
+                                    label = { Text("Pendientes") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        selectedLeadingIconColor = MaterialTheme.colorScheme.tertiary
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Lista de alumnos con el filtro actualizado - nuevo diseño
+            AlumnosList(
+                alumnos = when (uiState.modoVisualizacion) {
+                    ModoVisualizacionAlumnos.TODOS -> {
+                        if (uiState.textoFiltroAlumnos.isEmpty()) 
+                            uiState.alumnos 
+                        else 
+                            uiState.alumnos.filter { 
+                                it.nombreCompleto.contains(uiState.textoFiltroAlumnos, ignoreCase = true) ||
+                                it.dni.contains(uiState.textoFiltroAlumnos, ignoreCase = true)
+                            }
+                    }
+                    ModoVisualizacionAlumnos.VINCULADOS -> {
+                        if (uiState.textoFiltroAlumnos.isEmpty()) 
+                            uiState.alumnosVinculados 
+                        else 
+                            uiState.alumnosVinculados.filter { 
+                                it.nombreCompleto.contains(uiState.textoFiltroAlumnos, ignoreCase = true) ||
+                                it.dni.contains(uiState.textoFiltroAlumnos, ignoreCase = true)
+                            }
+                    }
+                    ModoVisualizacionAlumnos.PENDIENTES -> {
+                        if (uiState.textoFiltroAlumnos.isEmpty()) 
+                            uiState.alumnosDisponibles 
+                        else 
+                            uiState.alumnosDisponibles.filter { 
+                                it.nombreCompleto.contains(uiState.textoFiltroAlumnos, ignoreCase = true) ||
+                                it.dni.contains(uiState.textoFiltroAlumnos, ignoreCase = true)
+                            }
+                    }
+                },
+                alumnosVinculados = uiState.alumnosVinculados.map { it.dni },
+                textoFiltro = uiState.textoFiltroAlumnos,
+                onVincularClick = { alumno ->
+                    viewModel.seleccionarAlumno(alumno)
+                    viewModel.mostrarDialogoAsignar()
+                },
+                onDesvincularClick = { alumno ->
+                    viewModel.seleccionarAlumno(alumno)
+                    viewModel.mostrarDialogoConfirmarDesasignacion()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
         } else if (uiState.isAdminApp && uiState.centros.isNotEmpty()) {
             // Mensaje de selección de centro para admin app
             Box(
@@ -456,6 +526,46 @@ fun ContenidoPrincipal(
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            // Mensaje de selección
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(size = 48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = if (uiState.cursoSeleccionado != null)
+                            "Selecciona una clase para gestionar sus alumnos"
+                        else
+                            "Selecciona un curso y una clase para gestionar los alumnos",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -1137,79 +1247,125 @@ fun AlumnosList(
 ) {
     if (alumnos.isEmpty()) {
         // Mensaje cuando no hay alumnos
-        Box(
-            modifier = modifier
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
+        Card(
+            modifier = modifier,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = if (textoFiltro.isEmpty()) Icons.Default.Warning else Icons.Default.Search,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(48.dp)
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = if (textoFiltro.isEmpty()) 
-                        "No hay alumnos disponibles" 
-                    else 
-                        "No se encontraron resultados para '$textoFiltro'",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = if (textoFiltro.isEmpty()) 
-                        "Puedes crear nuevos alumnos con el botón + en la esquina inferior derecha" 
-                    else 
-                        "Prueba con otros términos de búsqueda",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = if (textoFiltro.isEmpty()) Icons.Default.Warning else Icons.Default.Search,
+                        contentDescription = null,
+                        tint = if (textoFiltro.isEmpty()) 
+                            MaterialTheme.colorScheme.secondary
+                        else 
+                            MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(56.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = if (textoFiltro.isEmpty()) 
+                            "No hay alumnos disponibles" 
+                        else 
+                            "No se encontraron resultados para '$textoFiltro'",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text(
+                        text = if (textoFiltro.isEmpty()) 
+                            "Puedes crear nuevos alumnos con el botón + en la esquina inferior derecha" 
+                        else 
+                            "Prueba con otros términos de búsqueda",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     } else {
         // Lista de alumnos
-        Card(
-            modifier = modifier,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            LazyColumn(
+        Column(modifier = modifier) {
+            // Encabezado con contador de resultados
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                items(alumnos) { alumno ->
-                    val estaVinculado = alumnosVinculados.contains(alumno.dni)
-                    
-                    AlumnoItem(
-                        alumno = alumno,
-                        estaVinculado = estaVinculado,
-                        onVincularClick = { onVincularClick(alumno) },
-                        onDesvincularClick = { onDesvincularClick(alumno) }
+                Text(
+                    text = "${alumnos.size} ${if (alumnos.size == 1) "alumno" else "alumnos"} encontrados",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                if (textoFiltro.isNotEmpty()) {
+                    Text(
+                        text = "Filtro: \"$textoFiltro\"",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
                     )
-                    
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        thickness = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Lista de alumnos
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 8.dp)
+                ) {
+                    items(
+                        items = alumnos,
+                        key = { it.dni }
+                    ) { alumno ->
+                        val estaVinculado = alumnosVinculados.contains(alumno.dni)
+                        
+                        AlumnoItem(
+                            alumno = alumno,
+                            estaVinculado = estaVinculado,
+                            onVincularClick = { onVincularClick(alumno) },
+                            onDesvincularClick = { onDesvincularClick(alumno) }
+                        )
+                        
+                        if (alumno != alumnos.last()) {
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp)
+                                    .padding(vertical = 4.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1229,17 +1385,56 @@ fun AlumnoItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Avatar/Iniciales del alumno
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    color = if (estaVinculado) 
+                        MaterialTheme.colorScheme.primaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.surfaceVariant,
+                    shape = CircleShape
+                )
+                .border(
+                    width = 1.dp,
+                    color = if (estaVinculado) 
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    else
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            val iniciales = (alumno.nombre.firstOrNull()?.toString() ?: "") + 
+                           (alumno.apellidos.split(" ").firstOrNull()?.firstOrNull()?.toString() ?: "")
+                           
+            Text(
+                text = iniciales.uppercase(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (estaVinculado) 
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
         // Información del alumno
         Column(
             modifier = Modifier.weight(1f)
         ) {
             Text(
                 text = alumno.nombreCompleto,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             
             Spacer(modifier = Modifier.height(2.dp))
@@ -1247,35 +1442,71 @@ fun AlumnoItem(
             Text(
                 text = "DNI: ${alumno.dni}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             
             Spacer(modifier = Modifier.height(2.dp))
             
-            Text(
-                text = "Fecha Nacimiento: ${alumno.fechaNacimiento}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Fecha de Nacimiento: ${alumno.fechaNacimiento}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                if (estaVinculado) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Vinculado",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
         }
         
+        Spacer(modifier = Modifier.width(8.dp))
+        
         // Botón de acción (vincular o desvincular)
-        if (estaVinculado) {
-            IconButton(onClick = onDesvincularClick) {
-                Icon(
-                    imageVector = Icons.Default.RemoveCircle,
-                    contentDescription = "Desvincular alumno",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        } else {
-            IconButton(onClick = onVincularClick) {
-                Icon(
-                    imageVector = Icons.Default.AddCircle,
-                    contentDescription = "Vincular alumno",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+        FilledIconButton(
+            onClick = if (estaVinculado) onDesvincularClick else onVincularClick,
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = if (estaVinculado) 
+                    MaterialTheme.colorScheme.errorContainer
+                else 
+                    MaterialTheme.colorScheme.primaryContainer
+            ),
+            modifier = Modifier.size(42.dp)
+        ) {
+            Icon(
+                imageVector = if (estaVinculado) 
+                    Icons.Default.RemoveCircle
+                else 
+                    Icons.Default.AddCircle,
+                contentDescription = if (estaVinculado) 
+                    "Desvincular alumno" 
+                else 
+                    "Vincular alumno",
+                tint = if (estaVinculado) 
+                    MaterialTheme.colorScheme.error
+                else 
+                    MaterialTheme.colorScheme.primary
+            )
         }
     }
 } 
