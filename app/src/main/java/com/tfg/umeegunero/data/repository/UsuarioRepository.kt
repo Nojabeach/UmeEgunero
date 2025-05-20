@@ -2350,6 +2350,10 @@ open class UsuarioRepository @Inject constructor(
                 firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             } catch (e: Exception) {
                 Timber.e(e, "Error al crear cuenta en Firebase Auth: ${e.message}")
+                // Comprobar si es un error de email ya existente
+                if (e.message?.contains("email address is already in use") == true) {
+                    return@withContext Result.Error(Exception("El correo electrónico ya está registrado. Por favor, utiliza otro o inicia sesión con este."))
+                }
                 return@withContext Result.Error(Exception("Error al crear la cuenta de usuario: ${e.message}"))
             }
 

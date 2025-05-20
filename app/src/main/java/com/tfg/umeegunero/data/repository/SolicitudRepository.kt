@@ -355,14 +355,13 @@ class SolicitudRepository @Inject constructor(
                                 </html>
                             """.trimIndent()
                             
-                            // Enviar email personalizado de aprobación
-                            val asunto = "Solicitud Aprobada en UmeEgunero - Vinculación con ${nombreAlumno}"
-                            val emailEnviado = emailNotificationService.sendEmail(
+                            // Enviar email personalizado de aprobación usando el nuevo método
+                            val emailEnviado = emailNotificationService.enviarEmailSolicitudProcesada(
                                 destinatario = familiar.email,
                                 nombre = familiar.nombre,
-                                tipoPlantilla = TipoPlantilla.NINGUNA,
-                                asuntoPersonalizado = asunto,
-                                contenido = contenidoHtml
+                                esAprobacion = true,
+                                nombreAlumno = nombreAlumno,
+                                contenidoHtml = contenidoHtml
                             )
                             
                             if (emailEnviado) {
@@ -473,14 +472,14 @@ class SolicitudRepository @Inject constructor(
                                 </html>
                             """.trimIndent()
                             
-                            // Enviar email personalizado de rechazo
-                            val asunto = "Solicitud Rechazada en UmeEgunero - Vinculación con ${nombreAlumno}"
-                            val emailEnviado = emailNotificationService.sendEmail(
+                            // Enviar email personalizado de rechazo usando el nuevo método
+                            val emailEnviado = emailNotificationService.enviarEmailSolicitudProcesada(
                                 destinatario = familiar.email,
                                 nombre = familiar.nombre,
-                                tipoPlantilla = TipoPlantilla.NINGUNA,
-                                asuntoPersonalizado = asunto,
-                                contenido = contenidoHtml
+                                esAprobacion = false,
+                                nombreAlumno = nombreAlumno,
+                                observaciones = observaciones,
+                                contenidoHtml = contenidoHtml
                             )
                             
                             if (emailEnviado) {

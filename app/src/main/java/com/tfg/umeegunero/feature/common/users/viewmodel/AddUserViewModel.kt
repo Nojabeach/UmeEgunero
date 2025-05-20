@@ -986,20 +986,61 @@ class AddUserViewModel @Inject constructor(
                 }
             }
             
-            // PASO 2: Crear cuenta en Firebase Authentication
-            Timber.d("PASO 2: Creando cuenta en Firebase Authentication para ${state.email}")
-            val authResult = withContext(Dispatchers.IO) {
-                try {
-                    val task = firebaseAuth.createUserWithEmailAndPassword(state.email, state.password)
-                    Tasks.await(task)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al crear usuario en Firebase Auth: ${e.message}")
+            // PASO 2: Verificar primero si el email ya existe en Firebase Auth
+            Timber.d("PASO 2: Verificando si el email ya existe en Firebase Authentication")
+            var emailExiste = false
+            var firebaseUid = ""
+            
+            try {
+                val authResult = withContext(Dispatchers.IO) {
+                    val signInMethods = Tasks.await(firebaseAuth.fetchSignInMethodsForEmail(state.email))
+                    if ((signInMethods.signInMethods?.size ?: 0) > 0) {
+                        emailExiste = true
+                        Timber.w("El email ${state.email} ya está registrado en Firebase Auth")
+                        null
+                    } else {
+                        emailExiste = false
+                        Timber.d("El email ${state.email} no existe en Firebase Auth, continuando con la creación")
+                        try {
+                            Tasks.await(firebaseAuth.createUserWithEmailAndPassword(state.email, state.password))
+                        } catch (e: Exception) {
+                            // Doble verificación por si hay discrepancia entre fetchSignInMethods y createUser
+                            if (e.message?.contains("email address is already in use") == true) {
+                                emailExiste = true
+                                Timber.w("Conflicto detectado: El email existe pero fetchSignInMethods no lo detectó")
+                                null
+                            } else {
+                                throw e
+                            }
+                        }
+                    }
+                }
+                
+                if (emailExiste) {
+                    // Si el email ya existe, mostrar mensaje claro al usuario y detener el proceso
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "El correo electrónico ${state.email} ya está registrado. Por favor, utiliza otro email para registrarte o inicia sesión con este."
+                    )}
+                    return
+                }
+                
+                // Si continuamos, es que el usuario se creó con éxito
+                firebaseUid = authResult?.user?.uid ?: throw Exception("Error al obtener UID de Firebase Auth")
+                Timber.d("Cuenta creada en Firebase Authentication con UID: $firebaseUid")
+            } catch (e: Exception) {
+                if (e.message?.contains("email address is already in use") == true) {
+                    Timber.e(e, "El email ya está en uso: ${state.email}")
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "El correo electrónico ya está registrado. Por favor, utiliza otro email o inicia sesión con este."
+                    )}
+                    return
+                } else {
+                    Timber.e(e, "Error al verificar/crear usuario en Firebase Auth: ${e.message}")
                     throw e
                 }
             }
-            
-            val firebaseUid = authResult.user?.uid ?: throw Exception("Error al obtener UID de Firebase Auth")
-            Timber.d("Cuenta creada en Firebase Authentication con UID: $firebaseUid")
             
             // PASO 3: Crear el perfil principal
             Timber.d("PASO 3: Creando perfil principal para tipo ${state.tipoUsuario}")

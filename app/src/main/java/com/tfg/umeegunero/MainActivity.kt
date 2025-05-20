@@ -435,7 +435,12 @@ class MainActivity : ComponentActivity() {
                                                         }
                                                     }
                                                     .addOnFailureListener { createError ->
-                                                        Timber.e(createError, "❌ Error al recrear administrador en Authentication: ${createError.message}")
+                                                        if (createError is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
+                                                            Timber.w("El email ya está en uso. No se puede recrear la cuenta automáticamente.")
+                                                            // Intentar iniciar sesión nuevamente con otras credenciales o mostrar mensaje al usuario
+                                                        } else {
+                                                            Timber.e(createError, "❌ Error al recrear administrador en Authentication: ${createError.message}")
+                                                        }
                                                     }
                                             }
                                         }
@@ -458,7 +463,31 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                     .addOnFailureListener { createError ->
-                                        Timber.e(createError, "❌ Error al crear administrador en Authentication: ${createError.message}")
+                                        if (createError is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
+                                            Timber.w("Conflicto detectado: El email ya está registrado, pero fetchSignInMethods no lo detectó. Intentando iniciar sesión...")
+                                            
+                                            // Intentar iniciar sesión si hay conflicto (el email existe a pesar de lo que indicó fetchSignInMethods)
+                                            FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+                                                .addOnSuccessListener { authResult ->
+                                                    Timber.d("✅ Sesión iniciada correctamente tras conflicto. UID: ${authResult.user?.uid}")
+                                                    
+                                                    // Actualizar UID en Firestore
+                                                    val uid = authResult.user?.uid
+                                                    if (uid != null) {
+                                                        firestore.collection("usuarios").document(dni)
+                                                            .update("firebaseUid", uid)
+                                                            .addOnSuccessListener {
+                                                                Timber.d("UID actualizado correctamente en Firestore tras conflicto")
+                                                                FirebaseAuth.getInstance().signOut()
+                                                            }
+                                                    }
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    Timber.e(e, "❌ Error al iniciar sesión tras conflicto: ${e.message}")
+                                                }
+                                        } else {
+                                            Timber.e(createError, "❌ Error al crear administrador en Authentication: ${createError.message}")
+                                        }
                                     }
                             }
                         }
@@ -620,8 +649,43 @@ class MainActivity : ComponentActivity() {
                         Timber.e("Error: usuario creado en Auth pero no se pudo obtener")
                     }
                 } else {
-                    Timber.e(createTask.exception, "No se pudo crear el usuario administrador en Firebase Auth: ${createTask.exception?.message}")
-                    // showErrorToast("Error al crear el usuario administrador. Verifica que SMTP_PASSWORD esté configurada correctamente en Firebase Remote Config.")
+                    // Verificar si el error es porque el email ya existe
+                    if (createTask.exception is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
+                        Timber.w("El email $email ya está registrado en Authentication. Intentando iniciar sesión...")
+                        
+                        // Intentar iniciar sesión si el usuario ya existe
+                        FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+                            .addOnSuccessListener { authResult ->
+                                Timber.d("✅ Sesión iniciada correctamente con usuario existente. UID: ${authResult.user?.uid}")
+                                val uid = authResult.user?.uid
+                                if (uid != null) {
+                                    // Verificar si ya existe un documento en Firestore para este usuario
+                                    firestore.collection("usuarios")
+                                        .whereEqualTo("email", email)
+                                        .get()
+                                        .addOnSuccessListener { querySnapshot ->
+                                            if (querySnapshot.isEmpty) {
+                                                // El usuario existe en Auth pero no en Firestore, crear documento
+                                                Timber.d("Usuario existe en Auth pero no en Firestore. Creando documento...")
+                                                createAdminDocument(uid, email)
+                                            } else {
+                                                Timber.d("Usuario ya existe tanto en Auth como en Firestore. No se requiere acción adicional.")
+                                                // Si hay necesidad de actualizar algún campo, hacerlo aquí
+                                            }
+                                        }
+                                }
+                                
+                                // Cerrar sesión después de la verificación
+                                FirebaseAuth.getInstance().signOut()
+                            }
+                            .addOnFailureListener { e ->
+                                Timber.e(e, "❌ Error al iniciar sesión con usuario existente: ${e.message}")
+                                // showErrorToast("No se pudo acceder al usuario existente. Verifique las credenciales o use la función 'Olvidé mi contraseña'.")
+                            }
+                    } else {
+                        Timber.e(createTask.exception, "No se pudo crear el usuario administrador en Firebase Auth: ${createTask.exception?.message}")
+                        // showErrorToast("Error al crear el usuario administrador. Verifica que SMTP_PASSWORD esté configurada correctamente en Firebase Remote Config.")
+                    }
                 }
             }
     }

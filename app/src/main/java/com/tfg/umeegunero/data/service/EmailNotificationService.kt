@@ -105,19 +105,33 @@ class EmailNotificationService @Inject constructor(
         asuntoPersonalizado: String? = null,
         contenido: String? = null
     ): Boolean {
-        if (tipoPlantilla == TipoPlantilla.NINGUNA && contenido.isNullOrBlank()) {
-            Timber.w("Intento de envío de email sin plantilla ni contenido personalizado")
+        // Validación de parámetros
+        if (destinatario.isBlank()) {
+            Timber.w("Error: no se puede enviar email con destinatario vacío")
             return false
+        }
+
+        // Si el tipo es NINGUNA y no hay contenido, usar BIENVENIDA por defecto
+        val plantillaEfectiva = if (tipoPlantilla == TipoPlantilla.NINGUNA && contenido.isNullOrBlank()) {
+            Timber.w("Cambiando tipo de plantilla de NINGUNA a BIENVENIDA ya que no se proporcionó contenido")
+            TipoPlantilla.BIENVENIDA
+        } else {
+            tipoPlantilla
         }
 
         val nombreParaEmail = nombre.ifBlank { "Usuario/a" }
         val asunto = asuntoPersonalizado ?: run {
-            val tipoAsunto = tipoPlantilla.name.lowercase().replaceFirstChar { it.titlecase() }
+            val tipoAsunto = plantillaEfectiva.name.lowercase().replaceFirstChar { it.titlecase() }
             "UmeEgunero: ${tipoAsunto} para ${nombreParaEmail}"
         }
 
-        // Obtener token seguro
-        val securityToken = getSecurityToken()
+        // Obtener token seguro con manejo de errores
+        val securityToken = try {
+            getSecurityToken()
+        } catch (e: Exception) {
+            Timber.e(e, "Error fatal al obtener token de seguridad, abortando envío de email")
+            return false
+        }
         
         // Construir URL con parámetros
         val urlConParams = try {
@@ -126,7 +140,7 @@ class EmailNotificationService @Inject constructor(
                 .appendQueryParameter("destinatario", destinatario)
                 .appendQueryParameter("asunto", asunto)
                 .appendQueryParameter("nombre", nombreParaEmail)
-                .appendQueryParameter("tipoPlantilla", tipoPlantilla.name)
+                .appendQueryParameter("tipoPlantilla", plantillaEfectiva.name)
                 .apply {
                     // Añadir contenido personalizado si existe
                     contenido?.let { appendQueryParameter("contenido", it) }
@@ -142,7 +156,7 @@ class EmailNotificationService @Inject constructor(
             return false
         }
 
-        Timber.d("Intentando enviar email ($tipoPlantilla) a $destinatario vía Apps Script")
+        Timber.d("Intentando enviar email ($plantillaEfectiva) a $destinatario vía Apps Script")
 
         return try {
             val response: ScriptResponse = withContext(Dispatchers.IO) {
@@ -157,7 +171,7 @@ class EmailNotificationService @Inject constructor(
             
             success
         } catch (e: Exception) {
-            Timber.e(e, "Error en llamada a Apps Script para enviar email")
+            Timber.e(e, "Error en llamada a Apps Script para enviar email: ${e.message}")
             false
         }
     }
@@ -253,6 +267,41 @@ class EmailNotificationService @Inject constructor(
             tipoPlantilla = TipoPlantilla.RECORDATORIO,
             asuntoPersonalizado = asunto,
             contenido = mensajeRecordatorio
+        )
+    }
+
+    /**
+     * Envía un email de notificación específico para el procesamiento de solicitudes.
+     * 
+     * @param destinatario Dirección de email del destinatario
+     * @param nombre Nombre del destinatario para personalizar el mensaje
+     * @param esAprobacion Si es true se envía con plantilla de aprobación, si es false con plantilla de rechazo
+     * @param nombreAlumno Nombre del alumno para incluir en el asunto y contenido
+     * @param observaciones Observaciones opcionales (para rechazos)
+     * @param contenidoHtml Contenido HTML personalizado (opcional)
+     * @return true si el email se envió correctamente, false en caso contrario
+     */
+    suspend fun enviarEmailSolicitudProcesada(
+        destinatario: String,
+        nombre: String,
+        esAprobacion: Boolean,
+        nombreAlumno: String,
+        observaciones: String = "",
+        contenidoHtml: String? = null
+    ): Boolean {
+        val tipoPlantilla = if (esAprobacion) TipoPlantilla.APROBACION else TipoPlantilla.RECHAZO
+        val accion = if (esAprobacion) "Aprobada" else "Rechazada"
+        val asunto = "Solicitud $accion en UmeEgunero - Vinculación con $nombreAlumno"
+        
+        // Registrar el intento de envío con logs apropiados
+        Timber.d("Intentando enviar email de ${if (esAprobacion) "aprobación" else "rechazo"} a $destinatario para alumno $nombreAlumno")
+        
+        return sendEmail(
+            destinatario = destinatario,
+            nombre = nombre,
+            tipoPlantilla = tipoPlantilla,
+            asuntoPersonalizado = asunto,
+            contenido = contenidoHtml
         )
     }
 } 

@@ -158,13 +158,12 @@ class SecureTokenManager @Inject constructor() {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         val secretKey = getKey(keyAlias)
         
-        // Generar IV aleatorio
-        val iv = ByteArray(IV_LENGTH)
-        SecureRandom().nextBytes(iv)
+        // Inicializar cipher para encriptación sin IV personalizado
+        // En Android más recientes, KeyStore no permite IVs personalizados
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
         
-        // Inicializar cipher para encriptación
-        val spec = GCMParameterSpec(TAG_LENGTH, iv)
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, spec)
+        // Obtener el IV generado automáticamente por el sistema
+        val iv = cipher.iv
         
         // Encriptar los datos
         val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
