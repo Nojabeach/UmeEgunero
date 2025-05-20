@@ -15,3 +15,12 @@
 local.properties
 google-services.json
 .qodo
+
+# Archivos de memoria y perfiles
+*.hprof
+*.trace
+*.alloc
+*.heap
+*.data
+traces/
+memory-dumps/
