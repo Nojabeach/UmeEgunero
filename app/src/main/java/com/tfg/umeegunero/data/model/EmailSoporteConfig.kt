@@ -24,7 +24,7 @@ object EmailSoporteConstants {
     /**
      * Email destinatario para mensajes de soporte
      */
-    const val EMAIL_DESTINATARIO = "soporte@umeegunero.com"
+    const val EMAIL_DESTINATARIO = "UmeEgunero@gmail.com"
     
     /**
      * Asuntos predefinidos para mensajes de soporte
