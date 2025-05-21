@@ -39,7 +39,7 @@ object Constants {
      * debería obtenerse de forma segura (Firebase Remote Config, servidor propio,
      * o meta-data en AndroidManifest.xml).
      */
-    const val EMAIL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzP50NtK2eztKwod3km44i8JEpB8LoHz3XkLYastM6P19I8rH-zKFaumUPWEFEmZPzmOA/exec"
+    const val EMAIL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypG-79uIBV3FnP8CNRhFIx3Dt1DZ9nxAKMeg7KtFlj4Uv0O3eAQhUtSqrhGm6cJMsyVQ/exec"
     
     /**
      * Identificador único de la aplicación.

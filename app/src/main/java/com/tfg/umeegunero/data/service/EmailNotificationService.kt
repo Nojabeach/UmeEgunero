@@ -14,6 +14,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.tfg.umeegunero.util.Constants
 import com.tfg.umeegunero.util.security.SecureTokenManager
+import com.tfg.umeegunero.data.model.PlantillaEmail
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
@@ -101,6 +102,8 @@ class EmailNotificationService @Inject constructor(
      * @param tipoPlantilla Tipo de plantilla a utilizar para el formato del email
      * @param asuntoPersonalizado Asunto personalizado (opcional, si es null se genera automáticamente)
      * @param contenido Contenido personalizado del mensaje (opcional)
+     * @param emailRemitente Email del remitente (para SOPORTE)
+     * @param mensaje Mensaje del usuario (para SOPORTE)
      * @return true si el email se envió correctamente, false en caso contrario
      */
     suspend fun sendEmail(
@@ -108,7 +111,9 @@ class EmailNotificationService @Inject constructor(
         nombre: String,
         tipoPlantilla: TipoPlantilla,
         asuntoPersonalizado: String? = null,
-        contenido: String? = null
+        contenido: String? = null,
+        emailRemitente: String? = null,
+        mensaje: String? = null
     ): Boolean {
         // Validación de parámetros
         if (destinatario.isBlank()) {
@@ -149,6 +154,13 @@ class EmailNotificationService @Inject constructor(
                 .apply {
                     // Añadir contenido personalizado si existe
                     contenido?.let { appendQueryParameter("contenido", it) }
+                    
+                    // Añadir parámetros adicionales para SOPORTE
+                    if (plantillaEfectiva == TipoPlantilla.SOPORTE) {
+                        emailRemitente?.let { appendQueryParameter("email", it) }
+                        mensaje?.let { appendQueryParameter("mensaje", it) }
+                    }
+                    
                     // Añadir token de seguridad
                     appendQueryParameter("token", securityToken)
                     // Añadir timestamp para prevenir ataques de repetición
@@ -328,134 +340,17 @@ class EmailNotificationService @Inject constructor(
         mensaje: String
     ): Boolean {
         try {
-            // Preparar contenido HTML para el mensaje de soporte
-            val contenidoHtml = """
-                <!DOCTYPE html>
-                <html lang="es">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        body {
-                            font-family: 'Segoe UI', Arial, sans-serif;
-                            line-height: 1.6;
-                            color: #333333;
-                            margin: 0;
-                            padding: 0;
-                            background-color: #f5f5f5;
-                        }
-                        .container {
-                            max-width: 700px;
-                            margin: 0 auto;
-                            padding: 20px;
-                            background-color: #ffffff;
-                            border-radius: 8px;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        }
-                        .header {
-                            background-color: #E91E63;
-                            color: white;
-                            padding: 20px;
-                            text-align: center;
-                            border-radius: 8px 8px 0 0;
-                        }
-                        .content {
-                            padding: 20px;
-                        }
-                        .footer {
-                            text-align: center;
-                            padding: 15px;
-                            color: #666666;
-                            font-size: 12px;
-                            border-top: 1px solid #eeeeee;
-                        }
-                        .info-section {
-                            background-color: #f8f9fa;
-                            padding: 15px;
-                            border-radius: 4px;
-                            margin-bottom: 20px;
-                            border-left: 4px solid #E91E63;
-                        }
-                        .info-row {
-                            margin-bottom: 8px;
-                        }
-                        .info-label {
-                            font-weight: bold;
-                            color: #555;
-                            width: 80px;
-                            display: inline-block;
-                        }
-                        .message-box {
-                            background-color: #ffffff;
-                            padding: 15px;
-                            border-radius: 4px;
-                            margin: 20px 0;
-                            border: 1px solid #dddddd;
-                        }
-                        .priority-high {
-                            color: #D32F2F;
-                            font-weight: bold;
-                        }
-                        .ticket-info {
-                            background-color: #E8F5E9;
-                            padding: 10px 15px;
-                            border-radius: 4px;
-                            margin-top: 20px;
-                            font-size: 0.9em;
-                            border-left: 4px solid #4CAF50;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>Soporte Técnico UmeEgunero</h1>
-                        </div>
-                        <div class="content">
-                            <h2>Nueva consulta de soporte</h2>
-                            
-                            <div class="info-section">
-                                <div class="info-row">
-                                    <span class="info-label">De:</span> $nombreUsuario
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">Email:</span> <a href="mailto:$emailUsuario">$emailUsuario</a>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">Asunto:</span> <span class="priority-high">$asunto</span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">Fecha:</span> ${java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))}
-                                </div>
-                            </div>
-                            
-                            <h3>Mensaje del usuario:</h3>
-                            <div class="message-box">
-                                ${mensaje.replace("\n", "<br>")}
-                            </div>
-                            
-                            <div class="ticket-info">
-                                <p>Este ticket ha sido generado automáticamente desde la aplicación UmeEgunero.</p>
-                                <p>Por favor, responda directamente al correo del usuario para atender su consulta.</p>
-                            </div>
-                        </div>
-                        <div class="footer">
-                            <p>Sistema de soporte técnico - UmeEgunero</p>
-                            <p>© 2024 UmeEgunero. Todos los derechos reservados.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            """.trimIndent()
+            // Crear el asunto completo
+            val asuntoCompleto = "SOPORTE: $asunto - $nombreUsuario"
             
-            // Usamos la plantilla SOPORTE que ahora está configurada en el script
-            Timber.d("Enviando email de soporte usando la plantilla SOPORTE con contenido HTML personalizado")
+            // Enviar con los parámetros estándar para la plantilla SOPORTE
             return sendEmail(
                 destinatario = destinatario,
-                nombre = "Administrador UmeEgunero",
+                nombre = nombreUsuario,
                 tipoPlantilla = TipoPlantilla.SOPORTE,
-                asuntoPersonalizado = "SOPORTE: $asunto - $nombreUsuario",
-                contenido = contenidoHtml
+                asuntoPersonalizado = asuntoCompleto,
+                emailRemitente = emailUsuario,
+                mensaje = mensaje
             )
         } catch (e: Exception) {
             Timber.e(e, "Error enviando email de soporte: ${e.message}")

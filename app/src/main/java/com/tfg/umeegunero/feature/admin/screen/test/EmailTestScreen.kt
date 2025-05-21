@@ -138,6 +138,24 @@ fun EmailTestScreen(
                             focusedLeadingIconColor = AdminColor
                         )
                     )
+                    
+                    // Campo adicional de mensaje para soporte, solo visible cuando se selecciona la plantilla SOPORTE
+                    if (uiState.plantillaSeleccionada == TipoPlantilla.SOPORTE) {
+                        OutlinedTextField(
+                            value = uiState.mensajeSoporte,
+                            onValueChange = { viewModel.updateMensajeSoporte(it) },
+                            label = { Text("Mensaje de prueba para soporte") },
+                            leadingIcon = { Icon(Icons.Default.Message, contentDescription = null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            maxLines = 5,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFFE91E63),
+                                focusedLabelColor = Color(0xFFE91E63),
+                                focusedLeadingIconColor = Color(0xFFE91E63)
+                            )
+                        )
+                    }
                 }
             }
 
@@ -205,6 +223,18 @@ fun EmailTestScreen(
                         Icon(Icons.Default.Notifications, null)
                         Spacer(Modifier.width(8.dp))
                         Text("Recordatorio")
+                    }
+                    
+                    ElevatedButton(
+                        onClick = { viewModel.seleccionarPlantilla(TipoPlantilla.SOPORTE) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.elevatedButtonColors(
+                            containerColor = Color(0xFFE91E63)
+                        )
+                    ) { 
+                        Icon(Icons.Default.SupportAgent, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Soporte Técnico")
                     }
                 }
             }
@@ -284,6 +314,7 @@ fun EmailTestScreen(
                                         val destinatario = uiState.destinatario
                                         val nombre = uiState.nombrePrueba
                                         val plantilla = uiState.plantillaSeleccionada
+                                        val mensaje = uiState.mensajeSoporte
 
                                         var snackbarMsg = "Enviando email..."
                                         snackbarHostState.showSnackbar(snackbarMsg)
@@ -291,7 +322,8 @@ fun EmailTestScreen(
                                         val enviado = viewModel.enviarEmail(
                                             destinatario = destinatario,
                                             nombre = nombre,
-                                            tipoPlantilla = plantilla
+                                            tipoPlantilla = plantilla,
+                                            mensajeSoporte = mensaje
                                         )
 
                                         snackbarMsg = if (enviado) {

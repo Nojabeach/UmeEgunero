@@ -82,6 +82,19 @@ class PruebaEmailViewModel @Inject constructor(
     }
 
     /**
+     * Actualiza el mensaje de soporte para las pruebas.
+     *
+     * @param mensaje Mensaje a utilizar en las plantillas de soporte
+     */
+    fun updateMensajeSoporte(mensaje: String) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                mensajeSoporte = mensaje
+            )
+        }
+    }
+
+    /**
      * Valida el formato de una dirección de email.
      *
      * @param email Email a validar
@@ -104,6 +117,7 @@ class PruebaEmailViewModel @Inject constructor(
             TipoPlantilla.RECHAZO -> PlantillaEmail.obtenerPlantillaRechazo(nombre)
             TipoPlantilla.BIENVENIDA -> PlantillaEmail.obtenerPlantillaBienvenida(nombre)
             TipoPlantilla.RECORDATORIO -> PlantillaEmail.obtenerPlantillaRecordatorio(nombre)
+            TipoPlantilla.SOPORTE -> PlantillaEmail.obtenerPlantillaSoporte(nombre)
             TipoPlantilla.NINGUNA -> ""
         }
     }
@@ -114,18 +128,45 @@ class PruebaEmailViewModel @Inject constructor(
      * @param destinatario El email del destinatario
      * @param nombre El nombre del destinatario
      * @param tipoPlantilla El tipo de plantilla a utilizar
+     * @param mensajeSoporte Mensaje personalizado para plantilla de soporte (opcional)
      * @return true si el email se envió correctamente, false en caso contrario
      */
-    suspend fun enviarEmail(destinatario: String, nombre: String, tipoPlantilla: TipoPlantilla): Boolean {
+    suspend fun enviarEmail(
+        destinatario: String, 
+        nombre: String, 
+        tipoPlantilla: TipoPlantilla,
+        mensajeSoporte: String = ""
+    ): Boolean {
         val plantillaServicio = when (tipoPlantilla) {
             TipoPlantilla.APROBACION -> com.tfg.umeegunero.data.service.TipoPlantilla.APROBACION
             TipoPlantilla.RECHAZO -> com.tfg.umeegunero.data.service.TipoPlantilla.RECHAZO
             TipoPlantilla.BIENVENIDA -> com.tfg.umeegunero.data.service.TipoPlantilla.BIENVENIDA
             TipoPlantilla.RECORDATORIO -> com.tfg.umeegunero.data.service.TipoPlantilla.RECORDATORIO
+            TipoPlantilla.SOPORTE -> com.tfg.umeegunero.data.service.TipoPlantilla.SOPORTE
             TipoPlantilla.NINGUNA -> com.tfg.umeegunero.data.service.TipoPlantilla.NINGUNA
         }
         
-        return emailService.sendEmail(destinatario, nombre, plantillaServicio)
+        // Para la plantilla de SOPORTE, pasamos parámetros adicionales
+        return if (tipoPlantilla == TipoPlantilla.SOPORTE) {
+            // En modo de prueba, usamos el mismo email como remitente y destinatario
+            val mensaje = if (mensajeSoporte.isBlank()) 
+                "Este es un mensaje de prueba para la plantilla de soporte técnico." 
+            else 
+                mensajeSoporte
+                
+            emailService.sendEmail(
+                destinatario = destinatario,
+                nombre = nombre,
+                tipoPlantilla = plantillaServicio,
+                asuntoPersonalizado = "PRUEBA: Soporte Técnico - $nombre",
+                contenido = null,
+                emailRemitente = destinatario, // En pruebas, usamos el mismo email como remitente
+                mensaje = mensaje
+            )
+        } else {
+            // Para el resto de plantillas, usamos la llamada original
+            emailService.sendEmail(destinatario, nombre, plantillaServicio)
+        }
     }
 }
 
@@ -138,6 +179,7 @@ class PruebaEmailViewModel @Inject constructor(
  * @property mostrarError Indica si se debe mostrar el error de validación
  * @property plantillaSeleccionada Tipo de plantilla seleccionada actualmente
  * @property previsualizacionHtml Contenido HTML de la plantilla actual
+ * @property mensajeSoporte Mensaje de prueba para plantilla de soporte
  */
 data class PruebaEmailUiState(
     val destinatario: String = "",
@@ -145,7 +187,8 @@ data class PruebaEmailUiState(
     val emailValido: Boolean = false,
     val mostrarError: Boolean = false,
     val plantillaSeleccionada: TipoPlantilla = TipoPlantilla.NINGUNA,
-    val previsualizacionHtml: String = ""
+    val previsualizacionHtml: String = "",
+    val mensajeSoporte: String = "Este es un mensaje de prueba para la plantilla de soporte técnico."
 )
 
 /**
@@ -156,5 +199,6 @@ enum class TipoPlantilla {
     APROBACION,
     RECHAZO,
     BIENVENIDA,
-    RECORDATORIO
+    RECORDATORIO,
+    SOPORTE
 } 

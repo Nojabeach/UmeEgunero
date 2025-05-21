@@ -581,6 +581,8 @@ class AddCentroViewModel @Inject constructor(
             _uiState.update { it.copy(provinciaError = null) }
         }
 
+        // La validación del email para respuestas se ha eliminado
+
         // Validar teléfono general del centro (opcional)
         if (currentState.telefono.isNotBlank() && !isValidTelefono(currentState.telefono)) {
             _uiState.update { it.copy(telefonoError = "El formato del teléfono no es válido") }
@@ -1131,4 +1133,6 @@ class AddCentroViewModel @Inject constructor(
     fun updateLongitud(longitud: Double?) {
         _uiState.update { it.copy(longitud = longitud) }
     }
+
+    // La función updateEmailResponder ha sido eliminada
 }

@@ -70,7 +70,6 @@ class SupportViewModel @Inject constructor(
                         error = if (!resultado) "Error al enviar el mensaje de soporte. Por favor, inténtelo de nuevo más tarde." else null
                     )
                 }
-
             } catch (e: Exception) {
                 Timber.e(e, "Error en sendEmailSoporte: ${e.message}")
                 _uiState.update { 
