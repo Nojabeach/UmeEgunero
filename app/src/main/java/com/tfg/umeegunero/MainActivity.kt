@@ -76,18 +76,54 @@ data class NotificationData(
 /**
  * Actividad principal de la aplicación UmeEgunero.
  * 
- * Esta actividad funciona como punto de entrada de la aplicación y se encarga de:
- * - Inicializar la pantalla de splash mediante la API SplashScreen de Android
+ * Esta actividad funciona como punto de entrada único de la aplicación y se encarga de:
+ * - Inicializar la pantalla de splash mediante la API SplashScreen de Android 12+
  * - Configurar el tema de la aplicación (claro/oscuro) según las preferencias del usuario
- * - Establecer el sistema de navegación de la aplicación
+ * - Establecer el sistema de navegación completo de la aplicación
  * - Administrar el flujo inicial de la aplicación (splash → welcome → navegación principal)
+ * - Inicializar servicios de Firebase (Auth, Firestore, Storage, Messaging, Remote Config)
+ * - Configurar el modo edge-to-edge para una experiencia inmersiva
+ * - Gestionar tokens FCM para notificaciones push
+ * - Manejar la inicialización de avatares predeterminados
  *
- * La actividad utiliza Jetpack Compose para la construcción de su interfaz y
- * Hilt para la inyección de dependencias.
+ * ## Arquitectura y patrones utilizados:
+ * - **MVVM**: Utiliza ViewModels para la gestión del estado
+ * - **Jetpack Compose**: Interfaz de usuario completamente declarativa
+ * - **Hilt**: Inyección de dependencias para repositorios y servicios
+ * - **Navigation Compose**: Sistema de navegación entre pantallas
+ * - **Material 3**: Diseño siguiendo las guías de Material Design
+ * 
+ * ## Servicios Firebase inicializados:
+ * - **Firebase Auth**: Autenticación de usuarios
+ * - **Firestore**: Base de datos en tiempo real
+ * - **Firebase Storage**: Almacenamiento de archivos
+ * - **Firebase Messaging**: Notificaciones push (FCM)
+ * - **Firebase Remote Config**: Configuración remota
+ * - **Firebase Crashlytics**: Reporte de errores
+ * 
+ * ## Flujo de inicialización:
+ * 1. Instalación de SplashScreen
+ * 2. Configuración de edge-to-edge
+ * 3. Inicialización de Firebase y sus servicios
+ * 4. Obtención y almacenamiento del token FCM
+ * 5. Configuración del tema según preferencias
+ * 6. Inicialización del sistema de navegación
+ * 7. Actualización de avatares predeterminados
+ * 
+ * La actividad está optimizada para manejar errores de inicialización de Firebase
+ * y proporciona logging detallado para facilitar la depuración.
  *
+ * @property preferenciasRepository Repositorio de preferencias inyectado por Hilt
+ * @property auth Instancia de FirebaseAuth para gestión de autenticación
+ * @property navigationViewModel ViewModel para gestión de navegación basada en eventos
+ * 
  * @see SplashScreen Para la implementación de la pantalla de splash
  * @see Navigation Para la implementación del sistema de navegación
  * @see UmeEguneroTheme Para la configuración del tema de la aplicación
+ * @see NavigationViewModel Para la gestión de navegación
+ * 
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {

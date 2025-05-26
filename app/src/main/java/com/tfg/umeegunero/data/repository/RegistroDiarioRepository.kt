@@ -492,6 +492,85 @@ class RegistroDiarioRepository @Inject constructor(
     }
     
     /**
+     * Marca un registro como leído por un familiar específico
+     * 
+     * @param registroId ID del registro a marcar
+     * @param familiarId ID del familiar que lee el registro
+     * @param nombreFamiliar Nombre del familiar para el registro
+     * @return Resultado de la operación
+     */
+    suspend fun marcarRegistroComoLeidoPorFamiliar(
+        registroId: String, 
+        familiarId: String,
+        nombreFamiliar: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val timestamp = Timestamp(Date())
+            
+            // Primero obtenemos el registro
+            val registroResult = obtenerRegistroDiarioPorId(registroId)
+            
+            if (registroResult is Result.Error) {
+                return@withContext registroResult
+            }
+            
+            val registro = (registroResult as Result.Success).data
+            
+            // Crear la información de lectura
+            val lecturaFamiliar = com.tfg.umeegunero.data.model.LecturaFamiliar(
+                familiarId = familiarId,
+                nombreFamiliar = nombreFamiliar,
+                fechaLectura = timestamp,
+                leido = true
+            )
+            
+            // Actualizar el mapa de lecturas
+            val lecturasPorFamiliar = registro.lecturasPorFamiliar.toMutableMap()
+            lecturasPorFamiliar[familiarId] = lecturaFamiliar
+            
+            val registroActualizado = registro.copy(
+                vistoPorFamiliar = true,
+                fechaVisto = timestamp,
+                lecturasPorFamiliar = lecturasPorFamiliar
+            )
+            
+            // Si hay conexión, actualizamos en Firestore
+            if (isNetworkAvailable()) {
+                try {
+                    val updateData = mapOf(
+                        "vistoPorFamiliar" to true,
+                        "fechaVisto" to timestamp,
+                        "lecturasPorFamiliar.$familiarId" to mapOf(
+                            "familiarId" to familiarId,
+                            "nombreFamiliar" to nombreFamiliar,
+                            "fechaLectura" to timestamp,
+                            "leido" to true
+                        )
+                    )
+                    
+                    registrosCollection.document(registroId)
+                        .update(updateData)
+                        .await()
+                    
+                    // Actualizamos en local
+                    localRegistroRepository.updateRegistroActividad(registroActualizado, true)
+                    return@withContext Result.Success(Unit)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al marcar como leído en Firestore, guardando solo en local")
+                }
+            }
+            
+            // Si no hay conexión o falló Firestore, actualizamos solo localmente
+            localRegistroRepository.updateRegistroActividad(registroActualizado, false)
+            return@withContext Result.Success(Unit)
+            
+        } catch (e: Exception) {
+            Timber.e(e, "Error al marcar registro como leído por familiar")
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
+        }
+    }
+
+    /**
      * Marca un registro como visto por el familiar
      * 
      * @param registroId ID del registro a marcar

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +32,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Wc
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -85,6 +88,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import android.content.Intent
 import android.widget.Toast
 
@@ -746,6 +750,23 @@ fun RegistroDiarioCard(
                     }
                 )
             }
+            
+            // Indicador de lectura por familiares
+            if (registro.lecturasPorFamiliar.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.Default.CheckCircle,
+                    title = "Estado de lectura",
+                    content = {
+                        LecturaFamiliaresIndicador(
+                            lecturasPorFamiliar = registro.lecturasPorFamiliar
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -829,4 +850,130 @@ private fun esAyer(fecha: Date): Boolean {
     
     return ayer.get(java.util.Calendar.YEAR) == cal.get(java.util.Calendar.YEAR) &&
            ayer.get(java.util.Calendar.DAY_OF_YEAR) == cal.get(java.util.Calendar.DAY_OF_YEAR)
+}
+
+@Composable
+fun LecturaFamiliaresIndicador(
+    lecturasPorFamiliar: Map<String, com.tfg.umeegunero.data.model.LecturaFamiliar>
+) {
+    var mostrarDialogo by remember { mutableStateOf(false) }
+    
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { mostrarDialogo = true }
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Visibility,
+                contentDescription = "Lecturas",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Leído por ${lecturasPorFamiliar.size} familiar(es)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Ver detalles",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        
+        // Mostrar nombres de familiares que han leído
+        lecturasPorFamiliar.values.take(2).forEach { lectura ->
+            Text(
+                text = "• ${lectura.nombreFamiliar}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 28.dp, top = 2.dp)
+            )
+        }
+        
+        if (lecturasPorFamiliar.size > 2) {
+            Text(
+                text = "• y ${lecturasPorFamiliar.size - 2} más...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 28.dp, top = 2.dp)
+            )
+        }
+    }
+    
+    // Diálogo con detalles de lecturas
+    if (mostrarDialogo) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogo = false },
+            title = {
+                Text(
+                    text = "Detalles de lectura",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                LazyColumn {
+                    items(lecturasPorFamiliar.values.toList()) { lectura ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = lectura.nombreFamiliar,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Leído",
+                                        tint = Color.Green,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(4.dp))
+                                
+                                val fechaLectura = java.text.SimpleDateFormat(
+                                    "dd/MM/yyyy 'a las' HH:mm",
+                                    java.util.Locale.getDefault()
+                                ).format(lectura.fechaLectura.toDate())
+                                
+                                Text(
+                                    text = "Leído el $fechaLectura",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogo = false }) {
+                    Text("Cerrar")
+                }
+            }
+        )
+    }
 } 

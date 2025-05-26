@@ -47,15 +47,50 @@ data class DetalleClaseUiState(
 )
 
 /**
- * ViewModel para la pantalla de detalle de clase
+ * ViewModel para la gestión del detalle de una clase específica en UmeEgunero.
  * 
- * Este ViewModel se encarga de cargar y gestionar todos los datos
- * relacionados con una clase específica, incluyendo sus alumnos y profesores.
+ * Este ViewModel implementa la lógica de negocio para mostrar información detallada
+ * de una clase educativa, incluyendo datos de la clase, alumnos asignados,
+ * profesores responsables y estadísticas de ocupación.
  * 
- * @param savedStateHandle Handle para acceder a los argumentos de navegación
- * @param claseRepository Repositorio para operaciones con clases
- * @param alumnoRepository Repositorio para operaciones con alumnos
- * @param usuarioRepository Repositorio para operaciones con usuarios
+ * ## Funcionalidades principales:
+ * - Carga de información completa de la clase
+ * - Gestión de lista de alumnos asignados
+ * - Información del profesor titular y auxiliares
+ * - Cálculo de estadísticas de ocupación (capacidad actual vs máxima)
+ * - Manejo de estados de carga y error
+ * 
+ * ## Flujo de datos:
+ * 1. Recibe el ID de la clase desde [SavedStateHandle]
+ * 2. Carga los datos de la clase desde [ClaseRepository]
+ * 3. Obtiene la lista de alumnos desde [AlumnoRepository]
+ * 4. Carga información de profesores desde [UsuarioRepository]
+ * 5. Calcula estadísticas de ocupación
+ * 6. Actualiza el estado UI de forma reactiva
+ * 
+ * ## Estados gestionados:
+ * - Información básica de la clase (nombre, aula, horario, etc.)
+ * - Lista completa de alumnos con sus datos
+ * - Profesor titular y profesores auxiliares
+ * - Métricas de ocupación (actual, máxima, porcentaje, plazas disponibles)
+ * - Estados de carga y manejo de errores
+ * 
+ * El ViewModel utiliza corrutinas para operaciones asíncronas y expone
+ * el estado mediante [StateFlow] para una integración reactiva con la UI.
+ * 
+ * @property claseRepository Repositorio para acceder a datos de clases
+ * @property alumnoRepository Repositorio para acceder a datos de alumnos
+ * @property usuarioRepository Repositorio para acceder a datos de usuarios/profesores
+ * @property savedStateHandle Manejo del estado guardado para obtener argumentos de navegación
+ * 
+ * @see DetalleClaseUiState
+ * @see DetalleClaseScreen
+ * @see Clase
+ * @see Alumno
+ * @see Usuario
+ * 
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @HiltViewModel
 class DetalleClaseViewModel @Inject constructor(

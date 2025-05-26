@@ -10,7 +10,24 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Servicio para acceder a los valores de Firebase Remote Config
+ * Servicio para gestionar la configuración remota de Firebase en la aplicación UmeEgunero.
+ * 
+ * Esta clase proporciona una interfaz para acceder y gestionar valores de configuración
+ * almacenados en Firebase Remote Config, permitiendo actualizar configuraciones de la
+ * aplicación sin necesidad de desplegar nuevas versiones.
+ * 
+ * Funcionalidades principales:
+ * - Obtención de contraseñas SMTP para el envío de emails
+ * - Actualización de configuraciones remotas
+ * - Gestión de valores por defecto
+ * 
+ * El servicio utiliza inyección de dependencias con Hilt y está configurado como Singleton
+ * para garantizar una única instancia en toda la aplicación.
+ * 
+ * @property remoteConfig Instancia de Firebase Remote Config para operaciones de configuración
+ * 
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Singleton
 class RemoteConfigService @Inject constructor() {

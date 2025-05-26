@@ -70,12 +70,50 @@ import com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen
 import com.tfg.umeegunero.feature.centro.screen.VincularAlumnoClaseScreen
 
 /**
- * Navegación principal de la aplicación
+ * Sistema de navegación principal de la aplicación UmeEgunero.
  * 
- * @param navController Controlador de navegación
- * @param startDestination Ruta inicial
- * @param onCloseApp Función para cerrar la app
- * @param navigationViewModel ViewModel que maneja la navegación basada en eventos
+ * Esta función Composable implementa el sistema de navegación completo de la aplicación,
+ * gestionando todas las rutas y transiciones entre pantallas. Utiliza Navigation Compose
+ * para proporcionar una navegación fluida y consistente entre los diferentes módulos
+ * de la aplicación educativa.
+ * 
+ * ## Características principales:
+ * - Navegación basada en rutas definidas en [AppScreens]
+ * - Animaciones de transición personalizadas según el tipo de pantalla
+ * - Integración con [NavigationViewModel] para navegación basada en eventos
+ * - Soporte para argumentos de navegación tipados
+ * - Gestión de backstack optimizada para diferentes flujos de usuario
+ * 
+ * ## Flujos de navegación soportados:
+ * - **Autenticación**: Welcome → Login → Dashboard específico por rol
+ * - **Registro**: Welcome → Registro → Login
+ * - **Dashboards**: Específicos para cada tipo de usuario (Admin, Centro, Profesor, Familiar)
+ * - **Gestión académica**: Centros → Cursos → Clases → Alumnos
+ * - **Comunicación**: Mensajería unificada, comunicados, notificaciones
+ * - **Configuración**: Perfil, preferencias, seguridad
+ * - **Soporte**: FAQ, soporte técnico, términos y condiciones
+ * 
+ * ## Tipos de animaciones:
+ * - **DASHBOARD**: Para pantallas principales y de bienvenida
+ * - **DETAIL**: Para pantallas de detalle y formularios
+ * 
+ * La navegación está optimizada para diferentes tipos de usuario:
+ * - **ADMIN_APP**: Acceso completo al sistema
+ * - **ADMIN_CENTRO**: Gestión de centro educativo
+ * - **PROFESOR**: Gestión de clases y alumnos
+ * - **FAMILIAR**: Seguimiento de hijos y comunicación
+ * 
+ * @param navController Controlador de navegación de Jetpack Navigation
+ * @param startDestination Ruta inicial de la aplicación (por defecto: Welcome)
+ * @param onCloseApp Función callback para cerrar la aplicación
+ * @param navigationViewModel ViewModel que gestiona comandos de navegación basados en eventos
+ * 
+ * @see AppScreens Para las definiciones de rutas
+ * @see NavigationViewModel Para la gestión de navegación basada en eventos
+ * @see NavAnimations Para las animaciones de transición
+ * 
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @Composable
 fun Navigation(

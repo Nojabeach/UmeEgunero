@@ -13,6 +13,7 @@ import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.SolicitudRepository
 import com.tfg.umeegunero.data.repository.FamiliarRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
+import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -56,7 +57,8 @@ data class CentroDashboardUiState(
     val cursos: List<Curso> = emptyList(),
     val navigateToWelcome: Boolean = false,
     val nombreCentro: String = "Centro Educativo",
-    val centroId: String = ""
+    val centroId: String = "",
+    val notificacionesPendientes: Int = 0
 )
 
 // Data class para datos del Intent de email
@@ -122,7 +124,8 @@ class CentroDashboardViewModel @Inject constructor(
     private val centroRepository: CentroRepository,
     private val solicitudRepository: SolicitudRepository,
     private val familiarRepository: FamiliarRepository,
-    private val alumnoRepository: AlumnoRepository
+    private val alumnoRepository: AlumnoRepository,
+    private val notificacionRepository: NotificacionRepository
 ) : ViewModel() {
     // Estado mutable internamente para modificaciones dentro del ViewModel
     private val _uiState = MutableStateFlow(CentroDashboardUiState())
@@ -172,6 +175,8 @@ class CentroDashboardViewModel @Inject constructor(
         if (centroId.isNotEmpty()) {
             // Cargar solicitudes pendientes cuando tengamos el centroId
             cargarSolicitudesPendientes()
+            // Cargar notificaciones pendientes
+            cargarNotificacionesPendientes()
         }
     }
     
@@ -533,5 +538,64 @@ class CentroDashboardViewModel @Inject constructor(
      */
     fun limpiarEstadoEmail() {
         _emailStatus.value = null
+    }
+    
+    /**
+     * Carga el número de notificaciones pendientes para el centro
+     */
+    private fun cargarNotificacionesPendientes() {
+        viewModelScope.launch {
+            try {
+                val centroId = _uiState.value.centroId
+                val currentUser = _uiState.value.currentUser
+                
+                if (centroId.isNotEmpty() && currentUser != null) {
+                    // Obtener notificaciones no leídas para este centro
+                    val notificacionesFlow = notificacionRepository.getNotificacionesCentro(centroId)
+                    
+                    notificacionesFlow.collect { result ->
+                        when (result) {
+                            is Result.Success -> {
+                                val notificacionesNoLeidas = result.data.count { !it.leida }
+                                _uiState.update { 
+                                    it.copy(notificacionesPendientes = notificacionesNoLeidas) 
+                                }
+                                Timber.d("📊 Notificaciones pendientes para centro $centroId: $notificacionesNoLeidas")
+                            }
+                            is Result.Error -> {
+                                Timber.e(result.exception, "Error al cargar notificaciones pendientes")
+                            }
+                            else -> { /* Ignorar loading */ }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar notificaciones pendientes")
+            }
+        }
+    }
+    
+    /**
+     * Marca una notificación como leída y actualiza el contador
+     */
+    fun marcarNotificacionComoLeida(notificacionId: String) {
+        viewModelScope.launch {
+            try {
+                val result = notificacionRepository.marcarComoLeida(notificacionId)
+                if (result is Result.Success) {
+                    // Recargar el contador de notificaciones pendientes
+                    cargarNotificacionesPendientes()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al marcar notificación como leída")
+            }
+        }
+    }
+    
+    /**
+     * Actualiza el contador de notificaciones pendientes manualmente
+     */
+    fun actualizarContadorNotificaciones() {
+        cargarNotificacionesPendientes()
     }
 } 

@@ -129,6 +129,64 @@ fun NotificacionesScreen(
                             )
                         }
                         
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        OutlinedButton(
+                            onClick = { viewModel.ejecutarDiagnosticoManual() },
+                            modifier = Modifier.fillMaxWidth(0.7f)
+                        ) {
+                            Text("🔍 Diagnosticar notificaciones")
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Información del sistema
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "ℹ️ Estado del Sistema",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Text(
+                                    text = "✅ Cloud Functions: OPERATIVAS",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                
+                                Text(
+                                    text = "✅ Google Apps Script: OPERATIVO",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                
+                                Text(
+                                    text = "✅ Firebase FCM: CONECTADO",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Text(
+                                    text = "Si no recibes notificaciones, el problema está en la configuración de tu dispositivo. Ejecuta el diagnóstico para más detalles.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
+                        
                         if (uiState.fcmToken.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             

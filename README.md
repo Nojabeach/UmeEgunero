@@ -221,15 +221,78 @@ app/
 
 ## 📚 Documentación
 
-UmeEgunero incluye documentación completa disponible en el directorio `/docs`:
+UmeEgunero incluye documentación completa disponible en múltiples formatos:
+
+### 📖 Documentación Técnica Dokka
+
+La documentación completa del código fuente está disponible en formato HTML generado con Dokka:
+
+- **🏠 [Página Principal de Documentación](app/build/dokka/index.html)**: Punto de entrada a toda la documentación técnica
+- **📱 Navegación Interactiva**: Explora todas las clases, funciones y módulos del proyecto
+- **🔍 Búsqueda Avanzada**: Encuentra rápidamente cualquier elemento del código
+- **📊 Estadísticas**: 5,540+ archivos HTML documentados en 934+ paquetes
+
+#### 🚀 Cómo Generar la Documentación Dokka
+
+```bash
+# Generar documentación HTML completa
+./gradlew dokkaHtml
+
+# La documentación se generará en: app/build/dokka/
+# Abrir en navegador: app/build/dokka/index.html
+```
+
+> **💡 Nota**: La documentación Dokka se genera localmente. Después de ejecutar el comando, puedes abrir el archivo `app/build/dokka/index.html` directamente en tu navegador para navegar por toda la documentación técnica del proyecto.
+
+#### 📂 Estructura de la Documentación Dokka
+
+- **Paquetes Principales**: Navegación por módulos y características
+- **Clases Documentadas**: Todas las clases con documentación KDoc completa
+- **Arquitectura del Sistema**: Documentación detallada de patrones y diseño
+- **Utilidades y Extensiones**: Funciones helper y extensiones de Kotlin
+
+#### 🎯 Clases Principales Documentadas
+
+| Componente | Descripción | Ubicación en Dokka |
+|------------|-------------|-------------------|
+| **MainActivity** | Actividad principal con inicialización completa de Firebase | `com.tfg.umeegunero/-main-activity/` |
+| **Navigation** | Sistema de navegación con 1,236 líneas documentadas | `com.tfg.umeegunero.navigation/-navigation/` |
+| **DetalleClaseViewModel** | ViewModel con gestión de estado y estadísticas | `com.tfg.umeegunero.feature.common.academico.viewmodel/-detalle-clase-view-model/` |
+| **AppUtils** | Utilidades generales y funciones helper | `com.tfg.umeegunero.util/-app-utils/` |
+| **NetworkUtils** | Verificación de conectividad y red | `com.tfg.umeegunero.util/-network-utils/` |
+
+### 📋 Documentación Principal
 
 - **[Documentación Técnica](docs/Documentacion_Tecnica.md)**: Arquitectura del sistema, patrones de diseño y consideraciones técnicas
 - **[Estructura de Base de Datos](docs/Estructura_Base_Datos.md)**: Detalle de colecciones Firestore y relaciones entre entidades
 - **[Manual de Usuario](docs/Manual_Usuario.md)**: Guía de uso para cada perfil de usuario
-- **[Sistema de Notificaciones](docs/Sistema_Notificaciones.md)**: Arquitectura y funcionamiento del sistema de notificaciones
-- **[Sistema de Solicitudes](docs/Sistema_Solicitudes.md)**: Implementación del proceso de vinculación familiar-alumno
-- **[Google Apps Script para Firebase Auth](docs/Google_Apps_Script_Firebase_Auth.md)**: Implementación de microservicios serverless
 - **[Testing Aplicación](docs/Testing_Aplicacion.md)**: Estructura y metodología de pruebas
+
+### 🔔 Sistema de Notificaciones y Comunicación
+
+- **[Sistema de Notificaciones](docs/Sistema_Notificaciones.md)**: Arquitectura completa del sistema de notificaciones, diagnóstico y confirmación de lectura
+- **[Sistema de Solicitudes](docs/Sistema_Solicitudes.md)**: Implementación del proceso de vinculación familiar-alumno
+
+### ☁️ Cloud Functions y Google Apps Script
+
+- **[Documentación Cloud Functions & GAS](docs/cloud_functions_gas/README.md)**: Resumen ejecutivo completo del sistema backend
+- **[Configuración Final](docs/cloud_functions_gas/configuracion_final.md)**: Configuración de servicios
+- **[Backup Código Completo](docs/cloud_functions_gas/codigo_backup/index_js_backup_completo.md)**: Backup unificado del código de Cloud Functions
+
+### 🔧 Servicios Auxiliares
+
+- **[Google Apps Script para Firebase Auth](docs/Google_Apps_Script_Firebase_Auth.md)**: Implementación de microservicios serverless para gestión de usuarios
+
+### 📊 Índice de Funcionalidades Documentadas
+
+| Funcionalidad | Documento Principal | Archivos Técnicos |
+|---------------|-------------------|-------------------|
+| **Notificaciones Push** | [Sistema de Notificaciones](docs/Sistema_Notificaciones.md) | `NotificationDiagnostic.kt`, `UmeEguneroMessagingService.kt` |
+| **Confirmación de Lectura** | [Sistema de Notificaciones](docs/Sistema_Notificaciones.md) | `LecturaFamiliar.kt`, `RegistroDiarioRepository.kt` |
+| **Solicitudes de Vinculación** | [Sistema de Solicitudes](docs/Sistema_Solicitudes.md) | `SolicitudRepository.kt`, Cloud Functions |
+| **Cloud Functions** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | `/functions/index.js` |
+| **Google Apps Script** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | 3 servicios desplegados |
+| **Diagnóstico del Sistema** | [Sistema de Notificaciones](docs/Sistema_Notificaciones.md) | `NotificationDiagnostic.kt` |
 
 ## 🧪 Testing
 
@@ -277,6 +340,25 @@ Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](L
 ## 👨‍💻 Autor
 
 **Maitane Ibáñez Irazabal** - *Desarrollo de Aplicaciones Multiplataforma* - [Enlace GitHub](https://github.com/Nojabeach)
+
+### 📊 Sistema de Confirmación de Lectura
+
+UmeEgunero incluye un sistema avanzado de confirmación de lectura que permite al profesorado conocer exactamente qué familiares han leído cada registro de actividad:
+
+**Características principales:**
+- ✅ **Registro automático**: Se registra automáticamente cuando un familiar lee un registro
+- ✅ **Información detallada**: Nombre del familiar, fecha y hora exacta de lectura
+- ✅ **Indicador visual**: El profesorado ve un resumen claro de las lecturas
+- ✅ **Detalles completos**: Diálogo con información detallada de cada lectura
+- ✅ **Sincronización offline**: Funciona sin conexión y sincroniza cuando está disponible
+
+**Implementación técnica:**
+- Modelo de datos `LecturaFamiliar` con información completa
+- Almacenamiento local con Room y sincronización con Firestore
+- Base de datos actualizada a versión 4
+- Interfaz intuitiva con Material Design 3
+
+Para más detalles, consulta la [documentación completa del sistema](docs/sistema_confirmacion_lectura.md).
 
 ## 🙏 Agradecimientos
 

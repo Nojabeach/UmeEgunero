@@ -21,9 +21,36 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Servicio de sincronización para procesar operaciones pendientes en segundo plano.
- * Este servicio se ejecuta como un servicio en primer plano para garantizar que Android
- * no lo mate cuando la aplicación no está en primer plano.
+ * Servicio de sincronización en primer plano para procesar operaciones pendientes en UmeEgunero.
+ * 
+ * Este servicio se ejecuta como un servicio en primer plano (foreground service) para garantizar
+ * que Android no lo termine cuando la aplicación no está activa. Se encarga de sincronizar
+ * datos locales con Firebase Firestore, procesando operaciones que quedaron pendientes
+ * cuando la aplicación estaba sin conexión.
+ * 
+ * Características principales:
+ * - Ejecuta como servicio en primer plano con notificación persistente
+ * - Procesa operaciones de sincronización de forma asíncrona
+ * - Actualiza la notificación con el progreso de sincronización
+ * - Se detiene automáticamente cuando no hay operaciones pendientes
+ * - Maneja errores de sincronización y notifica al usuario
+ * 
+ * El servicio utiliza:
+ * - [LifecycleService] para integración con el ciclo de vida de Android
+ * - [SyncRepository] para gestionar las operaciones de sincronización
+ * - Corrutinas para operaciones asíncronas
+ * - Sistema de notificaciones para informar al usuario
+ * 
+ * @property syncRepository Repositorio que gestiona las operaciones de sincronización
+ * @property serviceScope Scope de corrutinas para operaciones del servicio
+ * @property notificationManager Gestor de notificaciones del sistema
+ * @property sincronizacionJob Job de la corrutina de sincronización actual
+ * 
+ * @see SyncRepository
+ * @see LifecycleService
+ * 
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @AndroidEntryPoint
 class SyncService : LifecycleService() {

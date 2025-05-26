@@ -1,6 +1,4 @@
-# UmeEgunero - Aplicación de Gestión Escolar
-
-## Descripción General
+# Module UmeEgunero
 
 UmeEgunero es una aplicación de gestión escolar completa diseñada para facilitar la comunicación y administración entre centros educativos, profesores y familias. La aplicación proporciona herramientas específicas para cada perfil de usuario, creando un ecosistema educativo integral.
 

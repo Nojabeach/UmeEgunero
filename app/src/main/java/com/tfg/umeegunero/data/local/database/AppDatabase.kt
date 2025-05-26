@@ -25,7 +25,7 @@ import com.tfg.umeegunero.util.Converters
         ChatMensajeEntity::class,
         ConversacionEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

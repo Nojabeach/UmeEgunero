@@ -131,6 +131,18 @@ class EstadisticasViewModel @Inject constructor(
                 var totalAlumnos = 0
                 var totalFamiliares = 0
                 var totalAdministradores = 0
+                var totalAdministradoresApp = 0
+                var totalAdministradoresCentro = 0
+                
+                // Contadores para nuevos usuarios (últimos 30 días)
+                var nuevosProfesores = 0
+                var nuevosAlumnos = 0
+                var nuevosFamiliares = 0
+                var nuevosAdministradores = 0
+                
+                val fechaLimite30Dias = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, -30)
+                }.time
                 
                 // Obtener información de últimos accesos para la actividad reciente
                 val accesosPorCentro = mutableMapOf<String, Int>()
@@ -140,14 +152,34 @@ class EstadisticasViewModel @Inject constructor(
                 
                 for (doc in usuariosResult.documents) {
                     val perfiles = doc.get("perfiles") as? List<Map<String, Any>> ?: emptyList()
+                    val fechaRegistro = doc.getTimestamp("fechaRegistro")?.toDate()
+                    val esNuevoUsuario = fechaRegistro != null && fechaRegistro.after(fechaLimite30Dias)
                     
                     // Contar por tipo de usuario en perfiles
                     for (perfil in perfiles) {
                         when (perfil["tipo"] as? String) {
-                            "PROFESOR" -> totalProfesores++
-                            "ALUMNO" -> totalAlumnos++
-                            "FAMILIAR" -> totalFamiliares++
-                            "ADMIN_CENTRO", "ADMIN_APP" -> totalAdministradores++
+                            "PROFESOR" -> {
+                                totalProfesores++
+                                if (esNuevoUsuario) nuevosProfesores++
+                            }
+                            "ALUMNO" -> {
+                                totalAlumnos++
+                                if (esNuevoUsuario) nuevosAlumnos++
+                            }
+                            "FAMILIAR" -> {
+                                totalFamiliares++
+                                if (esNuevoUsuario) nuevosFamiliares++
+                            }
+                            "ADMIN_CENTRO" -> {
+                                totalAdministradores++
+                                totalAdministradoresCentro++
+                                if (esNuevoUsuario) nuevosAdministradores++
+                            }
+                            "ADMIN_APP" -> {
+                                totalAdministradores++
+                                totalAdministradoresApp++
+                                if (esNuevoUsuario) nuevosAdministradores++
+                            }
                         }
                         
                         // Contabilizar accesos por centro
@@ -198,7 +230,8 @@ class EstadisticasViewModel @Inject constructor(
                 
                 for (centroDoc in centrosResult.documents) {
                     val centroId = centroDoc.id
-                    val nombreCentro = centroDoc.getString("nombre") ?: "Centro sin nombre"
+                    val nombreCentro = centroDoc.getString("nombre")?.takeIf { it.isNotBlank() } 
+                        ?: "Centro ${centroId.take(8)}"
                     
                     // Contar usuarios de este centro
                     var usuariosCentro = 0
@@ -236,7 +269,9 @@ class EstadisticasViewModel @Inject constructor(
                 
                 // Actualizar accesos por centro
                 val accesosPorCentroList = accesosPorCentro.map { (centroId, numeroAccesos) ->
-                    val nombreCentro = centrosResult.documents.find { it.id == centroId }?.getString("nombre") ?: "Centro sin nombre"
+                    val nombreCentro = centrosResult.documents.find { it.id == centroId }
+                        ?.getString("nombre")?.takeIf { it.isNotBlank() } 
+                        ?: "Centro ${centroId.take(8)}"
                     val porcentajeUso = if (totalUsuarios > 0) (numeroAccesos.toFloat() / totalUsuarios) * 100 else 0f
                     
                     AccesoPorCentro(
@@ -264,11 +299,13 @@ class EstadisticasViewModel @Inject constructor(
                         totalAlumnos = totalAlumnos,
                         totalFamiliares = totalFamiliares,
                         totalAdministradores = totalAdministradores,
+                        totalAdministradoresApp = totalAdministradoresApp,
+                        totalAdministradoresCentro = totalAdministradoresCentro,
                         nuevosCentros = nuevosCentros,
-                        nuevosProfesores = 0, // Estos datos ya no son relevantes
-                        nuevosAlumnos = 0,    // para el administrador
-                        nuevosFamiliares = 0,
-                        nuevosRegistros = 0,
+                        nuevosProfesores = nuevosProfesores,
+                        nuevosAlumnos = nuevosAlumnos,
+                        nuevosFamiliares = nuevosFamiliares,
+                        nuevosRegistros = nuevosProfesores + nuevosAlumnos + nuevosFamiliares + nuevosAdministradores,
                         fechaActualizacion = fechaActualizacion,
                         actividadesRecientes = actividadRecienteOrdenada
                     ) 
@@ -328,10 +365,13 @@ class EstadisticasViewModel @Inject constructor(
                 val alumnos = mutableListOf<String>()
                 val familiares = mutableListOf<String>()
                 val administradores = mutableListOf<String>()
+                val administradoresApp = mutableListOf<String>()
+                val administradoresCentro = mutableListOf<String>()
                 
                 // Mapeo para almacenar nombre de centros
                 val centrosMap = centros.documents.associate { 
-                    it.id to (it.getString("nombre") ?: "Centro sin nombre") 
+                    it.id to (it.getString("nombre")?.takeIf { nombre -> nombre.isNotBlank() } 
+                        ?: "Centro ${it.id.take(8)}") 
                 }
                 
                 // Contadores de accesos por centro
@@ -359,13 +399,22 @@ class EstadisticasViewModel @Inject constructor(
                     var isAlumno = false
                     var isFamiliar = false
                     var isAdmin = false
+                    var isAdminApp = false
+                    var isAdminCentro = false
                     
                     for (perfil in perfiles) {
                         when (perfil["tipo"] as? String) {
                             "PROFESOR" -> isProfesor = true
                             "ALUMNO" -> isAlumno = true
                             "FAMILIAR" -> isFamiliar = true
-                            "ADMIN_CENTRO", "ADMIN_SISTEMA" -> isAdmin = true
+                            "ADMIN_CENTRO" -> {
+                                isAdmin = true
+                                isAdminCentro = true
+                            }
+                            "ADMIN_APP" -> {
+                                isAdmin = true
+                                isAdminApp = true
+                            }
                         }
                     }
                     
@@ -374,6 +423,8 @@ class EstadisticasViewModel @Inject constructor(
                     if (isAlumno) alumnos.add(doc.id)
                     if (isFamiliar) familiares.add(doc.id)
                     if (isAdmin) administradores.add(doc.id)
+                    if (isAdminApp) administradoresApp.add(doc.id)
+                    if (isAdminCentro) administradoresCentro.add(doc.id)
                     
                     // Registrar último acceso si existe y está dentro del período
                     val ultimoAcceso = doc.getTimestamp("ultimoAcceso")
@@ -392,7 +443,7 @@ class EstadisticasViewModel @Inject constructor(
                 val accesosPorCentroList = accesosPorCentroMap.map { (centroId, accesos) ->
                     AccesoPorCentro(
                         centroId = centroId,
-                        nombreCentro = centrosMap[centroId] ?: "Centro desconocido",
+                        nombreCentro = centrosMap[centroId] ?: "Centro ${centroId.take(8)}",
                         numeroAccesos = accesos,
                         porcentajeUso = (accesos / totalAccesos) * 100f
                     )
@@ -528,6 +579,8 @@ class EstadisticasViewModel @Inject constructor(
                     totalAlumnos = alumnos.size,
                     totalFamiliares = familiares.size,
                     totalAdministradores = administradores.size,
+                    totalAdministradoresApp = administradoresApp.size,
+                    totalAdministradoresCentro = administradoresCentro.size,
                     nuevosCentros = nuevosCentros,
                     nuevosProfesores = nuevosProfesores,
                     nuevosAlumnos = nuevosAlumnos,

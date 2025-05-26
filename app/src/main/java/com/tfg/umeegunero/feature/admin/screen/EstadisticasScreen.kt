@@ -212,7 +212,7 @@ fun EstadisticasScreen(
                     totalCentros = uiState.totalCentros,
                     totalUsuarios = uiState.totalUsuarios,
                     nuevosCentros = uiState.nuevosCentros,
-                    nuevosUsuarios = uiState.nuevosProfesores + uiState.nuevosAlumnos + uiState.nuevosFamiliares,
+                    nuevosUsuarios = uiState.nuevosRegistros,
                     modifier = Modifier.padding(16.dp)
                 )
                 
@@ -222,6 +222,8 @@ fun EstadisticasScreen(
                     totalAlumnos = uiState.totalAlumnos,
                     totalFamiliares = uiState.totalFamiliares,
                     totalAdministradores = uiState.totalAdministradores,
+                    totalAdministradoresApp = uiState.totalAdministradoresApp,
+                    totalAdministradoresCentro = uiState.totalAdministradoresCentro,
                     modifier = Modifier.padding(16.dp)
                 )
                 
@@ -951,6 +953,8 @@ fun DistribucionUsuariosCard(
     totalAlumnos: Int,
     totalFamiliares: Int,
     totalAdministradores: Int,
+    totalAdministradoresApp: Int,
+    totalAdministradoresCentro: Int,
     modifier: Modifier = Modifier
 ) {
     val totalUsuarios = totalProfesores + totalAlumnos + totalFamiliares + totalAdministradores
@@ -959,7 +963,8 @@ fun DistribucionUsuariosCard(
     val porcentajeProfesores = if (totalUsuarios > 0) (totalProfesores.toFloat() / totalUsuarios) * 100 else 0f
     val porcentajeAlumnos = if (totalUsuarios > 0) (totalAlumnos.toFloat() / totalUsuarios) * 100 else 0f
     val porcentajeFamiliares = if (totalUsuarios > 0) (totalFamiliares.toFloat() / totalUsuarios) * 100 else 0f
-    val porcentajeAdministradores = if (totalUsuarios > 0) (totalAdministradores.toFloat() / totalUsuarios) * 100 else 0f
+    val porcentajeAdministradoresApp = if (totalUsuarios > 0) (totalAdministradoresApp.toFloat() / totalUsuarios) * 100 else 0f
+    val porcentajeAdministradoresCentro = if (totalUsuarios > 0) (totalAdministradoresCentro.toFloat() / totalUsuarios) * 100 else 0f
     
     Card(
         modifier = modifier,
@@ -1020,12 +1025,22 @@ fun DistribucionUsuariosCard(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Barra de administradores (nueva)
+            // Barra de administradores de aplicación
             BarraProgreso(
-                label = "Administradores",
-                valor = totalAdministradores,
-                porcentaje = porcentajeAdministradores,
-                color = Color(0xFF9C27B0) // Púrpura para administradores
+                label = "Admin. Aplicación",
+                valor = totalAdministradoresApp,
+                porcentaje = porcentajeAdministradoresApp,
+                color = Color(0xFF9C27B0) // Púrpura para administradores de app
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Barra de administradores de centro
+            BarraProgreso(
+                label = "Admin. Centro",
+                valor = totalAdministradoresCentro,
+                porcentaje = porcentajeAdministradoresCentro,
+                color = Color(0xFF673AB7) // Púrpura más oscuro para administradores de centro
             )
         }
     }

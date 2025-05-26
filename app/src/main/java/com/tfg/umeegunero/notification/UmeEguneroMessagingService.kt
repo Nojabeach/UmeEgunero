@@ -31,12 +31,48 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.Timestamp
 
 /**
- * Servicio para procesar mensajes de Firebase Cloud Messaging (FCM).
- *
- * Este servicio maneja:
- * - Recepción de mensajes y notificaciones de FCM
- * - Actualización del token de FCM
- * - Procesamiento de diferentes tipos de notificaciones
+ * Servicio de mensajería de Firebase Cloud Messaging (FCM) para la aplicación UmeEgunero.
+ * 
+ * Este servicio extiende [FirebaseMessagingService] para manejar la recepción y procesamiento
+ * de notificaciones push enviadas desde Firebase. Gestiona diferentes tipos de mensajes
+ * según el contexto educativo de la aplicación, incluyendo solicitudes de vinculación,
+ * mensajes de chat, registros diarios, incidencias y comunicados.
+ * 
+ * Funcionalidades principales:
+ * - Recepción y procesamiento de mensajes FCM en tiempo real
+ * - Actualización automática del token FCM en Firestore
+ * - Clasificación de notificaciones por tipo y canal
+ * - Integración con el sistema de mensajería unificada
+ * - Gestión de preferencias de notificación por usuario
+ * - Procesamiento de notificaciones en segundo plano
+ * 
+ * Tipos de notificaciones soportadas:
+ * - **solicitud_vinculacion**: Solicitudes de vinculación familiar
+ * - **chat**: Mensajes de comunicación directa
+ * - **registro_diario**: Registros de actividades diarias
+ * - **incidencia**: Reportes de incidencias (normales y urgentes)
+ * - **asistencia**: Notificaciones de asistencia
+ * - **unified_message**: Mensajes del sistema unificado
+ * - **ANNOUNCEMENT**: Comunicados y circulares
+ * - **SYSTEM**: Mensajes generados por el sistema
+ * 
+ * El servicio utiliza:
+ * - [AppNotificationManager] para mostrar notificaciones locales
+ * - [PreferenciasRepository] para gestionar tokens FCM
+ * - [UnifiedMessageRepository] para mensajes unificados
+ * - Corrutinas para operaciones asíncronas
+ * 
+ * @property preferenciasRepository Repositorio para gestionar preferencias de usuario
+ * @property notificationManager Gestor de notificaciones de la aplicación
+ * @property unifiedMessageRepository Repositorio para mensajes unificados
+ * @property serviceScope Scope de corrutinas para operaciones del servicio
+ * 
+ * @see FirebaseMessagingService
+ * @see AppNotificationManager
+ * @see UnifiedMessageRepository
+ * 
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @AndroidEntryPoint
 class UmeEguneroMessagingService : FirebaseMessagingService() {

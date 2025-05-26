@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -69,6 +70,7 @@ import com.tfg.umeegunero.feature.admin.screen.components.CategoriaCardBienvenid
 import com.tfg.umeegunero.feature.centro.viewmodel.CentroDashboardViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.components.CategoriaCardData
+import com.tfg.umeegunero.ui.components.BadgedBox
 import com.tfg.umeegunero.ui.theme.AppColors
 import com.tfg.umeegunero.ui.theme.CentroColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -143,6 +145,10 @@ fun CentroDashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
+    // Actualizar contador de notificaciones al inicializar
+    LaunchedEffect(Unit) {
+        viewModel.actualizarContadorNotificaciones()
+    }
     
     // Diálogos de confirmación
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -908,22 +914,28 @@ fun CentroDashboardScreen(
                                 )
                             }
                             item {
-                                CategoriaCard(
-                                    titulo = "Comunicación",
-                                    descripcion = "Sistema unificado de mensajes y comunicados",
-                                    icono = Icons.Default.Email,
-                                    color = CentroColor,
-                                    iconTint = AppColors.Blue500,
-                                    onClick = { 
-                                        try {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        } catch (e: Exception) {
-                                            Timber.e(e, "Error al realizar feedback háptico")
-                                        }
-                                        navController.navigate(AppScreens.UnifiedInbox.route)
-                                    },
+                                BadgedBox(
+                                    count = uiState.notificacionesPendientes,
                                     modifier = Modifier.padding(4.dp)
-                                )
+                                ) {
+                                    CategoriaCard(
+                                        titulo = "Comunicación",
+                                        descripcion = "Sistema unificado de mensajes y comunicados",
+                                        icono = Icons.Default.Email,
+                                        color = CentroColor,
+                                        iconTint = AppColors.Blue500,
+                                        onClick = { 
+                                            try {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            } catch (e: Exception) {
+                                                Timber.e(e, "Error al realizar feedback háptico")
+                                            }
+                                            // Marcar notificaciones como leídas al abrir comunicación
+                                            viewModel.actualizarContadorNotificaciones()
+                                            navController.navigate(AppScreens.UnifiedInbox.route)
+                                        }
+                                    )
+                                }
                             }
                             // --- Fin Nueva Sección: Herramientas Administrativas ---
 

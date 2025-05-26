@@ -71,6 +71,9 @@ data class RegistroActividadEntity(
     val fechaVistoTimestamp: Long? = null,
     val vistoPorJson: String = "{}", // Map<String, Boolean> como JSON
     
+    // Control de lectura por familiares - Nuevo sistema
+    val lecturasPorFamiliarJson: String = "{}", // Map<String, LecturaFamiliar> como JSON
+    
     // Metadatos
     val ultimaModificacionTimestamp: Long = Date().time,
     val creadoPor: String = "",
@@ -125,6 +128,7 @@ data class RegistroActividadEntity(
                 vistoPorFamiliar = registro.vistoPorFamiliar,
                 fechaVistoTimestamp = registro.fechaVisto?.seconds?.times(1000),
                 vistoPorJson = gson.toJson(registro.vistoPor),
+                lecturasPorFamiliarJson = gson.toJson(registro.lecturasPorFamiliar),
                 ultimaModificacionTimestamp = registro.ultimaModificacion.seconds * 1000,
                 creadoPor = registro.creadoPor,
                 modificadoPor = registro.modificadoPor,
@@ -154,6 +158,13 @@ data class RegistroActividadEntity(
             emptyMap<String, Boolean>()
         }
         
+        val lecturasPorFamiliar = try {
+            val type = object : TypeToken<Map<String, com.tfg.umeegunero.data.model.LecturaFamiliar>>() {}.type
+            gson.fromJson<Map<String, com.tfg.umeegunero.data.model.LecturaFamiliar>>(lecturasPorFamiliarJson, type) ?: emptyMap()
+        } catch (e: Exception) {
+            emptyMap<String, com.tfg.umeegunero.data.model.LecturaFamiliar>()
+        }
+        
         return RegistroActividad(
             id = id,
             alumnoId = alumnoId,
@@ -180,6 +191,7 @@ data class RegistroActividadEntity(
             vistoPorFamiliar = vistoPorFamiliar,
             fechaVisto = fechaVistoTimestamp?.let { Timestamp(it / 1000, 0) },
             vistoPor = vistoPor,
+            lecturasPorFamiliar = lecturasPorFamiliar,
             ultimaModificacion = Timestamp(ultimaModificacionTimestamp / 1000, 0),
             creadoPor = creadoPor,
             modificadoPor = modificadoPor,

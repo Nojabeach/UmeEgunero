@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.repository.PreferenciasRepository
 import com.tfg.umeegunero.notification.AppNotificationManager
+import com.tfg.umeegunero.util.NotificationDiagnostic
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +31,8 @@ data class NotificacionesUiState(
 @HiltViewModel
 class NotificacionesViewModel @Inject constructor(
     private val preferenciasRepository: PreferenciasRepository,
-    private val notificationManager: AppNotificationManager
+    private val notificationManager: AppNotificationManager,
+    private val notificationDiagnostic: NotificationDiagnostic
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(NotificacionesUiState())
@@ -38,6 +40,7 @@ class NotificacionesViewModel @Inject constructor(
     
     init {
         cargarPreferencias()
+        ejecutarDiagnostico()
     }
     
     /**
@@ -137,5 +140,57 @@ class NotificacionesViewModel @Inject constructor(
      */
     fun limpiarMensaje() {
         _uiState.update { it.copy(mensaje = null) }
+    }
+    
+    /**
+     * Ejecuta un diagnóstico completo de las notificaciones push
+     */
+    private fun ejecutarDiagnostico() {
+        viewModelScope.launch {
+            try {
+                Timber.d("🔍 Iniciando diagnóstico de notificaciones push...")
+                val result = notificationDiagnostic.runDiagnostic()
+                notificationDiagnostic.printDiagnosticReport(result)
+                
+                // Si hay problemas críticos, mostrar mensaje en la UI
+                if (result.issues.isNotEmpty()) {
+                    val problemasGraves = result.issues.filter { 
+                        it.contains("❌") && !it.contains("Token FCM local y de Firestore no coinciden")
+                    }
+                    
+                    if (problemasGraves.isNotEmpty()) {
+                        _uiState.update { 
+                            it.copy(mensaje = "⚠️ Problemas detectados en notificaciones. Revisa los logs para más detalles.")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al ejecutar diagnóstico de notificaciones")
+            }
+        }
+    }
+    
+    /**
+     * Ejecuta el diagnóstico manualmente (para botón de diagnóstico)
+     */
+    fun ejecutarDiagnosticoManual() {
+        viewModelScope.launch {
+            try {
+                val result = notificationDiagnostic.runDiagnostic()
+                notificationDiagnostic.printDiagnosticReport(result)
+                
+                val mensaje = if (result.issues.isEmpty()) {
+                    "✅ Diagnóstico completado: No se encontraron problemas"
+                } else {
+                    "⚠️ Diagnóstico completado: ${result.issues.size} problemas detectados. Revisa los logs para más detalles."
+                }
+                
+                _uiState.update { it.copy(mensaje = mensaje) }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(mensaje = "❌ Error ejecutando diagnóstico: ${e.message}") 
+                }
+            }
+        }
     }
 } 

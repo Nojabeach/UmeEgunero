@@ -95,6 +95,7 @@ interface AlumnoRepository {
      * @param dni DNI o documento de identidad
      * @param fechaNacimiento Fecha de nacimiento en formato string
      * @param cursoId ID del curso al que pertenece
+     * @param claseId ID de la clase a la que se asignará (opcional)
      * @return ID del alumno creado
      */
     suspend fun crearAlumno(
@@ -102,7 +103,8 @@ interface AlumnoRepository {
         apellidos: String,
         dni: String,
         fechaNacimiento: String,
-        cursoId: String
+        cursoId: String,
+        claseId: String = ""
     ): Result<String>
 
     /**
@@ -352,24 +354,45 @@ class AlumnoRepositoryImpl @Inject constructor(
         apellidos: String,
         dni: String,
         fechaNacimiento: String,
-        cursoId: String
+        cursoId: String,
+        claseId: String
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Creando alumno: $nombre $apellidos (DNI: $dni) para curso: $cursoId")
+            Timber.d("Creando alumno: $nombre $apellidos (DNI: $dni) para curso: $cursoId, clase: $claseId")
             
             // Obtener el centroId del curso
             var centroId = ""
+            var cursoNombre = ""
             if (cursoId.isNotEmpty()) {
                 try {
                     val cursoDoc = firestore.collection("cursos").document(cursoId).get().await()
                     if (cursoDoc.exists()) {
                         centroId = cursoDoc.getString("centroId") ?: ""
-                        Timber.d("Centro obtenido del curso $cursoId: $centroId")
+                        cursoNombre = cursoDoc.getString("nombre") ?: ""
+                        Timber.d("Centro obtenido del curso $cursoId: $centroId, nombre: $cursoNombre")
                     } else {
                         Timber.w("No se encontró el curso con ID: $cursoId")
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error al obtener centroId del curso $cursoId")
+                }
+            }
+            
+            // Obtener información de la clase si se proporciona
+            var claseNombre = ""
+            var profesorId = ""
+            if (claseId.isNotEmpty()) {
+                try {
+                    val claseDoc = firestore.collection("clases").document(claseId).get().await()
+                    if (claseDoc.exists()) {
+                        claseNombre = claseDoc.getString("nombre") ?: ""
+                        profesorId = claseDoc.getString("profesorId") ?: ""
+                        Timber.d("Clase obtenida $claseId: nombre=$claseNombre, profesorId=$profesorId")
+                    } else {
+                        Timber.w("No se encontró la clase con ID: $claseId")
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener información de la clase $claseId")
                 }
             }
             
@@ -379,16 +402,48 @@ class AlumnoRepositoryImpl @Inject constructor(
                 nombre = nombre,
                 apellidos = apellidos,
                 centroId = centroId,
-                aulaId = "",
-                fechaNacimiento = fechaNacimiento
+                curso = cursoNombre,
+                aulaId = claseId, // Asignar directamente el claseId como aulaId
+                clase = claseNombre,
+                claseId = claseId, // También mantener claseId por compatibilidad
+                profesorId = profesorId,
+                fechaNacimiento = fechaNacimiento,
+                activo = true
             )
             
-            val documento = firestore.collection(COLLECTION_ALUMNOS)
-                .add(alumno)
+            // Crear el documento del alumno usando el DNI como ID
+            firestore.collection(COLLECTION_ALUMNOS)
+                .document(dni)
+                .set(alumno)
                 .await()
+            
+            // Si se proporciona claseId, añadir el alumno a la lista alumnosIds de la clase
+            if (claseId.isNotEmpty()) {
+                try {
+                    val claseRef = firestore.collection("clases").document(claseId)
+                    val claseDoc = claseRef.get().await()
+                    
+                    if (claseDoc.exists()) {
+                        val alumnosIdsAny = claseDoc.get("alumnosIds")
+                        val alumnosIds = when {
+                            alumnosIdsAny is List<*> -> alumnosIdsAny.filterIsInstance<String>().toMutableList()
+                            else -> mutableListOf()
+                        }
+                        
+                        if (!alumnosIds.contains(dni)) {
+                            alumnosIds.add(dni)
+                            claseRef.update("alumnosIds", alumnosIds).await()
+                            Timber.d("Alumno $dni añadido a la lista alumnosIds de la clase $claseId")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al añadir alumno a la lista de la clase, pero el alumno se creó correctamente")
+                    // No fallar la creación del alumno por este error
+                }
+            }
                 
-            Timber.d("Alumno creado exitosamente con ID: ${documento.id}, DNI: $dni, centroId: $centroId")
-            return@withContext Result.Success(documento.id)
+            Timber.d("Alumno creado exitosamente con DNI: $dni, centroId: $centroId, aulaId: $claseId")
+            return@withContext Result.Success(dni) // Devolver el DNI como ID
         } catch (e: Exception) {
             Timber.e(e, "Error al crear alumno")
             return@withContext Result.Error(e)

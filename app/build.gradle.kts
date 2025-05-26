@@ -7,6 +7,7 @@ plugins {
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22"
+    id("org.jetbrains.dokka")
 }
 
 // Configuración para evitar deprecaciones
@@ -262,4 +263,59 @@ dependencies {
 
     // Biometric Authentication
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
+}
+
+// Configuración de Dokka para generar documentación
+tasks.dokkaHtml.configure {
+    outputDirectory.set(layout.buildDirectory.dir("dokka"))
+    
+    dokkaSourceSets {
+        named("main") {
+            moduleName.set("UmeEgunero")
+            moduleVersion.set("1.0")
+            
+            // Incluir archivos de documentación
+            includes.from("src/main/resources/dokka/package.md")
+            
+            // Configurar enlaces externos
+            externalDocumentationLink {
+                url.set(uri("https://developer.android.com/reference/").toURL())
+            }
+            
+            externalDocumentationLink {
+                url.set(uri("https://kotlinlang.org/api/latest/jvm/stdlib/").toURL())
+            }
+            
+            // Configurar fuentes
+            sourceLink {
+                localDirectory.set(file("src/main/java"))
+                remoteUrl.set(uri("https://github.com/maitane-irazabal/UmeEgunero/tree/main/app/src/main/java").toURL())
+                remoteLineSuffix.set("#L")
+            }
+            
+            // Configurar samples
+            samples.from("src/main/java")
+            
+            // Configurar JDK
+            jdkVersion.set(17)
+            
+            // Configurar supresión de paquetes internos
+            suppressedFiles.from(
+                fileTree("src/main/java") {
+                    include("**/internal/**")
+                    include("**/test/**")
+                    include("**/androidTest/**")
+                }
+            )
+            
+            // Configurar reportUndocumented
+            reportUndocumented.set(false)
+            
+            // Configurar skipEmptyPackages
+            skipEmptyPackages.set(true)
+            
+            // Configurar skipDeprecated
+            skipDeprecated.set(false)
+        }
+    }
 }

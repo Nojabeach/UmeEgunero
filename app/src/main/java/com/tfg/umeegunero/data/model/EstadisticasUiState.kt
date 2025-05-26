@@ -14,6 +14,8 @@ data class EstadisticasUiState(
     val totalAlumnos: Int = 0,
     val totalFamiliares: Int = 0,
     val totalAdministradores: Int = 0,
+    val totalAdministradoresApp: Int = 0,
+    val totalAdministradoresCentro: Int = 0,
     val nuevosCentros: Int = 0,
     val nuevosProfesores: Int = 0,
     val nuevosAlumnos: Int = 0,

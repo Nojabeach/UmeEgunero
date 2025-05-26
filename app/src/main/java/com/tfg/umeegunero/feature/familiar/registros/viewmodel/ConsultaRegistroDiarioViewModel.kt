@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,8 @@ data class ConsultaRegistroDiarioUiState(
 
 @HiltViewModel
 class ConsultaRegistroDiarioViewModel @Inject constructor(
-    private val registroDiarioRepository: RegistroDiarioRepository
+    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ConsultaRegistroDiarioUiState())
@@ -75,12 +77,27 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
     }
     
     /**
-     * Marca un registro como visto
+     * Marca un registro como visto y leído por el familiar actual
      */
     fun marcarComoVisto(registroId: String) {
         viewModelScope.launch {
             try {
-                val result = registroDiarioRepository.marcarComoVisualizado(registroId)
+                // Obtener información del familiar actual
+                val familiarActual = authRepository.getUsuarioActual()
+                if (familiarActual == null) {
+                    Timber.e("No hay usuario autenticado")
+                    return@launch
+                }
+                
+                val familiarId = familiarActual.dni
+                val nombreFamiliar = "${familiarActual.nombre} ${familiarActual.apellidos}".trim()
+                
+                // Marcar como leído por el familiar específico
+                val result = registroDiarioRepository.marcarRegistroComoLeidoPorFamiliar(
+                    registroId = registroId,
+                    familiarId = familiarId,
+                    nombreFamiliar = nombreFamiliar
+                )
                 
                 if (result is Result.Success) {
                     // Actualizar la lista de registros
@@ -88,8 +105,17 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                         state.copy(
                             registros = state.registros.map { registro ->
                                 if (registro.id == registroId) {
+                                    val lecturasPorFamiliar = registro.lecturasPorFamiliar.toMutableMap()
+                                    lecturasPorFamiliar[familiarId] = com.tfg.umeegunero.data.model.LecturaFamiliar(
+                                        familiarId = familiarId,
+                                        nombreFamiliar = nombreFamiliar,
+                                        fechaLectura = com.google.firebase.Timestamp.now(),
+                                        leido = true
+                                    )
+                                    
                                     registro.copy(
-                                        vistoPorFamiliar = true
+                                        vistoPorFamiliar = true,
+                                        lecturasPorFamiliar = lecturasPorFamiliar
                                     )
                                 } else {
                                     registro
@@ -97,11 +123,13 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                             }
                         )
                     }
+                    
+                    Timber.d("Registro $registroId marcado como leído por $nombreFamiliar")
                 } else if (result is Result.Error) {
-                    Timber.e(result.exception, "Error al marcar registro como visto: $registroId")
+                    Timber.e(result.exception, "Error al marcar registro como leído: $registroId")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al marcar registro como visto: $registroId")
+                Timber.e(e, "Error al marcar registro como leído: $registroId")
             }
         }
     }
