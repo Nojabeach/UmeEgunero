@@ -42,6 +42,11 @@ import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.ui.components.DefaultTopAppBar
 import com.tfg.umeegunero.navigation.AppScreens
 import timber.log.Timber
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.AccountCircle
 
 enum class ModoVisualizacion { CURSOS, CLASES }
 
@@ -323,7 +328,16 @@ fun GestorAcademicoScreen(
                                         
                                         // Agregar botones para vincular alumnos y profesor
                                         if (perfilUsuario == TipoUsuario.ADMIN_CENTRO || perfilUsuario == TipoUsuario.ADMIN_APP) {
-                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            
+                                            // Primera fila: Gestión de Alumnos
+                                            Text(
+                                                text = "Gestión de Alumnos",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Spacer(modifier = Modifier.height(6.dp))
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -340,9 +354,13 @@ fun GestorAcademicoScreen(
                                                     },
                                                     modifier = Modifier.weight(1f)
                                                 ) {
-                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                    Icon(
+                                                        imageVector = Icons.Default.PersonAdd, 
+                                                        contentDescription = null, 
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
                                                     Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Nuevo", style = MaterialTheme.typography.bodySmall)
+                                                    Text("Nuevo Alumno", style = MaterialTheme.typography.bodySmall)
                                                 }
                                                 
                                                 OutlinedButton(
@@ -354,9 +372,60 @@ fun GestorAcademicoScreen(
                                                     },
                                                     modifier = Modifier.weight(1f)
                                                 ) {
-                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                    Icon(
+                                                        imageVector = Icons.Default.Groups, 
+                                                        contentDescription = null, 
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
                                                     Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Alumnos", style = MaterialTheme.typography.bodySmall)
+                                                    Text("Vincular Alumnos", style = MaterialTheme.typography.bodySmall)
+                                                }
+                                            }
+                                            
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            
+                                            // Segunda fila: Gestión de Profesores
+                                            Text(
+                                                text = "Gestión de Profesores",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = { 
+                                                        // Crear nuevo profesor
+                                                        onNavigate(AppScreens.AddUser.createRoute(
+                                                            isAdminApp = false,
+                                                            tipoUsuario = "PROFESOR",
+                                                            centroId = selectedCentro?.id,
+                                                            centroBloqueado = true
+                                                        ))
+                                                    },
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.PersonAdd, 
+                                                            contentDescription = null, 
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(2.dp))
+                                                        Icon(
+                                                            imageVector = Icons.Default.School, 
+                                                            contentDescription = null, 
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text("Nuevo Profesor", style = MaterialTheme.typography.bodySmall)
+                                                    }
                                                 }
                                                 
                                                 OutlinedButton(
@@ -368,9 +437,24 @@ fun GestorAcademicoScreen(
                                                     },
                                                     modifier = Modifier.weight(1f)
                                                 ) {
-                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Profesor", style = MaterialTheme.typography.bodySmall)
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.AccountCircle, 
+                                                            contentDescription = null, 
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(2.dp))
+                                                        Icon(
+                                                            imageVector = Icons.Default.School, 
+                                                            contentDescription = null, 
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text("Vincular Profesor", style = MaterialTheme.typography.bodySmall)
+                                                    }
                                                 }
                                             }
                                         }

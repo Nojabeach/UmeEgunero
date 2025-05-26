@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1045944201521:android:1d17f66b49657aef2ac010",
+        "mobilesdk_app_id": "1:1045944201521:android:6e02028cd72aa4b32ac010",
         "android_client_info": {
           "package_name": "com.tfg.umeegunero"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1045944201521-evdlgi6128ig5q973f90rvc2a25dl2ib.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCO6F98FkXnEoHGS_svEgtWiZdbI3IcVaY"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1045944201521-evdlgi6128ig5q973f90rvc2a25dl2ib.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

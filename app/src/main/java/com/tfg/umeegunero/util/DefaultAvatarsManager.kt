@@ -152,8 +152,8 @@ class DefaultAvatarsManager @Inject constructor(
             }
             
             // 3. Intentar desde assets/images
-            try {
-                context.assets.open("images/$resourceName").use { input ->
+                try {
+                    context.assets.open("images/$resourceName").use { input ->
                     FileOutputStream(tempFile).use { output ->
                         input.copyTo(output)
                     }
@@ -185,7 +185,7 @@ class DefaultAvatarsManager @Inject constructor(
                         return tempFile
                     } catch (e4: IOException) {
                         Timber.e(e4, "❌ Error: No se encontró ninguna imagen fallback")
-                        return null
+                    return null
                     }
                 }
             }

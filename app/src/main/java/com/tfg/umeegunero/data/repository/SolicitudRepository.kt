@@ -509,9 +509,11 @@ class SolicitudRepository @Inject constructor(
     suspend fun enviarNotificacionSolicitudPendiente(solicitud: SolicitudVinculacion) {
         try {
             val centroId = solicitud.centroId
+            Timber.d("🚀 Iniciando envío de notificación para solicitud ${solicitud.id} en centro $centroId")
+            
             val centro = centroRepository.obtenerCentroPorId(centroId)
             val familiar = usuarioRepository.obtenerUsuarioPorId(solicitud.familiarId)
-            val alumno = solicitud.alumnoId?.let { alumnoRepository.obtenerAlumnoPorId(it) }
+            val alumno = alumnoRepository.getAlumnoByDni(solicitud.alumnoDni)
             
             val nombreFamiliar = familiar?.let { 
                 if (it is Result.Success) {
@@ -521,18 +523,18 @@ class SolicitudRepository @Inject constructor(
                 }
             } ?: "Un familiar"
             
-            val nombreAlumno = alumno?.let { 
-                if (it is Result.Success && it.data != null) {
-                    "${it.data?.nombre ?: ""} ${it.data?.apellidos ?: ""}".trim()
-                } else {
-                    "un alumno"
-                }
-            } ?: "un alumno"
+            val nombreAlumno = if (alumno is Result.Success && alumno.data != null) {
+                "${alumno.data?.nombre ?: ""} ${alumno.data?.apellidos ?: ""}".trim()
+            } else {
+                "un alumno"
+            }
             
             val nombreCentro = centro?.nombre ?: "tu centro"
             
             val titulo = "Nueva solicitud de vinculación"
             val mensaje = "El familiar $nombreFamiliar ha solicitado vincularse con $nombreAlumno en $nombreCentro"
+            
+            Timber.d("📝 Mensaje preparado: '$titulo' - '$mensaje'")
             
             // Usar el servicio de notificaciones local en lugar de Cloud Functions
             notificationService.enviarNotificacionSolicitud(
@@ -541,11 +543,11 @@ class SolicitudRepository @Inject constructor(
                 titulo = titulo,
                 mensaje = mensaje,
                 onCompletion = { exito, mensajeResultado ->
-                    Timber.d("Resultado envío notificación: $exito - $mensajeResultado")
+                    Timber.d("📊 Resultado envío notificación: $exito - $mensajeResultado")
                 }
             )
         } catch (e: Exception) {
-            Timber.e(e, "Error al enviar notificación de solicitud pendiente")
+            Timber.e(e, "💥 Error al enviar notificación de solicitud pendiente")
         }
     }
     
@@ -560,12 +562,12 @@ class SolicitudRepository @Inject constructor(
                 return
             }
             
-            val alumno = solicitud.alumnoId?.let { alumnoRepository.obtenerAlumnoPorId(it) }
+            val alumno = alumnoRepository.getAlumnoByDni(solicitud.alumnoDni)
             val alumnoNombre = if (alumno is Result.Success && alumno.data != null) {
                 "${alumno.data?.nombre ?: ""} ${alumno.data?.apellidos ?: ""}".trim()
-                } else {
-                    "el alumno"
-                }
+            } else {
+                "el alumno"
+            }
             
             val estado = solicitud.estado
             val titulo = when (estado) {

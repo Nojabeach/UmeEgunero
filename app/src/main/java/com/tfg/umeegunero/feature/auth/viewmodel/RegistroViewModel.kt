@@ -29,6 +29,12 @@ import com.tfg.umeegunero.data.model.SolicitudVinculacion
 import com.tfg.umeegunero.data.model.EstadoSolicitud
 import timber.log.Timber
 import com.tfg.umeegunero.data.service.EmailNotificationService
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import android.os.Build
+import com.tfg.umeegunero.BuildConfig
+import android.os.Handler
+import android.os.Looper
+import kotlin.random.Random
 
 /**
  * Estado UI para la pantalla de registro
@@ -58,7 +64,8 @@ data class RegistroUiState(
     val isLoadingDireccion: Boolean = false,
     val coordenadasLatitud: Double? = null,
     val coordenadasLongitud: Double? = null,
-    val mapaUrl: String? = null
+    val mapaUrl: String? = null,
+    val mensajeResultadoNominatim: String? = null
 )
 
 /**
@@ -108,6 +115,10 @@ class RegistroViewModel @Inject constructor(
      */
     private val _uiState = MutableStateFlow(RegistroUiState())
     val uiState: StateFlow<RegistroUiState> = _uiState.asStateFlow()
+
+    // Variable para indicar si se debe mostrar el diálogo de permiso de ubicación
+    private val _showLocationPermissionRequest = MutableStateFlow(false)
+    val showLocationPermissionRequest = _showLocationPermissionRequest.asStateFlow()
 
     init {
         cargarCentros()
@@ -159,6 +170,8 @@ class RegistroViewModel @Inject constructor(
                     val formUpdated = currentState.form.copy(direccion = currentState.form.direccion.copy(codigoPostal = value))
                     // Si el código postal tiene 5 dígitos, buscar automáticamente
                     if (value.length == 5 && value.all { it.isDigit() }) {
+                        // Solicitar permiso de ubicación si es necesario
+                        _showLocationPermissionRequest.value = true
                         // Lanzar búsqueda en segundo plano
                         buscarDireccionPorCP(value)
                     }
@@ -186,17 +199,29 @@ class RegistroViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoadingDireccion = true) }
                 
+                // Registrar actividad en Crashlytics para errores reales
+                FirebaseCrashlytics.getInstance().log("Iniciando búsqueda de CP: $codigoPostal")
+                Timber.d("Iniciando búsqueda de dirección para CP: $codigoPostal")
+                
                 val response = nominatimApiService.searchByPostalCode(
                     postalCode = codigoPostal,
                     limit = 1
                 )
                 
+                Timber.d("Respuesta recibida: ${response.isSuccessful}, código: ${response.code()}")
+                FirebaseCrashlytics.getInstance().setCustomKey("nominatim_response_code", response.code())
+                
                 if (response.isSuccessful && response.body()?.isNotEmpty() == true) {
                     val place = response.body()!!.first()
+                    
+                    // Registrar datos recibidos para depuración
+                    Timber.d("Datos recibidos: ${place.displayName}")
                     
                     // Extraer ciudad y provincia
                     val ciudad = place.address?.getCityName() ?: ""
                     val provincia = place.address?.province ?: place.address?.state ?: ""
+                    
+                    Timber.d("Ciudad extraída: $ciudad, Provincia: $provincia")
                     
                     // Extraer coordenadas
                     val latitud = place.lat.toDoubleOrNull()
@@ -223,17 +248,38 @@ class RegistroViewModel @Inject constructor(
                             isLoadingDireccion = false
                         )
                     }
+                    
+                    Timber.d("Formulario actualizado con datos de CP: $codigoPostal")
                 } else {
+                    // Registrar errores específicos
+                    val errorBody = response.errorBody()?.string() ?: "Error desconocido"
+                    Timber.e("Error en respuesta Nominatim: código ${response.code()}, error: $errorBody")
+                    FirebaseCrashlytics.getInstance().log("Error Nominatim: $errorBody")
+                    FirebaseCrashlytics.getInstance().setCustomKey("nominatim_error_body", errorBody)
+                    
+                    if (!response.isSuccessful) {
+                        FirebaseCrashlytics.getInstance().recordException(Exception("Error en Nominatim: ${response.code()} - $errorBody"))
+                    } else if (response.body()?.isEmpty() == true) {
+                        Timber.e("Nominatim devolvió una lista vacía para CP: $codigoPostal")
+                        FirebaseCrashlytics.getInstance().log("Nominatim devolvió lista vacía para CP: $codigoPostal")
+                    }
+                    
                     _uiState.update { it.copy(isLoadingDireccion = false) }
                 }
             } catch (e: IOException) {
-                Log.e("RegistroViewModel", "Error de red al buscar dirección: ${e.message}")
+                Timber.e(e, "Error de red al buscar dirección para CP $codigoPostal: ${e.message}")
+                FirebaseCrashlytics.getInstance().log("Error red Nominatim: ${e.message}")
+                FirebaseCrashlytics.getInstance().recordException(e)
                 _uiState.update { it.copy(isLoadingDireccion = false) }
             } catch (e: HttpException) {
-                Log.e("RegistroViewModel", "Error HTTP al buscar dirección: ${e.message}")
+                Timber.e(e, "Error HTTP al buscar dirección para CP $codigoPostal: ${e.message}, código: ${e.code()}")
+                FirebaseCrashlytics.getInstance().log("Error HTTP Nominatim: ${e.message}, código: ${e.code()}")
+                FirebaseCrashlytics.getInstance().recordException(e)
                 _uiState.update { it.copy(isLoadingDireccion = false) }
             } catch (e: Exception) {
-                Log.e("RegistroViewModel", "Error al buscar dirección: ${e.message}")
+                Timber.e(e, "Error general al buscar dirección para CP $codigoPostal: ${e.message}")
+                FirebaseCrashlytics.getInstance().log("Error general Nominatim: ${e.message}")
+                FirebaseCrashlytics.getInstance().recordException(e)
                 _uiState.update { it.copy(isLoadingDireccion = false) }
             }
         }
@@ -282,7 +328,7 @@ class RegistroViewModel @Inject constructor(
                 newState = newState.copy(confirmPasswordError = confirmError)
             }
              "telefono" -> {
-                 val telefonoError = if (updatedForm.telefono.isNotBlank() && !isPhoneValid(updatedForm.telefono)) { // Crear isPhoneValid si se necesita
+                 val telefonoError = if (updatedForm.telefono.isNotBlank() && !isPhoneValid(updatedForm.telefono)) {
                      "Formato de teléfono inválido."
                  } else null
                  newState = newState.copy(telefonoError = telefonoError)
@@ -556,5 +602,37 @@ class RegistroViewModel @Inject constructor(
                s.form.centroId.isNotBlank() &&
                s.form.alumnosDni.any { it.isNotBlank() } && // Al menos un DNI
                s.form.alumnosDni.filter { it.isNotBlank() }.all { validateDni(it) } // Todos los no vacíos son válidos
+    }
+    
+    // Métodos para manejar la respuesta del permiso de ubicación
+    
+    /**
+     * Reinicia el estado de solicitud de permiso de ubicación
+     */
+    fun resetLocationPermissionRequest() {
+        _showLocationPermissionRequest.value = false
+    }
+    
+    /**
+     * Maneja la concesión del permiso de ubicación
+     */
+    fun onLocationPermissionGranted() {
+        resetLocationPermissionRequest()
+        // Intentar buscar la localización de nuevo ya que ahora tenemos permiso
+        val codigoPostal = _uiState.value.form.direccion.codigoPostal
+        if (codigoPostal.length == 5) {
+            buscarDireccionPorCP(codigoPostal)
+        }
+    }
+    
+    /**
+     * Maneja el rechazo del permiso de ubicación
+     */
+    fun onLocationPermissionDenied() {
+        resetLocationPermissionRequest()
+        // Informar al usuario que algunas funcionalidades pueden no estar disponibles
+        _uiState.update { 
+            it.copy(direccionError = "La geolocalización no estará disponible sin el permiso de ubicación")
+        }
     }
 }

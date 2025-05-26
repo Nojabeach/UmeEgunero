@@ -89,8 +89,7 @@ fun VincularProfesorClaseScreen(
         if (uiState.showSuccessMessage && uiState.mensaje != null) {
             Toast.makeText(context, uiState.mensaje, Toast.LENGTH_SHORT).show()
             viewModel.limpiarMensajeExito()
-            // Esperamos un poco para que el usuario vea el mensaje
-            delay(300)
+            // Eliminado delay innecesario
         }
     }
     

@@ -40,18 +40,45 @@ class NotificationService @Inject constructor(
     ) {
         serviceScope.launch {
             try {
-                // Buscar todos los administradores de centro
+                Timber.d("🔍 Buscando administradores para centro: $centroId")
+                
+                // Buscar todos los administradores de centro para este centro específico
                 val adminSnapshot = firestore.collection("usuarios")
-                    .whereArrayContains("perfiles", mapOf(
-                        "tipo" to "ADMIN_CENTRO",
-                        "centroId" to centroId,
-                        "verificado" to true
-                    ))
+                    .whereEqualTo("perfiles.tipo", "ADMIN_CENTRO")
+                    .whereEqualTo("perfiles.centroId", centroId)
+                    .whereEqualTo("perfiles.verificado", true)
                     .get()
                     .await()
                     
-                if (adminSnapshot.isEmpty) {
-                    Timber.w("No se encontraron administradores para el centro $centroId")
+                Timber.d("📊 Primera consulta encontró ${adminSnapshot.size()} documentos")
+                    
+                // Si no encontramos con la consulta anterior, intentar una consulta más amplia
+                val finalAdminSnapshot = if (adminSnapshot.isEmpty) {
+                    Timber.d("🔄 Realizando consulta amplia...")
+                    firestore.collection("usuarios")
+                        .get()
+                        .await()
+                        .documents
+                        .filter { doc ->
+                            val perfiles = doc.get("perfiles") as? List<Map<String, Any>> ?: emptyList()
+                            val esAdmin = perfiles.any { perfil ->
+                                perfil["tipo"] == "ADMIN_CENTRO" &&
+                                perfil["centroId"] == centroId &&
+                                perfil["verificado"] == true
+                            }
+                            if (esAdmin) {
+                                Timber.d("✅ Encontrado admin: ${doc.id}")
+                            }
+                            esAdmin
+                        }
+                } else {
+                    adminSnapshot.documents
+                }
+                
+                Timber.d("📋 Total administradores encontrados: ${finalAdminSnapshot.size}")
+                    
+                if (finalAdminSnapshot.isEmpty()) {
+                    Timber.w("⚠️ No se encontraron administradores para el centro $centroId")
                     onCompletion(false, "No se encontraron administradores para este centro")
                     return@launch
                 }
@@ -59,69 +86,60 @@ class NotificationService @Inject constructor(
                 var successCount = 0
                 
                 // Para cada admin, obtener tokens FCM y enviar notificación
-                for (adminDoc in adminSnapshot.documents) {
+                for (adminDoc in finalAdminSnapshot) {
                     val adminData = adminDoc.data ?: continue
                     val adminId = adminDoc.id
                     
-                    @Suppress("UNCHECKED_CAST")
-                    val fcmTokens = adminData["fcmTokens"] as? Map<String, String> ?: continue
+                    Timber.d("👤 Procesando admin: $adminId")
                     
-                    if (fcmTokens.isEmpty()) {
-                        Timber.d("El administrador $adminId no tiene tokens FCM registrados")
+                    // Obtener el token FCM del administrador
+                    val preferencias = adminData["preferencias"] as? Map<String, Any>
+                    val notificaciones = preferencias?.get("notificaciones") as? Map<String, Any>
+                    val fcmToken = notificaciones?.get("fcmToken") as? String
+                    
+                    Timber.d("🔑 Token FCM para admin $adminId: ${fcmToken?.take(20)}...")
+                    
+                    if (fcmToken.isNullOrBlank()) {
+                        Timber.d("❌ El administrador $adminId no tiene token FCM registrado")
                         continue
                     }
                     
-                    // Para cada token del administrador, enviar notificación
-                    for ((tokenId, token) in fcmTokens) {
-                        try {
-                            // Crear los datos de la notificación
-                            val message = mapOf(
-                                "token" to token,
-                                "notification" to mapOf(
-                                    "title" to titulo,
-                                    "body" to mensaje
-                                ),
-                                "data" to mapOf(
-                                    "tipo" to "solicitud_vinculacion",
-                                    "solicitudId" to solicitudId,
-                                    "centroId" to centroId,
-                                    "click_action" to "SOLICITUD_PENDIENTE"
-                                )
-                            )
+                    try {
+                        // Enviar la notificación directamente mediante HTTP a Firebase
+                        Timber.d("📤 Enviando notificación a admin $adminId...")
+                        enviarMensajeDirectoFCM(fcmToken, titulo, mensaje, mapOf(
+                            "tipo" to "solicitud_vinculacion",
+                            "solicitudId" to solicitudId,
+                            "centroId" to centroId,
+                            "click_action" to "SOLICITUD_PENDIENTE"
+                        ))
+                        
+                        successCount++
+                        Timber.d("✅ Notificación enviada al admin $adminId con token $fcmToken")
+                    } catch (e: Exception) {
+                        Timber.e(e, "❌ Error al enviar notificación al admin $adminId")
+                        
+                        // Si el token es inválido, eliminarlo
+                        if (e.message?.contains("registration-token-not-registered") == true ||
+                            e.message?.contains("invalid-argument") == true) {
                             
-                            // Enviar la notificación directamente mediante HTTP a Firebase
-                            enviarMensajeDirectoFCM(token, titulo, mensaje, mapOf(
-                                "tipo" to "solicitud_vinculacion",
-                                "solicitudId" to solicitudId,
-                                "centroId" to centroId,
-                                "click_action" to "SOLICITUD_PENDIENTE"
-                            ))
-                            
-                            successCount++
-                            Timber.d("Notificación enviada al admin $adminId con token $tokenId")
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al enviar notificación al admin $adminId")
-                            
-                            // Si el token es inválido, eliminarlo
-                            if (e.message?.contains("registration-token-not-registered") == true ||
-                                e.message?.contains("invalid-argument") == true) {
-                                
-                                try {
-                                    firestore.collection("usuarios").document(adminId)
-                                        .update("fcmTokens.$tokenId", FieldValue.delete())
-                                        .await()
-                                    Timber.d("Token inválido eliminado: $tokenId del usuario $adminId")
-                                } catch (deleteError: Exception) {
-                                    Timber.e(deleteError, "Error al eliminar token inválido")
-                                }
+                            try {
+                                firestore.collection("usuarios").document(adminId)
+                                    .update("preferencias.notificaciones.fcmToken", "")
+                                    .await()
+                                Timber.d("🗑️ Token inválido eliminado del usuario $adminId")
+                            } catch (deleteError: Exception) {
+                                Timber.e(deleteError, "Error al eliminar token inválido")
                             }
                         }
                     }
                 }
                 
-                onCompletion(successCount > 0, "Notificación enviada a $successCount dispositivos de administradores")
+                val resultado = "Notificación enviada a $successCount dispositivos de administradores"
+                Timber.d("📊 Resultado final: $resultado")
+                onCompletion(successCount > 0, resultado)
             } catch (e: Exception) {
-                Timber.e(e, "Error al enviar notificaciones a administradores")
+                Timber.e(e, "💥 Error al enviar notificaciones a administradores")
                 onCompletion(false, "Error al enviar notificaciones: ${e.message}")
             }
         }

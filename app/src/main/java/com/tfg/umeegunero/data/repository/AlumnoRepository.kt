@@ -355,18 +355,39 @@ class AlumnoRepositoryImpl @Inject constructor(
         cursoId: String
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
+            Timber.d("Creando alumno: $nombre $apellidos (DNI: $dni) para curso: $cursoId")
+            
+            // Obtener el centroId del curso
+            var centroId = ""
+            if (cursoId.isNotEmpty()) {
+                try {
+                    val cursoDoc = firestore.collection("cursos").document(cursoId).get().await()
+                    if (cursoDoc.exists()) {
+                        centroId = cursoDoc.getString("centroId") ?: ""
+                        Timber.d("Centro obtenido del curso $cursoId: $centroId")
+                    } else {
+                        Timber.w("No se encontró el curso con ID: $cursoId")
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener centroId del curso $cursoId")
+                }
+            }
+            
             val alumno = Alumno(
                 id = "",
                 dni = dni,
                 nombre = nombre,
                 apellidos = apellidos,
-                centroId = "",
+                centroId = centroId,
                 aulaId = "",
                 fechaNacimiento = fechaNacimiento
             )
+            
             val documento = firestore.collection(COLLECTION_ALUMNOS)
                 .add(alumno)
                 .await()
+                
+            Timber.d("Alumno creado exitosamente con ID: ${documento.id}, DNI: $dni, centroId: $centroId")
             return@withContext Result.Success(documento.id)
         } catch (e: Exception) {
             Timber.e(e, "Error al crear alumno")
@@ -936,8 +957,8 @@ class AlumnoRepositoryImpl @Inject constructor(
                         .whereEqualTo("id", alumnoId)
                         .limit(1)
                         .get()
-                        .await()
-                        
+                .await()
+            
                     if (!queryAlternativa.isEmpty) {
                         Timber.d("AlumnoRepository: Alumno encontrado por campo ID")
                         val documentSnapshot = queryAlternativa.documents.first()

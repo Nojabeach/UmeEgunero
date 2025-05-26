@@ -420,7 +420,7 @@ class VincularAlumnoClaseViewModel @Inject constructor(
                         ) }
                         
                         // Recargar los datos de la clase para actualizar las listas
-                        delay(300) // Pequeña pausa para permitir la propagación de cambios en Firestore
+                        // Eliminado delay innecesario - Firestore es consistente
                         val claseActual = _uiState.value.claseSeleccionada
                         if (claseActual != null) {
                             seleccionarClase(claseActual)
@@ -486,13 +486,55 @@ class VincularAlumnoClaseViewModel @Inject constructor(
                 
                 when (result) {
                     is Result.Success<*> -> {
-                        // Si se ha creado con éxito, cerrar diálogo y mostrar mensaje
-                        _uiState.update { it.copy(
-                            mensaje = "Alumno creado correctamente",
-                            showCrearAlumnoDialog = false,
-                            showSuccessMessage = true,
-                            nuevoAlumno = NuevoAlumnoData() // Resetear el formulario
-                        ) }
+                        Timber.d("Alumno creado exitosamente con DNI: ${nuevoAlumno.dni}")
+                        
+                        // Si hay una clase seleccionada, asignar automáticamente el alumno a esa clase
+                        val claseSeleccionada = _uiState.value.claseSeleccionada
+                        if (claseSeleccionada != null) {
+                            Timber.d("Asignando automáticamente el alumno ${nuevoAlumno.dni} a la clase ${claseSeleccionada.nombre}")
+                            
+                            // 1. Asignar alumno a la clase (actualizar alumnosIds en la clase)
+                            val resultAsignacionClase = claseRepository.asignarAlumnoAClase(claseSeleccionada.id, nuevoAlumno.dni)
+                            
+                            // 2. Asignar clase al alumno (actualizar aulaId en el alumno)
+                            val resultAsignacionAlumno = if (resultAsignacionClase is Result.Success) {
+                                alumnoRepository.asignarClaseAAlumno(nuevoAlumno.dni, claseSeleccionada.id)
+                            } else {
+                                resultAsignacionClase
+                            }
+                            
+                            when (resultAsignacionAlumno) {
+                                is Result.Success -> {
+                                    Timber.d("Alumno ${nuevoAlumno.dni} asignado correctamente a la clase ${claseSeleccionada.nombre}")
+                                    _uiState.update { it.copy(
+                                        mensaje = "Alumno creado y asignado automáticamente a la clase ${claseSeleccionada.nombre}",
+                                        showCrearAlumnoDialog = false,
+                                        showSuccessMessage = true,
+                                        nuevoAlumno = NuevoAlumnoData()
+                                    ) }
+                                }
+                                is Result.Error -> {
+                                    Timber.e("Error al asignar alumno a la clase: ${resultAsignacionAlumno.message}")
+                                    _uiState.update { it.copy(
+                                        mensaje = "Alumno creado correctamente, pero no se pudo asignar automáticamente a la clase. Puedes asignarlo manualmente.",
+                                        showCrearAlumnoDialog = false,
+                                        showSuccessMessage = true,
+                                        nuevoAlumno = NuevoAlumnoData()
+                                    ) }
+                                }
+                                is Result.Loading<*> -> {
+                                    // Estado de carga ya manejado
+                                }
+                            }
+                        } else {
+                            // No hay clase seleccionada, solo crear el alumno
+                            _uiState.update { it.copy(
+                                mensaje = "Alumno creado correctamente",
+                                showCrearAlumnoDialog = false,
+                                showSuccessMessage = true,
+                                nuevoAlumno = NuevoAlumnoData()
+                            ) }
+                        }
                         
                         // Recargar la lista de alumnos
                         val centroId = _uiState.value.centroId

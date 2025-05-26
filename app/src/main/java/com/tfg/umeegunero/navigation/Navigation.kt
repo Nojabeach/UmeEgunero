@@ -929,6 +929,13 @@ fun Navigation(
             navController.navigate(AppScreens.VincularAlumnoFamiliar.route)
         }
 
+        // Pantalla de vinculación de alumnos y familiares
+        composable(route = AppScreens.VincularAlumnoFamiliar.route) {
+            com.tfg.umeegunero.feature.centro.screen.VincularAlumnoFamiliarScreen(
+                navController = navController
+            )
+        }
+
         // Pantallas específicas de profesor
         composable(route = AppScreens.ListadoPreRegistroDiario.route) {
             com.tfg.umeegunero.feature.profesor.registros.screen.ListadoPreRegistroDiarioScreen(

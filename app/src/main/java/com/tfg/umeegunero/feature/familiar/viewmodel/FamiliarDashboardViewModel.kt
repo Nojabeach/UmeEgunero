@@ -658,6 +658,8 @@ class FamiliarDashboardViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingSolicitud = true, error = null) }
             
             val familiarId = _uiState.value.familiar?.id
+            Timber.d("🚀 Iniciando creación de solicitud - FamiliarId: $familiarId, AlumnoDNI: $alumnoDni, CentroId: $centroId")
+            
             if (familiarId != null) {
                 try {
                     // Crear objeto de solicitud
@@ -670,9 +672,13 @@ class FamiliarDashboardViewModel @Inject constructor(
                         estado = EstadoSolicitud.PENDIENTE
                     )
                     
+                    Timber.d("📝 Solicitud creada: $solicitud")
+                    
                     // Enviar solicitud
                     when (val result = solicitudRepository.crearSolicitudVinculacion(solicitud)) {
                         is Result.Success -> {
+                            Timber.d("✅ Solicitud creada exitosamente: ${result.data.id}")
+                            
                             // Recargar solicitudes
                             cargarSolicitudesPendientes(familiarId)
                             
@@ -684,6 +690,8 @@ class FamiliarDashboardViewModel @Inject constructor(
                             }
                         }
                         is Result.Error -> {
+                            Timber.e(result.exception, "❌ Error al crear solicitud")
+                            
                             _uiState.update {
                                 it.copy(
                                     isLoadingSolicitud = false,

@@ -992,7 +992,7 @@ class AddUserViewModel @Inject constructor(
             var firebaseUid = ""
             
             try {
-                val authResult = withContext(Dispatchers.IO) {
+            val authResult = withContext(Dispatchers.IO) {
                     val signInMethods = Tasks.await(firebaseAuth.fetchSignInMethodsForEmail(state.email))
                     if ((signInMethods.signInMethods?.size ?: 0) > 0) {
                         emailExiste = true
@@ -1003,16 +1003,16 @@ class AddUserViewModel @Inject constructor(
                         Timber.d("El email ${state.email} no existe en Firebase Auth, continuando con la creación")
                         try {
                             Tasks.await(firebaseAuth.createUserWithEmailAndPassword(state.email, state.password))
-                        } catch (e: Exception) {
+                } catch (e: Exception) {
                             // Doble verificación por si hay discrepancia entre fetchSignInMethods y createUser
                             if (e.message?.contains("email address is already in use") == true) {
                                 emailExiste = true
                                 Timber.w("Conflicto detectado: El email existe pero fetchSignInMethods no lo detectó")
                                 null
                             } else {
-                                throw e
-                            }
-                        }
+                    throw e
+                }
+            }
                     }
                 }
                 
@@ -1027,7 +1027,7 @@ class AddUserViewModel @Inject constructor(
                 
                 // Si continuamos, es que el usuario se creó con éxito
                 firebaseUid = authResult?.user?.uid ?: throw Exception("Error al obtener UID de Firebase Auth")
-                Timber.d("Cuenta creada en Firebase Authentication con UID: $firebaseUid")
+            Timber.d("Cuenta creada en Firebase Authentication con UID: $firebaseUid")
             } catch (e: Exception) {
                 if (e.message?.contains("email address is already in use") == true) {
                     Timber.e(e, "El email ya está en uso: ${state.email}")
@@ -1171,19 +1171,19 @@ class AddUserViewModel @Inject constructor(
                 resourceFile.copyTo(archivoTemporal, overwrite = true)
             } else {
                 // Intentar abrir el stream del asset desde assets/images
-                try {
-                    context.assets.open("images/$resourceName").use { inputStream ->
-                        FileOutputStream(archivoTemporal).use { outputStream ->
-                            inputStream.copyTo(outputStream)
-                        }
+            try {
+                context.assets.open("images/$resourceName").use { inputStream ->
+                    FileOutputStream(archivoTemporal).use { outputStream ->
+                        inputStream.copyTo(outputStream)
                     }
+                }
                     Timber.d("Imagen cargada desde assets/images: $resourceName")
-                } catch (e: IOException) {
-                    // Si no encuentra la imagen específica, usar AdminAvatar.png como fallback
-                    Timber.d("⚠️ No se encontró images/$resourceName, usando AdminAvatar.png como fallback")
-                    context.assets.open("images/AdminAvatar.png").use { inputStream ->
-                        FileOutputStream(archivoTemporal).use { outputStream ->
-                            inputStream.copyTo(outputStream)
+            } catch (e: IOException) {
+                // Si no encuentra la imagen específica, usar AdminAvatar.png como fallback
+                Timber.d("⚠️ No se encontró images/$resourceName, usando AdminAvatar.png como fallback")
+                context.assets.open("images/AdminAvatar.png").use { inputStream ->
+                    FileOutputStream(archivoTemporal).use { outputStream ->
+                        inputStream.copyTo(outputStream)
                         }
                     }
                 }
@@ -1989,7 +1989,7 @@ class AddUserViewModel @Inject constructor(
         val regex = """^\d{2}/\d{2}/\d{4}$""".toRegex()
         return regex.matches(fecha)
     }
-    
+
     /**
      * Procesa el resultado de la operación de guardado
      */

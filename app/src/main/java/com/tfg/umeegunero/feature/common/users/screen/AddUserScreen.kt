@@ -1638,7 +1638,7 @@ fun AlumnoFields(
                     } else {
                         Column {
                             Text("Enfermedades, discapacidades u otras condiciones médicas relevantes")
-                            Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                        Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 },
@@ -1696,7 +1696,7 @@ fun AlumnoFields(
                 supportingText = {
                     Column {
                         Text("Medicamentos que toma regularmente (separados por comas)")
-                        Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                            Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
                     }
                 },
                 modifier = Modifier

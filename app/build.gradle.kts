@@ -212,6 +212,7 @@ dependencies {
     implementation("com.google.firebase:firebase-functions-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-config-ktx")
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
@@ -258,4 +259,7 @@ dependencies {
 
     // LifecycleService
     implementation("androidx.lifecycle:lifecycle-service:2.7.0")
+
+    // Biometric Authentication
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
 }

@@ -10,27 +10,26 @@
 package com.tfg.umeegunero.feature.auth.screen
 
 // Imports de Android y Jetpack Compose
+import android.Manifest
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring as ComposeSpring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,90 +38,87 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Segment
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.EscalatorWarning
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.LocalPostOffice
+import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Man
-import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SensorDoor
+import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Woman
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.surfaceColorAtElevation
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -130,69 +126,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tfg.umeegunero.data.model.Centro
-import com.tfg.umeegunero.data.model.Contacto
-import com.tfg.umeegunero.data.model.Direccion
+import com.tfg.umeegunero.BuildConfig
 import com.tfg.umeegunero.data.model.RegistroUsuarioForm
 import com.tfg.umeegunero.data.model.SubtipoFamiliar
 import com.tfg.umeegunero.feature.auth.viewmodel.RegistroUiState
 import com.tfg.umeegunero.feature.auth.viewmodel.RegistroViewModel
-import com.tfg.umeegunero.ui.components.FormProgressIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.TextButton
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.filled.EscalatorWarning
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.TextFormat
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.material.icons.filled.Numbers
-import androidx.compose.material.icons.filled.SensorDoor
-import androidx.compose.material.icons.filled.LocalPostOffice
-import androidx.compose.material.icons.filled.LocationCity
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.automirrored.filled.Segment
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import coil.compose.AsyncImage
-import androidx.compose.animation.core.LinearEasing
 import timber.log.Timber
-import android.net.Uri
-import android.content.Intent
-import android.widget.Toast
 
 /**
  * Función de extensión para calcular la luminosidad de un color.
@@ -490,16 +434,30 @@ fun RegistroScreen(
     onNavigateToTerminosCondiciones: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val showLocationPermissionRequest by viewModel.showLocationPermissionRequest.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val context = LocalContext.current
     
     // Estado para controlar la visibilidad de diálogos
     var showCamposFaltantesDialog by remember { mutableStateOf(false) }
     var showRegistroExitosoDialog by remember { mutableStateOf(false) }
     
+    // Launcher para la solicitud de permiso de ubicación
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                viewModel.onLocationPermissionGranted()
+            } else {
+                viewModel.onLocationPermissionDenied()
+            }
+        }
+    )
+
     // Efecto que detecta cuando el registro ha sido exitoso
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
@@ -711,6 +669,75 @@ fun RegistroScreen(
             currentStep = uiState.currentStep,
             onDismiss = { showCamposFaltantesDialog = false }
         )
+    }
+
+    // Mostrar diálogo de permiso si es necesario
+    if (showLocationPermissionRequest) {
+        AlertDialog(
+            onDismissRequest = { viewModel.resetLocationPermissionRequest() },
+            title = { Text("Permiso de ubicación") },
+            text = { Text("Necesitamos el permiso de ubicación para obtener automáticamente los datos de tu dirección al introducir el código postal.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.resetLocationPermissionRequest()
+                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onLocationPermissionDenied() }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // Al final del formulario agregar botones de acción
+    
+    if (uiState.currentStep == uiState.totalSteps) {
+        // Mostrar error de prueba si existe
+        if (uiState.error != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = uiState.error ?: "",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .background(Color(0x22FF0000), shape = RoundedCornerShape(4.dp))
+                    .padding(8.dp)
+            )
+        }
+
+        // Mostrar resultado de Nominatim si existe
+        if (!viewModel.uiState.value.mensajeResultadoNominatim.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Resultado de la prueba:",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = viewModel.uiState.value.mensajeResultadoNominatim ?: "",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1010,6 +1037,21 @@ fun Step2Content(uiState: RegistroUiState, viewModel: RegistroViewModel) {
              }
          }
      )
+     
+     // Mostrar error de prueba si existe
+     if (uiState.error != null) {
+         Spacer(modifier = Modifier.height(8.dp))
+         Text(
+             text = uiState.error ?: "",
+             color = MaterialTheme.colorScheme.error,
+             style = MaterialTheme.typography.bodySmall,
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .padding(8.dp)
+                 .background(Color(0x22FF0000), shape = RoundedCornerShape(4.dp))
+                 .padding(8.dp)
+         )
+     }
 
      // Información de geolocalización si está disponible
      AnimatedVisibility(
@@ -1169,7 +1211,7 @@ fun Step3Content(uiState: RegistroUiState, viewModel: RegistroViewModel, focusMa
                          }
                      )
                  }
-             }
+            }
         }
     }
      if (uiState.form.centroId.isBlank() && uiState.currentStep == 3) {

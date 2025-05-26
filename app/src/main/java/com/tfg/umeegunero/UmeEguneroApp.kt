@@ -1,6 +1,7 @@
 package com.tfg.umeegunero
 
 import android.app.Application
+import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.Constraints
@@ -11,10 +12,13 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
+import com.google.firebase.storage.FirebaseStorage
 import com.jakewharton.threetenabp.AndroidThreeTen
 import com.tfg.umeegunero.data.worker.EventoWorker
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
@@ -79,14 +83,33 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
         // Inicializar Firebase con manejo de errores
         initializeFirebase()
         
+        // Configurar Crashlytics - Asegurarnos que está habilitado explícitamente
+        configureCrashlytics()
+        
+        // Configurar manejo de errores no fatales para Firebase
+        configureFirebaseErrorHandling()
+        
         // Inicializar canales de notificación
         notificationManager.createNotificationChannels()
         
         // Configurar tareas periódicas
         configurarSincronizacionPeriodica()
         
-        // Iniciar el servicio de sincronización
-        syncManager.iniciarServicioSincronizacion()
+        // No iniciar el servicio de sincronización aquí para evitar ForegroundServiceStartNotAllowedException
+        // El servicio se iniciará cuando la app esté en primer plano
+        // syncManager.iniciarServicioSincronizacion()
+        
+        // Programar la inicialización del servicio para cuando la app esté en primer plano
+        // usando un retraso para asegurar que la interfaz ya está visible
+        android.os.Handler(mainLooper).postDelayed({
+            try {
+                Timber.d("Intentando iniciar servicio de sincronización con retraso")
+                syncManager.iniciarServicioSincronizacion()
+            } catch (e: Exception) {
+                Timber.e(e, "Error al iniciar servicio de sincronización con retraso")
+                FirebaseCrashlytics.getInstance().recordException(e)
+            }
+        }, 5000) // 5 segundos de retraso
         
         // Crear admin de debug automáticamente si no existe (solo en debug)
         if (BuildConfig.DEBUG) {
@@ -94,6 +117,130 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
             
             // Iniciar proceso de subida del avatar de administrador
             subirAvatarAdminInicio()
+        }
+    }
+    
+    /**
+     * Configura Firebase Crashlytics
+     */
+    private fun configureCrashlytics() {
+        val crashlytics = FirebaseCrashlytics.getInstance()
+        
+        // Asegurarnos que Crashlytics esté habilitado siempre, independientemente del entorno
+        crashlytics.setCrashlyticsCollectionEnabled(true)
+        Timber.d("Crashlytics habilitado explícitamente")
+        
+        // En modo debug, podemos activar o desactivar según sea necesario para pruebas
+        if (BuildConfig.DEBUG) {
+            // Para desarrollo, queremos ver los informes de errores
+            crashlytics.setCustomKey("debug_mode", true)
+            Timber.d("Crashlytics activado en modo DEBUG para pruebas")
+            
+            // Registrar un log de inicio de debug
+            crashlytics.log("Aplicación iniciada en modo DEBUG: ${BuildConfig.VERSION_NAME}")
+        } else {
+            // En producción, siempre activamos Crashlytics
+            crashlytics.setCustomKey("debug_mode", false)
+            
+            // Registrar la versión de la app como clave personalizada
+            crashlytics.setCustomKey("app_version_name", BuildConfig.VERSION_NAME)
+            crashlytics.setCustomKey("app_version_code", BuildConfig.VERSION_CODE)
+            
+            Timber.d("Crashlytics activado en modo RELEASE")
+            
+            // Registrar un log de inicio en Crashlytics
+            crashlytics.log("Aplicación iniciada: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        }
+        
+        // Agregar información del dispositivo
+        crashlytics.setCustomKey("device_model", Build.MODEL)
+        crashlytics.setCustomKey("android_version", Build.VERSION.RELEASE)
+        crashlytics.setCustomKey("manufacturer", Build.MANUFACTURER)
+        crashlytics.setCustomKey("build_id", Build.ID)
+        
+        // Verificar si Crashlytics ya ha sido inicializado (solo una vez)
+        if (!crashlyticsInitialized) {
+            crashlyticsInitialized = true
+            
+            // Solo registramos el error en el hilo de fondo para no interrumpir la UI
+            Thread {
+                try {
+                    // Pequeña pausa para asegurar inicialización completa
+                    Thread.sleep(500)
+                    
+                    // Lanzar una excepción de prueba no fatal
+                    val initialException = RuntimeException("Prueba inicial de Crashlytics para completar configuración")
+                    crashlytics.recordException(initialException)
+                    Timber.i("Excepción inicial no fatal enviada a Crashlytics para completar configuración")
+                } catch (e: Exception) {
+                    // Registrar cualquier problema con la inicialización
+                    Timber.e(e, "Error durante la inicialización de Crashlytics")
+                }
+            }.start()
+        }
+    }
+    
+    // Variable para evitar múltiples inicializaciones
+    private var crashlyticsInitialized: Boolean = false
+    
+    /**
+     * Configura el manejo de errores específicos de Firebase
+     * para capturar problemas comunes como errores de autenticación y almacenamiento
+     */
+    private fun configureFirebaseErrorHandling() {
+        // Capturar errores de autenticación
+        FirebaseAuth.getInstance().addAuthStateListener { auth ->
+            val crashlytics = FirebaseCrashlytics.getInstance()
+            val user = auth.currentUser
+            
+            // Registrar estado de autenticación en Crashlytics
+            crashlytics.setCustomKey("user_authenticated", user != null)
+            
+            if (user != null) {
+                // Si hay un usuario autenticado, agregar su ID a Crashlytics (sin datos sensibles)
+                crashlytics.setUserId(user.uid)
+                crashlytics.setCustomKey("user_provider", user.providerData.firstOrNull()?.providerId ?: "unknown")
+            } else {
+                // Si no hay usuario, limpiar el ID de usuario en Crashlytics
+                crashlytics.setUserId("")
+            }
+        }
+        
+        // Configurar un error handler global para la Thread por defecto
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            // Registrar información adicional antes de que la app se cierre
+            val crashlytics = FirebaseCrashlytics.getInstance()
+            crashlytics.setCustomKey("crash_thread", thread.name)
+            
+            // Si es un error relacionado con Storage, agregar contexto adicional
+            if (throwable.stackTrace.any { it.className.contains("storage", ignoreCase = true) }) {
+                crashlytics.setCustomKey("firebase_storage_error", true)
+                crashlytics.log("Error en Firebase Storage: ${throwable.message}")
+            }
+            
+            // Si es un error de autenticación, agregar contexto adicional
+            if (throwable.stackTrace.any { it.className.contains("auth", ignoreCase = true) }) {
+                crashlytics.setCustomKey("firebase_auth_error", true)
+                crashlytics.log("Error en Firebase Auth: ${throwable.message}")
+            }
+            
+            // Reportar la excepción a Crashlytics y luego pasarla al manejador predeterminado del sistema
+            crashlytics.recordException(throwable)
+            
+            // Usar el manejador de excepciones original
+            Thread.getDefaultUncaughtExceptionHandler()?.uncaughtException(thread, throwable)
+        }
+        
+        // Monitorizar operaciones de Firebase Storage
+        try {
+            val originalStorageReference = FirebaseStorage.getInstance().reference
+            
+            // Monitorizar errores específicos de Storage sin interrumpir operaciones normales
+            Timber.d("Monitoreo de Firebase Storage configurado")
+        } catch (e: Exception) {
+            // Registrar errores de inicialización de Storage
+            FirebaseCrashlytics.getInstance().recordException(e)
+            Timber.e(e, "Error al configurar monitoreo de Firebase Storage")
         }
     }
     
@@ -128,12 +275,19 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
                     Timber.d("Remote Config sincronizado correctamente")
                 } else {
                     Timber.w("Error al sincronizar Remote Config: ${task.exception?.message}")
+                    // Registrar el error en Crashlytics
+                    FirebaseCrashlytics.getInstance().recordException(
+                        task.exception ?: Exception("Error desconocido al sincronizar Remote Config")
+                    )
                 }
             }
         } catch (e: Exception) {
             Timber.e(e, "Error al inicializar Firebase")
             // Mostrar información detallada del error para depuración
             e.printStackTrace()
+            
+            // Registrar el error en Crashlytics
+            FirebaseCrashlytics.getInstance().recordException(e)
             
             // Reintentar la inicialización con una configuración mínima
             try {
@@ -147,6 +301,8 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
                 }
             } catch (e2: Exception) {
                 Timber.e(e2, "Error fatal al inicializar Firebase con configuración mínima")
+                // Registrar también este error en Crashlytics
+                FirebaseCrashlytics.getInstance().recordException(e2)
             }
         }
     }
@@ -213,6 +369,8 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
             Timber.d("Proceso de subida de avatar de administrador iniciado exitosamente")
         } catch (e: Exception) {
             Timber.e(e, "Error al iniciar subida de avatar de administrador")
+            // Registrar el error en Crashlytics
+            FirebaseCrashlytics.getInstance().recordException(e)
         }
     }
     

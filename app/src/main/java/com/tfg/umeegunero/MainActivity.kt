@@ -59,6 +59,11 @@ import android.os.Handler
 import android.os.Looper
 import android.net.Uri
 import java.io.IOException
+import android.view.ViewGroup
+import android.widget.Button
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import android.os.Build
+import android.content.Context
 
 /**
  * Clase simple para representar datos de notificación
@@ -113,21 +118,44 @@ class MainActivity : ComponentActivity() {
      * @param savedInstanceState Estado guardado de la actividad
      */
     override fun onCreate(savedInstanceState: Bundle?) {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         
-        // Inicializar auth
+        // Configurar pantalla de splash
+        installSplashScreen()
+        
+        // Habilitar edge-to-edge (inmersive mode)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        
         auth = FirebaseAuth.getInstance()
         
-        // Inicializamos Firebase Messaging
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val token = task.result
-                Timber.d("FCM Token: $token")
-                // Guardar token en Firestore de forma segura
-                guardarTokenDeFormaSegura(token)
-            } else {
-                Timber.e(task.exception, "No se pudo obtener el token de FCM")
+        // Verificar que Firebase está inicializado
+        val inicializado = FirebaseApp.getApps(this).isNotEmpty()
+        Timber.d("Firebase ya estaba inicializado. Apps: ${FirebaseApp.getApps(this).size}")
+        
+        // Comprobar servicios Firebase disponibles
+        if (inicializado) {
+            try {
+                val firestore = FirebaseFirestore.getInstance()
+                val storage = FirebaseStorage.getInstance()
+                val messaging = FirebaseMessaging.getInstance()
+                val remoteConfig = FirebaseRemoteConfig.getInstance()
+                Timber.d("Servicios Firebase disponibles")
+                
+                // Inicializamos Firebase Messaging
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val token = task.result
+                        Timber.d("FCM Token: $token")
+                        // Guardar token en Firestore de forma segura
+                        guardarTokenDeFormaSegura(token)
+                    } else {
+                        Timber.e(task.exception, "No se pudo obtener el token de FCM")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al obtener servicios Firebase")
+                // Registrar excepción en Crashlytics para seguimiento
+                FirebaseCrashlytics.getInstance().recordException(e)
             }
         }
         

@@ -36,6 +36,7 @@ import com.tfg.umeegunero.data.service.RemoteConfigService
 import com.google.firebase.firestore.FieldValue
 import android.content.Context
 import com.tfg.umeegunero.util.DefaultAvatarsManager
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 /**
  * Repositorio para gestionar operaciones relacionadas con usuarios en la aplicación UmeEgunero.
@@ -127,6 +128,27 @@ open class UsuarioRepository @Inject constructor(
 
     // AUTENTICACIÓN Y USUARIOS
 
+    /**
+     * Función para manejar y registrar errores de autenticación
+     */
+    private fun handleAuthError(exception: Throwable, operacion: String, email: String = "") {
+        // Registrar el error en Timber
+        Timber.e(exception, "Error en operación de autenticación: $operacion")
+        
+        // Registrar en Crashlytics con contexto
+        val crashlytics = FirebaseCrashlytics.getInstance()
+        crashlytics.setCustomKey("auth_operation", operacion)
+        if (email.isNotEmpty()) {
+            // Añadir un hash del email para identificar problemas sin revelar datos sensibles
+            crashlytics.setCustomKey("auth_email_hash", email.hashCode().toString())
+        }
+        crashlytics.setCustomKey("auth_error_type", exception.javaClass.simpleName)
+        crashlytics.log("Error en autenticación: $operacion - ${exception.message}")
+        
+        // Registrar la excepción
+        crashlytics.recordException(exception)
+    }
+
     // Registra un nuevo usuario en Firebase Auth y Firestore
     suspend fun registrarUsuario(form: RegistroUsuarioForm): Result<Usuario> = withContext(Dispatchers.IO) {
         try {
@@ -180,6 +202,7 @@ open class UsuarioRepository @Inject constructor(
 
             return@withContext Result.Success(usuario)
         } catch (e: FirebaseAuthException) {
+            handleAuthError(e, "registrar_usuario", form.email)
             return@withContext Result.Error(Exception("Error de autenticación: ${e.message}"))
         } catch (e: Exception) {
             return@withContext Result.Error(e)
@@ -218,15 +241,19 @@ open class UsuarioRepository @Inject constructor(
                 return@withContext Result.Error(Exception("Usuario no encontrado en la base de datos"))
             }
         } catch (e: FirebaseAuthInvalidUserException) {
+            handleAuthError(e, "iniciar_sesion", email)
             Timber.e(e, "Usuario no encontrado para email: $email")
             return@withContext Result.Error(Exception("Email no encontrado. Por favor verifica tu email."))
         } catch (e: FirebaseAuthInvalidCredentialsException) {
+            handleAuthError(e, "iniciar_sesion", email)
             Timber.e(e, "Contraseña incorrecta para email: $email")
             return@withContext Result.Error(Exception("Contraseña incorrecta. Por favor verifica tu contraseña."))
         } catch (e: FirebaseAuthException) {
+            handleAuthError(e, "iniciar_sesion", email)
             Timber.e(e, "Error de autenticación para email: $email")
             return@withContext Result.Error(Exception("Error de autenticación: ${e.message}"))
         } catch (e: Exception) {
+            handleAuthError(e, "iniciar_sesion", email)
             Timber.e(e, "Error inesperado durante el login para email: $email")
             return@withContext Result.Error(e)
         }
@@ -430,6 +457,7 @@ open class UsuarioRepository @Inject constructor(
             
             return@withContext Result.Success(uid)
         } catch (e: FirebaseAuthException) {
+            handleAuthError(e, "crear_usuario_con_email_y_password", email)
             return@withContext Result.Error(Exception("Error de autenticación: ${e.message}"))
         } catch (e: Exception) {
             return@withContext Result.Error(e)
@@ -1169,8 +1197,9 @@ open class UsuarioRepository @Inject constructor(
                 }
             }
             
-            // Email debe existir para continuar
-            if (email.isEmpty()) {
+            // Solo verificar email para usuarios que requieren autenticación (no alumnos)
+            val esAlumno = usuario.perfiles.any { it.tipo == TipoUsuario.ALUMNO }
+            if (email.isEmpty() && !esAlumno) {
                 return@withContext Result.Error(Exception("El usuario no tiene email registrado"))
             }
             
@@ -1322,6 +1351,16 @@ open class UsuarioRepository @Inject constructor(
                         try {
                             alumnosCollection.document(dni).delete().await()
                             Timber.d("Alumno eliminado de la colección de alumnos: $dni")
+                            
+                            // Limpiar solicitudes de vinculación relacionadas con este alumno
+                            limpiarSolicitudesVinculacionAlumno(dni)
+                            
+                            // Limpiar mensajes unificados relacionados con este alumno
+                            limpiarMensajesUnificadosAlumno(dni)
+                            
+                            // Limpiar referencias en clases
+                            limpiarReferenciaAlumnoEnClases(dni)
+                            
                         } catch (e: Exception) {
                             Timber.e(e, "Error al eliminar alumno de la colección de alumnos: ${e.message}")
                             // Continuamos con el proceso aunque falle este paso específico
@@ -1357,23 +1396,27 @@ open class UsuarioRepository @Inject constructor(
                 Timber.e(e, "Error al eliminar mensajes del usuario: ${e.message}")
             }
             
-            // 6. Eliminar de Firebase Authentication usando el método del AuthRepository
-            try {
-                when (val authResult = authRepository.deleteUserByEmail(email)) {
-                    is Result.Success -> {
-                        Timber.d("Usuario con email $email eliminado de Firebase Authentication")
+            // 6. Eliminar de Firebase Authentication solo si el usuario tiene email (no es alumno)
+            if (email.isNotEmpty()) {
+                try {
+                    when (val authResult = authRepository.deleteUserByEmail(email)) {
+                        is Result.Success -> {
+                            Timber.d("Usuario con email $email eliminado de Firebase Authentication")
+                        }
+                        is Result.Error -> {
+                            // Registramos el error, pero no interrumpimos el flujo
+                            Timber.w(authResult.exception, "No se pudo eliminar el usuario de Firebase Auth: ${authResult.exception?.message}")
+                        }
+                        else -> {
+                            // No hacemos nada en otros casos
+                        }
                     }
-                    is Result.Error -> {
-                        // Registramos el error, pero no interrumpimos el flujo
-                        Timber.w(authResult.exception, "No se pudo eliminar el usuario de Firebase Auth: ${authResult.exception?.message}")
-                    }
-                    else -> {
-                        // No hacemos nada en otros casos
-                    }
+                } catch (authError: Exception) {
+                    Timber.e(authError, "Error al intentar eliminar usuario de Auth: ${authError.message}")
+                    // Consideramos éxito aunque falle en Auth, ya que se eliminó de Firestore
                 }
-            } catch (authError: Exception) {
-                Timber.e(authError, "Error al intentar eliminar usuario de Auth: ${authError.message}")
-                // Consideramos éxito aunque falle en Auth, ya que se eliminó de Firestore
+            } else {
+                Timber.d("Usuario sin email (alumno), no se intenta eliminar de Firebase Auth")
             }
             
             return@withContext Result.Success(Unit)
@@ -1845,6 +1888,7 @@ open class UsuarioRepository @Inject constructor(
                     return@withContext Result.Error(Exception("Usuario no encontrado en el sistema de autenticación"))
                 }
             } catch (e: FirebaseAuthException) {
+                handleAuthError(e, "resetear_contraseña", usuario.email)
                 Timber.e(e, "Error al actualizar contraseña en Firebase Auth")
                 return@withContext Result.Error(Exception("Error al actualizar la contraseña: ${e.message}"))
             }
@@ -1854,6 +1898,7 @@ open class UsuarioRepository @Inject constructor(
                 Timber.d("Actualizando contraseña SMTP para administrador")
                 val smtpUpdated = remoteConfigService.updateSMTPPassword(nuevaPassword)
                 if (!smtpUpdated) {
+                    handleAuthError(Exception("Error al actualizar la contraseña SMTP"), "actualizar_contraseña_smtp", usuario.email)
                     Timber.e("Error al actualizar la contraseña SMTP")
                     return@withContext Result.Error(Exception("Error al actualizar la contraseña SMTP"))
                 }
@@ -1869,6 +1914,7 @@ open class UsuarioRepository @Inject constructor(
 
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            handleAuthError(e, "resetear_contraseña")
             Timber.e(e, "Error inesperado durante el reseteo de contraseña")
             return@withContext Result.Error(e)
         }
@@ -2349,6 +2395,7 @@ open class UsuarioRepository @Inject constructor(
             val authResult = try {
                 firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             } catch (e: Exception) {
+                handleAuthError(e, "registrar_usuario_completo", email)
                 Timber.e(e, "Error al crear cuenta en Firebase Auth: ${e.message}")
                 // Comprobar si es un error de email ya existente
                 if (e.message?.contains("email address is already in use") == true) {
@@ -2407,6 +2454,7 @@ open class UsuarioRepository @Inject constructor(
 
             return@withContext Result.Success(usuario)
         } catch (e: Exception) {
+            handleAuthError(e, "registrar_usuario_completo", email)
             Timber.e(e, "Error general al registrar usuario: ${e.message}")
             return@withContext Result.Error(e)
         }
@@ -2592,6 +2640,7 @@ open class UsuarioRepository @Inject constructor(
             
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            handleAuthError(e, "guardar_usuario", usuario.email)
             Timber.e(e, "Error al guardar usuario: ${e.message}")
             return@withContext Result.Error(e)
         }
@@ -2898,6 +2947,7 @@ open class UsuarioRepository @Inject constructor(
             Timber.d("Último acceso actualizado para usuario: ${userDoc.id}")
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            handleAuthError(e, "registrar_ultimo_acceso")
             Timber.e(e, "Error al registrar último acceso: ${e.message}")
             return@withContext Result.Error(e)
         }
@@ -2923,6 +2973,7 @@ open class UsuarioRepository @Inject constructor(
             Timber.d("Usuario guardado sin autenticación: ${usuario.dni}")
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            handleAuthError(e, "guardar_usuario_sin_auth", usuario.email)
             Timber.e(e, "Error al guardar usuario sin autenticación: ${usuario.dni}")
             return@withContext Result.Error(e)
         }
@@ -3034,8 +3085,134 @@ open class UsuarioRepository @Inject constructor(
             
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
+            handleAuthError(e, "actualizar_clases_profesor", profesorId)
             Timber.e(e, "Error al ${if (esAsignacion) "asignar" else "desasignar"} profesor $profesorId a/de clase $claseId")
             return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Limpia todas las solicitudes de vinculación relacionadas con un alumno
+     * @param alumnoDni DNI del alumno
+     */
+    private suspend fun limpiarSolicitudesVinculacionAlumno(alumnoDni: String) {
+        try {
+            Timber.d("🧹 Limpiando solicitudes de vinculación para alumno: $alumnoDni")
+            
+            // Buscar solicitudes por alumnoId
+            val solicitudesPorId = firestore.collection("solicitudes_vinculacion")
+                .whereEqualTo("alumnoId", alumnoDni)
+                .get()
+                .await()
+            
+            // Buscar solicitudes por alumnoDni
+            val solicitudesPorDni = firestore.collection("solicitudes_vinculacion")
+                .whereEqualTo("alumnoDni", alumnoDni)
+                .get()
+                .await()
+            
+            // Combinar ambas consultas y eliminar duplicados
+            val todasLasSolicitudes = (solicitudesPorId.documents + solicitudesPorDni.documents)
+                .distinctBy { it.id }
+            
+            var solicitudesEliminadas = 0
+            
+            // Eliminar todas las solicitudes encontradas
+            for (solicitudDoc in todasLasSolicitudes) {
+                try {
+                    solicitudDoc.reference.delete().await()
+                    solicitudesEliminadas++
+                    Timber.d("✅ Solicitud eliminada: ${solicitudDoc.id}")
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al eliminar solicitud ${solicitudDoc.id}")
+                }
+            }
+            
+            Timber.d("🎯 Total solicitudes eliminadas para alumno $alumnoDni: $solicitudesEliminadas")
+            
+        } catch (e: Exception) {
+            Timber.e(e, "💥 Error al limpiar solicitudes de vinculación para alumno $alumnoDni")
+        }
+    }
+    
+    /**
+     * Limpia todos los mensajes unificados relacionados con un alumno
+     * @param alumnoDni DNI del alumno
+     */
+    private suspend fun limpiarMensajesUnificadosAlumno(alumnoDni: String) {
+        try {
+            Timber.d("🧹 Limpiando mensajes unificados para alumno: $alumnoDni")
+            
+            // Buscar mensajes donde el alumno aparece en metadata.alumnoDni
+            val mensajesPorMetadata = firestore.collection("unified_messages")
+                .whereEqualTo("metadata.alumnoDni", alumnoDni)
+                .get()
+                .await()
+            
+            // Buscar mensajes donde el alumno aparece en relatedEntityId (si es de tipo alumno)
+            val mensajesPorEntity = firestore.collection("unified_messages")
+                .whereEqualTo("relatedEntityId", alumnoDni)
+                .whereEqualTo("relatedEntityType", "ALUMNO")
+                .get()
+                .await()
+            
+            // Combinar ambas consultas y eliminar duplicados
+            val todosLosMensajes = (mensajesPorMetadata.documents + mensajesPorEntity.documents)
+                .distinctBy { it.id }
+            
+            var mensajesEliminados = 0
+            
+            // Eliminar todos los mensajes encontrados
+            for (mensajeDoc in todosLosMensajes) {
+                try {
+                    mensajeDoc.reference.delete().await()
+                    mensajesEliminados++
+                    Timber.d("✅ Mensaje unificado eliminado: ${mensajeDoc.id}")
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al eliminar mensaje unificado ${mensajeDoc.id}")
+                }
+            }
+            
+            Timber.d("🎯 Total mensajes unificados eliminados para alumno $alumnoDni: $mensajesEliminados")
+            
+        } catch (e: Exception) {
+            Timber.e(e, "💥 Error al limpiar mensajes unificados para alumno $alumnoDni")
+        }
+    }
+    
+    /**
+     * Limpia las referencias del alumno en las clases
+     * @param alumnoDni DNI del alumno
+     */
+    private suspend fun limpiarReferenciaAlumnoEnClases(alumnoDni: String) {
+        try {
+            Timber.d("🧹 Limpiando referencias del alumno $alumnoDni en clases")
+            
+            // Buscar todas las clases que contengan este alumno en su lista de alumnosIds
+            val clasesConAlumno = firestore.collection("clases")
+                .whereArrayContains("alumnosIds", alumnoDni)
+                .get()
+                .await()
+            
+            var clasesActualizadas = 0
+            
+            // Eliminar el alumno de cada clase encontrada
+            for (claseDoc in clasesConAlumno.documents) {
+                try {
+                    claseDoc.reference.update(
+                        "alumnosIds", FieldValue.arrayRemove(alumnoDni)
+                    ).await()
+                    clasesActualizadas++
+                    Timber.d("✅ Alumno $alumnoDni eliminado de clase: ${claseDoc.id}")
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al eliminar alumno de clase ${claseDoc.id}")
+                }
+            }
+            
+            Timber.d("🎯 Total clases actualizadas para alumno $alumnoDni: $clasesActualizadas")
+            
+        } catch (e: Exception) {
+            Timber.e(e, "💥 Error al limpiar referencias del alumno $alumnoDni en clases")
         }
     }
 }

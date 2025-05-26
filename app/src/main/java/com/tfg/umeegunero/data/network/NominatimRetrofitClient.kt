@@ -6,6 +6,9 @@ import okhttp3.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+import okhttp3.logging.HttpLoggingInterceptor
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import timber.log.Timber
 
 /**
  * Cliente Retrofit para Nominatim con configuración adecuada para cumplir con las políticas de uso
@@ -25,14 +28,40 @@ object NominatimRetrofitClient {
             val requestWithUserAgent = originalRequest.newBuilder()
                 .header("User-Agent", USER_AGENT)
                 .build()
-            return chain.proceed(requestWithUserAgent)
+            
+            try {
+                return chain.proceed(requestWithUserAgent)
+            } catch (e: Exception) {
+                // Registrar el error en Crashlytics
+                FirebaseCrashlytics.getInstance().log("Error en petición Nominatim: ${e.message}")
+                FirebaseCrashlytics.getInstance().setCustomKey("nominatim_request_url", originalRequest.url.toString())
+                FirebaseCrashlytics.getInstance().recordException(e)
+                
+                // Registrar también en Timber
+                Timber.e(e, "Error en petición Nominatim a ${originalRequest.url}")
+                
+                // Propagar el error
+                throw e
+            }
+        }
+    }
+    
+    // Configurar el logging para depuración
+    private val loggingInterceptor = HttpLoggingInterceptor().apply {
+        level = if (com.tfg.umeegunero.BuildConfig.DEBUG) {
+            HttpLoggingInterceptor.Level.BODY
+        } else {
+            HttpLoggingInterceptor.Level.BASIC
         }
     }
     
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(UserAgentInterceptor())
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .addInterceptor(loggingInterceptor) // Añadir logging
+        .connectTimeout(30, TimeUnit.SECONDS) // Aumentar timeout de conexión para redes móviles
+        .readTimeout(30, TimeUnit.SECONDS) // Aumentar timeout de lectura
+        .writeTimeout(30, TimeUnit.SECONDS) // Añadir timeout de escritura
+        .retryOnConnectionFailure(true) // Reintentar en caso de fallos de conexión
         .build()
     
     private val retrofit = Retrofit.Builder()

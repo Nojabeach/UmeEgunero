@@ -3,6 +3,7 @@ package com.tfg.umeegunero.data.repository
 import android.content.Context
 import android.net.Uri
 import android.webkit.MimeTypeMap
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
@@ -110,11 +111,11 @@ class StorageRepository @Inject constructor(
             
             emit(Result.Success(downloadUrl))
         } catch (e: Exception) {
-            Timber.e(e, "Error al subir archivo: ${e.message}")
+            handleStorageError(e, "subirArchivo", ruta)
             emit(Result.Error(e))
         }
     }.catch { e ->
-        Timber.e(e, "Exception en subirArchivo: ${e.message}")
+        handleStorageError(e, "subirArchivo", ruta)
         emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
@@ -152,17 +153,17 @@ class StorageRepository @Inject constructor(
             
             emit(Result.Success(downloadUrl))
         } catch (e: Exception) {
-            Timber.e(e, "Error al subir archivo desde stream")
+            handleStorageError(e, "subirArchivo(InputStream)", ruta)
             emit(Result.Error(e))
         } finally {
             try {
                 inputStream.close()
             } catch (e: Exception) {
-                Timber.e(e, "Error al cerrar input stream")
+                handleStorageError(e, "cerrar input stream", ruta)
             }
         }
     }.catch { e ->
-        Timber.e(e, "Exception en subirArchivo(InputStream)")
+        handleStorageError(e, "subirArchivo(InputStream)", ruta)
         emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
@@ -183,11 +184,11 @@ class StorageRepository @Inject constructor(
             
             emit(Result.Success(Unit))
         } catch (e: Exception) {
-            Timber.e(e, "Error al eliminar archivo")
+            handleStorageError(e, "eliminarArchivo", url)
             emit(Result.Error(e))
         }
     }.catch { e ->
-        Timber.e(e, "Exception en eliminarArchivo")
+        handleStorageError(e, "eliminarArchivo", url)
         emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
@@ -217,11 +218,11 @@ class StorageRepository @Inject constructor(
             
             emit(Result.Success(localFile))
         } catch (e: Exception) {
-            Timber.e(e, "Error al descargar archivo")
+            handleStorageError(e, "descargarArchivo", url)
             emit(Result.Error(e))
         }
     }.catch { e ->
-        Timber.e(e, "Exception en descargarArchivo")
+        handleStorageError(e, "descargarArchivo", url)
         emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
@@ -254,11 +255,11 @@ class StorageRepository @Inject constructor(
             
             emit(Result.Success(infoArchivo))
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener información del archivo")
+            handleStorageError(e, "obtenerInfoArchivo", url)
             emit(Result.Error(e))
         }
     }.catch { e ->
-        Timber.e(e, "Exception en obtenerInfoArchivo")
+        handleStorageError(e, "obtenerInfoArchivo", url)
         emit(Result.Error(e))
     }.flowOn(Dispatchers.IO)
     
@@ -346,7 +347,7 @@ class StorageRepository @Inject constructor(
             val fileRef = obtenerReferenciaDesdeUrl(url)
             fileRef.downloadUrl.await().toString()
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener URL de descarga")
+            handleStorageError(e, "obtenerUrlDescarga", url)
             throw e
         }
     }
@@ -370,9 +371,27 @@ class StorageRepository @Inject constructor(
             val prefs = context.getSharedPreferences("storage_prefs", Context.MODE_PRIVATE)
             return prefs.getBoolean(prefsKey, false)
         } catch (e: Exception) {
-            Timber.e(e, "Error al verificar límite de almacenamiento")
+            handleStorageError(e, "estaEnLimiteStorage", "")
             // En caso de error, asumimos que no estamos en el límite
             return false
         }
+    }
+    
+    /**
+     * Función para manejar y registrar errores de almacenamiento
+     */
+    private fun handleStorageError(exception: Throwable, operacion: String, ruta: String) {
+        // Registrar el error en Timber
+        Timber.e(exception, "Error en operación de Storage: $operacion, ruta: $ruta")
+        
+        // Registrar en Crashlytics con contexto
+        val crashlytics = FirebaseCrashlytics.getInstance()
+        crashlytics.setCustomKey("storage_operation", operacion)
+        crashlytics.setCustomKey("storage_path", ruta)
+        crashlytics.setCustomKey("error_type", exception.javaClass.simpleName)
+        crashlytics.log("Error en Storage: $operacion - ${exception.message}")
+        
+        // Registrar la excepción
+        crashlytics.recordException(exception)
     }
 } 

@@ -191,7 +191,7 @@ fun ListAlumnosScreen(
                 item { Spacer(modifier = Modifier.height(88.dp)) } // Espacio para el FAB
             }
             
-            // Diálogo de eliminación
+            // Diálogo de eliminación simple
             if (showDeleteConfirmDialog && selectedAlumno != null) {
                 AlertDialog(
                     onDismissRequest = { showDeleteConfirmDialog = false },
@@ -203,7 +203,7 @@ fun ListAlumnosScreen(
                         TextButton(
                             onClick = {
                                 selectedAlumno?.let { alumno ->
-                                    viewModel.eliminarAlumno(alumno.dni)
+                                    viewModel.iniciarEliminacionAlumno(alumno)
                                     showDeleteConfirmDialog = false
                                 }
                             }
@@ -213,6 +213,61 @@ fun ListAlumnosScreen(
                     },
                     dismissButton = {
                         TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
+
+            // Diálogo para eliminar familiares
+            if (uiState.showDeleteFamiliarDialog && uiState.alumnoAEliminar != null) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.cancelarEliminacionFamiliares() },
+                    title = { Text("Eliminar alumno y familiares") },
+                    text = { 
+                        Column {
+                            Text("El alumno ${uiState.alumnoAEliminar?.nombre} ${uiState.alumnoAEliminar?.apellidos} tiene los siguientes familiares vinculados:")
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            uiState.familiaresDelAlumno.forEach { familiar ->
+                                Text(
+                                    text = "• ${familiar.nombre} ${familiar.apellidos}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            Text(
+                                text = "¿Deseas eliminar también a los familiares? (Solo se eliminarán si no tienen otros alumnos vinculados)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Column {
+                            TextButton(
+                                onClick = {
+                                    viewModel.confirmarEliminacionConFamiliares(true)
+                                }
+                            ) {
+                                Text("Eliminar alumno y familiares", color = MaterialTheme.colorScheme.error)
+                            }
+                            
+                            TextButton(
+                                onClick = {
+                                    viewModel.confirmarEliminacionConFamiliares(false)
+                                }
+                            ) {
+                                Text("Solo eliminar alumno", color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { viewModel.cancelarEliminacionFamiliares() }) {
                             Text("Cancelar")
                         }
                     }

@@ -65,19 +65,19 @@ class SupportViewModel @Inject constructor(
                 
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
-                        success = resultado,
+                    isLoading = false,
+                    success = resultado,
                         error = if (!resultado) "Error al enviar el mensaje de soporte. Por favor, inténtelo de nuevo más tarde." else null
-                    )
+                )
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error en sendEmailSoporte: ${e.message}")
                 _uiState.update { 
                     it.copy(
-                        isLoading = false, 
-                        success = false, 
+                    isLoading = false, 
+                    success = false, 
                         error = "Error inesperado al enviar el mensaje: ${e.message ?: "Desconocido"}"
-                    )
+                )
                 }
             }
         }
