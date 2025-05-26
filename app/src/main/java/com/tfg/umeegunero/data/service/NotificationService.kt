@@ -14,6 +14,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.random.Random
+import java.util.UUID
 
 /**
  * Servicio centralizado para el manejo de notificaciones push.
@@ -679,31 +680,68 @@ class NotificationService @Inject constructor(
     
     /**
      * Envía un mensaje directamente a FCM usando el token del dispositivo.
-     * Esta es una versión simplificada que muestra notificaciones localmente en modo de desarrollo.
+     * 
+     * NOTA: Esta implementación usa notificaciones locales como simulación.
+     * Para notificaciones push reales entre dispositivos, se requiere un servidor backend
+     * o Cloud Functions que use el SDK de administrador de Firebase.
      */
-    private fun enviarMensajeDirectoFCM(
+    private suspend fun enviarMensajeDirectoFCM(
         token: String,
         titulo: String,
         mensaje: String,
         datos: Map<String, String>,
         channelId: String = AppNotificationManager.CHANNEL_ID_GENERAL
     ) {
-        // En producción, aquí se implementaría la llamada a la API HTTP de FCM
-        // Pero para esta implementación simplificada, mostraremos notificaciones locales
-        
-        // Generar un ID único para la notificación basado en token y timestamp
-        val notificationId = Random.nextInt(1000000)
-        
-        // Si estamos en desarrollo, simular con notificación local
-        notificationManager.showNotification(
-            titulo,
-            mensaje,
-            channelId,
-            notificationId
-        )
-        
-        // En modo producción, aquí iría una implementación real para enviar a FCM
-        // a través de HTTP o del SDK de Admin de Firebase en un servidor separado
+        try {
+            Timber.d("🚀 Procesando notificación para token: ${token.take(20)}...")
+            
+            // Verificar si el token corresponde al dispositivo actual
+            val currentToken = FirebaseMessaging.getInstance().token.await()
+            
+            if (token == currentToken) {
+                // Es el mismo dispositivo, mostrar notificación local
+                val notificationId = Random.nextInt(1000000)
+                notificationManager.showNotification(
+                    titulo,
+                    mensaje,
+                    channelId,
+                    notificationId
+                )
+                Timber.d("📱 Notificación local mostrada (mismo dispositivo)")
+            } else {
+                // Es un dispositivo diferente
+                Timber.d("📤 Notificación para dispositivo remoto (token: ${token.take(20)}...)")
+                Timber.d("📝 Título: $titulo")
+                Timber.d("📝 Mensaje: $mensaje")
+                Timber.d("📝 Datos: $datos")
+                
+                // En un entorno de producción real, aquí se enviaría la notificación
+                // a través de un servidor backend que use el SDK de administrador de Firebase
+                // Por ahora, registramos que la notificación debería enviarse
+                
+                // Simular éxito para que el flujo continúe
+                Timber.d("✅ Notificación registrada para envío (simulación)")
+            }
+            
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error al procesar notificación FCM")
+            
+            // Como fallback, mostrar notificación local
+            try {
+                val notificationId = Random.nextInt(1000000)
+                notificationManager.showNotification(
+                    titulo,
+                    mensaje,
+                    channelId,
+                    notificationId
+                )
+                Timber.d("📱 Notificación local mostrada como fallback")
+            } catch (fallbackError: Exception) {
+                Timber.e(fallbackError, "Error en fallback de notificación local")
+            }
+            
+            throw e
+        }
     }
     
     /**

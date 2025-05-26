@@ -258,6 +258,11 @@ class SolicitudRepository @Inject constructor(
                 // Crear mensaje en el sistema unificado
                 crearMensajeSolicitudProcesada(solicitud, nombreAdmin)
                 
+                // TEMPORALMENTE DESHABILITADO: Los emails ahora se envían automáticamente vía Cloud Functions + Google Apps Script
+                // Esto evita duplicación de emails durante las pruebas del sistema
+                Timber.d("📧 Emails se envían automáticamente vía Cloud Functions + Google Apps Script")
+                
+                /*
                 // Si la solicitud fue aprobada, enviar email de aprobación
                 if (nuevoEstado == EstadoSolicitud.APROBADA) {
                     try {
@@ -495,6 +500,7 @@ class SolicitudRepository @Inject constructor(
                         // No interrumpimos el flujo principal si falla el envío de email
                     }
                 }
+                */
             }
             
             Result.Success(true)
