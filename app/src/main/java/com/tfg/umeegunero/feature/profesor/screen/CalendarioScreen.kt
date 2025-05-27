@@ -7,13 +7,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -462,7 +463,7 @@ fun CrearEventoDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.95f) // Ocupar el 95% del ancho de la pantalla
+                .fillMaxWidth()
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -482,105 +483,125 @@ fun CrearEventoDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // Tipo de evento
-                Column {
-                    Text(
-                        text = "Tipo de evento",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Chips de tipo de evento en layout de flujo mejorado
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        TipoEvento.values().forEach { tipo ->
-                            TipoEventoChip(
-                                tipo = tipo,
-                                seleccionado = tipo == tipoEvento,
-                                onClick = { tipoEvento = tipo }
+                Text(
+                    text = "Tipo de evento",
+                    style = MaterialTheme.typography.labelLarge
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TipoEvento.values().forEach { tipo ->
+                        FilterChip(
+                            selected = tipo == tipoEvento,
+                            onClick = { tipoEvento = tipo },
+                            label = { 
+                                Text(
+                                    text = when(tipo) {
+                                        TipoEvento.CLASE -> "Clase"
+                                        TipoEvento.EXAMEN -> "Examen"
+                                        TipoEvento.ESCOLAR -> "Escolar"
+                                        TipoEvento.REUNION -> "Reunión"
+                                        TipoEvento.FESTIVO -> "Festivo"
+                                        else -> tipo.name
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
+                            leadingIcon = if (tipo == tipoEvento) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = when(tipo) {
+                                    TipoEvento.CLASE -> ProfesorColor.copy(alpha = 0.2f)
+                                    TipoEvento.EXAMEN -> Color(0xFFE57373).copy(alpha = 0.2f)
+                                    TipoEvento.ESCOLAR -> Color(0xFF81C784).copy(alpha = 0.2f)
+                                    TipoEvento.REUNION -> Color(0xFF64B5F6).copy(alpha = 0.2f)
+                                    TipoEvento.FESTIVO -> Color(0xFFFFD54F).copy(alpha = 0.2f)
+                                    else -> MaterialTheme.colorScheme.primaryContainer
+                                },
+                                selectedLeadingIconColor = when(tipo) {
+                                    TipoEvento.CLASE -> ProfesorColor
+                                    TipoEvento.EXAMEN -> Color(0xFFE57373)
+                                    TipoEvento.ESCOLAR -> Color(0xFF81C784)
+                                    TipoEvento.REUNION -> Color(0xFF64B5F6)
+                                    TipoEvento.FESTIVO -> Color(0xFFFFD54F)
+                                    else -> MaterialTheme.colorScheme.primary
+                                }
                             )
-                        }
+                        )
                     }
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Título
+                // Título del evento
                 OutlinedTextField(
                     value = titulo,
                     onValueChange = { titulo = it },
                     label = { Text("Título") },
                     modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                    singleLine = true
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Descripción del evento
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // Selector de hora
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Hora:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.width(60.dp)
-                    )
-                    
-                    Text(
-                        text = if (hora.isNotEmpty()) hora else "No especificada",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    Button(
-                        onClick = { showTimePicker = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ProfesorColor
-                        ),
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = "Seleccionar hora"
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Seleccionar")
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Descripción
                 OutlinedTextField(
-                    value = descripcion,
-                    onValueChange = { descripcion = it },
-                    label = { Text("Descripción (opcional)") },
+                    value = hora,
+                    onValueChange = { hora = it },
+                    label = { Text("Hora (opcional)") },
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) }
+                    trailingIcon = {
+                        IconButton(onClick = { showTimePicker = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Seleccionar hora"
+                            )
+                        }
+                    },
+                    readOnly = true,
+                    singleLine = true
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // Botones
+                // Botones de acción
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 12.dp)
                     ) {
                         Text("Cancelar")
                     }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
                     
                     Button(
                         onClick = {
@@ -595,20 +616,23 @@ fun CrearEventoDialog(
                         },
                         enabled = titulo.isNotBlank(),
                         modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = ProfesorColor
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = 4.dp,
-                            pressedElevation = 8.dp
                         )
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = null
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Guardar evento")
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Guardar")
+                        }
                     }
                 }
             }
@@ -617,111 +641,160 @@ fun CrearEventoDialog(
     
     // Diálogo selector de hora
     if (showTimePicker) {
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            title = { Text("Seleccionar hora") },
-            text = {
-                Column(
+        TimePickerDialog(
+            onDismiss = { showTimePicker = false },
+            onConfirm = { hour, minute ->
+                selectedHour = hour
+                selectedMinute = minute
+                hora = String.format("%02d:%02d", hour, minute)
+                showTimePicker = false
+            },
+            initialHour = selectedHour,
+            initialMinute = selectedMinute
+        )
+    }
+}
+
+@Composable
+fun TimePickerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Int) -> Unit,
+    initialHour: Int,
+    initialMinute: Int
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Seleccionar hora",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Selector de horas y minutos
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Selector de horas
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Selector de hora
-                        var hourExpanded by remember { mutableStateOf(false) }
-                        ExposedDropdownMenuBox(
-                            expanded = hourExpanded,
-                            onExpandedChange = { hourExpanded = it }
+                        Text("Horas", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        LazyColumn(
+                            modifier = Modifier
+                                .height(150.dp)
+                                .width(60.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            OutlinedTextField(
-                                value = selectedHour.toString().padStart(2, '0'),
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Hora") },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = hourExpanded)
-                                },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .width(100.dp)
-                            )
-                            
-                            ExposedDropdownMenu(
-                                expanded = hourExpanded,
-                                onDismissRequest = { hourExpanded = false }
-                            ) {
-                                for (h in 0..23) {
-                                    DropdownMenuItem(
-                                        text = { Text(h.toString().padStart(2, '0')) },
-                                        onClick = {
-                                            selectedHour = h
-                                            hourExpanded = false
-                                        }
+                            items(24) { hour ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onConfirm(hour, initialMinute) }
+                                        .padding(vertical = 8.dp)
+                                        .background(
+                                            if (hour == initialHour) 
+                                                ProfesorColor.copy(alpha = 0.2f) 
+                                            else 
+                                                Color.Transparent,
+                                            shape = RoundedCornerShape(4.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = hour.toString().padStart(2, '0'),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = if (hour == initialHour) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
                             }
                         }
+                    }
+                    
+                    // Selector de minutos
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Minutos", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
                         
-                        Text(":", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        
-                        // Selector de minutos
-                        var minuteExpanded by remember { mutableStateOf(false) }
-                        ExposedDropdownMenuBox(
-                            expanded = minuteExpanded,
-                            onExpandedChange = { minuteExpanded = it }
+                        LazyColumn(
+                            modifier = Modifier
+                                .height(150.dp)
+                                .width(60.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            OutlinedTextField(
-                                value = selectedMinute.toString().padStart(2, '0'),
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Minutos") },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = minuteExpanded)
-                                },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .width(100.dp)
-                            )
-                            
-                            ExposedDropdownMenu(
-                                expanded = minuteExpanded,
-                                onDismissRequest = { minuteExpanded = false }
-                            ) {
-                                for (m in listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)) {
-                                    DropdownMenuItem(
-                                        text = { Text(m.toString().padStart(2, '0')) },
-                                        onClick = {
-                                            selectedMinute = m
-                                            minuteExpanded = false
-                                        }
+                            val minutes = listOf(0, 15, 30, 45)
+                            items(minutes) { minute ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onConfirm(initialHour, minute) }
+                                        .padding(vertical = 8.dp)
+                                        .background(
+                                            if (minute == initialMinute) 
+                                                ProfesorColor.copy(alpha = 0.2f) 
+                                            else 
+                                                Color.Transparent,
+                                            shape = RoundedCornerShape(4.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = minute.toString().padStart(2, '0'),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = if (minute == initialMinute) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
                             }
                         }
                     }
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        hora = "${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}"
-                        showTimePicker = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ProfesorColor
-                    )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Botones de acción
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Text("Aceptar")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showTimePicker = false }) {
-                    Text("Cancelar")
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancelar")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Button(
+                        onClick = { onConfirm(initialHour, initialMinute) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ProfesorColor
+                        )
+                    ) {
+                        Text("Confirmar")
+                    }
                 }
             }
-        )
+        }
     }
 }
 

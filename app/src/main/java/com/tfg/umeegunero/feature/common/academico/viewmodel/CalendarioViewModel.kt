@@ -38,7 +38,10 @@ data class CalendarioUiState(
     val isSuccess: Boolean = false,
     val successMessage: String? = null,
     val selectedYear: Int = LocalDate.now().year,
-    val selectedMonth: Int = LocalDate.now().monthValue
+    val selectedMonth: Int = LocalDate.now().monthValue,
+    val showTimePicker: Boolean = false,
+    val selectedHour: Int = 0,
+    val selectedMinute: Int = 0
 )
 
 /**
@@ -153,6 +156,50 @@ class CalendarioViewModel @Inject constructor(
      */
     fun updateEventTime(time: String) {
         _uiState.update { it.copy(eventTime = time) }
+    }
+
+    /**
+     * Muestra el selector de hora
+     */
+    fun showTimePickerDialog() {
+        _uiState.update { it.copy(showTimePicker = true) }
+    }
+    
+    /**
+     * Oculta el selector de hora
+     */
+    fun hideTimePickerDialog() {
+        _uiState.update { it.copy(showTimePicker = false) }
+    }
+    
+    /**
+     * Actualiza la hora seleccionada
+     */
+    fun updateSelectedHour(hour: Int) {
+        _uiState.update { it.copy(selectedHour = hour) }
+    }
+    
+    /**
+     * Actualiza el minuto seleccionado
+     */
+    fun updateSelectedMinute(minute: Int) {
+        _uiState.update { it.copy(selectedMinute = minute) }
+    }
+    
+    /**
+     * Confirma la selección de tiempo
+     */
+    fun confirmTimeSelection() {
+        val hour = _uiState.value.selectedHour
+        val minute = _uiState.value.selectedMinute
+        val formattedTime = String.format("%02d:%02d", hour, minute)
+        
+        _uiState.update { 
+            it.copy(
+                eventTime = formattedTime,
+                showTimePicker = false
+            ) 
+        }
     }
 
     /**

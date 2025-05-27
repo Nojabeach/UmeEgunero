@@ -65,7 +65,8 @@ data class NewMessageUiState(
     val searchQuery: String = "",
     val messageType: String = "CHAT", // Tipo de mensaje, por defecto CHAT
     val availableMessageTypes: List<String> = listOf("CHAT", "ANNOUNCEMENT", "NOTIFICATION", "SYSTEM"),
-    val canSendMessage: Boolean = subject.isNotBlank() && content.isNotBlank() && (selectedRecipients.isNotEmpty())
+    val canSendMessage: Boolean = subject.isNotBlank() && content.isNotBlank() && (selectedRecipients.isNotEmpty()),
+    val messageSent: Boolean = false
 )
 
 data class SearchResultItem(
@@ -416,6 +417,24 @@ class NewMessageViewModel @Inject constructor(
         }
     }
     
+    fun addReceiver(id: String, name: String) {
+        val recipient = uiState.value.searchResults.find { it.id == id }
+        if (recipient != null) {
+            val currentRecipients = _uiState.value.selectedRecipients.toMutableList()
+            if (!currentRecipients.any { it.id == id }) {
+                currentRecipients.add(RecipientItem(
+                    id = id,
+                    name = name,
+                    type = recipient.type
+                ))
+                _uiState.update { it.copy(
+                    selectedRecipients = currentRecipients,
+                    recipients = currentRecipients
+                )}
+            }
+        }
+    }
+    
     fun removeReceiver(id: String) {
         val currentRecipients = _uiState.value.selectedRecipients.toMutableList()
         currentRecipients.removeIf { it.id == id }
@@ -493,7 +512,8 @@ class NewMessageViewModel @Inject constructor(
                         isLoading = false,
                         subject = "",
                         content = "",
-                        selectedRecipients = emptyList()
+                        selectedRecipients = emptyList(),
+                        messageSent = true
                     ) }
                     
                     // Notificar éxito
@@ -516,6 +536,10 @@ class NewMessageViewModel @Inject constructor(
     
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+    
+    fun resetMessageSentFlag() {
+        _uiState.update { it.copy(messageSent = false) }
     }
 
     private fun mapUsuarioToRecipientItem(usuario: Usuario): RecipientItem {

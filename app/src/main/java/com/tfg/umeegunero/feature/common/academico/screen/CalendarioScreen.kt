@@ -194,10 +194,11 @@ fun CalendarioScreen(
             Dialog(onDismissRequest = { viewModel.hideEventDialog() }) {
                 Surface(
                     shape = RoundedCornerShape(24.dp),
-                    tonalElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp,
                     modifier = Modifier
-                        .fillMaxWidth(0.98f) // Usar casi todo el ancho de la pantalla
-                        .padding(8.dp)
+                        .fillMaxWidth()
+                        .padding(16.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -206,304 +207,245 @@ fun CalendarioScreen(
                             .verticalScroll(rememberScrollState())
                     ) {
                         // Encabezado con fecha seleccionada
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Event,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
-                            Column {
-                                Text(
-                                    text = "Nuevo evento",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                Text(
-                                    text = uiState.selectedDate.format(
-                                        DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM 'de' yyyy", Locale("es", "ES"))
-                                    ).replaceFirstChar { it.uppercase() },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Selector de tipo de evento con íconos
                         Text(
-                            text = "Tipo de evento",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "Nuevo evento",
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
                         
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         
-                        // Chips horizontales con scroll
+                        Text(
+                            text = "Fecha: ${uiState.selectedDate.format(DateTimeFormatter.ofPattern("d 'de' MMMM, yyyy", Locale("es", "ES")))}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Tipos de evento
+                        Text(
+                            text = "Tipo de evento",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Selector de tipo de evento
                         LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(TipoEvento.values()) { tipo ->
-                                val isSelected = uiState.selectedEventType == tipo
-                                val iconTint = if (isSelected) Color.White else tipo.color
-                                val backgroundColor = if (isSelected) tipo.color else tipo.color.copy(alpha = 0.1f)
-                                
-                                Surface(
-                                    onClick = { viewModel.updateSelectedEventType(tipo) },
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = backgroundColor,
-                                    modifier = Modifier
-                                        .height(48.dp) // Aumentar altura para mejor visibilidad
-                                        .widthIn(min = 120.dp) // Ancho mínimo para mejorar visibilidad
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        val icon = when(tipo) {
-                                            TipoEvento.EXAMEN -> Icons.Default.School
-                                            TipoEvento.ESCOLAR -> Icons.AutoMirrored.Filled.MenuBook
-                                            TipoEvento.REUNION -> Icons.Default.Groups
-                                            TipoEvento.FESTIVO -> Icons.Default.Celebration
-                                            TipoEvento.EXCURSION -> Icons.Default.DirectionsBus
-                                            else -> Icons.Default.Event
-                                        }
-                                        
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = null,
-                                            tint = iconTint,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        
-                                        Text(
-                                            text = tipo.name.replaceFirstChar { it.uppercase() },
-                                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    }
+                                val isSelected = tipo == uiState.selectedEventType
+                                val backgroundColor = when(tipo) {
+                                    TipoEvento.EXAMEN -> Color(0xFFE57373)
+                                    TipoEvento.ESCOLAR -> Color(0xFF81C784)
+                                    TipoEvento.REUNION -> Color(0xFF64B5F6)
+                                    TipoEvento.FESTIVO -> Color(0xFFFFD54F)
+                                    TipoEvento.CLASE -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.primary
                                 }
+                                
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { viewModel.updateSelectedEventType(tipo) },
+                                    label = { 
+                                        Text(
+                                            text = when(tipo) {
+                                                TipoEvento.EXAMEN -> "Examen"
+                                                TipoEvento.ESCOLAR -> "Escolar"
+                                                TipoEvento.REUNION -> "Reunión"
+                                                TipoEvento.FESTIVO -> "Festivo"
+                                                TipoEvento.CLASE -> "Clase"
+                                                else -> tipo.name
+                                            },
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    leadingIcon = if (isSelected) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    } else null,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = backgroundColor.copy(alpha = 0.2f),
+                                        selectedLabelColor = backgroundColor,
+                                        selectedLeadingIconColor = backgroundColor
+                                    )
+                                )
                             }
                         }
                         
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         
-                        // Campo para título del evento
+                        // Título
                         OutlinedTextField(
                             value = uiState.eventTitle ?: "",
                             onValueChange = { viewModel.updateEventTitle(it) },
-                            label = { Text("Título del evento") },
-                            leadingIcon = { 
-                                Icon(
-                                    imageVector = Icons.Default.Title,
-                                    contentDescription = null
-                                )
-                            },
+                            label = { Text("Título") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
                             singleLine = true
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        // Campo para descripción del evento
+                        // Descripción
                         OutlinedTextField(
                             value = uiState.eventDescription,
                             onValueChange = { viewModel.updateEventDescription(it) },
                             label = { Text("Descripción") },
-                            leadingIcon = { 
-                                Icon(
-                                    imageVector = Icons.Default.Description,
-                                    contentDescription = null
-                                )
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            maxLines = 5
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        // Campo para ubicación
-                        OutlinedTextField(
-                            value = uiState.eventLocation ?: "",
-                            onValueChange = { viewModel.updateEventLocation(it) },
-                            label = { Text("Ubicación (opcional)") },
-                            leadingIcon = { 
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = null
-                                )
-                            },
+                        // Hora
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Selector de hora mejorado
-                        var showTimePicker by remember { mutableStateOf(false) }
-                        var selectedHour by remember { mutableStateOf(12) }
-                        var selectedMinute by remember { mutableStateOf(0) }
-                        
-                        // Actualizar el tiempo cuando se selecciona en el selector
-                        LaunchedEffect(selectedHour, selectedMinute) {
-                            val formattedTime = String.format("%02d:%02d", selectedHour, selectedMinute)
-                            viewModel.updateEventTime(formattedTime)
-                        }
-                        
-                        OutlinedTextField(
-                            value = uiState.eventTime ?: "Selecciona una hora",
-                            onValueChange = { },
-                            label = { Text("Hora del evento") },
-                            leadingIcon = { 
-                                Icon(
-                                    imageVector = Icons.Default.Schedule,
-                                    contentDescription = null
-                                )
-                            },
-                            trailingIcon = {
-                                IconButton(onClick = { showTimePicker = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = "Seleccionar hora"
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            readOnly = true,
-                            enabled = true
-                        )
-                        
-                        // Selector de hora simple con 2 dropdowns (hora y minuto)
-                        if (showTimePicker) {
-                            AlertDialog(
-                                onDismissRequest = { showTimePicker = false },
-                                title = { Text("Seleccionar hora") },
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        // Selector de hora
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Hora")
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            var hourExpanded by remember { mutableStateOf(false) }
-                                            ExposedDropdownMenuBox(
-                                                expanded = hourExpanded,
-                                                onExpandedChange = { hourExpanded = it }
-                                            ) {
-                                                OutlinedTextField(
-                                                    value = selectedHour.toString(),
-                                                    onValueChange = {},
-                                                    readOnly = true,
-                                                    trailingIcon = {
-                                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = hourExpanded)
-                                                    },
-                                                    modifier = Modifier
-                                                        .menuAnchor()
-                                                        .width(80.dp)
-                                                )
-                                                
-                                                ExposedDropdownMenu(
-                                                    expanded = hourExpanded,
-                                                    onDismissRequest = { hourExpanded = false }
-                                                ) {
-                                                    for (hour in 0..23) {
-                                                        DropdownMenuItem(
-                                                            text = { Text(String.format("%02d", hour)) },
-                                                            onClick = {
-                                                                selectedHour = hour
-                                                                hourExpanded = false
-                                                            }
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        
-                                        Text(
-                                            text = ":",
-                                            style = MaterialTheme.typography.headlineMedium,
-                                            modifier = Modifier.padding(horizontal = 8.dp)
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.eventTime ?: "",
+                                onValueChange = { },
+                                label = { Text("Hora (opcional)") },
+                                modifier = Modifier.weight(1f),
+                                readOnly = true,
+                                singleLine = true,
+                                trailingIcon = {
+                                    IconButton(onClick = { viewModel.showTimePickerDialog() }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = "Seleccionar hora"
                                         )
-                                        
-                                        // Selector de minutos
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Minuto")
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            var minuteExpanded by remember { mutableStateOf(false) }
-                                            ExposedDropdownMenuBox(
-                                                expanded = minuteExpanded,
-                                                onExpandedChange = { minuteExpanded = it }
-                                            ) {
-                                                OutlinedTextField(
-                                                    value = String.format("%02d", selectedMinute),
-                                                    onValueChange = {},
-                                                    readOnly = true,
-                                                    trailingIcon = {
-                                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = minuteExpanded)
-                                                    },
-                                                    modifier = Modifier
-                                                        .menuAnchor()
-                                                        .width(80.dp)
-                                                )
-                                                
-                                                ExposedDropdownMenu(
-                                                    expanded = minuteExpanded,
-                                                    onDismissRequest = { minuteExpanded = false }
-                                                ) {
-                                                    for (minute in arrayOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)) {
-                                                        DropdownMenuItem(
-                                                            text = { Text(String.format("%02d", minute)) },
-                                                            onClick = {
-                                                                selectedMinute = minute
-                                                                minuteExpanded = false
-                                                            }
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                confirmButton = {
-                                    Button(onClick = { showTimePicker = false }) {
-                                        Text("Aceptar")
                                     }
                                 }
                             )
                         }
                         
+                        if (uiState.showTimePicker) {
+                            // Time picker UI
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                // Aquí iría el selector de hora personalizado
+                                val hours = (0..23).toList()
+                                val minutes = listOf(0, 15, 30, 45)
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    // Selector de hora
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("Hora")
+                                        
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        
+                                        LazyRow(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 4.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            items(hours) { hour ->
+                                                val isSelected = uiState.selectedHour == hour
+                                                ElevatedFilterChip(
+                                                    selected = isSelected,
+                                                    onClick = { viewModel.updateSelectedHour(hour) },
+                                                    label = { Text(hour.toString().padStart(2, '0')) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Selector de minutos
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("Minutos")
+                                        
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        
+                                        LazyRow(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 4.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            items(minutes) { minute ->
+                                                val isSelected = uiState.selectedMinute == minute
+                                                ElevatedFilterChip(
+                                                    selected = isSelected,
+                                                    onClick = { viewModel.updateSelectedMinute(minute) },
+                                                    label = { Text(minute.toString().padStart(2, '0')) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.hideTimePickerDialog() },
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    ) {
+                                        Text("Cancelar")
+                                    }
+                                    
+                                    Button(
+                                        onClick = { viewModel.confirmTimeSelection() },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Text("Confirmar")
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Ubicación
+                        OutlinedTextField(
+                            value = uiState.eventLocation ?: "",
+                            onValueChange = { viewModel.updateEventLocation(it) },
+                            label = { Text("Ubicación (opcional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        
                         Spacer(modifier = Modifier.height(24.dp))
                         
-                        // Botones de acción mejorados
+                        // Botones de acción
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End)
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             OutlinedButton(
                                 onClick = { viewModel.hideEventDialog() },
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                                modifier = Modifier.height(48.dp)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp)
                             ) {
                                 Text("Cancelar")
                             }
@@ -520,24 +462,27 @@ fun CalendarioScreen(
                                     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                                 ),
                                 modifier = Modifier
-                                    .height(48.dp)
-                                    .widthIn(min = 180.dp), // Ancho mínimo para el botón
-                                elevation = ButtonDefaults.buttonElevation(
-                                    defaultElevation = 4.dp,
-                                    pressedElevation = 8.dp
-                                )
+                                    .weight(1f)
+                                    .height(48.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Save,
-                                    contentDescription = null
-                                )
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Text(
-                                    "Guardar evento",
-                                    style = MaterialTheme.typography.labelLarge
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Save,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Guardar",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Visible,
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                }
                             }
                         }
                     }

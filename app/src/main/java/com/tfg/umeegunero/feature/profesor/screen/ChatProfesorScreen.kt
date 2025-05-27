@@ -93,11 +93,16 @@ fun ChatProfesorScreen(
     // Lista de plantillas de mensajes
     val messageTemplates = remember {
         listOf(
-            "Buenos días, le informo que hoy su hijo/a ha completado todas las tareas correctamente.",
-            "Estimado/a familiar, quería comunicarle que mañana tendremos una actividad especial en clase. No es necesario traer material adicional.",
-            "Le recuerdo que la próxima semana tendremos reuniones individuales. Puede reservar su cita a través de la aplicación.",
-            "Su hijo/a ha mostrado una gran mejoría en el área de matemáticas esta semana.",
-            "Le comunico que su hijo/a no ha completado los deberes asignados para hoy."
+            "Buenos días, le informo que hoy su hijo/a ha utilizado todos los pañales que tenía disponibles. Por favor, recuerde traer más para mañana.",
+            "Hoy su hijo/a ha comido muy bien durante la hora de la comida, ha probado todos los alimentos y ha terminado casi todo.",
+            "Su hijo/a ha tenido dificultad para comer hoy. Solo ha probado un poco de la comida y no ha querido el postre.",
+            "Le comunico que hoy su hijo/a ha comenzado a decir nuevas palabras como \"agua\" y \"más\". Estamos muy contentos con su progreso.",
+            "Hoy su hijo/a ha mordido a un compañero durante el juego. Hemos hablado con él/ella sobre esta conducta y le agradeceríamos reforzar en casa que no debe morder.",
+            "Su hijo/a ha tenido un pequeño accidente durante el patio y se ha hecho una pequeña herida. La hemos curado y ha estado bien el resto del día.",
+            "Le comunico que hoy su hijo/a ha tenido un episodio de llanto durante la siesta. Lo hemos calmado y finalmente ha podido descansar.",
+            "¡Buenas noticias! Su hijo/a ha empezado a mostrar interés en el orinal. Sería bueno reforzar este comportamiento también en casa.",
+            "Hoy hemos trabajado con colores y formas, y su hijo/a ha mostrado mucho interés y habilidad reconociendo el color rojo y el círculo.",
+            "Su hijo/a ha estado más irritable de lo normal hoy. Ha tenido varios momentos de llanto y frustración. ¿Ha notado algo similar en casa?"
         )
     }
     
