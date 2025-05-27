@@ -67,7 +67,7 @@ class CursoRepository @Inject constructor() {
             val cursoDoc = cursosCollection.document(cursoId).get().await()
 
             if (cursoDoc.exists()) {
-                val curso = cursoDoc.toObject(Curso::class.java)
+                val curso = cursoDoc.toObject<Curso>()
                 return@withContext Result.Success(curso!!)
             } else {
                 throw Exception("Curso no encontrado")
@@ -137,7 +137,7 @@ class CursoRepository @Inject constructor() {
             
             val clases = snapshot.documents.mapNotNull { doc ->
                 try {
-                    val clase = doc.toObject(Clase::class.java)
+                    val clase = doc.toObject<Clase>()
                     Timber.d("📝 Documento: id=${doc.id}, data=${doc.data}")
                     clase?.copy(id = doc.id)
                 } catch (e: Exception) {
@@ -212,7 +212,7 @@ class CursoRepository @Inject constructor() {
                 return@withContext Result.Error(Exception("La clase no existe"))
             }
             
-            val clase = claseDoc.toObject(Clase::class.java)
+            val clase = claseDoc.toObject<Clase>()
             val alumnosActuales = clase?.alumnosIds ?: mutableListOf<String>()
             val nuevosAlumnos = alumnosActuales.toMutableList()
             
@@ -251,7 +251,7 @@ class CursoRepository @Inject constructor() {
     suspend fun obtenerCursoPorId(cursoId: String): Curso? {
         return try {
             val document = cursosCollection.document(cursoId).get().await()
-            document.toObject(Curso::class.java)
+            document.toObject<Curso>()
         } catch (e: FirebaseFirestoreException) {
             throw Exception("Error al obtener el curso: ${e.message}")
         }
@@ -415,7 +415,7 @@ class CursoRepository @Inject constructor() {
                 .await()
                 
             val cursos = snapshot.documents.mapNotNull { doc ->
-                val curso = doc.toObject(Curso::class.java)
+                val curso = doc.toObject<Curso>()
                 curso?.copy(id = doc.id)
             }
             
@@ -488,7 +488,7 @@ class CursoRepository @Inject constructor() {
             for (cursoId in cursosIds) {
                 val cursoDoc = cursosCollection.document(cursoId).get().await()
                 if (cursoDoc.exists()) {
-                    val curso = cursoDoc.toObject(Curso::class.java)?.copy(id = cursoDoc.id)
+                    val curso = cursoDoc.toObject<Curso>()?.copy(id = cursoDoc.id)
                     if (curso != null) {
                         cursos.add(curso)
                     }
@@ -541,7 +541,7 @@ class CursoRepository @Inject constructor() {
             
             val clases = documentos.mapNotNull { doc ->
                 try {
-                    doc.toObject(Clase::class.java)?.copy(id = doc.id)
+                    doc.toObject<Clase>()?.copy(id = doc.id)
                 } catch (e: Exception) {
                     Timber.e(e, "Error al convertir documento a Clase: ${doc.id}")
                     null

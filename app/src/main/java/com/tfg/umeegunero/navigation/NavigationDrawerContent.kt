@@ -101,7 +101,7 @@ fun NavigationDrawerContent(
                 )
                 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Message, contentDescription = "Mensajes") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Message, contentDescription = "Mensajes") },
                     label = { Text("Mensajes") },
                     selected = false,
                     onClick = { onItemClick(AppScreens.ConversacionesFamilia.route) }

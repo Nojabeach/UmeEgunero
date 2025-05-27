@@ -171,10 +171,11 @@ class MainActivity : ComponentActivity() {
         // Comprobar servicios Firebase disponibles
         if (inicializado) {
             try {
-                val firestore = FirebaseFirestore.getInstance()
-                val storage = FirebaseStorage.getInstance()
-                val messaging = FirebaseMessaging.getInstance()
-                val remoteConfig = FirebaseRemoteConfig.getInstance()
+                // Solo verificamos que podemos obtener las instancias sin asignarlas a variables
+                FirebaseFirestore.getInstance()
+                FirebaseStorage.getInstance()
+                FirebaseMessaging.getInstance()
+                FirebaseRemoteConfig.getInstance()
                 Timber.d("Servicios Firebase disponibles")
                 
                 // Inicializamos Firebase Messaging

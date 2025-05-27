@@ -514,7 +514,7 @@ fun ChatProfesorScreen(
                                 keyboardController?.hide()
                             }) {
                 Icon(
-                                    imageVector = Icons.Default.ArrowBack,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Cerrar búsqueda"
                                 )
                             }
