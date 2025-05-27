@@ -68,7 +68,7 @@ data class NewMessageUiState(
     val searchQuery: String = "",
     val messageType: String = "CHAT", // Tipo de mensaje, por defecto CHAT
     val availableMessageTypes: List<String> = listOf("CHAT", "ANNOUNCEMENT", "NOTIFICATION", "SYSTEM"),
-    val canSendMessage: Boolean = subject.isNotBlank() && content.isNotBlank() && (selectedRecipients.isNotEmpty()),
+    val canSendMessage: Boolean = false,
     val messageSent: Boolean = false
 )
 
@@ -730,9 +730,11 @@ class NewMessageViewModel @Inject constructor(
                     name = recipient.name,
                     type = recipient.type
                 ))
+                val currentState = _uiState.value
                 _uiState.update { it.copy(
                     selectedRecipients = currentRecipients,
-                    recipients = currentRecipients
+                    recipients = currentRecipients,
+                    canSendMessage = currentState.subject.isNotBlank() && currentState.content.isNotBlank() && currentRecipients.isNotEmpty()
                 )}
             }
         }
@@ -748,9 +750,11 @@ class NewMessageViewModel @Inject constructor(
                     name = name,
                     type = recipient.type
                 ))
+                val currentState = _uiState.value
                 _uiState.update { it.copy(
                     selectedRecipients = currentRecipients,
-                    recipients = currentRecipients
+                    recipients = currentRecipients,
+                    canSendMessage = currentState.subject.isNotBlank() && currentState.content.isNotBlank() && currentRecipients.isNotEmpty()
                 )}
             }
         }
@@ -759,18 +763,30 @@ class NewMessageViewModel @Inject constructor(
     fun removeReceiver(id: String) {
         val currentRecipients = _uiState.value.selectedRecipients.toMutableList()
         currentRecipients.removeIf { it.id == id }
+        val currentState = _uiState.value
         _uiState.update { it.copy(
             selectedRecipients = currentRecipients,
-            recipients = currentRecipients
+            recipients = currentRecipients,
+            canSendMessage = currentState.subject.isNotBlank() && currentState.content.isNotBlank() && currentRecipients.isNotEmpty()
         )}
     }
     
     fun updateTitle(title: String) {
-        _uiState.update { it.copy(subject = title) }
+        val newTitle = title
+        val currentState = _uiState.value
+        _uiState.update { it.copy(
+            subject = newTitle,
+            canSendMessage = newTitle.isNotBlank() && currentState.content.isNotBlank() && currentState.selectedRecipients.isNotEmpty()
+        ) }
     }
     
     fun updateContent(content: String) {
-        _uiState.update { it.copy(content = content) }
+        val newContent = content
+        val currentState = _uiState.value
+        _uiState.update { it.copy(
+            content = newContent,
+            canSendMessage = currentState.subject.isNotBlank() && newContent.isNotBlank() && currentState.selectedRecipients.isNotEmpty()
+        ) }
     }
     
     fun updateSearchQuery(query: String) {

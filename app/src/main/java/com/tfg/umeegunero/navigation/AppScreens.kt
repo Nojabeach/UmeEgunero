@@ -526,6 +526,10 @@ sealed class AppScreens(val route: String) {
      */
     object DetalleRegistro : AppScreens("detalle_registro/{registroId}") {
         fun createRoute(registroId: String) = "detalle_registro/$registroId"
+        
+        val arguments = listOf(
+            navArgument("registroId") { type = NavType.StringType }
+        )
     }
     
     /**

@@ -22,8 +22,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.NewMessageViewModel
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.SearchResultItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,35 +120,11 @@ fun NewMessageScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.selectedRecipients) { recipient ->
-                        ElevatedCard(
-                            modifier = Modifier.wrapContentWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = recipient.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                
-                                Spacer(modifier = Modifier.width(4.dp))
-                                
-                                IconButton(
-                                    onClick = { viewModel.removeReceiver(recipient.id) },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "Eliminar",
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        }
+                        RecipientChip(
+                            name = recipient.name,
+                            type = recipient.type,
+                            onRemove = { viewModel.removeReceiver(recipient.id) }
+                        )
                     }
                 }
                 
@@ -182,7 +161,7 @@ fun NewMessageScreen(
                         onClick = { viewModel.updateMessageType(type) },
                         label = { 
                             Text(
-                                when(type) {
+                                text = when(type) {
                                     "CHAT" -> "Chat"
                                     "ANNOUNCEMENT" -> "Comunicado"
                                     "NOTIFICATION" -> "Notificación"
@@ -242,111 +221,19 @@ fun NewMessageScreen(
             
             // Resultados de búsqueda
             if (uiState.searchResults.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 300.dp)
-                ) {
-                    Text(
-                        text = "Resultados (${uiState.searchResults.size})",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Agrupar los resultados por tipo de usuario
-                    val headerResults = uiState.searchResults.filter { it.type == "HEADER" }
-                    val adminResults = uiState.searchResults.filter { it.type == TipoUsuario.ADMIN_CENTRO.toString() }
-                    val profesorResults = uiState.searchResults.filter { it.type == TipoUsuario.PROFESOR.toString() }
-                    val familiarResults = uiState.searchResults.filter { it.type == TipoUsuario.FAMILIAR.toString() }
-                    
-                    // Filtrar resultados según la búsqueda
-                    val filteredResults = if (uiState.searchQuery.isNotEmpty()) {
-                        val query = uiState.searchQuery.lowercase()
-                        // Filtrar admins, profesores y familiares
-                        val filteredAdmins = adminResults.filter { 
-                            it.name.lowercase().contains(query) || 
-                            it.description.lowercase().contains(query) 
-                        }
-                        val filteredProfesores = profesorResults.filter { 
-                            it.name.lowercase().contains(query) || 
-                            it.description.lowercase().contains(query) 
-                        }
-                        val filteredFamiliares = familiarResults.filter { 
-                            it.name.lowercase().contains(query) || 
-                            it.description.lowercase().contains(query) 
-                        }
-                        
-                        // Solo incluir headers si hay resultados filtrados asociados
-                        val relevantHeaders = headerResults.filter { header ->
-                            when {
-                                header.id.startsWith("header_sin_asignacion") -> 
-                                    filteredProfesores.any { it.description.contains("sin asignación", ignoreCase = true) }
-                                header.id.startsWith("header_familia_") -> {
-                                    val partes = header.id.removePrefix("header_familia_").split("_")
-                                    if (partes.size >= 2) {
-                                        val cursoId = partes[0]
-                                        val claseId = partes[1]
-                                        filteredFamiliares.any { 
-                                            it.description.contains(cursoId, ignoreCase = true) || 
-                                            it.description.contains(claseId, ignoreCase = true) 
-                                        }
-                                    } else false
-                                }
-                                else -> true // Incluir otros headers por defecto
-                            }
-                        }
-                        
-                        // Combinar todos los resultados filtrados
-                        relevantHeaders + filteredAdmins + filteredProfesores + filteredFamiliares
-                    } else {
-                        // Sin filtro, mostrar todos en orden
-                        headerResults + adminResults + profesorResults + familiarResults
-                    }
-                    
-                    // Mostrar resultados agrupados con encabezados
-                    var currentHeaderId = ""
-                    
-                    filteredResults.forEach { result ->
-                        if (result.type == "HEADER") {
-                            // Guardar el ID del encabezado actual
-                            currentHeaderId = result.id
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            // Mostrar el encabezado
-                            Text(
-                                text = result.name,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                        } else {
-                            // Si corresponde al encabezado actual o no hay encabezado, mostrar el elemento
-                            val showItem = when {
-                                result.type == TipoUsuario.ADMIN_CENTRO.toString() -> true
-                                result.type == TipoUsuario.PROFESOR.toString() && (
-                                    currentHeaderId.isEmpty() || 
-                                    (currentHeaderId.startsWith("header_") && 
-                                    !currentHeaderId.startsWith("header_familia_"))
-                                ) -> true
-                                result.type == TipoUsuario.FAMILIAR.toString() && (
-                                    currentHeaderId.isEmpty() || 
-                                    currentHeaderId.startsWith("header_familia_")
-                                ) -> true
-                                else -> false
-                            }
-                            
-                            if (showItem) {
-                                DestinatarioCard(
-                                    result = result,
-                                    onAdd = { viewModel.addReceiver(result.id, result.name) }
-                                )
-                            }
-                        }
-                    }
-                }
+                Text(
+                    text = "Resultados (${uiState.searchResults.count { it.type != "HEADER" }})",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Mostrar resultados en formato árbol
+                SearchResultsTree(
+                    results = uiState.searchResults,
+                    searchQuery = uiState.searchQuery,
+                    onAddRecipient = { id, name -> viewModel.addReceiver(id, name) }
+                )
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -372,24 +259,195 @@ fun NewMessageScreen(
 }
 
 @Composable
-fun DestinatarioCard(
-    result: SearchResultItem,
-    onAdd: () -> Unit
+fun SearchResultsTree(
+    results: List<SearchResultItem>,
+    searchQuery: String,
+    onAddRecipient: (String, String) -> Unit
 ) {
-    // No mostrar tarjetas para los encabezados
-    if (result.type == "HEADER") {
-        return
+    // Agrupar por categorías para crear un árbol
+    val filteredResults = if (searchQuery.isNotEmpty()) {
+        val query = searchQuery.lowercase()
+        
+        // Crear estructura de árbol con filtrado
+        val filteredItems = results.filter { it.type != "HEADER" && 
+            (it.name.lowercase().contains(query) || it.description.lowercase().contains(query)) 
+        }
+        
+        // Ahora mantener solo los headers que tienen items
+        val headers = results.filter { it.type == "HEADER" }
+        
+        // Asignar items a sus headers correspondientes
+        val headersWithItems = mutableMapOf<String, MutableList<SearchResultItem>>()
+        
+        // Inicializar para cada header
+        headers.forEach { header ->
+            headersWithItems[header.id] = mutableListOf()
+        }
+        
+        // Asignar items a sus headers
+        filteredItems.forEach { item ->
+            // Buscar el header apropiado según el tipo del item
+            when (item.type) {
+                TipoUsuario.ADMIN_CENTRO.toString() -> {
+                    headers.find { it.id == "header_profesores" }?.let { header ->
+                        headersWithItems[header.id]?.add(item)
+                    }
+                }
+                TipoUsuario.PROFESOR.toString() -> {
+                    // Buscar el header más específico basado en la descripción
+                    val matchingHeader = headers.find { header ->
+                        if (header.id.startsWith("header_sin_asignacion") && 
+                            item.description.contains("sin asignación", ignoreCase = true)) {
+                            return@find true
+                        }
+                        
+                        if (!header.id.startsWith("header_familia_") && 
+                            header.id != "header_profesores" && 
+                            header.id != "header_familiares") {
+                            // Extraer información del header
+                            val headerInfo = header.name.substringAfter("👨‍🏫 ")
+                            // Verificar si la descripción del item contiene esta info
+                            if (item.description.contains(headerInfo, ignoreCase = true)) {
+                                return@find true
+                            }
+                        }
+                        false
+                    }
+                    
+                    matchingHeader?.let {
+                        headersWithItems[it.id]?.add(item)
+                    } ?: run {
+                        // Si no encontramos header específico, usar el general
+                        headers.find { it.id == "header_profesores" }?.let { header ->
+                            headersWithItems[header.id]?.add(item)
+                        }
+                    }
+                }
+                TipoUsuario.FAMILIAR.toString() -> {
+                    // Buscar header basado en la clase/curso del alumno
+                    var found = false
+                    headers.forEach { header ->
+                        if (header.id.startsWith("header_familia_")) {
+                            val claseCursoInfo = header.name.substringAfter("👪 ")
+                            if (item.description.contains(claseCursoInfo, ignoreCase = true)) {
+                                headersWithItems[header.id]?.add(item)
+                                found = true
+                            }
+                        }
+                    }
+                    
+                    if (!found) {
+                        // Si no encontramos header específico, usar el general
+                        headers.find { it.id == "header_familiares" }?.let { header ->
+                            headersWithItems[header.id]?.add(item)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Construir lista final con headers que tienen items
+        val result = mutableListOf<SearchResultItem>()
+        headers.forEach { header ->
+            val items = headersWithItems[header.id] ?: emptyList()
+            if (items.isNotEmpty()) {
+                result.add(header)
+                result.addAll(items)
+            }
+        }
+        
+        result
+    } else {
+        // Sin filtro, mostrar todo
+        results
     }
     
-    val isSelectable = result.type != "HEADER"
-    
-    ElevatedCard(
+    LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(max = 400.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items(filteredResults.size) { index ->
+            val item = filteredResults[index]
+            
+            if (item.type == "HEADER") {
+                // Mostrar encabezado con padding según nivel
+                CategoryHeader(
+                    title = item.name,
+                    description = item.description,
+                    level = when {
+                        item.id.startsWith("header_familia_") -> 2
+                        item.id.startsWith("header_curso_") -> 1
+                        else -> 0
+                    }
+                )
+            } else {
+                // Mostrar item con padding según nivel y categoría
+                val level = when {
+                    item.type == TipoUsuario.ADMIN_CENTRO.toString() -> 1
+                    item.type == TipoUsuario.PROFESOR.toString() -> 2
+                    item.type == TipoUsuario.FAMILIAR.toString() -> 3
+                    else -> 1
+                }
+                
+                RecipientItem(
+                    item = item,
+                    level = level,
+                    onAdd = { onAddRecipient(item.id, item.name) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryHeader(
+    title: String,
+    description: String,
+    level: Int = 0
+) {
+    val paddingStart = 8.dp * level
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(start = paddingStart)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        if (description.isNotEmpty()) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun RecipientItem(
+    item: SearchResultItem,
+    level: Int = 0,
+    onAdd: () -> Unit
+) {
+    val startPadding = 8.dp * level
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = startPadding)
             .padding(vertical = 4.dp),
-        onClick = if (isSelectable) onAdd else { {} },
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = when(result.type) {
+        onClick = onAdd,
+        colors = CardDefaults.cardColors(
+            containerColor = when(item.type) {
                 TipoUsuario.ADMIN_CENTRO.toString() -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                 TipoUsuario.PROFESOR.toString() -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
                 TipoUsuario.FAMILIAR.toString() -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
@@ -409,7 +467,7 @@ fun DestinatarioCard(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(
-                        when(result.type) {
+                        when(item.type) {
                             TipoUsuario.ADMIN_CENTRO.toString() -> MaterialTheme.colorScheme.primary
                             TipoUsuario.PROFESOR.toString() -> MaterialTheme.colorScheme.secondary
                             TipoUsuario.FAMILIAR.toString() -> MaterialTheme.colorScheme.tertiary
@@ -419,7 +477,7 @@ fun DestinatarioCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = result.name.take(1).uppercase(),
+                    text = item.name.take(1).uppercase(),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -431,14 +489,14 @@ fun DestinatarioCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = result.name,
+                    text = item.name,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 
                 Text(
-                    text = result.description,
+                    text = item.description,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -446,28 +504,98 @@ fun DestinatarioCard(
                 )
             }
             
-            // Botón de añadir visible solo para elementos seleccionables
-            if (isSelectable) {
-                FilledIconButton(
-                    onClick = onAdd,
-                    modifier = Modifier.size(36.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = when(result.type) {
-                            TipoUsuario.ADMIN_CENTRO.toString() -> MaterialTheme.colorScheme.primary
-                            TipoUsuario.PROFESOR.toString() -> MaterialTheme.colorScheme.secondary
-                            TipoUsuario.FAMILIAR.toString() -> MaterialTheme.colorScheme.tertiary
-                            else -> MaterialTheme.colorScheme.primary
-                        }
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Añadir destinatario",
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.White
-                    )
-                }
+            FilledIconButton(
+                onClick = onAdd,
+                modifier = Modifier.size(36.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = when(item.type) {
+                        TipoUsuario.ADMIN_CENTRO.toString() -> MaterialTheme.colorScheme.primary
+                        TipoUsuario.PROFESOR.toString() -> MaterialTheme.colorScheme.secondary
+                        TipoUsuario.FAMILIAR.toString() -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.primary
+                    }
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Añadir destinatario",
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White
+                )
             }
         }
+    }
+}
+
+@Composable
+fun RecipientChip(
+    name: String,
+    type: String,
+    onRemove: () -> Unit
+) {
+    val backgroundColor = when(type) {
+        TipoUsuario.ADMIN_CENTRO.toString() -> MaterialTheme.colorScheme.primaryContainer
+        TipoUsuario.PROFESOR.toString() -> MaterialTheme.colorScheme.secondaryContainer
+        TipoUsuario.FAMILIAR.toString() -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    
+    val textColor = when(type) {
+        TipoUsuario.ADMIN_CENTRO.toString() -> MaterialTheme.colorScheme.onPrimaryContainer
+        TipoUsuario.PROFESOR.toString() -> MaterialTheme.colorScheme.onSecondaryContainer
+        TipoUsuario.FAMILIAR.toString() -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    
+    val iconColor = when(type) {
+        TipoUsuario.ADMIN_CENTRO.toString() -> MaterialTheme.colorScheme.primary
+        TipoUsuario.PROFESOR.toString() -> MaterialTheme.colorScheme.secondary
+        TipoUsuario.FAMILIAR.toString() -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.primary
+    }
+    
+    SuggestionChip(
+        onClick = { /* No action */ },
+        label = { 
+            Text(
+                text = name,
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium
+            ) 
+        },
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(iconColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = name.take(1).uppercase(),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        },
+        border = null,
+        colors = SuggestionChipDefaults.suggestionChipColors(
+            containerColor = backgroundColor
+        )
+    )
+    
+    // Botón de eliminar separado del chip
+    IconButton(
+        onClick = onRemove,
+        modifier = Modifier.size(24.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Clear,
+            contentDescription = "Quitar",
+            modifier = Modifier.size(16.dp),
+            tint = textColor
+        )
     }
 } 

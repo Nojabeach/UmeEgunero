@@ -46,6 +46,7 @@ import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.feature.profesor.viewmodel.CalendarioViewModel
+import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.util.toLocalDate
@@ -281,7 +282,10 @@ fun CalendarioProfesorScreen(
                                     items(uiState.eventosDiaSeleccionado) { evento ->
                                         EventoCard(
                                             evento = evento,
-                                            onClick = { /* Implementa la lógica para abrir el evento */ },
+                                            onClick = { 
+                                                // Navegar a la pantalla de detalle del evento
+                                                navController.navigate(AppScreens.DetalleEvento.createRoute(evento.id))
+                                            },
                                             onDelete = { viewModel.eliminarEvento(evento) }
                                         )
                                         

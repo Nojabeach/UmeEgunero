@@ -585,10 +585,10 @@ fun FamiliaDashboardScreen(
                     )
                 },
                 actions = {
-                    // Badge para notificaciones reales
+                    // Badge para mensajes no leídos
                     val pendingCount = uiState.registrosSinLeer
                     
-                    // Botón de notificaciones con badge
+                    // Botón de mensajes con badge
                     BadgedBox(
                         badge = {
                             if (pendingCount > 0) {
@@ -597,11 +597,18 @@ fun FamiliaDashboardScreen(
                         }
                     ) {
                         IconButton(
-                            onClick = { showNavigateToNotificacionesDialog = true }
+                            onClick = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al realizar feedback háptico")
+                                }
+                                navController.navigate(AppScreens.ChatContacts.createRoute(AppScreens.ChatFamilia.route))
+                            }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Ver notificaciones",
+                                imageVector = Icons.AutoMirrored.Filled.Chat,
+                                contentDescription = "Ver mensajes",
                                 tint = Color.White
                             )
                         }
@@ -632,25 +639,6 @@ fun FamiliaDashboardScreen(
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { 
-                    try {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al realizar feedback háptico")
-                    }
-                    showNuevaSolicitudDialog = true 
-                },
-                containerColor = FamiliarColor,
-                contentColor = Color.White
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PersonAdd,
-                    contentDescription = "Solicitar vinculación de nuevo hijo"
-                )
-            }
-        },
         bottomBar = {
             // Mostrar solicitudes pendientes como un pequeño banner informativo en el footer
             if (uiState.solicitudesPendientes.isNotEmpty()) {
@@ -700,7 +688,8 @@ fun FamiliaDashboardScreen(
                         HijosDropdownSelector(
                             hijos = uiState.hijos,
                             hijoSeleccionado = uiState.hijoSeleccionado,
-                            onHijoSelected = { viewModel.seleccionarHijo(it) }
+                            onHijoSelected = { viewModel.seleccionarHijo(it) },
+                            onAddHijo = { showNuevaSolicitudDialog = true }
                         )
                     }
                     
@@ -831,16 +820,17 @@ fun FamiliaDashboardScreen(
                             icono = Icons.Default.History,
                             onClick = {
                                 try {
+                                    if (uiState.hijoSeleccionado == null) {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Selecciona un hijo primero")
+                                        }
+                                        return@OpcionDashboardCard
+                                    }
+                                    
                                     val hijoId = uiState.hijoSeleccionado?.dni ?: return@OpcionDashboardCard
                                     val hijoNombre = uiState.hijoSeleccionado?.nombre ?: "Alumno"
                                     
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error al navegar a Historial: ${e.message}")
-                                }
-                                try {
-                                    val hijoId = uiState.hijoSeleccionado?.dni ?: return@OpcionDashboardCard
-                                    val hijoNombre = uiState.hijoSeleccionado?.nombre ?: "Alumno"
                                     navController.navigate(
                                         AppScreens.ConsultaRegistroDiario.createRoute(
                                             alumnoId = hijoId,
@@ -849,26 +839,32 @@ fun FamiliaDashboardScreen(
                                     )
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error al navegar a Historial: ${e.message}")
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Error al navegar: ${e.message}")
+                                    }
                                 }
                             }
                         )
                     }
                     
-                    // Información del Centro
+                    // Actividades Preescolares
                     item {
                         OpcionDashboardCard(
-                            titulo = "Información del Centro",
-                            descripcion = "Datos de contacto y horarios del centro educativo",
-                            icono = Icons.Default.Info,
+                            titulo = "Actividades Preescolares",
+                            descripcion = "Visualiza las actividades educativas programadas para tu hijo/a",
+                            icono = Icons.Default.ColorLens,
                             onClick = {
                                 try {
+                                    // El ID del familiar es su documento en Firebase
+                                    val familiarId = uiState.familiar?.id ?: return@OpcionDashboardCard
+                                    
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    scope.launch {
-                                        // Temporalmente muestra un mensaje hasta que se implemente la pantalla
-                                        snackbarHostState.showSnackbar("Próximamente: Información del centro")
-                                    }
+                                    navController.navigate(AppScreens.ActividadesPreescolar.route)
                                 } catch (e: Exception) {
-                                    Timber.e(e, "Error: ${e.message}")
+                                    Timber.e(e, "Error al navegar a Actividades Preescolares: ${e.message}")
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Error al navegar: ${e.message}")
+                                    }
                                 }
                             }
                         )
@@ -887,38 +883,31 @@ fun FamiliaDashboardScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     
+                    // Card de Notificaciones (una por línea, ocupando todo el ancho)
                     item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            // Card de Notificaciones
-                            Box(modifier = Modifier.weight(1f)) {
-                                OpcionDashboardCard(
-                                    titulo = "Gestión de Notificaciones",
-                                    descripcion = "Configura qué notificaciones deseas recibir y cómo",
-                                    icono = Icons.Default.Notifications,
-                                    onClick = {
-                                        try {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            navController.navigate(AppScreens.Notificaciones.route)
-                                        } catch (e: Exception) {
-                                            Timber.e(e, "Error al navegar a Gestión de Notificaciones: ${e.message}")
-                                        }
-                                    }
-                                )
+                        OpcionDashboardCard(
+                            titulo = "Gestión de Notificaciones",
+                            descripcion = "Configura qué notificaciones deseas recibir y cómo",
+                            icono = Icons.Default.Notifications,
+                            onClick = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    navController.navigate(AppScreens.Notificaciones.route)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a Gestión de Notificaciones: ${e.message}")
+                                }
                             }
-                            
-                            // Card de Tema
-                            Box(modifier = Modifier.weight(1f)) {
-                                OpcionDashboardCard(
-                                    titulo = "Tema",
-                                    descripcion = "Cambiar el tema de la aplicación",
-                                    icono = Icons.Default.Palette,
-                                    onClick = { showThemeDialog = true }
-                                )
-                            }
-                        }
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Card de Tema
+                        OpcionDashboardCard(
+                            titulo = "Tema de la Aplicación",
+                            descripcion = "Personaliza el aspecto visual de la aplicación",
+                            icono = Icons.Default.Palette,
+                            onClick = { showThemeDialog = true }
+                        )
                     }
                     
                     // Espaciador final
@@ -939,7 +928,8 @@ fun FamiliaDashboardScreen(
 fun HijosDropdownSelector(
     hijos: List<Alumno>,
     hijoSeleccionado: Alumno?,
-    onHijoSelected: (Alumno) -> Unit
+    onHijoSelected: (Alumno) -> Unit,
+    onAddHijo: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     
@@ -955,12 +945,39 @@ fun HijosDropdownSelector(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(
-                text = "Selecciona un hijo",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = FamiliarColor
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Selecciona un hijo",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = FamiliarColor
+                )
+                
+                // Nuevo botón para añadir hijo
+                Button(
+                    onClick = onAddHijo,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = FamiliarColor
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PersonAdd,
+                            contentDescription = "Añadir hijo",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Añadir hijo")
+                    }
+                }
+            }
             
             Spacer(modifier = Modifier.height(8.dp))
             
@@ -1250,22 +1267,23 @@ fun SolicitudesPendientesFooter(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp),
-        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+            .height(IntrinsicSize.Min), // Altura automática según el contenido
+        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Icono con badge
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Título con icono
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Icon(
                     imageVector = Icons.Default.NotificationsActive,
                     contentDescription = "Solicitudes pendientes",
@@ -1276,14 +1294,19 @@ fun SolicitudesPendientesFooter(
                 Spacer(modifier = Modifier.width(8.dp))
                 
                 Text(
-                    text = "Solicitudes de vinculación:",
+                    text = "Solicitudes de vinculación",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Bold
                 )
             }
             
-            // Contadores de estado
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Contadores de estado en fila
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
                 if (pendientes > 0) {
                     StatusBadge(
                         count = pendientes,
@@ -1293,7 +1316,6 @@ fun SolicitudesPendientesFooter(
                 }
                 
                 if (aprobadas > 0) {
-                    Spacer(modifier = Modifier.width(8.dp))
                     StatusBadge(
                         count = aprobadas,
                         label = "aprobadas",
@@ -1302,11 +1324,18 @@ fun SolicitudesPendientesFooter(
                 }
                 
                 if (rechazadas > 0) {
-                    Spacer(modifier = Modifier.width(8.dp))
                     StatusBadge(
                         count = rechazadas,
                         label = "rechazadas",
                         color = MaterialTheme.colorScheme.error
+                    )
+                }
+                
+                if (pendientes == 0 && aprobadas == 0 && rechazadas == 0) {
+                    Text(
+                        text = "No hay solicitudes pendientes",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1397,10 +1426,11 @@ fun ResumenActividadCard(
                         onClick = { 
                             try {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onVerDetalles(ultimoRegistro.id)
+                                Timber.d("Navegando a DetalleRegistro con ID: ${ultimoRegistro.id}")
                             } catch (e: Exception) {
-                                Timber.e(e, "Error al realizar feedback háptico")
+                                Timber.e(e, "Error al navegar a Detalle de Registro: ${e.message}")
                             }
-                            onVerDetalles(ultimoRegistro.id)
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = FamiliarColor

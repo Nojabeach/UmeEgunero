@@ -5,9 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroUiState
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.model.LecturaFamiliar
+import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +20,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import java.util.Date
 
 /**
  * ViewModel para la pantalla de detalle de registro de actividad de un alumno
@@ -23,6 +28,8 @@ import javax.inject.Inject
 @HiltViewModel
 class DetalleRegistroViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
+    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -75,6 +82,9 @@ class DetalleRegistroViewModel @Inject constructor(
                             registro = registro,
                             profesorNombre = profesorNombre
                         ) }
+                        
+                        // Marcar como visto por el familiar
+                        marcarComoVistoPorFamiliar(registro)
                     }
                     is Result.Error -> {
                         _uiState.update { it.copy(
@@ -93,6 +103,66 @@ class DetalleRegistroViewModel @Inject constructor(
                     error = "Error inesperado: ${e.message}",
                     isLoading = false
                 ) }
+            }
+        }
+    }
+    
+    /**
+     * Marca el registro como visto por el familiar actual
+     */
+    private fun marcarComoVistoPorFamiliar(registro: RegistroActividad) {
+        viewModelScope.launch {
+            try {
+                // Solo actualizar si no está ya marcado como visto
+                if (registro.vistoPorFamiliar) {
+                    Timber.d("El registro ya fue marcado como visto por un familiar")
+                    return@launch
+                }
+                
+                // Obtener el usuario actual (familiar)
+                val usuarioActual = authRepository.getCurrentUser()
+                if (usuarioActual == null) {
+                    Timber.e("No se pudo obtener el usuario actual para marcar el registro como visto")
+                    return@launch
+                }
+                
+                Timber.d("Marcando registro ${registro.id} como visto por familiar ${usuarioActual.dni}")
+                
+                // Crear la información de lectura
+                val lecturaFamiliar = LecturaFamiliar(
+                    familiarId = usuarioActual.dni,
+                    nombreFamiliar = "${usuarioActual.nombre} ${usuarioActual.apellidos}",
+                    fechaLectura = Timestamp(Date())
+                )
+                
+                // Actualizar el registro con la información de lectura
+                val registroActualizado = registro.copy(
+                    vistoPorFamiliar = true,
+                    fechaVisto = Timestamp(Date()),
+                    // Agregar a las lecturas existentes
+                    lecturasPorFamiliar = registro.lecturasPorFamiliar.toMutableMap().apply {
+                        this[usuarioActual.dni] = lecturaFamiliar
+                    }
+                )
+                
+                // Guardar en la base de datos
+                val resultado = registroDiarioRepository.actualizarRegistroDiario(registroActualizado)
+                
+                when (resultado) {
+                    is Result.Success<*> -> {
+                        Timber.d("Registro marcado como visto correctamente")
+                        // Actualizar el estado con el registro actualizado
+                        _uiState.update { it.copy(registro = registroActualizado) }
+                    }
+                    is Result.Error -> {
+                        Timber.e(resultado.exception, "Error al marcar registro como visto: ${resultado.exception?.message}")
+                    }
+                    is Result.Loading<*> -> {
+                        // No hacer nada en este caso
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error inesperado al marcar registro como visto: ${e.message}")
             }
         }
     }

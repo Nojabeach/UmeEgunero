@@ -104,44 +104,37 @@ class CalendarioFamiliaViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // Obtener eventos del centro al que pertenece el familiar
-                // Esto requiere primero obtener hijos del familiar, luego sus centros
-                val resultado = eventoRepository.obtenerEventosPorCentro("centro_default")
+                // Obtener el centro del familiar (simplificado)
+                val centroId = usuario.perfiles.firstOrNull()?.centroId ?: "centro_default"
                 
-                if (resultado is Result.Success<*>) {
-                    val eventosFirestore = resultado.data as List<com.tfg.umeegunero.data.model.Evento>
-                    
-                    // Convertir a nuestro modelo local
-                    val eventos = eventosFirestore.map { evento ->
-                        Evento(
-                            id = evento.id,
-                            titulo = evento.titulo,
-                            descripcion = evento.descripcion,
-                            fecha = evento.fecha.seconds * 1000, // Convertir a milisegundos
-                            ubicacion = evento.ubicacion ?: "",
-                            tipo = when (evento.tipo.toString().lowercase()) {
-                                "reunion" -> TipoEvento.REUNION
-                                "excursion" -> TipoEvento.EXCURSION
-                                "fiesta" -> TipoEvento.FIESTA
-                                "salud" -> TipoEvento.SALUD
-                                "festivo" -> TipoEvento.FESTIVO
-                                else -> TipoEvento.OTRO
-                            }
-                        )
-                    }
-                    
-                    _uiState.update { it.copy(
-                        eventos = eventos,
-                        isLoading = false
-                    ) }
-                } else {
-                    _uiState.update { it.copy(
-                        error = "Error al cargar los eventos",
-                        isLoading = false
-                    ) }
+                // Obtener eventos del centro
+                val eventosFirestore = eventoRepository.obtenerEventosPorCentro(centroId)
+                
+                // Convertir a nuestro modelo local
+                val eventos = eventosFirestore.map { evento ->
+                    Evento(
+                        id = evento.id,
+                        titulo = evento.titulo,
+                        descripcion = evento.descripcion,
+                        fecha = evento.fecha.seconds * 1000, // Convertir a milisegundos
+                        ubicacion = evento.ubicacion ?: "",
+                        tipo = when (evento.tipo.toString().lowercase()) {
+                            "reunion" -> TipoEvento.REUNION
+                            "excursion" -> TipoEvento.EXCURSION
+                            "fiesta" -> TipoEvento.FIESTA
+                            "salud" -> TipoEvento.SALUD
+                            "festivo" -> TipoEvento.FESTIVO
+                            else -> TipoEvento.OTRO
+                        }
+                    )
                 }
+                
+                _uiState.update { it.copy(
+                    eventos = eventos,
+                    isLoading = false
+                ) }
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar eventos")
+                Timber.e(e, "Error al cargar eventos: ${e.message}")
                 _uiState.update { it.copy(
                     error = "Error: ${e.message}",
                     isLoading = false
