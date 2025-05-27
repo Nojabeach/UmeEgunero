@@ -10,8 +10,10 @@ import com.tfg.umeegunero.data.local.entity.ChatMensajeEntity
 import com.tfg.umeegunero.data.local.entity.ConversacionEntity
 import com.tfg.umeegunero.data.model.AttachmentType
 import com.tfg.umeegunero.data.model.InteractionStatus
+import com.tfg.umeegunero.data.model.MessageStatus
 import com.tfg.umeegunero.data.model.Notificacion
 import com.tfg.umeegunero.data.model.TipoNotificacion
+import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.local.MensajeEntity
 import com.tfg.umeegunero.data.repository.AlumnoRepository
@@ -19,7 +21,6 @@ import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.data.repository.NotificacionRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
-import com.tfg.umeegunero.feature.profesor.screen.ChatMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import timber.log.Timber
@@ -58,7 +60,7 @@ data class ContactoInfo(
  * Estado UI para la pantalla de chat.
  */
 data class ChatProfesorUiState(
-    val mensajes: List<ChatMessage> = emptyList(),
+    val mensajes: List<UnifiedMessage> = emptyList(),
     val conversacion: ConversacionEntity? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -411,22 +413,17 @@ class ChatProfesorViewModel @Inject constructor(
                 val mensajesEntities = chatRepository.getMensajesByConversacionId(conversacionId)
                 
                 val mensajes = mensajesEntities.map { entity ->
-                    ChatMessage(
+                    UnifiedMessage(
                         id = entity.id,
                         senderId = entity.emisorId,
-                        text = entity.texto,
-                        timestamp = entity.timestamp,
+                        receiverId = entity.receptorId,
+                        content = entity.texto,
+                        timestamp = Timestamp(Date(entity.timestamp)),
                         isRead = entity.leido,
-                        readTimestamp = entity.fechaLeido,
-                        attachmentType = when (entity.tipoAdjunto) {
-                            "IMAGE" -> AttachmentType.IMAGE
-                            "PDF" -> AttachmentType.PDF
-                            "AUDIO" -> AttachmentType.AUDIO
-                            "LOCATION" -> AttachmentType.LOCATION
-                            else -> null
-                        },
-                        attachmentUrl = entity.adjuntos.firstOrNull(),
-                        interactionStatus = InteractionStatus.NONE
+                        status = if (entity.leido) MessageStatus.READ else MessageStatus.UNREAD,
+                        attachments = entity.adjuntos,
+                        conversationId = entity.conversacionId,
+                        metadata = if (entity.alumnoId != null) mapOf("alumnoId" to entity.alumnoId) else emptyMap()
                     )
                 }.sortedBy { it.timestamp }
                 

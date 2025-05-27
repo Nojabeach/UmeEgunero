@@ -1,6 +1,8 @@
 package com.tfg.umeegunero.feature.familiar.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,82 +21,90 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.google.firebase.Timestamp
+import com.tfg.umeegunero.data.model.MessageStatus
+import com.tfg.umeegunero.data.model.UnifiedMessage
+import com.tfg.umeegunero.feature.common.mensajeria.ChatViewModel
+import com.tfg.umeegunero.feature.profesor.screen.AttachmentType
+import com.tfg.umeegunero.ui.theme.FamiliarColor
+import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import timber.log.Timber
-import com.tfg.umeegunero.ui.theme.FamiliarColor
+import android.net.Uri
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun ChatFamiliaScreen(
     navController: NavController,
-    profesorId: String = "prof123" // Parámetro de ejemplo, en una app real vendría de la navegación
+    profesorId: String,
+    conversacionId: String,
+    alumnoId: String? = null,
+    viewModel: ChatViewModel = hiltViewModel()
 ) {
-    // Estado para el mensaje que se está escribiendo
-    var mensaje by remember { mutableStateOf("") }
+    var inputMessage by remember { mutableStateOf("") }
+    var showAttachmentOptions by remember { mutableStateOf(false) }
+    var showAttachmentPreview by remember { mutableStateOf(false) }
+    var previewAttachmentType by remember { mutableStateOf<AttachmentType?>(null) }
+    var previewAttachmentUrl by remember { mutableStateOf("") }
     val haptic = LocalHapticFeedback.current
-    
-    // Datos de ejemplo para el profesor
-    val profesor = remember {
-        Profesor(
-            id = profesorId,
-            nombre = "Laura",
-            apellidos = "García Martínez",
-            asignatura = "Tutora",
-            fotoPerfil = "" // URL vacía para este ejemplo
-        )
-    }
-    
-    // Datos de ejemplo para la conversación
-    val mensajes = remember {
-        listOf(
-            Mensaje(
-                id = "1",
-                remitente = TipoRemitente.PROFESOR,
-                texto = "Buenos días, quería comentarle que Ana ha participado muy activamente en clase hoy. Estamos muy contentos con su progreso.",
-                timestamp = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1); set(Calendar.HOUR_OF_DAY, 16); set(Calendar.MINUTE, 30) }.timeInMillis,
-                leido = true
-            ),
-            Mensaje(
-                id = "2",
-                remitente = TipoRemitente.FAMILIA,
-                texto = "Muchas gracias por la información. En casa también está muy motivada con las actividades de clase.",
-                timestamp = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1); set(Calendar.HOUR_OF_DAY, 18); set(Calendar.MINUTE, 15) }.timeInMillis,
-                leido = true
-            ),
-            Mensaje(
-                id = "3",
-                remitente = TipoRemitente.PROFESOR,
-                texto = "¿Podría Ana traer mañana sus materiales para el proyecto de ciencias? Vamos a comenzar a trabajar en ello.",
-                timestamp = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0) }.timeInMillis,
-                leido = true
-            ),
-            Mensaje(
-                id = "4",
-                remitente = TipoRemitente.FAMILIA,
-                texto = "Claro, me aseguraré de que lleve todo preparado. ¿Necesita algo especial además de los materiales que indicó la semana pasada?",
-                timestamp = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 10); set(Calendar.MINUTE, 30) }.timeInMillis,
-                leido = true
-            ),
-            Mensaje(
-                id = "5",
-                remitente = TipoRemitente.PROFESOR,
-                texto = "Con los materiales indicados será suficiente. Gracias por su colaboración.",
-                timestamp = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 11); set(Calendar.MINUTE, 0) }.timeInMillis,
-                leido = false
-            )
-        )
-    }
-    
     val keyboardController = LocalSoftwareKeyboardController.current
+    
+    // Inicializar el ViewModel con los datos de la conversación
+    LaunchedEffect(profesorId, conversacionId) {
+        viewModel.inicializar(conversacionId, profesorId, alumnoId)
+    }
+    
+    // Observar el estado de la UI
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    
+    // Agrupar mensajes por fecha para mostrar encabezados
+    val groupedMessages = remember(uiState.mensajes) {
+        uiState.mensajes.groupBy { message ->
+            val timestamp = message.timestamp
+            val calendar = Calendar.getInstance()
+            calendar.time = timestamp.toDate()
+            
+            val year = calendar.get(Calendar.YEAR)
+            val month = calendar.get(Calendar.MONTH)
+            val day = calendar.get(Calendar.DAY_OF_MONTH)
+            
+            Triple(year, month, day)
+        }
+    }
+    
+    // Mostrar un diálogo de carga mientras se cargan los datos
+    if (uiState.isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = FamiliarColor)
+        }
+        return
+    }
+    
+    // Mostrar un mensaje de error si hay algún problema
+    uiState.error?.let { error ->
+        val context = LocalContext.current
+        LaunchedEffect(error) {
+            Toast.makeText(
+                context,
+                error,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -111,7 +121,7 @@ fun ChatFamiliaScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = profesor.nombre.first().toString(),
+                                text = uiState.participante?.nombre?.firstOrNull()?.toString() ?: "?",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -121,11 +131,11 @@ fun ChatFamiliaScreen(
                         
                         Column {
                             Text(
-                                text = "${profesor.nombre} ${profesor.apellidos}",
+                                text = uiState.participante?.nombre ?: "Profesor",
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = profesor.asignatura,
+                                text = "Profesor",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -184,11 +194,29 @@ fun ChatFamiliaScreen(
                     .padding(horizontal = 16.dp),
                 reverseLayout = true
             ) {
-                // Los mensajes en orden cronológico inverso para que el más reciente esté abajo
-                items(mensajes.sortedByDescending { it.timestamp }) { mensaje ->
-                    MensajeItem(mensaje = mensaje)
+                // Iterar sobre los mensajes agrupados por fecha
+                for ((date, messagesForDate) in groupedMessages) {
+                    // Mostrar los mensajes de la fecha
+                    items(messagesForDate.sortedByDescending { it.timestamp }) { message ->
+                        val isFromMe = message.senderId == uiState.usuario?.dni
+                        
+                        MessageItem(
+                            message = message,
+                            isFromMe = isFromMe,
+                            onAttachmentClick = { url, type ->
+                                previewAttachmentUrl = url
+                                previewAttachmentType = type
+                                showAttachmentPreview = true
+                            }
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // Mostrar el encabezado de la fecha
+                    item {
+                        DateHeader(date = getFormattedDate(date))
+                    }
                 }
                 
                 item {
@@ -232,7 +260,7 @@ fun ChatFamiliaScreen(
                             } catch (e: Exception) {
                                 Timber.e(e, "Error al realizar feedback háptico")
                             }
-                            /* Adjuntar archivos */ 
+                            showAttachmentOptions = true
                         }
                     ) {
                         Icon(
@@ -243,8 +271,8 @@ fun ChatFamiliaScreen(
                     }
                     
                     TextField(
-                        value = mensaje,
-                        onValueChange = { mensaje = it },
+                        value = inputMessage,
+                        onValueChange = { inputMessage = it },
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Escribe un mensaje...") },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -255,10 +283,9 @@ fun ChatFamiliaScreen(
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error al realizar feedback háptico")
                                 }
-                                // Enviar mensaje
-                                if (mensaje.isNotEmpty()) {
-                                    // Aquí iría la lógica para enviar el mensaje
-                                    mensaje = ""
+                                if (inputMessage.isNotEmpty()) {
+                                    viewModel.sendMessage(inputMessage)
+                                    inputMessage = ""
                                     keyboardController?.hide()
                                 }
                             }
@@ -280,10 +307,9 @@ fun ChatFamiliaScreen(
                             } catch (e: Exception) {
                                 Timber.e(e, "Error al realizar feedback háptico")
                             }
-                            // Enviar mensaje
-                            if (mensaje.isNotEmpty()) {
-                                // Aquí iría la lógica para enviar el mensaje
-                                mensaje = ""
+                            if (inputMessage.isNotEmpty()) {
+                                viewModel.sendMessage(inputMessage)
+                                inputMessage = ""
                                 keyboardController?.hide()
                             }
                         }
@@ -298,17 +324,41 @@ fun ChatFamiliaScreen(
             }
         }
     }
+    
+    // Diálogo para seleccionar opciones de adjuntos
+    if (showAttachmentOptions) {
+        AttachmentOptionsDialog(
+            onDismiss = { showAttachmentOptions = false },
+            onImageSelected = { uri ->
+                // Implementar lógica para manejar la selección de imágenes
+                showAttachmentOptions = false
+            },
+            onDocumentSelected = { uri ->
+                // Implementar lógica para manejar la selección de documentos
+                showAttachmentOptions = false
+            }
+        )
+    }
+    
+    // Diálogo de vista previa de adjuntos
+    if (showAttachmentPreview && previewAttachmentType != null) {
+        AttachmentPreviewDialog(
+            attachmentUrl = previewAttachmentUrl,
+            attachmentType = previewAttachmentType!!,
+            onDismiss = { showAttachmentPreview = false }
+        )
+    }
 }
 
 @Composable
-fun MensajeItem(
-    mensaje: Mensaje
+fun MessageItem(
+    message: UnifiedMessage,
+    isFromMe: Boolean,
+    onAttachmentClick: (String, AttachmentType) -> Unit
 ) {
-    val isRemitente = mensaje.remitente == TipoRemitente.FAMILIA
-    
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = if (isRemitente) Alignment.End else Alignment.Start
+        horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
     ) {
         // Burbuja del mensaje
         Box(
@@ -318,21 +368,43 @@ fun MensajeItem(
                     RoundedCornerShape(
                         topStart = 16.dp,
                         topEnd = 16.dp,
-                        bottomStart = if (isRemitente) 16.dp else 4.dp,
-                        bottomEnd = if (isRemitente) 4.dp else 16.dp
+                        bottomStart = if (isFromMe) 16.dp else 4.dp,
+                        bottomEnd = if (isFromMe) 4.dp else 16.dp
                     )
                 )
                 .background(
-                    if (isRemitente) FamiliarColor
+                    if (isFromMe) FamiliarColor
                     else MaterialTheme.colorScheme.surfaceVariant
                 )
                 .padding(12.dp)
         ) {
-            Text(
-                text = mensaje.texto,
-                color = if (isRemitente) Color.White
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column {
+                Text(
+                    text = message.content,
+                    color = if (isFromMe) Color.White
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // Mostrar adjunto si existe
+                if (message.attachments.isNotEmpty()) {
+                    val url = message.attachments.first()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    val attachmentType = when {
+                        url.endsWith(".jpg", true) || 
+                        url.endsWith(".jpeg", true) || 
+                        url.endsWith(".png", true) -> AttachmentType.IMAGE
+                        url.endsWith(".pdf", true) -> AttachmentType.PDF
+                        else -> AttachmentType.DOCUMENT
+                    }
+                    
+                    AttachmentItem(
+                        attachmentUrl = url,
+                        attachmentType = attachmentType,
+                        onAttachmentClick = { onAttachmentClick(url, attachmentType) }
+                    )
+                }
+            }
         }
         
         // Hora del mensaje y estado de lectura
@@ -341,8 +413,9 @@ fun MensajeItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Formato de la hora
+            val timestamp = message.timestamp.toDate()
             val dateFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-            val horaFormateada = dateFormatter.format(Date(mensaje.timestamp))
+            val horaFormateada = dateFormatter.format(timestamp)
             
             Text(
                 text = horaFormateada,
@@ -350,38 +423,294 @@ fun MensajeItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
             
-            if (isRemitente) {
+            if (isFromMe) {
                 Spacer(modifier = Modifier.width(4.dp))
                 
                 Icon(
-                    imageVector = if (mensaje.leido) Icons.Default.DoneAll else Icons.Default.Done,
-                    contentDescription = if (mensaje.leido) "Leído" else "Enviado",
+                    imageVector = if (message.status == MessageStatus.READ) Icons.Default.DoneAll else Icons.Default.Done,
+                    contentDescription = if (message.status == MessageStatus.READ) "Leído" else "Enviado",
                     modifier = Modifier.size(16.dp),
-                    tint = if (mensaje.leido) FamiliarColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    tint = if (message.status == MessageStatus.READ) FamiliarColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
         }
     }
 }
 
-// Modelos de datos para el chat
-data class Profesor(
-    val id: String,
-    val nombre: String,
-    val apellidos: String,
-    val asignatura: String,
-    val fotoPerfil: String
-)
+@Composable
+fun AttachmentItem(
+    attachmentUrl: String,
+    attachmentType: AttachmentType,
+    onAttachmentClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.1f))
+            .clickable { onAttachmentClick() }
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = when (attachmentType) {
+                AttachmentType.IMAGE -> Icons.Default.Image
+                AttachmentType.PDF -> Icons.Default.PictureAsPdf
+                AttachmentType.DOCUMENT -> Icons.Default.Description
+            },
+            contentDescription = "Adjunto",
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = when (attachmentType) {
+                    AttachmentType.IMAGE -> "Imagen"
+                    AttachmentType.PDF -> "Documento PDF"
+                    AttachmentType.DOCUMENT -> "Documento"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Text(
+                text = attachmentUrl.substringAfterLast('/'),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
+        Icon(
+            imageVector = Icons.Default.Download,
+            contentDescription = "Descargar",
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
 
-data class Mensaje(
-    val id: String,
-    val remitente: TipoRemitente,
-    val texto: String,
-    val timestamp: Long,
-    val leido: Boolean
-)
+@Composable
+fun AttachmentOptionsDialog(
+    onDismiss: () -> Unit,
+    onImageSelected: (Uri) -> Unit,
+    onDocumentSelected: (Uri) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Adjuntar archivo") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AttachmentOption(
+                    icon = Icons.Default.Image,
+                    title = "Imagen",
+                    onClick = {
+                        // Implementar lógica para seleccionar imagen
+                        onDismiss()
+                    }
+                )
+                
+                AttachmentOption(
+                    icon = Icons.Default.PictureAsPdf,
+                    title = "Documento PDF",
+                    onClick = {
+                        // Implementar lógica para seleccionar PDF
+                        onDismiss()
+                    }
+                )
+                
+                AttachmentOption(
+                    icon = Icons.Default.Description,
+                    title = "Documento",
+                    onClick = {
+                        // Implementar lógica para seleccionar documento
+                        onDismiss()
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
 
-enum class TipoRemitente {
-    PROFESOR,
-    FAMILIA
+@Composable
+fun AttachmentOption(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = FamiliarColor
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+@Composable
+fun AttachmentPreviewDialog(
+    attachmentUrl: String,
+    attachmentType: AttachmentType,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Vista previa")
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                when (attachmentType) {
+                    AttachmentType.IMAGE -> {
+                        // Implementar vista previa de imagen
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Vista previa de imagen no disponible")
+                        }
+                    }
+                    AttachmentType.PDF -> {
+                        // Implementar vista previa de PDF
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PictureAsPdf,
+                                contentDescription = "PDF",
+                                modifier = Modifier.size(48.dp),
+                                tint = FamiliarColor
+                            )
+                            
+                            Text(
+                                text = "Vista previa de PDF no disponible",
+                                modifier = Modifier.padding(top = 64.dp)
+                            )
+                        }
+                    }
+                    AttachmentType.DOCUMENT -> {
+                        // Implementar vista previa de documento
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = "Documento",
+                                modifier = Modifier.size(48.dp),
+                                tint = FamiliarColor
+                            )
+                            
+                            Text(
+                                text = "Vista previa de documento no disponible",
+                                modifier = Modifier.padding(top = 64.dp)
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = attachmentUrl.substringAfterLast('/'),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
+@Composable
+fun DateHeader(date: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.clip(RoundedCornerShape(16.dp)),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ) {
+            Text(
+                text = date,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// Función para formatear la fecha para los encabezados
+fun getFormattedDate(date: Triple<Int, Int, Int>): String {
+    val (year, month, day) = date
+    val calendar = Calendar.getInstance()
+    calendar.set(year, month, day)
+    
+    val today = Calendar.getInstance()
+    val yesterday = Calendar.getInstance()
+    yesterday.add(Calendar.DAY_OF_YEAR, -1)
+    
+    return when {
+        calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+        calendar.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) -> "Hoy"
+        
+        calendar.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) &&
+        calendar.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR) -> "Ayer"
+        
+        else -> {
+            val formatter = SimpleDateFormat("d 'de' MMMM, yyyy", Locale("es", "ES"))
+            formatter.format(calendar.time)
+        }
+    }
 } 

@@ -1188,7 +1188,7 @@ fun Navigation(
             com.tfg.umeegunero.feature.profesor.screen.ChatProfesorScreen(
                 navController = navController,
                 familiarId = participanteId,
-                familiarNombre = "Contacto" // Nombre por defecto, se actualizará en la pantalla
+                conversacionId = conversacionId
             )
         }
         
@@ -1205,7 +1205,8 @@ fun Navigation(
             
             com.tfg.umeegunero.feature.familiar.screen.ChatFamiliaScreen(
                 navController = navController,
-                profesorId = participanteId
+                profesorId = participanteId,
+                conversacionId = conversacionId
             )
         }
 
