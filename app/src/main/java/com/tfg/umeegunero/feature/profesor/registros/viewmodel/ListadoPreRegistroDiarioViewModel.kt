@@ -3,15 +3,16 @@ package com.tfg.umeegunero.feature.profesor.registros.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
-import com.tfg.umeegunero.data.model.Asistencia
+import com.tfg.umeegunero.data.model.EstadoAsistencia
+import com.tfg.umeegunero.data.model.RegistroDiario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
 import com.tfg.umeegunero.data.repository.ProfesorRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,7 @@ fun LocalDate.toDate(): Date {
 /**
  * Enumeración para los posibles estados de asistencia de un alumno
  */
-enum class Asistencia {
+enum class EstadoAsistencia {
     PRESENTE,
     FALTA,
     RETRASO,
@@ -186,13 +187,13 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     fechaActual.atStartOfDay().atZone(java.time.ZoneId.systemDefault()).toInstant()
                 )
                 
-                val asistenciaResult = asistenciaRepository.obtenerAsistencia(clase.id, fechaJava)
-                val asistencias = if (asistenciaResult is Result.Success) asistenciaResult.data else emptyMap()
+                val asistenciaResult = asistenciaRepository.obtenerRegistroAsistencia(clase.id, fechaJava)
+                val estadosAsistencia = asistenciaResult?.estadosAsistencia ?: emptyMap()
                 
                 // Actualizar presentes en los alumnos basado en asistencia
                 val alumnosConPresencia = alumnos.map { alumno ->
-                    val asistencia = asistencias[alumno.id]
-                    alumno.copy(presente = asistencia == Asistencia.PRESENTE)
+                    val estado = estadosAsistencia[alumno.id]
+                    alumno.copy(presente = estado == EstadoAsistencia.PRESENTE)
                 }
                 
                 // Actualizar el estado
@@ -284,13 +285,13 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     fecha.atStartOfDay().atZone(java.time.ZoneId.systemDefault()).toInstant()
                 )
                 
-                val asistenciaResult = asistenciaRepository.obtenerAsistencia(clase.id, fechaJava)
-                val asistencias = if (asistenciaResult is Result.Success) asistenciaResult.data else emptyMap()
+                val asistenciaResult = asistenciaRepository.obtenerRegistroAsistencia(clase.id, fechaJava)
+                val estadosAsistencia = asistenciaResult?.estadosAsistencia ?: emptyMap()
                 
                 // Actualizar presencia en alumnos
                 val alumnosActualizados = _uiState.value.alumnos.map { alumno ->
-                    val asistencia = asistencias[alumno.id]
-                    alumno.copy(presente = asistencia == Asistencia.PRESENTE)
+                    val estado = estadosAsistencia[alumno.id]
+                    alumno.copy(presente = estado == EstadoAsistencia.PRESENTE)
                 }
                 
                 // Actualizar lista filtrada
@@ -587,21 +588,25 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 val clase = clasesResult.data.first()
                 
                 // Crear mapa de asistencia para los alumnos seleccionados
-                val estadosAsistencia = mutableMapOf<String, Asistencia>()
+                val estadosAsistencia = mutableMapOf<String, EstadoAsistencia>()
                 
                 // Todos los alumnos seleccionados se marcan como PRESENTE
                 _uiState.value.alumnosSeleccionados.forEach { alumno ->
-                    estadosAsistencia[alumno.id] = Asistencia.PRESENTE
+                    estadosAsistencia[alumno.id] = EstadoAsistencia.PRESENTE
                 }
                 
                 // Registrar la asistencia en Firestore
-                val resultado = asistenciaRepository.registrarAsistencia(
+                val registroAsistencia = com.tfg.umeegunero.data.model.RegistroAsistencia(
                     claseId = clase.id,
-                    fecha = fecha,
-                    estadosAsistencia = estadosAsistencia
+                    profesorId = usuarioProfesor.dni,
+                    fecha = com.google.firebase.Timestamp(fecha),
+                    estadosAsistencia = estadosAsistencia,
+                    observaciones = ""
                 )
                 
-                if (resultado is Result.Success) {
+                val resultado = asistenciaRepository.guardarRegistroAsistencia(registroAsistencia)
+                
+                if (resultado) {
                     Timber.d("Asistencia registrada correctamente para ${estadosAsistencia.size} alumnos")
                     // Navegamos a la pantalla de registro diario
                     _uiState.update { it.copy(
@@ -611,7 +616,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     ) }
                 } else {
                     // Si hay error, mostramos mensaje pero seguimos adelante con la navegación
-                    Timber.e("Error al registrar asistencia: ${(resultado as? Result.Error)?.exception?.message}")
+                    Timber.e("Error al registrar asistencia")
                     _uiState.update { it.copy(
                         isLoading = false,
                         error = "Error al registrar asistencia, pero puedes continuar con el registro diario",

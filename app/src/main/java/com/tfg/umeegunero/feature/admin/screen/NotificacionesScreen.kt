@@ -250,6 +250,8 @@ private fun NotificacionItem(notificacion: Notificacion) {
                         TipoNotificacion.URGENTE -> Icons.Default.PriorityHigh
                         TipoNotificacion.ACADEMICO -> Icons.Default.School
                         TipoNotificacion.ALERTA -> Icons.Default.Warning
+                        TipoNotificacion.COMUNICADO -> Icons.Default.Announcement
+                        TipoNotificacion.TAREA -> Icons.Default.Assignment
                     },
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer

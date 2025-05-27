@@ -4,54 +4,275 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.RegistroAsistencia
 import com.tfg.umeegunero.data.model.Asistencia
+import com.tfg.umeegunero.data.model.EstadoAsistencia
 import com.tfg.umeegunero.util.Result
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
- * Repositorio para gestionar la asistencia de alumnos en la aplicación UmeEgunero.
+ * Repositorio para gestionar la asistencia de alumnos.
  *
- * Esta clase proporciona métodos para registrar, consultar y gestionar
- * la asistencia de los alumnos en diferentes contextos educativos, permitiendo
- * un seguimiento detallado de la presencia y participación de los estudiantes.
- *
- * Características principales:
- * - Registro de asistencia diaria
- * - Generación de informes de asistencia
- * - Control de ausencias y retrasos
- * - Notificación a familias sobre inasistencias
- * - Gestión de justificaciones de ausencia
- *
- * El repositorio permite:
- * - Registrar la asistencia de alumnos por clase
- * - Consultar histórico de asistencia
- * - Generar estadísticas de asistencia
- * - Notificar a familias sobre ausencias
- * - Gestionar permisos y justificaciones
+ * Esta clase proporciona métodos para registrar, consultar y modificar
+ * la asistencia de los alumnos en las clases, así como generar informes
+ * detallados sobre la asistencia.
  *
  * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
- * @property authRepository Repositorio de autenticación para identificar al usuario actual
- * @property notificacionRepository Repositorio para enviar notificaciones relacionadas
- *
- * @author Maitane Ibañez Irazabal (2º DAM Online)
- * @since 2024
  */
 @Singleton
-class RegistroAsistenciaRepository @Inject constructor(
+class AsistenciaRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
-    companion object {
-        private const val COLLECTION_ASISTENCIAS = "registrosAsistencia"
+    private val asistenciaCollection = firestore.collection("asistencia")
+    private val registrosAsistenciaCollection = firestore.collection("registrosAsistencia")
+    
+    /**
+     * Registra la asistencia de un alumno
+     * 
+     * @param asistencia Objeto de asistencia a registrar
+     * @return Resultado que indica éxito o error
+     */
+    suspend fun registrarAsistencia(asistencia: Asistencia): Result<String> {
+        return try {
+            val docRef = if (asistencia.id.isNotEmpty()) {
+                asistenciaCollection.document(asistencia.id)
+            } else {
+                asistenciaCollection.document()
+            }
+            
+            val asistenciaConId = if (asistencia.id.isEmpty()) {
+                asistencia.copy(id = docRef.id)
+            } else {
+                asistencia
+            }
+            
+            docRef.set(asistenciaConId).await()
+            Result.Success(asistenciaConId.id)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al registrar asistencia")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene la asistencia de un alumno en una fecha específica
+     * 
+     * @param alumnoId ID del alumno
+     * @param fecha Fecha para la que se quiere consultar la asistencia
+     * @return Resultado con la asistencia o error
+     */
+    suspend fun getAsistenciaAlumno(alumnoId: String, fecha: LocalDate): Result<Asistencia?> {
+        return try {
+            val startOfDay = fecha.atStartOfDay(ZoneId.systemDefault()).toInstant()
+            val endOfDay = fecha.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1)
+            
+            val startTimestamp = Timestamp(Date.from(startOfDay))
+            val endTimestamp = Timestamp(Date.from(endOfDay))
+            
+            val snapshot = asistenciaCollection
+                .whereEqualTo("alumnoId", alumnoId)
+                .whereGreaterThanOrEqualTo("fecha", startTimestamp)
+                .whereLessThanOrEqualTo("fecha", endTimestamp)
+                .get()
+                .await()
+            
+            if (snapshot.documents.isEmpty()) {
+                Result.Success(null)
+            } else {
+                val asistencia = snapshot.documents[0].toObject(Asistencia::class.java)
+                Result.Success(asistencia)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener asistencia del alumno")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene las asistencias registradas para una clase en una fecha específica
+     * 
+     * @param claseId ID de la clase
+     * @param fecha Fecha para la que se quieren consultar las asistencias
+     * @return Resultado con la lista de asistencias o error
+     */
+    suspend fun getAsistenciaPorFechaYClase(claseId: String, fecha: LocalDate): Result<List<Asistencia>> {
+        return try {
+            val startOfDay = fecha.atStartOfDay(ZoneId.systemDefault()).toInstant()
+            val endOfDay = fecha.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1)
+            
+            val startTimestamp = Timestamp(Date.from(startOfDay))
+            val endTimestamp = Timestamp(Date.from(endOfDay))
+            
+            val snapshot = asistenciaCollection
+                .whereEqualTo("claseId", claseId)
+                .whereGreaterThanOrEqualTo("fecha", startTimestamp)
+                .whereLessThanOrEqualTo("fecha", endTimestamp)
+                .get()
+                .await()
+            
+            val asistencias = snapshot.documents.mapNotNull { it.toObject(Asistencia::class.java) }
+            Result.Success(asistencias)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener asistencias por fecha y clase")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Actualiza el estado de asistencia de un alumno
+     * 
+     * @param asistenciaId ID del registro de asistencia
+     * @param presente Nuevo estado de presencia
+     * @param observaciones Observaciones adicionales (opcional)
+     * @return Resultado que indica éxito o error
+     */
+    suspend fun actualizarAsistencia(
+        asistenciaId: String, 
+        presente: Boolean, 
+        observaciones: String? = null
+    ): Result<Unit> {
+        return try {
+            val updates = mutableMapOf<String, Any>(
+                "presente" to presente
+            )
+            
+            observaciones?.let { updates["observaciones"] = it }
+            
+            asistenciaCollection.document(asistenciaId)
+                .update(updates)
+                .await()
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al actualizar asistencia")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Elimina un registro de asistencia
+     * 
+     * @param asistenciaId ID del registro de asistencia a eliminar
+     * @return Resultado que indica éxito o error
+     */
+    suspend fun eliminarAsistencia(asistenciaId: String): Result<Unit> {
+        return try {
+            asistenciaCollection.document(asistenciaId)
+                .delete()
+                .await()
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar asistencia")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene las estadísticas de asistencia para un alumno en un período
+     * 
+     * @param alumnoId ID del alumno
+     * @param fechaInicio Fecha de inicio del período
+     * @param fechaFin Fecha de fin del período
+     * @return Resultado con las estadísticas o error
+     */
+    suspend fun getEstadisticasAsistencia(
+        alumnoId: String, 
+        fechaInicio: LocalDate, 
+        fechaFin: LocalDate
+    ): Result<Map<String, Any>> {
+        return try {
+            val startTimestamp = Timestamp(
+                Date.from(
+                    fechaInicio.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                )
+            )
+            
+            val endTimestamp = Timestamp(
+                Date.from(
+                    fechaFin.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1)
+                )
+            )
+            
+            val snapshot = registrosAsistenciaCollection
+                .whereGreaterThanOrEqualTo("fecha", startTimestamp)
+                .whereLessThanOrEqualTo("fecha", endTimestamp)
+                .get()
+                .await()
+            
+            val registros = snapshot.documents.mapNotNull { it.toObject(RegistroAsistencia::class.java) }
+            
+            // Filtrar registros donde el alumno está presente
+            val registrosConAlumno = registros.filter { registro ->
+                registro.estadosAsistencia[alumnoId] == EstadoAsistencia.PRESENTE
+            }
+            
+            val totalRegistros = registros.size
+            val totalPresencias = registrosConAlumno.size
+            val totalAusencias = totalRegistros - totalPresencias
+            
+            val porcentajeAsistencia = if (totalRegistros > 0) {
+                (totalPresencias.toFloat() / totalRegistros) * 100
+            } else {
+                0f
+            }
+            
+            val result = mapOf(
+                "totalRegistros" to totalRegistros,
+                "totalPresencias" to totalPresencias,
+                "totalAusencias" to totalAusencias,
+                "porcentajeAsistencia" to porcentajeAsistencia
+            )
+            
+            Result.Success(result)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener estadísticas de asistencia")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene el registro de asistencia para una clase en una fecha específica
+     * 
+     * @param claseId ID de la clase
+     * @param fecha Fecha para la que se quiere consultar la asistencia
+     * @return Registro de asistencia o null si no existe
+     */
+    suspend fun obtenerRegistroAsistencia(claseId: String, fecha: Date): RegistroAsistencia? {
+        return try {
+            val startOfDay = fecha.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+                .atStartOfDay(ZoneId.systemDefault()).toInstant()
+            val endOfDay = startOfDay.plusSeconds(86399) // 23:59:59
+            
+            val startTimestamp = Timestamp(Date.from(startOfDay))
+            val endTimestamp = Timestamp(Date.from(endOfDay))
+            
+            val snapshot = registrosAsistenciaCollection
+                .whereEqualTo("claseId", claseId)
+                .whereGreaterThanOrEqualTo("fecha", startTimestamp)
+                .whereLessThanOrEqualTo("fecha", endTimestamp)
+                .get()
+                .await()
+            
+            if (snapshot.documents.isEmpty()) {
+                null
+            } else {
+                snapshot.documents[0].toObject(RegistroAsistencia::class.java)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registro de asistencia")
+            null
+        }
     }
 
     /**
      * Guarda un registro de asistencia en Firestore
+     * 
      * @param registroAsistencia el registro a guardar
      * @return true si se ha guardado correctamente, false en caso contrario
      */
@@ -69,12 +290,16 @@ class RegistroAsistenciaRepository @Inject constructor(
                 fecha = registroAsistencia.fecha.toDate()
             )
             
-            val idFinal = registroExistente?.id ?: registroId
+            val registroFinal = if (registroExistente != null) {
+                // Si existe, actualizamos el registro existente
+                registroAsistencia.copy(id = registroExistente.id)
+            } else {
+                // Si no existe, creamos uno nuevo
+                registroAsistencia.copy(id = registroId)
+            }
             
-            // Si existe, actualizamos, si no, creamos uno nuevo
-            firestore.collection(COLLECTION_ASISTENCIAS)
-                .document(idFinal)
-                .set(registroAsistencia.copy(id = idFinal))
+            registrosAsistenciaCollection.document(registroFinal.id)
+                .set(registroFinal)
                 .await()
             
             true
@@ -85,53 +310,13 @@ class RegistroAsistenciaRepository @Inject constructor(
     }
 
     /**
-     * Obtiene un registro de asistencia específico por clase y fecha
-     * @param claseId identificador de la clase
-     * @param fecha fecha del registro
-     * @return el registro de asistencia o null si no existe
-     */
-    suspend fun obtenerRegistroAsistencia(claseId: String, fecha: Date): RegistroAsistencia? {
-        return try {
-            // Convertimos la fecha a un rango del día completo
-            val calendar = java.util.Calendar.getInstance()
-            calendar.time = fecha
-            calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
-            calendar.set(java.util.Calendar.MINUTE, 0)
-            calendar.set(java.util.Calendar.SECOND, 0)
-            val inicioDelDia = calendar.time
-            
-            calendar.set(java.util.Calendar.HOUR_OF_DAY, 23)
-            calendar.set(java.util.Calendar.MINUTE, 59)
-            calendar.set(java.util.Calendar.SECOND, 59)
-            val finDelDia = calendar.time
-            
-            // Buscamos registros para esta clase en el rango de fecha
-            val snapshot = firestore.collection(COLLECTION_ASISTENCIAS)
-                .whereEqualTo("claseId", claseId)
-                .whereGreaterThanOrEqualTo("fecha", Timestamp(inicioDelDia))
-                .whereLessThanOrEqualTo("fecha", Timestamp(finDelDia))
-                .get()
-                .await()
-            
-            if (snapshot.isEmpty) {
-                null
-            } else {
-                snapshot.documents.first().toObject(RegistroAsistencia::class.java)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener registro de asistencia")
-            null
-        }
-    }
-
-    /**
      * Obtiene todos los registros de asistencia para una clase
      * @param claseId identificador de la clase
      * @return lista de registros de asistencia
      */
     suspend fun obtenerRegistrosAsistenciaPorClase(claseId: String): List<RegistroAsistencia> {
         return try {
-            val snapshot = firestore.collection(COLLECTION_ASISTENCIAS)
+            val snapshot = registrosAsistenciaCollection
                 .whereEqualTo("claseId", claseId)
                 .orderBy("fecha", com.google.firebase.firestore.Query.Direction.DESCENDING)
                 .get()
@@ -145,217 +330,20 @@ class RegistroAsistenciaRepository @Inject constructor(
     }
 
     /**
-     * Obtiene todos los registros de asistencia para un alumno en una clase específica
-     * @param claseId identificador de la clase
-     * @param dniAlumno DNI del alumno
-     * @return lista de registros de asistencia que contienen al alumno
-     */
-    suspend fun obtenerRegistrosAsistenciaPorAlumno(
-        claseId: String,
-        dniAlumno: String
-    ): List<RegistroAsistencia> {
-        return try {
-            // Primero obtenemos todos los registros de la clase
-            val registros = obtenerRegistrosAsistenciaPorClase(claseId)
-            
-            // Filtramos los que contienen al alumno
-            registros.filter { registro ->
-                registro.estadosAsistencia.containsKey(dniAlumno)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener registros de asistencia por alumno")
-            emptyList()
-        }
-    }
-
-    /**
      * Elimina un registro de asistencia
-     * @param registroId identificador del registro
-     * @return true si se ha eliminado correctamente, false en caso contrario
+     * 
+     * @param registroId ID del registro de asistencia a eliminar
+     * @return true si se eliminó correctamente, false en caso contrario
      */
     suspend fun eliminarRegistroAsistencia(registroId: String): Boolean {
         return try {
-            firestore.collection(COLLECTION_ASISTENCIAS)
-                .document(registroId)
+            registrosAsistenciaCollection.document(registroId)
                 .delete()
                 .await()
-            
             true
         } catch (e: Exception) {
             Timber.e(e, "Error al eliminar registro de asistencia")
             false
-        }
-    }
-}
-
-/**
- * Repositorio para gestionar la asistencia de los alumnos
- */
-interface AsistenciaRepository {
-    /**
-     * Registra la asistencia de una clase para una fecha determinada
-     */
-    suspend fun registrarAsistencia(
-        claseId: String,
-        fecha: Date,
-        estadosAsistencia: Map<String, Asistencia>
-    ): Result<Boolean>
-    
-    /**
-     * Obtiene el registro de asistencia de una clase para una fecha determinada
-     */
-    suspend fun obtenerAsistencia(
-        claseId: String,
-        fecha: Date
-    ): Result<Map<String, Asistencia>>
-    
-    /**
-     * Guarda un registro de asistencia completo
-     */
-    suspend fun guardarRegistroAsistencia(registroAsistencia: RegistroAsistencia): Result<Unit>
-    
-    /**
-     * Obtiene un registro de asistencia para una clase y fecha específicas
-     */
-    suspend fun obtenerRegistroAsistencia(claseId: String, fecha: Date): RegistroAsistencia?
-}
-
-/**
- * Implementación del repositorio de asistencia
- */
-@Singleton
-class AsistenciaRepositoryImpl @Inject constructor(
-    private val firestore: FirebaseFirestore
-) : AsistenciaRepository {
-    
-    private val asistenciaCollection = firestore.collection("asistencia")
-    
-    override suspend fun registrarAsistencia(
-        claseId: String,
-        fecha: Date,
-        estadosAsistencia: Map<String, Asistencia>
-    ): Result<Boolean> = withContext(Dispatchers.IO) {
-        try {
-            val registroId = UUID.randomUUID().toString()
-            
-            val registro = RegistroAsistencia(
-                id = registroId,
-                claseId = claseId,
-                fecha = Timestamp(fecha),
-                estadosAsistencia = estadosAsistencia
-            )
-            
-            asistenciaCollection.document(registroId)
-                .set(registro)
-                .await()
-                
-            Result.Success(true)
-        } catch (e: Exception) {
-            Timber.e(e, "Error al registrar asistencia")
-            Result.Error(e)
-        }
-    }
-    
-    override suspend fun obtenerAsistencia(
-        claseId: String,
-        fecha: Date
-    ): Result<Map<String, Asistencia>> = withContext(Dispatchers.IO) {
-        try {
-            val calendario = java.util.Calendar.getInstance()
-            calendario.time = fecha
-            calendario.set(java.util.Calendar.HOUR_OF_DAY, 0)
-            calendario.set(java.util.Calendar.MINUTE, 0)
-            calendario.set(java.util.Calendar.SECOND, 0)
-            val inicioDelDia = calendario.time
-            
-            calendario.set(java.util.Calendar.HOUR_OF_DAY, 23)
-            calendario.set(java.util.Calendar.MINUTE, 59)
-            calendario.set(java.util.Calendar.SECOND, 59)
-            val finDelDia = calendario.time
-            
-            val snapshot = asistenciaCollection
-                .whereEqualTo("claseId", claseId)
-                .whereGreaterThanOrEqualTo("fecha", Timestamp(inicioDelDia))
-                .whereLessThanOrEqualTo("fecha", Timestamp(finDelDia))
-                .get()
-                .await()
-                
-            if (snapshot.isEmpty) {
-                Result.Success(emptyMap())
-            } else {
-                val registro = snapshot.documents.first()
-                    .toObject(RegistroAsistencia::class.java)
-                    
-                if (registro != null) {
-                    Result.Success(registro.estadosAsistencia)
-                } else {
-                    Result.Success(emptyMap())
-                }
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener asistencia")
-            Result.Error(e)
-        }
-    }
-    
-    override suspend fun guardarRegistroAsistencia(registroAsistencia: RegistroAsistencia): Result<Unit> = 
-        withContext(Dispatchers.IO) {
-            try {
-                val registroId = if (registroAsistencia.id.isNotEmpty()) {
-                    registroAsistencia.id
-                } else {
-                    UUID.randomUUID().toString()
-                }
-                
-                // Comprobamos si ya existe un registro para esta clase y fecha
-                val registro = obtenerRegistroAsistencia(
-                    claseId = registroAsistencia.claseId,
-                    fecha = registroAsistencia.fecha.toDate()
-                )
-                
-                val idFinal = registro?.id ?: registroId
-                
-                asistenciaCollection.document(idFinal)
-                    .set(registroAsistencia.copy(id = idFinal))
-                    .await()
-                    
-                Result.Success(Unit)
-            } catch (e: Exception) {
-                Timber.e(e, "Error al guardar registro de asistencia")
-                Result.Error(e)
-            }
-        }
-    
-    override suspend fun obtenerRegistroAsistencia(claseId: String, fecha: Date): RegistroAsistencia? = 
-        withContext(Dispatchers.IO) {
-            try {
-                val calendario = java.util.Calendar.getInstance()
-                calendario.time = fecha
-                calendario.set(java.util.Calendar.HOUR_OF_DAY, 0)
-                calendario.set(java.util.Calendar.MINUTE, 0)
-                calendario.set(java.util.Calendar.SECOND, 0)
-                val inicioDelDia = calendario.time
-                
-                calendario.set(java.util.Calendar.HOUR_OF_DAY, 23)
-                calendario.set(java.util.Calendar.MINUTE, 59)
-                calendario.set(java.util.Calendar.SECOND, 59)
-                val finDelDia = calendario.time
-                
-                val snapshot = asistenciaCollection
-                    .whereEqualTo("claseId", claseId)
-                    .whereGreaterThanOrEqualTo("fecha", Timestamp(inicioDelDia))
-                    .whereLessThanOrEqualTo("fecha", Timestamp(finDelDia))
-                    .get()
-                    .await()
-                    
-                if (snapshot.isEmpty) {
-                    null
-                } else {
-                    snapshot.documents.first().toObject(RegistroAsistencia::class.java)
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener registro de asistencia")
-                null
             }
         }
 } 

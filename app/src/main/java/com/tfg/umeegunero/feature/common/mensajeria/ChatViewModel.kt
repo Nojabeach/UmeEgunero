@@ -267,7 +267,7 @@ class ChatViewModel @Inject constructor(
                     timestamp = Timestamp.now(),
                     type = MessageType.CHAT,
                     priority = MessagePriority.NORMAL,
-                    status = MessageStatus.PENDING,
+                    status = MessageStatus.UNREAD,
                     conversationId = _uiState.value.conversacionId,
                     metadata = if (_uiState.value.alumnoId != null) 
                         mapOf("alumnoId" to _uiState.value.alumnoId!!) 

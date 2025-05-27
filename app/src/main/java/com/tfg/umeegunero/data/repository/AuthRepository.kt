@@ -18,6 +18,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import org.json.JSONObject
 import com.google.firebase.Timestamp
+import javax.inject.Provider
 
 /**
  * Interfaz que define las operaciones relacionadas con la autenticación de usuarios.
@@ -184,16 +185,20 @@ interface AuthRepository {
  * 
  * @param firebaseAuth Instancia de FirebaseAuth inyectada automáticamente por Hilt
  * @param usuarioRepository Repositorio de usuarios inyectado para acceso a datos completos
- * @param comunicadoRepository Repositorio de comunicados para gestionar las confirmaciones de lectura
+ * @param comunicadoRepositoryProvider Repositorio de comunicados para gestionar las confirmaciones de lectura
  * @param firestore Instancia de FirebaseFirestore inyectada automáticamente por Hilt
  */
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val usuarioRepository: UsuarioRepository,
-    private val comunicadoRepository: ComunicadoRepository,
+    private val comunicadoRepositoryProvider: Provider<ComunicadoRepository>,
     private val firestore: FirebaseFirestore
 ) : AuthRepository {
+
+    // Usar get() para obtener la instancia del Provider cuando sea necesario
+    private val comunicadoRepository: ComunicadoRepository
+        get() = comunicadoRepositoryProvider.get()
 
     /**
      * Obtiene el usuario actualmente autenticado.

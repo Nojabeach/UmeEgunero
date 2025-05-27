@@ -95,6 +95,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.Announcement
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Assignment
 
 /**
  * Pantalla unificada de bandeja de entrada para todos los tipos de comunicaciones
@@ -457,12 +459,15 @@ fun MessageItem(
 fun getMessageTypeColor(type: MessageType): Color {
     return when (type) {
         MessageType.CHAT -> MaterialTheme.colorScheme.primary
+        MessageType.GROUP_CHAT -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
         MessageType.NOTIFICATION -> MaterialTheme.colorScheme.tertiary
         MessageType.ANNOUNCEMENT -> Color(0xFF4CAF50) // Verde
         MessageType.INCIDENT -> Color(0xFFF44336) // Rojo
         MessageType.ATTENDANCE -> Color(0xFF2196F3) // Azul
         MessageType.DAILY_RECORD -> Color(0xFFFF9800) // Naranja
         MessageType.SYSTEM -> Color(0xFF9C27B0) // Púrpura
+        MessageType.TASK -> Color(0xFFF57C00) // Naranja
+        MessageType.EVENT -> Color(0xFF039BE5) // Azul claro
     }
 }
 
@@ -475,6 +480,11 @@ private fun getIconForMessageType(type: MessageType?): @Composable () -> Unit = 
         MessageType.CHAT -> Icon(
             imageVector = Icons.AutoMirrored.Filled.Message,
             contentDescription = "Mensajes",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        MessageType.GROUP_CHAT -> Icon(
+            imageVector = Icons.Default.Group,
+            contentDescription = "Chat de grupo",
             tint = MaterialTheme.colorScheme.primary
         )
         MessageType.NOTIFICATION -> Icon(
@@ -505,6 +515,16 @@ private fun getIconForMessageType(type: MessageType?): @Composable () -> Unit = 
         MessageType.SYSTEM -> Icon(
             imageVector = Icons.Default.Info,
             contentDescription = "Sistema",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        MessageType.TASK -> Icon(
+            imageVector = Icons.Default.Assignment,
+            contentDescription = "Tarea",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        MessageType.EVENT -> Icon(
+            imageVector = Icons.Default.Event,
+            contentDescription = "Evento",
             tint = MaterialTheme.colorScheme.primary
         )
         null -> Icon(

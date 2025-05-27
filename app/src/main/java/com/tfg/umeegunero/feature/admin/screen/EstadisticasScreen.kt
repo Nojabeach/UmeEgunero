@@ -1420,6 +1420,13 @@ fun AccesosPorCentroCard(
  */
 @Composable
 fun AccesoCentroItem(centro: AccesoPorCentro) {
+    // Determinar el nombre a mostrar
+    val nombreMostrado = when {
+        centro.nombreCentro.isBlank() -> "UmeEgunero Admin"
+        centro.nombreCentro.equals("Centro", ignoreCase = true) -> "UmeEgunero Admin"
+        else -> centro.nombreCentro
+    }
+    
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -1429,7 +1436,7 @@ fun AccesoCentroItem(centro: AccesoPorCentro) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = centro.nombreCentro,
+                text = nombreMostrado,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium
             )

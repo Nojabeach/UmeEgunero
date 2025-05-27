@@ -235,7 +235,17 @@ private fun DetalleAlumnoContent(
                     title = "Registro Hoy",
                     icon = Icons.AutoMirrored.Filled.ListAlt,
                     onClick = {
-                        navController.navigate("${AppScreens.RegistroDiarioProfesor.route}/${alumno.dni}")
+                        // Navegar al listado de pre-registro con el alumno preseleccionado
+                        try {
+                            // Primero navegamos a la pantalla de listado
+                            navController.navigate(AppScreens.ListadoPreRegistroDiario.route) {
+                                // Podríamos pasar el alumno como argumento si la ruta lo soportara
+                                // Por ahora, el usuario tendrá que seleccionar el alumno en la pantalla
+                            }
+                            Timber.d("Navegando a Listado Pre-Registro Diario desde detalle de alumno: ${alumno.nombre}")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Listado Pre-Registro Diario")
+                        }
                     },
                     modifier = Modifier.weight(1f)
                 )

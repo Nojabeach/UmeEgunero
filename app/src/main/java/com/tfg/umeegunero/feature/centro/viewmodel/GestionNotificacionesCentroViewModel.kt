@@ -226,7 +226,7 @@ class GestionNotificacionesCentroViewModel @Inject constructor(
                 )
                 
                 // Guardar en la base de datos
-                notificacionRepository.createNotificacion(notificacion)
+                notificacionRepository.crearNotificacion(notificacion)
                 
                 // Actualizar estado
                 _uiState.update { 

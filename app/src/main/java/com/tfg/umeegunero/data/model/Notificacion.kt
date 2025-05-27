@@ -23,7 +23,11 @@ data class Notificacion(
     val accion: String = "", // Acción asociada (ruta de navegación, etc.)
     val tipoDestinatarios: List<TipoUsuario> = emptyList(), // Tipos de usuario destinatarios
     val gruposDestinatarios: List<String>? = null, // Grupos específicos destinatarios (cursos, etc.)
-    val metadata: Map<String, String> = emptyMap() // Datos adicionales para casos específicos
+    val metadata: Map<String, String> = emptyMap(), // Datos adicionales para casos específicos
+    val icono: String = "",
+    val color: String = "",
+    val destinatarioId: String = "",  // ID del destinatario específico
+    val destinatarioTipo: String = "" // Tipo del destinatario (ALUMNO, PROFESOR, etc.)
 )
 
 /**

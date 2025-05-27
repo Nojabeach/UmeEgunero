@@ -177,7 +177,7 @@ class ChatContactsViewModel @Inject constructor(
     /**
      * Carga los contactos disponibles para un profesor
      */
-    fun loadProfesorContacts(currentUser: Usuario?, centroId: String?) {
+    private fun loadProfesorContacts(currentUser: Usuario?, centroId: String?) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
@@ -192,17 +192,38 @@ class ChatContactsViewModel @Inject constructor(
                 
                 // 1. Cargar administradores del centro
                 val admins = loadAdministrators(centroId)
+                Timber.d("Administradores cargados: ${admins.size}")
                 
-                // 2. Cargar otros profesores del centro
-                val teachers = loadTeachers(centroId, currentUser.dni)
+                // 2. Obtener la clase del profesor actual
+                val clasesResult = claseRepository.getClasesByProfesorId(currentUser.dni)
+                var claseId: String? = null
+                var cursoId: String? = null
                 
-                // 3. Cargar familiares de alumnos de la clase del profesor
-                val claseId = _uiState.value.currentUserClaseId
+                if (clasesResult is Result.Success && clasesResult.data.isNotEmpty()) {
+                    val claseProfesor = clasesResult.data.first()
+                    claseId = claseProfesor.id
+                    cursoId = claseProfesor.cursoId
+                    
+                    _uiState.update { it.copy(currentUserClaseId = claseId) }
+                    Timber.d("Clase del profesor: ${claseProfesor.nombre} (ID: $claseId, Curso: $cursoId)")
+                }
+                
+                // 3. Cargar profesores del mismo curso
+                val teachers = if (cursoId != null) {
+                    loadTeachersFromSameCourse(cursoId, currentUser.dni)
+                } else {
+                    // Si no hay curso, cargar todos los profesores del centro
+                    loadTeachers(centroId, currentUser.dni)
+                }
+                Timber.d("Profesores cargados: ${teachers.size}")
+                
+                // 4. Cargar familiares de alumnos de la clase del profesor
                 val families = if (claseId != null) {
-                    loadFamilies(claseId)
+                    loadFamiliesByClaseId(claseId)
                 } else {
                     emptyList()
                 }
+                Timber.d("Familiares cargados: ${families.size}")
                 
                 // Actualizar estado con todos los contactos
                 _uiState.update { state ->
@@ -228,6 +249,86 @@ class ChatContactsViewModel @Inject constructor(
                     isLoading = false
                 ) }
             }
+        }
+    }
+    
+    /**
+     * Carga profesores del mismo curso
+     */
+    private suspend fun loadTeachersFromSameCourse(cursoId: String, currentUserDni: String): List<ProfesorContacto> {
+        return try {
+            Timber.d("Cargando profesores del curso: $cursoId")
+            
+            // Obtener todas las clases del curso
+            val clasesResult = claseRepository.getClasesByCursoId(cursoId)
+            if (clasesResult !is Result.Success) {
+                Timber.e("Error al obtener clases del curso $cursoId")
+                return emptyList()
+            }
+            
+            val profesoresSet = mutableSetOf<ProfesorContacto>()
+            
+            // Para cada clase, obtener su profesor
+            clasesResult.data.forEach { clase ->
+                // Profesor titular
+                clase.profesorId?.let { profesorId ->
+                    if (profesorId != currentUserDni) {
+                        val profesorResult = usuarioRepository.getUsuarioById(profesorId)
+                        if (profesorResult is Result.Success) {
+                            val profesor = profesorResult.data
+                            profesoresSet.add(
+                                ProfesorContacto(
+                                    dni = profesor.dni,
+                                    nombre = profesor.nombre,
+                                    apellidos = profesor.apellidos,
+                                    descripcion = "Profesor de ${clase.nombre}"
+                                )
+                            )
+                        }
+                    }
+                }
+                
+                // Profesor titular (campo alternativo)
+                clase.profesorTitularId?.let { profesorId ->
+                    if (profesorId != currentUserDni) {
+                        val profesorResult = usuarioRepository.getUsuarioById(profesorId)
+                        if (profesorResult is Result.Success) {
+                            val profesor = profesorResult.data
+                            profesoresSet.add(
+                                ProfesorContacto(
+                                    dni = profesor.dni,
+                                    nombre = profesor.nombre,
+                                    apellidos = profesor.apellidos,
+                                    descripcion = "Profesor titular de ${clase.nombre}"
+                                )
+                            )
+                        }
+                    }
+                }
+                
+                // Profesores auxiliares
+                clase.profesoresAuxiliaresIds?.forEach { profesorId ->
+                    if (profesorId != currentUserDni) {
+                        val profesorResult = usuarioRepository.getUsuarioById(profesorId)
+                        if (profesorResult is Result.Success) {
+                            val profesor = profesorResult.data
+                            profesoresSet.add(
+                                ProfesorContacto(
+                                    dni = profesor.dni,
+                                    nombre = profesor.nombre,
+                                    apellidos = profesor.apellidos,
+                                    descripcion = "Profesor auxiliar de ${clase.nombre}"
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+            
+            profesoresSet.toList()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar profesores del curso $cursoId")
+            emptyList()
         }
     }
     

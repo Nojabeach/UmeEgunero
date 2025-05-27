@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.EmailAuthProvider
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Direccion
 import com.tfg.umeegunero.data.model.TipoUsuario
@@ -13,6 +15,7 @@ import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.StorageRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.repository.ActividadRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
@@ -23,6 +26,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -87,6 +92,7 @@ class PerfilViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val storageRepository: StorageRepository,
     private val authRepository: AuthRepository,
+    private val actividadRepository: ActividadRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -355,20 +361,68 @@ class PerfilViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                // En un entorno real, aquí haríamos la llamada al repositorio
+                // Obtener el usuario actual
+                val firebaseUser = FirebaseAuth.getInstance().currentUser
                 
-                // Simulación de una llamada al servicio
-                delay(1000)
+                if (firebaseUser == null) {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "No se ha podido identificar al usuario actual"
+                    ) }
+                    return@launch
+                }
                 
-                // Simulación de éxito
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    success = "Contraseña cambiada correctamente"
-                ) }
+                // Obtener la dirección de email
+                val email = firebaseUser.email
+                
+                if (email.isNullOrBlank()) {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "No se ha podido obtener el email del usuario"
+                    ) }
+                    return@launch
+                }
+                
+                // Reautenticar al usuario
+                try {
+                    val credential = EmailAuthProvider.getCredential(email, contraseniaActual)
+                    firebaseUser.reauthenticate(credential).await()
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "Contraseña actual incorrecta"
+                    ) }
+                    return@launch
+                }
+                
+                // Cambiar la contraseña
+                try {
+                    firebaseUser.updatePassword(contraseniaNueva).await()
+                    
+                    // Actualizar en la base de datos si es necesario (opcional)
+                    // usuarioRepository.actualizarContrasena(firebaseUser.uid, contraseniaNueva)
+                    
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        success = "Contraseña cambiada correctamente"
+                    ) }
+                    
+                    // Registrar actividad
+                    actividadRepository.registrarActividad(
+                        tipo = "CAMBIO_CONTRASEÑA",
+                        descripcion = "El usuario ha cambiado su contraseña",
+                        usuarioId = firebaseUser.uid
+                    )
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "Error al cambiar la contraseña: ${e.message}"
+                    ) }
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
-                    error = "Error al cambiar la contraseña: ${e.message}"
+                    error = "Error inesperado: ${e.message}"
                 ) }
             }
         }

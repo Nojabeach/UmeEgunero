@@ -13,6 +13,10 @@ import com.tfg.umeegunero.feature.profesor.screen.ProfesorDashboardScreen
 import com.tfg.umeegunero.feature.familiar.screen.FamiliaDashboardScreen
 import com.tfg.umeegunero.feature.common.perfil.screen.PerfilScreen
 import com.google.firebase.auth.FirebaseAuth
+import java.time.LocalDate
+import com.tfg.umeegunero.feature.profesor.screen.InformeAsistenciaScreen
+import com.tfg.umeegunero.feature.profesor.screen.ListadoPreRegistroDiarioScreen
+import com.tfg.umeegunero.feature.profesor.screen.DetallePreRegistroDiario
 
 @Composable
 fun NavGraph(
@@ -119,6 +123,57 @@ fun NavGraph(
             com.tfg.umeegunero.feature.common.users.screen.UserDetailScreen(
                 navController = navController,
                 userId = dni
+            )
+        }
+
+        // Añadir en la sección de rutas del profesor
+        composable(
+            route = AppScreens.InformeAsistencia.route + "/{claseId}?fecha={fecha}",
+            arguments = listOf(
+                navArgument("claseId") { type = NavType.StringType },
+                navArgument("fecha") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val claseId = backStackEntry.arguments?.getString("claseId") ?: ""
+            val fechaStr = backStackEntry.arguments?.getString("fecha")
+            val fecha = fechaStr?.let { LocalDate.parse(it) }
+            
+            InformeAsistenciaScreen(
+                claseId = claseId,
+                fecha = fecha,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Y en el ListadoPreRegistroDiarioScreen
+        composable(AppScreens.ListadoPreRegistroDiario.route) {
+            ListadoPreRegistroDiarioScreen(
+                onNavigateToDetalle = { registroId ->
+                     navController.navigate(AppScreens.DetallePreRegistroDiario.createRoute(registroId))
+                },
+                onNavigateToInformeAsistencia = { claseId, fecha ->
+                    val fechaParam = fecha?.toString() ?: ""
+                    navController.navigate(
+                        AppScreens.InformeAsistencia.route + "/$claseId" + 
+                        if (fechaParam.isNotEmpty()) "?fecha=$fechaParam" else ""
+                    )
+                }
+            )
+        }
+        
+        // Ruta para la pantalla de detalle de pre-registro diario
+        composable(
+            route = AppScreens.DetallePreRegistroDiario.route,
+            arguments = AppScreens.DetallePreRegistroDiario.arguments
+        ) { backStackEntry ->
+            val registroId = backStackEntry.arguments?.getString("registroId") ?: ""
+            DetallePreRegistroDiario(
+                registroId = registroId,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

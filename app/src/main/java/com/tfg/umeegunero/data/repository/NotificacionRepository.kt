@@ -18,6 +18,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.Date
+import java.util.UUID
 
 /**
  * Repositorio para gestionar notificaciones en la aplicación UmeEgunero.
@@ -122,8 +123,31 @@ class NotificacionRepository @Inject constructor(
             
             emit(Result.Success(notificaciones))
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener notificaciones para el centro $centroId")
-            emit(Result.Error(e))
+            if (e.message?.contains("FAILED_PRECONDITION") == true && e.message?.contains("requires an index") == true) {
+                // Error específico de índice faltante en Firestore
+                Timber.e(e, "Error al obtener notificaciones para el centro $centroId (falta índice en Firestore)")
+                
+                // Intentar una consulta más simple como fallback
+                try {
+                    val fallbackQuery = notificacionesCollection
+                        .whereEqualTo("centroId", centroId)
+                        .limit(limit)
+                        
+                    val fallbackSnapshot = fallbackQuery.get().await()
+                    val fallbackNotificaciones = fallbackSnapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Notificacion::class.java)
+                    }.sortedByDescending { it.fecha }
+                    
+                    emit(Result.Success(fallbackNotificaciones))
+                } catch (fallbackEx: Exception) {
+                    Timber.e(fallbackEx, "Error en el fallback para notificaciones del centro $centroId")
+                    emit(Result.Error(fallbackEx))
+                }
+            } else {
+                // Otro tipo de error
+                Timber.e(e, "Error al obtener notificaciones para el centro $centroId")
+                emit(Result.Error(e))
+            }
         }
     }
     
@@ -143,8 +167,28 @@ class NotificacionRepository @Inject constructor(
                 doc.toObject(Notificacion::class.java)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener notificaciones para el centro $centroId")
-            emptyList()
+            if (e.message?.contains("FAILED_PRECONDITION") == true && e.message?.contains("requires an index") == true) {
+                // Error específico de índice faltante en Firestore
+                Timber.e(e, "Error al obtener notificaciones para el centro $centroId (falta índice en Firestore)")
+                
+                // Intentar una consulta más simple como fallback
+                try {
+                    val fallbackQuery = notificacionesCollection
+                        .whereEqualTo("centroId", centroId)
+                        
+                    val fallbackSnapshot = fallbackQuery.get().await()
+                    fallbackSnapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Notificacion::class.java)
+                    }.sortedByDescending { it.fecha }
+                } catch (fallbackEx: Exception) {
+                    Timber.e(fallbackEx, "Error en el fallback para notificaciones del centro $centroId")
+                    emptyList()
+                }
+            } else {
+                // Otro tipo de error
+                Timber.e(e, "Error al obtener notificaciones para el centro $centroId")
+                emptyList()
+            }
         }
     }
     
@@ -198,13 +242,23 @@ class NotificacionRepository @Inject constructor(
      * @param notificacion Objeto Notificacion a crear
      * @return Result con la notificación creada o error
      */
-    suspend fun crearNotificacion(notificacion: Notificacion): Result<Notificacion> = withContext(Dispatchers.IO) {
-        try {
-            val docRef = notificacionesCollection.document()
-            val notificacionConId = notificacion.copy(id = docRef.id)
+    suspend fun crearNotificacion(notificacion: Notificacion): Result<String> {
+        return try {
+            val docId = if (notificacion.id.isBlank()) {
+                UUID.randomUUID().toString()
+            } else {
+                notificacion.id
+            }
+            
+            val docRef = notificacionesCollection.document(docId)
+            val notificacionConId = notificacion.copy(id = docId)
             
             docRef.set(notificacionConId).await()
-            Result.Success(notificacionConId)
+            
+            // Envío de notificación push si corresponde
+            enviarNotificacionPush(notificacionConId)
+            
+            Result.Success(docId)
         } catch (e: Exception) {
             Timber.e(e, "Error al crear notificación")
             Result.Error(e)
@@ -212,16 +266,49 @@ class NotificacionRepository @Inject constructor(
     }
     
     /**
-     * Crea una nueva notificación (versión directa sin Result)
-     * @param notificacion Objeto Notificacion a crear
+     * Crea una notificación asociada a un mensaje o comunicado
+     * 
+     * @param titulo Título de la notificación
+     * @param mensaje Contenido de la notificación
+     * @param tipo Tipo de notificación (comunicado, mensaje, etc.)
+     * @param destinatarioId ID del usuario destinatario
+     * @param destinatarioTipo Tipo del usuario destinatario
+     * @param origenId ID del objeto origen (comunicado, mensaje, etc.)
+     * @param centroId ID del centro (opcional)
+     * @param accion Acción a realizar al pulsar (ruta de navegación)
+     * @return Resultado con el ID de la notificación o error
      */
-    suspend fun createNotificacion(notificacion: Notificacion) = withContext(Dispatchers.IO) {
-        try {
-            notificacionesCollection.add(notificacion).await()
-        } catch (e: Exception) {
-            Timber.e(e, "Error al crear notificación")
-            throw e
+    suspend fun crearNotificacionMensaje(
+        titulo: String,
+        mensaje: String,
+        tipo: String,
+        destinatarioId: String,
+        destinatarioTipo: String,
+        origenId: String,
+        centroId: String = "",
+        accion: String = ""
+    ): Result<String> {
+        // Convertir el tipo String a TipoNotificacion
+        val tipoNotificacion = when (tipo.lowercase()) {
+            "comunicado" -> TipoNotificacion.COMUNICADO
+            "mensaje" -> TipoNotificacion.MENSAJE
+            "evento" -> TipoNotificacion.EVENTO
+            "tarea" -> TipoNotificacion.TAREA
+            "sistema" -> TipoNotificacion.SISTEMA
+            else -> TipoNotificacion.GENERAL
         }
+        
+        val notificacion = Notificacion(
+            titulo = titulo,
+            mensaje = mensaje,
+            tipo = tipoNotificacion,
+            usuarioDestinatarioId = destinatarioId,
+            centroId = centroId,
+            fecha = Timestamp.now(),
+            leida = false
+        )
+        
+        return crearNotificacion(notificacion)
     }
     
     /**
@@ -290,5 +377,32 @@ class NotificacionRepository @Inject constructor(
             Timber.e(e, "Error al enviar notificación al centro $centroId")
             Result.Error(e)
         }
+    }
+
+    /**
+     * Envía una notificación push usando la integración con Firebase Cloud Messaging
+     * 
+     * Esta implementación se basa en el sistema existente que utiliza Cloud Functions
+     * y Google Apps Script (GAS) como intermediarios para enviar notificaciones push.
+     * La función detecta cuando se crea una nueva notificación en Firestore y automáticamente
+     * dispara el envío de la notificación push al dispositivo del usuario.
+     *
+     * @param notificacion La notificación a enviar como push
+     */
+    private fun enviarNotificacionPush(notificacion: Notificacion) {
+        // La notificación push se envía automáticamente mediante Cloud Functions
+        // cuando se crea un documento en la colección "notificaciones"
+        
+        // No es necesario hacer nada aquí, ya que el trigger de Cloud Functions
+        // se encarga de detectar el nuevo documento y enviar la notificación push
+        
+        Timber.d("✅ Notificación registrada en Firestore: ${notificacion.titulo}")
+        Timber.d("   La Cloud Function enviará automáticamente la notificación push al dispositivo")
+        Timber.d("   → Destinatario: ${notificacion.destinatarioId} (${notificacion.destinatarioTipo})")
+        Timber.d("   → Título: ${notificacion.titulo}")
+        Timber.d("   → Mensaje: ${notificacion.mensaje}")
+        
+        // El sistema utiliza tokens FCM almacenados en Firestore y Cloud Functions
+        // para determinar a qué dispositivos enviar la notificación
     }
 } 

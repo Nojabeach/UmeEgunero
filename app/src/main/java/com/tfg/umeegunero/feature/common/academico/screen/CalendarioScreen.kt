@@ -5,18 +5,24 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -187,47 +193,125 @@ fun CalendarioScreen(
         if (uiState.showEventDialog) {
             Dialog(onDismissRequest = { viewModel.hideEventDialog() }) {
                 Surface(
-                    shape = MaterialTheme.shapes.medium,
+                    shape = RoundedCornerShape(24.dp),
                     tonalElevation = 8.dp,
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
                 ) {
                     Column(
                         modifier = Modifier
-                            .padding(16.dp)
                             .fillMaxWidth()
+                            .padding(24.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
-                        Text(
-                            text = "Nuevo evento",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Selector de tipo de evento
-                        Text("Tipo de evento", style = MaterialTheme.typography.bodyLarge)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
+                        // Encabezado con fecha seleccionada
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TipoEvento.values().forEach { tipo ->
-                                val isSelected = uiState.selectedEventType == tipo
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.updateSelectedEventType(tipo) },
-                                    label = { Text(tipo.name.replaceFirstChar { it.uppercase() }) },
-                                    leadingIcon = {
-                                        if (isSelected) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    }
+                            Icon(
+                                imageVector = Icons.Default.Event,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column {
+                                Text(
+                                    text = "Nuevo evento",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                Text(
+                                    text = uiState.selectedDate.format(
+                                        DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM 'de' yyyy", Locale("es", "ES"))
+                                    ).replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Selector de tipo de evento con íconos
+                        Text(
+                            text = "Tipo de evento",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Chips horizontales con scroll
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(TipoEvento.values()) { tipo ->
+                                val isSelected = uiState.selectedEventType == tipo
+                                val iconTint = if (isSelected) Color.White else tipo.color
+                                val backgroundColor = if (isSelected) tipo.color else tipo.color.copy(alpha = 0.1f)
+                                
+                                Surface(
+                                    onClick = { viewModel.updateSelectedEventType(tipo) },
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = backgroundColor,
+                                    modifier = Modifier.height(40.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val icon = when(tipo) {
+                                            TipoEvento.EXAMEN -> Icons.Default.School
+                                            TipoEvento.ESCOLAR -> Icons.AutoMirrored.Filled.MenuBook
+                                            TipoEvento.REUNION -> Icons.Default.Groups
+                                            TipoEvento.FESTIVO -> Icons.Default.Celebration
+                                            else -> Icons.Default.Event
+                                        }
+                                        
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            tint = iconTint,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        
+                                        Text(
+                                            text = tipo.name.replaceFirstChar { it.uppercase() },
+                                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
+                        
+                        // Campo para título del evento
+                        OutlinedTextField(
+                            value = uiState.eventTitle ?: "",
+                            onValueChange = { viewModel.updateEventTitle(it) },
+                            label = { Text("Título del evento") },
+                            leadingIcon = { 
+                                Icon(
+                                    imageVector = Icons.Default.Title,
+                                    contentDescription = null
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
+                        )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
@@ -236,26 +320,115 @@ fun CalendarioScreen(
                             value = uiState.eventDescription,
                             onValueChange = { viewModel.updateEventDescription(it) },
                             label = { Text("Descripción") },
-                            modifier = Modifier.fillMaxWidth()
+                            leadingIcon = { 
+                                Icon(
+                                    imageVector = Icons.Default.Description,
+                                    contentDescription = null
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            shape = RoundedCornerShape(12.dp)
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
+                        // Campo para ubicación
+                        OutlinedTextField(
+                            value = uiState.eventLocation ?: "",
+                            onValueChange = { viewModel.updateEventLocation(it) },
+                            label = { Text("Ubicación (opcional)") },
+                            leadingIcon = { 
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Selector de hora
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clickable { 
+                                    // Aquí abriría un selector de hora que llame a updateEventTime
+                                    // Por ahora, simplemente establecemos una hora fija para demostración
+                                    viewModel.updateEventTime("12:00")
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Hora",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                
+                                Text(
+                                    text = uiState.eventTime ?: "Sin especificar",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                            
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = null
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Botones de acción
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            TextButton(onClick = { viewModel.hideEventDialog() }) {
+                            OutlinedButton(
+                                onClick = { viewModel.hideEventDialog() },
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                            ) {
                                 Text("Cancelar")
                             }
                             
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(16.dp))
                             
                             Button(
                                 onClick = { viewModel.saveEvento() },
-                                enabled = uiState.selectedEventType != null && uiState.eventDescription.isNotBlank()
+                                enabled = uiState.selectedEventType != null && 
+                                         (uiState.eventTitle?.isNotBlank() == true || 
+                                          uiState.eventDescription.isNotBlank()),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = uiState.selectedEventType?.color ?: MaterialTheme.colorScheme.primary
+                                )
                             ) {
-                                Text("Guardar")
+                                Icon(
+                                    imageVector = Icons.Default.Save,
+                                    contentDescription = null
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Text("Guardar evento")
                             }
                         }
                     }

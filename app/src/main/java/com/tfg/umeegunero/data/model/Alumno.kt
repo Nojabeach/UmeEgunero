@@ -23,7 +23,7 @@ import java.util.*
  * @property telefono Teléfono de contacto.
  * @property fechaNacimiento Fecha de nacimiento en formato string (YYYY-MM-DD).
  * @property centroId Identificador del centro educativo al que pertenece.
- * @property aulaId Identificador del aula específica a la que asiste.
+ * @property claseId Identificador del aula específica a la que asiste.
  * @property curso Nombre del curso académico (por ejemplo, "Primero de Infantil").
  * @property clase Nombre de la clase específica (por ejemplo, "Clase A").
  * @property profesorId Identificador del profesor principal asignado al alumno.
@@ -54,10 +54,9 @@ data class Alumno(
     val telefono: String = "",
     val fechaNacimiento: String = "",
     val centroId: String = "",
-    val aulaId: String = "",
+    val claseId: String = "",
     val curso: String = "",
     val clase: String = "",
-    val claseId: String = "",
     val profesorId: String = "",
     val profesorIds: List<String> = emptyList(),
     val familiarIds: List<String> = emptyList(),

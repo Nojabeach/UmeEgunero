@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -456,81 +457,99 @@ private fun ProfesorCard(
     
     // Diálogo para enviar mensaje al profesor
     if (showEnviarNotificacionDialog) {
-        var mensajeTexto by remember { mutableStateOf("") }
-        var asuntoTexto by remember { mutableStateOf("") }
-        
         AlertDialog(
             onDismissRequest = { showEnviarNotificacionDialog = false },
-            title = { Text("Enviar mensaje al profesor") },
+            title = { 
+                Text(
+                    "Enviar mensaje al profesor", 
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
                 Column {
-                    Text("Enviar un mensaje a $nombre", 
-                        style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "¿Deseas enviar un mensaje a $nombre?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    OutlinedTextField(
-                        value = asuntoTexto,
-                        onValueChange = { asuntoTexto = it },
-                        label = { Text("Asunto") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    OutlinedTextField(
-                        value = mensajeTexto,
-                        onValueChange = { mensajeTexto = it },
-                        label = { Text("Mensaje") },
-                        maxLines = 5,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
+                    Text(
+                        "Puedes usar el sistema de mensajería unificado de UmeEgunero para comunicarte con el profesor de manera más efectiva.",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        // Validación básica
-                        if (asuntoTexto.isBlank() || mensajeTexto.isBlank()) {
-                            // Mostrar error
-                            Toast.makeText(context, "Por favor complete todos los campos", Toast.LENGTH_SHORT).show()
-                        } else {
-                            // Enviar la notificación mediante correo electrónico
-                            try {
-                                // Abrir correo electrónico nativo
-                                val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                    data = Uri.parse("mailto:$email")
-                                    putExtra(Intent.EXTRA_SUBJECT, asuntoTexto)
-                                    putExtra(Intent.EXTRA_TEXT, mensajeTexto)
-                                }
-                                
-                                if (intent.resolveActivity(context.packageManager) != null) {
-                                    context.startActivity(intent)
-                                    showEnviarNotificacionDialog = false
-                                } else {
-                                    Toast.makeText(context, 
-                                        "No se encontró una aplicación de correo electrónico", 
-                                        Toast.LENGTH_LONG).show()
-                                }
-                            } catch (e: Exception) {
-                                Toast.makeText(context, 
-                                    "Error al enviar el mensaje: ${e.message}", 
-                                    Toast.LENGTH_LONG).show()
-                            }
+                        try {
+                            // Navegar al sistema de mensajes unificado con el destinatario preseleccionado
+                            val intent = Intent(context, Class.forName("com.tfg.umeegunero.MainActivity"))
+                            intent.putExtra("navigationTarget", "new_message")
+                            intent.putExtra("recipientEmail", email)
+                            intent.putExtra("recipientName", nombre)
+                            intent.putExtra("messageType", "CHAT")
+                            context.startActivity(intent)
+                            showEnviarNotificacionDialog = false
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                context,
+                                "Error al abrir sistema de mensajes: ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
                     }
                 ) {
-                    Text("Enviar")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Message,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Usar mensajería UmeEgunero")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showEnviarNotificacionDialog = false }
+                OutlinedButton(
+                    onClick = {
+                        // Opción alternativa para usar correo electrónico
+                        try {
+                            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:$email")
+                            }
+                            if (emailIntent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(emailIntent)
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "No se encontró una aplicación de correo",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            showEnviarNotificacionDialog = false
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                context,
+                                "Error: ${e.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 ) {
-                    Text("Cancelar")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Usar correo")
+                    }
                 }
             }
         )

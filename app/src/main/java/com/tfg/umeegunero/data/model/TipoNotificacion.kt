@@ -11,5 +11,7 @@ enum class TipoNotificacion {
     SISTEMA,     // Notificaciones del sistema (actualizaciones, mantenimiento, etc.)
     MENSAJE,     // Mensajes personales
     ACADEMICO,   // Relacionado con actividades académicas
-    ALERTA       // Alertas importantes
+    ALERTA,      // Alertas importantes
+    COMUNICADO,  // Comunicados oficiales
+    TAREA        // Tareas asignadas
 } 

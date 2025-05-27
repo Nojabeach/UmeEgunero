@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Alumno
-import com.tfg.umeegunero.data.model.Asistencia
+import com.tfg.umeegunero.data.model.EstadoAsistencia
 import com.tfg.umeegunero.data.model.RegistroAsistencia
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
@@ -32,7 +32,7 @@ data class AsistenciaUiState(
     val profesorId: String = "",
     val nombreClase: String = "Clase sin nombre",
     val alumnos: List<Alumno> = emptyList(),
-    val estadosAsistencia: Map<String, Asistencia> = emptyMap(),
+    val estadosAsistencia: Map<String, EstadoAsistencia> = emptyMap(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val mensaje: String? = null
@@ -110,7 +110,7 @@ class AsistenciaViewModel @Inject constructor(
                         
                         // Inicializar todos los estados de asistencia como PRESENTE por defecto
                         val estadosIniciales = alumnos.associate { alumno -> 
-                            alumno.id to Asistencia.PRESENTE 
+                            alumno.id to EstadoAsistencia.PRESENTE 
                         }
                         
                         // Cargar registro de asistencia previo para hoy si existe
@@ -157,7 +157,7 @@ class AsistenciaViewModel @Inject constructor(
     /**
      * Actualiza el estado de asistencia de un alumno
      */
-    fun actualizarEstadoAsistencia(alumnoId: String, nuevoEstado: Asistencia) {
+    fun actualizarEstadoAsistencia(alumnoId: String, nuevoEstado: EstadoAsistencia) {
         val estadosActualizados = _uiState.value.estadosAsistencia.toMutableMap()
         estadosActualizados[alumnoId] = nuevoEstado
         _uiState.update { it.copy(estadosAsistencia = estadosActualizados) }
@@ -205,23 +205,16 @@ class AsistenciaViewModel @Inject constructor(
                 // Guardar en Firestore
                 val resultado = asistenciaRepository.guardarRegistroAsistencia(registroAsistencia)
                 
-                when (resultado) {
-                    is Result.Success -> {
-                        _uiState.update { it.copy(
-                            mensaje = "Asistencia guardada correctamente",
-                            isLoading = false
-                        )}
-                    }
-                    is Result.Error -> {
-                        _uiState.update { it.copy(
-                            error = "Error al guardar asistencia: ${resultado.exception?.message}",
-                            isLoading = false
-                        )}
-                        Timber.e(resultado.exception, "Error al guardar asistencia")
-                    }
-                    is Result.Loading -> {
-                        // Estado de carga ya actualizado
-                    }
+                if (resultado) {
+                    _uiState.update { it.copy(
+                        mensaje = "Asistencia guardada correctamente",
+                        isLoading = false
+                    )}
+                } else {
+                    _uiState.update { it.copy(
+                        error = "Error al guardar asistencia",
+                        isLoading = false
+                    )}
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(

@@ -320,7 +320,7 @@ fun DetalleHijoScreen(
                             InfoRow(
                                 icon = Icons.Default.Home,
                                 title = "Aula:",
-                                value = alumno.aulaId
+                                value = alumno.claseId
                             )
 
                             if (uiState.profesores.isNotEmpty()) {

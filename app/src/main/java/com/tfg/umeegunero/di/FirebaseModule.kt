@@ -30,6 +30,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Singleton
+import javax.inject.Provider
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -90,10 +91,10 @@ object FirebaseModule {
     fun provideAuthRepository(
         firebaseAuth: FirebaseAuth,
         usuarioRepository: UsuarioRepository,
-        comunicadoRepository: ComunicadoRepository,
+        comunicadoRepositoryProvider: Provider<ComunicadoRepository>,
         firestore: FirebaseFirestore
     ): AuthRepository {
-        return AuthRepositoryImpl(firebaseAuth, usuarioRepository, comunicadoRepository, firestore)
+        return AuthRepositoryImpl(firebaseAuth, usuarioRepository, comunicadoRepositoryProvider, firestore)
     }
 
     @Provides

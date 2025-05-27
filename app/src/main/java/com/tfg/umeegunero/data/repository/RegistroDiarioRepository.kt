@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.RegistroDiario
 import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -42,7 +43,7 @@ class RegistroDiarioRepository @Inject constructor(
     private val localRegistroRepository: LocalRegistroActividadRepository,
     private val context: Context
 ) {
-    private val registrosCollection = firestore.collection("registrosActividad")
+    private val registrosCollection = firestore.collection("registros_diarios")
     
     /**
      * Verifica si el dispositivo tiene conexión a Internet
@@ -1032,6 +1033,88 @@ class RegistroDiarioRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error general al eliminar registro: $registroId")
             return@withContext false
+        }
+    }
+
+    /**
+     * Obtiene un registro diario por su ID
+     */
+    suspend fun getRegistroDiario(registroId: String): Result<RegistroDiario> = withContext(Dispatchers.IO) {
+        try {
+            val document = registrosCollection.document(registroId).get().await()
+            if (document.exists()) {
+                val registroDiario = document.toObject(RegistroDiario::class.java)
+                    ?: return@withContext Result.Error(Exception("Error al convertir el documento a RegistroDiario"))
+                Result.Success(registroDiario)
+            } else {
+                Result.Error(Exception("No se encontró el registro con ID: $registroId"))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registro diario: $registroId")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene registros diarios por clase y fecha
+     */
+    suspend fun getRegistrosDiariosPorClaseYFecha(
+        claseId: String,
+        fecha: String
+    ): Result<List<RegistroDiario>> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = registrosCollection
+                .whereEqualTo("claseId", claseId)
+                .whereEqualTo("fecha", fecha)
+                .get()
+                .await()
+                
+            val registros = snapshot.documents.mapNotNull { document ->
+                document.toObject(RegistroDiario::class.java)
+            }
+            
+            Result.Success(registros)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros diarios por clase y fecha: $claseId, $fecha")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Crea o actualiza un registro diario
+     */
+    suspend fun saveRegistroDiario(registroDiario: RegistroDiario): Result<RegistroDiario> = withContext(Dispatchers.IO) {
+        try {
+            val docRef = if (registroDiario.id.isBlank()) {
+                registrosCollection.document()
+            } else {
+                registrosCollection.document(registroDiario.id)
+            }
+            
+            val registroConId = if (registroDiario.id.isBlank()) {
+                registroDiario.copy(id = docRef.id)
+            } else {
+                registroDiario
+            }
+            
+            docRef.set(registroConId).await()
+            Result.Success(registroConId)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al guardar registro diario: ${registroDiario.id}")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Elimina un registro diario
+     */
+    suspend fun deleteRegistroDiario(registroId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            registrosCollection.document(registroId).delete().await()
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al eliminar registro diario: $registroId")
+            Result.Error(e)
         }
     }
 } 

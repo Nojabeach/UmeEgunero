@@ -59,6 +59,8 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import timber.log.Timber
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 
 /**
  * Pantalla que muestra el perfil del usuario con diseño moderno Material 3
@@ -308,6 +310,26 @@ private fun MostrarDialogos(
         var confirmPassword by remember { mutableStateOf("") }
         var passwordError by remember { mutableStateOf<String?>(null) }
         
+        // Estados para mostrar/ocultar contraseñas
+        var currentPasswordVisible by remember { mutableStateOf(false) }
+        var newPasswordVisible by remember { mutableStateOf(false) }
+        var confirmPasswordVisible by remember { mutableStateOf(false) }
+        
+        // Función de validación de contraseña
+        fun validatePassword(password: String): Boolean {
+            return password.length >= 6 && 
+                   password.any { it.isLetter() } && 
+                   password.any { it.isDigit() } &&
+                   password.any { !it.isLetterOrDigit() }
+        }
+        
+        // Comprobar requisitos de contraseña para mostrar feedback visual
+        val passwordLength = newPassword.length >= 6
+        val hasLetter = newPassword.any { it.isLetter() }
+        val hasDigit = newPassword.any { it.isDigit() }
+        val hasSpecialChar = newPassword.any { !it.isLetterOrDigit() }
+        val passwordsMatch = newPassword == confirmPassword
+        
         AlertDialog(
             onDismissRequest = onChangePasswordDismiss,
             icon = { Icon(imageVector = Icons.Default.Lock, contentDescription = null) },
@@ -341,7 +363,16 @@ private fun MostrarDialogos(
                                 imageVector = Icons.Default.Key,
                                 contentDescription = null
                             )
-                        }
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { currentPasswordVisible = !currentPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (currentPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (currentPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                )
+                            }
+                        },
+                        visualTransformation = if (currentPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
                     )
                     
                     OutlinedTextField(
@@ -359,7 +390,16 @@ private fun MostrarDialogos(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null
                             )
-                        }
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (newPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (newPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                )
+                            }
+                        },
+                        visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
                     )
                     
                     OutlinedTextField(
@@ -377,22 +417,164 @@ private fun MostrarDialogos(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null
                             )
-                        }
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                                )
+                            }
+                        },
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation()
                     )
+                    
+                    // Requisitos de contraseña
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Requisitos de contraseña:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (passwordLength) Icons.Default.CheckCircle else Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = if (passwordLength) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Al menos 6 caracteres",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (hasLetter) Icons.Default.CheckCircle else Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = if (hasLetter) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Al menos una letra",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (hasDigit) Icons.Default.CheckCircle else Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = if (hasDigit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Al menos un número",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (hasSpecialChar) Icons.Default.CheckCircle else Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = if (hasSpecialChar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Al menos un carácter especial",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (confirmPassword.isNotEmpty() && passwordsMatch) Icons.Default.CheckCircle else Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = if (confirmPassword.isNotEmpty() && passwordsMatch) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Las contraseñas coinciden",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
+                        if (currentPassword.isBlank()) {
+                            passwordError = "Debe ingresar su contraseña actual"
+                            return@Button
+                        }
+                        
+                        if (newPassword.isBlank()) {
+                            passwordError = "La nueva contraseña no puede estar vacía"
+                            return@Button
+                        }
+                        
+                        if (confirmPassword.isBlank()) {
+                            passwordError = "Debe confirmar la nueva contraseña"
+                            return@Button
+                        }
+                        
                         if (newPassword != confirmPassword) {
                             passwordError = "Las contraseñas no coinciden"
                             return@Button
                         }
+                        
+                        if (!validatePassword(newPassword)) {
+                            passwordError = "La contraseña no cumple los requisitos mínimos"
+                            return@Button
+                        }
+                        
                         onChangePassword(currentPassword, newPassword)
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = userColor
-                    )
+                    ),
+                    enabled = currentPassword.isNotBlank() && 
+                             newPassword.isNotBlank() && 
+                             confirmPassword.isNotBlank() &&
+                             passwordLength && hasLetter && hasDigit && hasSpecialChar && passwordsMatch
                 ) {
                     Text("Guardar")
                 }

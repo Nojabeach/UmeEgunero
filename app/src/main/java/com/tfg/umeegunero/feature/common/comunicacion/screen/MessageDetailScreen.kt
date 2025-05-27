@@ -59,12 +59,15 @@ fun MessageDetailScreen(
                     Text(
                         text = when (uiState.message?.type) {
                             MessageType.CHAT -> "Mensaje de chat"
+                            MessageType.GROUP_CHAT -> "Mensaje de grupo"
                             MessageType.NOTIFICATION -> "Notificación"
                             MessageType.ANNOUNCEMENT -> "Comunicado"
                             MessageType.INCIDENT -> "Incidencia"
                             MessageType.ATTENDANCE -> "Asistencia"
                             MessageType.DAILY_RECORD -> "Registro diario"
                             MessageType.SYSTEM -> "Mensaje del sistema"
+                            MessageType.TASK -> "Tarea"
+                            MessageType.EVENT -> "Evento"
                             null -> "Detalle de mensaje"
                         }
                     ) 
@@ -438,6 +441,16 @@ fun MessageTypeBanner(messageType: MessageType) {
             Icons.Default.Info,
             "Mensaje del sistema"
         )
+        MessageType.TASK -> Triple(
+            Color(0xFFF57C00),
+            Icons.Default.Assignment,
+            "Tarea"
+        )
+        MessageType.EVENT -> Triple(
+            Color(0xFF039BE5),
+            Icons.Default.Event,
+            "Evento"
+        )
         else -> return // No mostrar para otros tipos
     }
     
@@ -477,12 +490,15 @@ fun MessageTypeBanner(messageType: MessageType) {
 fun getColorForMessageType(type: MessageType): Color {
     return when (type) {
         MessageType.CHAT -> MaterialTheme.colorScheme.primary
+        MessageType.GROUP_CHAT -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
         MessageType.NOTIFICATION -> MaterialTheme.colorScheme.tertiary
         MessageType.ANNOUNCEMENT -> Color(0xFF4CAF50) // Verde
         MessageType.INCIDENT -> Color(0xFFF44336) // Rojo
         MessageType.ATTENDANCE -> Color(0xFF2196F3) // Azul
         MessageType.DAILY_RECORD -> Color(0xFFFF9800) // Naranja
         MessageType.SYSTEM -> Color(0xFF9C27B0) // Púrpura
+        MessageType.TASK -> Color(0xFFF57C00) // Naranja
+        MessageType.EVENT -> Color(0xFF039BE5) // Azul claro
     }
 }
 
@@ -493,12 +509,15 @@ fun getColorForMessageType(type: MessageType): Color {
 fun getIconForMessageType(type: MessageType): ImageVector {
     return when (type) {
         MessageType.CHAT -> Icons.AutoMirrored.Filled.Chat
+        MessageType.GROUP_CHAT -> Icons.AutoMirrored.Filled.Chat
         MessageType.NOTIFICATION -> Icons.Default.Notifications
         MessageType.ANNOUNCEMENT -> Icons.Default.Announcement
         MessageType.INCIDENT -> Icons.Default.Warning
         MessageType.ATTENDANCE -> Icons.Default.Event
         MessageType.DAILY_RECORD -> Icons.Default.Assignment
         MessageType.SYSTEM -> Icons.Default.Info
+        MessageType.TASK -> Icons.Default.Assignment
+        MessageType.EVENT -> Icons.Default.Event
     }
 }
 

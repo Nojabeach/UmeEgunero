@@ -85,4 +85,4 @@ data class Comunicado(
      * Fecha límite para confirmar la lectura (opcional)
      */
     val fechaLimiteConfirmacion: Timestamp? = null
-) 
+)

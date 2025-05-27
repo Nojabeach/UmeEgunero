@@ -23,10 +23,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -277,18 +283,17 @@ fun MessageItem(
                     .size(12.dp)
                     .background(
                         when (message.status) {
-                            MessageStatus.UNREAD -> MaterialTheme.colorScheme.primary
-                            MessageStatus.READ -> Color.Transparent
-                            MessageStatus.PENDING -> MaterialTheme.colorScheme.secondary
-                            MessageStatus.DELIVERED -> MaterialTheme.colorScheme.secondary
-                            MessageStatus.FAILED -> MaterialTheme.colorScheme.error
+                            MessageStatus.READ -> MaterialTheme.colorScheme.primary
+                            MessageStatus.UNREAD -> Color.Transparent
+                            MessageStatus.ARCHIVED -> MaterialTheme.colorScheme.tertiary
+                            MessageStatus.DELETED -> MaterialTheme.colorScheme.error
+                            MessageStatus.CONFIRMED -> MaterialTheme.colorScheme.primary
                         },
                         shape = CircleShape
                     )
                     .then(
                         if (message.status == MessageStatus.READ || 
-                            message.status == MessageStatus.DELIVERED || 
-                            message.status == MessageStatus.PENDING) {
+                            message.status == MessageStatus.CONFIRMED) {
                             Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                         } else Modifier
                     )
@@ -310,21 +315,22 @@ fun MessageItem(
                     imageVector = when (message.type) {
                         MessageType.NOTIFICATION -> Icons.Default.Notifications
                         MessageType.CHAT -> Icons.Default.ChatBubble
+                        MessageType.GROUP_CHAT -> Icons.Default.ChatBubble
                         MessageType.ANNOUNCEMENT -> Icons.Default.Person
                         MessageType.INCIDENT -> Icons.Default.ErrorOutline
                         MessageType.ATTENDANCE -> Icons.Default.Person
                         MessageType.DAILY_RECORD -> Icons.Default.Person
                         MessageType.SYSTEM -> Icons.Default.Notifications
+                        MessageType.TASK -> Icons.Default.Assignment
+                        MessageType.EVENT -> Icons.Default.Event
                     },
                     contentDescription = null,
-                    tint = when (message.type) {
-                        MessageType.NOTIFICATION -> MaterialTheme.colorScheme.primary
-                        MessageType.CHAT -> MaterialTheme.colorScheme.secondary
-                        MessageType.ANNOUNCEMENT -> MaterialTheme.colorScheme.tertiary
-                        MessageType.INCIDENT -> MaterialTheme.colorScheme.error
-                        MessageType.ATTENDANCE -> MaterialTheme.colorScheme.primary
-                        MessageType.DAILY_RECORD -> MaterialTheme.colorScheme.secondary
-                        MessageType.SYSTEM -> MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = when (message.status) {
+                        MessageStatus.READ -> MaterialTheme.colorScheme.primary
+                        MessageStatus.UNREAD -> Color.Gray
+                        MessageStatus.ARCHIVED -> MaterialTheme.colorScheme.tertiary
+                        MessageStatus.DELETED -> MaterialTheme.colorScheme.error
+                        MessageStatus.CONFIRMED -> MaterialTheme.colorScheme.primary
                     },
                     modifier = Modifier.size(24.dp)
                 )
@@ -340,11 +346,14 @@ fun MessageItem(
                         when (message.type) {
                             MessageType.NOTIFICATION -> "Notificación"
                             MessageType.CHAT -> "Mensaje de chat"
+                            MessageType.GROUP_CHAT -> "Mensaje de grupo"
                             MessageType.ANNOUNCEMENT -> "Comunicado"
                             MessageType.INCIDENT -> "Incidencia"
                             MessageType.ATTENDANCE -> "Asistencia"
                             MessageType.DAILY_RECORD -> "Registro diario"
                             MessageType.SYSTEM -> "Mensaje del sistema"
+                            MessageType.TASK -> "Tarea"
+                            MessageType.EVENT -> "Evento"
                         }
                     },
                     style = MaterialTheme.typography.titleMedium,

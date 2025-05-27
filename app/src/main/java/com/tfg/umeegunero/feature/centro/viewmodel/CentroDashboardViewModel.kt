@@ -133,6 +133,10 @@ class CentroDashboardViewModel @Inject constructor(
     // Estado inmutable expuesto a la UI siguiendo el principio de encapsulamiento
     val uiState: StateFlow<CentroDashboardUiState> = _uiState.asStateFlow()
     
+    // Flow para errores específicos que requieren atención especial (como errores de índice)
+    private val _errorEvents = MutableSharedFlow<Exception?>()
+    val errorEvents: SharedFlow<Exception?> = _errorEvents
+    
     /**
      * Propiedad derivada que expone directamente los cursos para facilitar
      * su uso en la UI sin necesidad de acceder a todo el estado
@@ -480,8 +484,8 @@ class CentroDashboardViewModel @Inject constructor(
     private suspend fun vincularFamiliarSiAprobado(solicitud: SolicitudVinculacion) {
         try {
             // Validar que tenemos la información necesaria
-            if (solicitud.familiarId.isBlank() || solicitud.alumnoDni.isBlank()) {
-                Timber.w("No se puede vincular: datos insuficientes. FamiliarId: ${solicitud.familiarId}, AlumnoDni: ${solicitud.alumnoDni}")
+            if (solicitud.familiarId.isBlank() || solicitud.alumnoId.isBlank()) {
+                Timber.w("No se puede vincular: datos insuficientes. FamiliarId: ${solicitud.familiarId}, AlumnoId: ${solicitud.alumnoId}")
                 return
             }
             
@@ -491,7 +495,7 @@ class CentroDashboardViewModel @Inject constructor(
             // Realizar la vinculación utilizando el FamiliarRepository
             val resultado = familiarRepository.vincularFamiliarAlumno(
                 familiarId = solicitud.familiarId,
-                alumnoId = solicitud.alumnoDni, // Usar alumnoDni como ID del alumno
+                alumnoId = solicitud.alumnoId, // Usar alumnoId como ID del alumno
                 parentesco = solicitud.tipoRelacion
             )
             
@@ -563,7 +567,23 @@ class CentroDashboardViewModel @Inject constructor(
                                 Timber.d("📊 Notificaciones pendientes para centro $centroId: $notificacionesNoLeidas")
                             }
                             is Result.Error -> {
-                                Timber.e(result.exception, "Error al cargar notificaciones pendientes")
+                                // Utilizar el helper para detectar error de índice
+                                if (result.exception != null && 
+                                    com.tfg.umeegunero.util.FirestoreIndexErrorHandler.isIndexError(result.exception as Exception)) {
+                                    
+                                    com.tfg.umeegunero.util.FirestoreIndexErrorHandler
+                                        .logIndexError(result.exception as Exception, "CentroDashboardViewModel")
+                                    
+                                    // Usar valor por defecto como fallback (0)
+                                    _uiState.update { 
+                                        it.copy(notificacionesPendientes = 0) 
+                                    }
+                                    
+                                    // Emitir el error para mostrar el diálogo
+                                    _errorEvents.emit(result.exception as? Exception)
+                                } else {
+                                    Timber.e(result.exception, "Error al cargar notificaciones pendientes")
+                                }
                             }
                             else -> { /* Ignorar loading */ }
                         }
@@ -571,6 +591,12 @@ class CentroDashboardViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar notificaciones pendientes")
+                
+                // Comprobar si es un error de índice
+                if (com.tfg.umeegunero.util.FirestoreIndexErrorHandler.isIndexError(e)) {
+                    // Emitir el error para mostrar el diálogo
+                    _errorEvents.emit(e as? Exception)
+                }
             }
         }
     }

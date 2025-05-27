@@ -53,7 +53,8 @@ data class Usuario(
     val preferenciasNotificacion: PreferenciasNotificacion? = null,
     val nombreAlumno: String? = null,
     val estado: String? = null,
-    val metadata: Map<String, Any>? = null
+    val metadata: Map<String, Any>? = null,
+    val clasesIds: List<String> = emptyList()
 ) {
     @field:DocumentId
     var documentId: String = dni

@@ -32,6 +32,9 @@ data class CalendarioUiState(
     val showEventDialog: Boolean = false,
     val selectedEventType: TipoEvento? = null,
     val eventDescription: String = "",
+    val eventTitle: String? = null,
+    val eventLocation: String? = null,
+    val eventTime: String? = null,
     val isSuccess: Boolean = false,
     val successMessage: String? = null,
     val selectedYear: Int = LocalDate.now().year,
@@ -54,33 +57,28 @@ class CalendarioViewModel @Inject constructor(
     }
 
     /**
-     * Carga los eventos del mes actual
+     * Carga los eventos del calendario
      */
     fun loadEventos() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true) }
             
             try {
-                val eventos = calendarioRepository.getEventosByMonth(
-                    _uiState.value.currentMonth.year,
-                    _uiState.value.currentMonth.monthValue
-                )
-                
+                val eventos = calendarioRepository.getEventos()
                 _uiState.update { 
                     it.copy(
                         eventos = eventos,
                         isLoading = false
                     ) 
                 }
-                Timber.d("Eventos cargados: ${eventos.size}")
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Error inesperado al cargar los eventos"
+                        error = "Error al cargar eventos: ${e.message}",
+                        isLoading = false
                     ) 
                 }
-                Timber.e(e, "Error inesperado al cargar los eventos")
+                Timber.e(e, "Error al cargar eventos")
             }
         }
     }
@@ -97,33 +95,35 @@ class CalendarioViewModel @Inject constructor(
      */
     fun updateCurrentMonth(month: YearMonth) {
         _uiState.update { it.copy(currentMonth = month) }
-        loadEventos()
     }
 
     /**
-     * Muestra el diálogo para añadir evento
+     * Muestra el diálogo para añadir un evento
      */
     fun showEventDialog() {
-        _uiState.update { it.copy(showEventDialog = true) }
-    }
-
-    /**
-     * Oculta el diálogo para añadir evento
-     */
-    fun hideEventDialog() {
         _uiState.update { 
             it.copy(
-                showEventDialog = false,
+                showEventDialog = true,
                 selectedEventType = null,
-                eventDescription = ""
+                eventDescription = "",
+                eventTitle = "",
+                eventLocation = "",
+                eventTime = null
             ) 
         }
     }
 
     /**
+     * Oculta el diálogo para añadir un evento
+     */
+    fun hideEventDialog() {
+        _uiState.update { it.copy(showEventDialog = false) }
+    }
+
+    /**
      * Actualiza el tipo de evento seleccionado
      */
-    fun updateSelectedEventType(tipo: TipoEvento?) {
+    fun updateSelectedEventType(tipo: TipoEvento) {
         _uiState.update { it.copy(selectedEventType = tipo) }
     }
 
@@ -133,6 +133,27 @@ class CalendarioViewModel @Inject constructor(
     fun updateEventDescription(description: String) {
         _uiState.update { it.copy(eventDescription = description) }
     }
+    
+    /**
+     * Actualiza el título del evento
+     */
+    fun updateEventTitle(title: String) {
+        _uiState.update { it.copy(eventTitle = title) }
+    }
+    
+    /**
+     * Actualiza la ubicación del evento
+     */
+    fun updateEventLocation(location: String) {
+        _uiState.update { it.copy(eventLocation = location) }
+    }
+    
+    /**
+     * Actualiza la hora del evento
+     */
+    fun updateEventTime(time: String) {
+        _uiState.update { it.copy(eventTime = time) }
+    }
 
     /**
      * Guarda un nuevo evento
@@ -140,17 +161,40 @@ class CalendarioViewModel @Inject constructor(
     fun saveEvento() {
         viewModelScope.launch {
             val currentState = _uiState.value
-            if (currentState.selectedEventType == null || currentState.eventDescription.isBlank()) {
+            
+            if (currentState.selectedEventType == null) {
+                _uiState.update { it.copy(error = "Debes seleccionar un tipo de evento") }
                 return@launch
             }
-
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            if (currentState.eventDescription.isBlank() && (currentState.eventTitle == null || currentState.eventTitle.isBlank())) {
+                _uiState.update { it.copy(error = "Debes proporcionar un título o descripción") }
+                return@launch
+            }
+            
+            _uiState.update { it.copy(isLoading = true) }
             
             try {
+                // Construir título y descripción completos
+                val title = currentState.eventTitle?.takeIf { it.isNotBlank() } 
+                    ?: currentState.eventDescription.lines().firstOrNull()?.takeIf { it.isNotBlank() }
+                    ?: "Evento"
+                
+                // Construir descripción que incluya ubicación y hora si se especificaron
+                var descripcionCompleta = currentState.eventDescription
+                
+                if (!currentState.eventLocation.isNullOrBlank()) {
+                    descripcionCompleta += "\nLugar: ${currentState.eventLocation}"
+                }
+                
+                if (!currentState.eventTime.isNullOrBlank()) {
+                    descripcionCompleta += "\nHora: ${currentState.eventTime}"
+                }
+                
                 val newEvent = Evento(
                     id = "", // Será generado por Firestore
-                    titulo = currentState.eventDescription.lines().firstOrNull() ?: "Evento",
-                    descripcion = currentState.eventDescription,
+                    titulo = title,
+                    descripcion = descripcionCompleta,
                     fecha = currentState.selectedDate.atStartOfDay().toTimestamp(),
                     tipo = currentState.selectedEventType,
                     creadorId = calendarioRepository.obtenerUsuarioId(),
@@ -169,6 +213,9 @@ class CalendarioViewModel @Inject constructor(
                                 showEventDialog = false,
                                 selectedEventType = null,
                                 eventDescription = "",
+                                eventTitle = "",
+                                eventLocation = "",
+                                eventTime = null,
                                 isSuccess = true,
                                 successMessage = "Evento guardado correctamente"
                             ) 
@@ -187,15 +234,24 @@ class CalendarioViewModel @Inject constructor(
                     is Result.Loading -> {
                         // Ya estamos en estado de carga
                     }
+                    else -> {
+                        // Caso por defecto para manejar todos los posibles valores
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                error = "Estado desconocido al guardar el evento"
+                            ) 
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Error inesperado al guardar el evento"
+                        error = "Error al guardar el evento: ${e.message}"
                     ) 
                 }
-                Timber.e(e, "Error inesperado al guardar el evento")
+                Timber.e(e, "Error al guardar el evento")
             }
         }
     }
@@ -234,6 +290,16 @@ class CalendarioViewModel @Inject constructor(
                     is Result.Loading -> {
                         // Ya estamos en estado de carga
                     }
+                    else -> {
+                        // Caso por defecto para manejar todos los posibles valores
+                        _uiState.update { 
+                            it.copy(
+                                isLoading = false,
+                                error = "Estado desconocido al eliminar el evento"
+                            ) 
+                        }
+                        Timber.w("Estado desconocido al eliminar el evento")
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { 
@@ -257,8 +323,15 @@ class CalendarioViewModel @Inject constructor(
     /**
      * Limpia el mensaje de éxito
      */
-    fun clearSuccess() {
+    fun clearSuccessMessage() {
         _uiState.update { it.copy(isSuccess = false, successMessage = null) }
+    }
+
+    /**
+     * Limpia el estado de éxito (alias para clearSuccessMessage)
+     */
+    fun clearSuccess() {
+        clearSuccessMessage()
     }
 
     /**

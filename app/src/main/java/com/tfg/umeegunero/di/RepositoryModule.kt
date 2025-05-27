@@ -10,7 +10,6 @@ import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
 import com.tfg.umeegunero.data.repository.AlumnoRepository
-import com.tfg.umeegunero.data.repository.AsistenciaRepositoryImpl
 import com.tfg.umeegunero.data.repository.AlumnoRepositoryImpl
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.EstadisticasRepository
@@ -31,12 +30,15 @@ import com.tfg.umeegunero.data.local.dao.ChatMensajeDao
 import com.tfg.umeegunero.data.local.dao.ConversacionDao
 import com.tfg.umeegunero.data.repository.ChatRepository
 import com.tfg.umeegunero.util.DefaultAvatarsManager
+import com.tfg.umeegunero.data.repository.ComunicadoRepository
+import com.tfg.umeegunero.data.repository.NotificacionRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import javax.inject.Provider
 
 /**
  * Módulo Dagger/Hilt que proporciona las implementaciones de los repositorios.
@@ -66,7 +68,7 @@ object RepositoryModule {
     fun provideAsistenciaRepository(
         firestore: FirebaseFirestore
     ): AsistenciaRepository {
-        return AsistenciaRepositoryImpl(firestore)
+        return AsistenciaRepository(firestore)
     }
 
     @Provides
@@ -82,7 +84,7 @@ object RepositoryModule {
      * Este repositorio centraliza la gestión de todas las comunicaciones de la aplicación.
      *
      * @param firestore Instancia de FirebaseFirestore
-     * @param authRepository Repositorio de autenticación
+     * @param authRepositoryProvider Repositorio de autenticación
      * @param usuarioRepository Repositorio de usuarios
      * @return Instancia de UnifiedMessageRepository
      */
@@ -90,10 +92,10 @@ object RepositoryModule {
     @Singleton
     fun provideUnifiedMessageRepository(
         firestore: FirebaseFirestore,
-        authRepository: AuthRepository,
+        authRepositoryProvider: Provider<AuthRepository>,
         usuarioRepository: UsuarioRepository
     ): UnifiedMessageRepository {
-        return UnifiedMessageRepository(firestore, authRepository, usuarioRepository)
+        return UnifiedMessageRepository(firestore, authRepositoryProvider, usuarioRepository)
     }
     
     /**
@@ -248,5 +250,24 @@ object RepositoryModule {
         storageRepository: StorageRepository
     ): DefaultAvatarsManager {
         return DefaultAvatarsManager(context, storageRepository)
+    }
+
+    /**
+     * Proporciona una instancia del repositorio de comunicados.
+     * Este repositorio maneja los comunicados oficiales de la aplicación.
+     *
+     * @param firestore Instancia de FirebaseFirestore
+     * @param notificacionRepository Repositorio de notificaciones
+     * @return Instancia de ComunicadoRepository
+     */
+    @Provides
+    @Singleton
+    fun provideComunicadoRepository(
+        firestore: FirebaseFirestore,
+        notificacionRepository: NotificacionRepository
+    ): ComunicadoRepository {
+        // Creamos el repositorio sin la dependencia cíclica de UnifiedMessageRepository
+        // Esta se inyectará mediante otro mecanismo
+        return ComunicadoRepository(firestore, notificacionRepository, null)
     }
 } 

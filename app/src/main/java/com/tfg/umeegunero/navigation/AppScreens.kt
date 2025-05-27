@@ -796,4 +796,16 @@ sealed class AppScreens(val route: String) {
             }
         )
     }
+
+    // Añadir en la sección de rutas de profesor
+    object InformeAsistencia : AppScreens("informe_asistencia")
+
+    
+    object DetallePreRegistroDiario : AppScreens("detalle_preregistro_diario/{registroId}") {
+        val arguments = listOf(
+            navArgument("registroId") { type = NavType.StringType }
+        )
+        
+        fun createRoute(registroId: String) = "detalle_preregistro_diario/$registroId"
+    }
 } 

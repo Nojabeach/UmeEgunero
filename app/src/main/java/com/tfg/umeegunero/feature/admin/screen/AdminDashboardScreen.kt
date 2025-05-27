@@ -387,21 +387,7 @@ fun AdminDashboardScreen(
                         )
                     }
                     }
-                    // Separador visual
-                    item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
-                    
-                    // Resumen estadístico
-                    item {
-                        AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                            ResumenEstadisticasAdminCard(
-                                totalCentros = uiState.totalCentros,
-                                totalUsuarios = uiState.totalUsuarios,
-                                nuevosCentros = uiState.nuevosCentros,
-                                nuevosUsuarios = uiState.nuevosUsuarios,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
+            
                     
                     // Separador visual
                     item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
@@ -481,10 +467,10 @@ fun AdminDashboardScreen(
                             CategoriaCard(
                                 titulo = "Seguridad",
                                 icono = Icons.Default.Security,
-                                descripcion = "Configurar aspectos de seguridad",
-                                color = AdminColor,
-                                    iconTint = AppColors.Green500,
-                                    border = true,
+                                descripcion = "Configurar aspectos de seguridad [En desarrollo]",
+                                color = Color.Gray,
+                                iconTint = Color.LightGray,
+                                border = true,
                                 onClick = onNavigateToSeguridad,
                                 modifier = Modifier.weight(1f)
                             )
@@ -547,51 +533,12 @@ fun AdminDashboardScreen(
                                     iconTint = AppColors.GradientStart,
                                     border = true,
                                 onClick = { showComunicadosDialog = true },
-                                modifier = Modifier.weight(1f)
-                            )
-                            CategoriaCard(
-                                titulo = "Soporte técnico",
-                                icono = Icons.AutoMirrored.Filled.Help,
-                                descripcion = "Acceder al soporte técnico",
-                                color = AdminColor,
-                                    iconTint = AppColors.FamiliarColor,
-                                    border = true,
-                                onClick = { showSoporteTecnicoDialog = true },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.fillMaxWidth()
                             )
                             }
                         }
                     }
-                    // Segunda fila: FAQ y Términos (con animación y borde)
-                    item {
-                        AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CategoriaCard(
-                                titulo = "FAQ",
-                                icono = Icons.Default.QuestionAnswer,
-                                descripcion = "Ver preguntas frecuentes",
-                                color = AdminColor,
-                                    iconTint = AppColors.Alumno,
-                                    border = true,
-                                onClick = { showFAQDialog = true },
-                                modifier = Modifier.weight(1f)
-                            )
-                            CategoriaCard(
-                                titulo = "Términos",
-                                icono = Icons.Default.Description,
-                                descripcion = "Ver términos y condiciones",
-                                color = AdminColor,
-                                    iconTint = AppColors.AcademicoColorDark,
-                                    border = true,
-                                onClick = { showTerminosDialog = true },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        }
-                    }
+                    // Separador visual
                     item {
                         Spacer(modifier = Modifier.height(32.dp))
                     }

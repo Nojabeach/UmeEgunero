@@ -148,7 +148,12 @@ fun ComunicadoContent(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             
-            comunicado.attachments.forEach { attachment ->
+            comunicado.attachments.forEach { attachmentUrl ->
+                val attachment = mapOf(
+                    "url" to attachmentUrl,
+                    "name" to attachmentUrl.substringAfterLast('/'),
+                    "type" to getFileTypeFromUrl(attachmentUrl)
+                )
                 AdjuntoItem(attachment)
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -397,5 +402,25 @@ fun AdjuntoItem(attachment: Map<String, String>) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Determina el tipo de archivo basado en la URL
+ */
+private fun getFileTypeFromUrl(url: String): String {
+    return when {
+        url.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+        url.endsWith(".jpg", ignoreCase = true) || 
+        url.endsWith(".jpeg", ignoreCase = true) || 
+        url.endsWith(".png", ignoreCase = true) -> "image/jpeg"
+        url.endsWith(".doc", ignoreCase = true) || 
+        url.endsWith(".docx", ignoreCase = true) -> "application/msword"
+        url.endsWith(".xls", ignoreCase = true) || 
+        url.endsWith(".xlsx", ignoreCase = true) -> "application/vnd.ms-excel"
+        url.endsWith(".ppt", ignoreCase = true) || 
+        url.endsWith(".pptx", ignoreCase = true) -> "application/vnd.ms-powerpoint"
+        url.endsWith(".txt", ignoreCase = true) -> "text/plain"
+        else -> "application/octet-stream"
     }
 } 

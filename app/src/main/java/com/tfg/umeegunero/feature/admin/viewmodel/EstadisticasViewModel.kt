@@ -36,6 +36,9 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Modelo para datos estadísticos de gráficos temporales 
@@ -82,7 +85,8 @@ data class PorcentajeUso(
  */
 @HiltViewModel
 class EstadisticasViewModel @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val estadisticasRepository: com.tfg.umeegunero.data.repository.EstadisticasRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EstadisticasUiState())
@@ -612,176 +616,48 @@ class EstadisticasViewModel @Inject constructor(
     }
 
     /**
-     * Genera un informe detallado
+     * Genera un informe con las estadísticas actuales
      */
     fun generarInforme() {
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
                 
-                // Obtener todos los datos necesarios para el informe
-                val centros = firestore.collection("centros").get().await()
-                val usuarios = firestore.collection("usuarios").get().await()
-                val actividades = firestore.collection("actividades")
-                    .orderBy("fecha", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                    .get()
-                    .await()
-                
-                // Desglose por roles
-                val profesores = usuarios.documents.filter { 
-                    it.getString("tipoUsuario") == "PROFESOR" || 
-                    it.getString("rol") == "PROFESOR" 
-                }
-                val alumnos = usuarios.documents.filter { 
-                    it.getString("tipoUsuario") == "ALUMNO" || 
-                    it.getString("rol") == "ALUMNO" 
-                }
-                val familiares = usuarios.documents.filter { 
-                    it.getString("tipoUsuario") == "FAMILIAR" || 
-                    it.getString("rol") == "FAMILIAR" 
+                // Asegurarse de que los datos estén actualizados
+                if (_uiState.value.totalUsuarios == 0) {
+                    cargarEstadisticas()
                 }
                 
-                // Obtener actividad reciente por tipo
-                val tiposActividad = actividades.documents
-                    .groupingBy { it.getString("tipo") ?: "DESCONOCIDO" }
-                    .eachCount()
+                // Usar los datos actuales del uiState
+                val informeGenerado = estadisticasRepository.generarInforme(
+                    totalUsuarios = _uiState.value.totalUsuarios,
+                    totalCentros = _uiState.value.totalCentros,
+                    totalProfesores = _uiState.value.totalProfesores,
+                    totalAlumnos = _uiState.value.totalAlumnos,
+                    totalFamiliares = _uiState.value.totalFamiliares,
+                    totalAdministradores = _uiState.value.totalAdministradores,
+                    accesosPorCentro = accesosPorCentro.value,
+                    actividadesRecientes = _uiState.value.actividadesRecientes
+                )
                 
-                // Datos de registros diarios
-                val registrosDiarios = firestore.collection("registros_diarios").get().await()
-                
-                // Últimos 30 días de actividad para el gráfico
-                val fechaLimite30Dias = Calendar.getInstance().apply {
-                    add(Calendar.DAY_OF_YEAR, -30)
-                }.time
-                
-                // Historial de actividad de los últimos 30 días
-                val actividadPorDia = mutableMapOf<String, Int>()
-                val formatoDia = SimpleDateFormat("dd/MM", Locale("es", "ES"))
-                
-                // Inicializar el mapa con todos los días (en los últimos 30)
-                for (i in 29 downTo 0) {
-                    val fecha = Calendar.getInstance().apply {
-                        add(Calendar.DAY_OF_YEAR, -i)
-                    }.time
-                    actividadPorDia[formatoDia.format(fecha)] = 0
-                }
-                
-                // Contar actividades por día
-                actividades.documents.forEach { doc ->
-                    val fecha = doc.getTimestamp("fecha")?.toDate()
-                    if (fecha != null && fecha.after(fechaLimite30Dias)) {
-                        val diaFormateado = formatoDia.format(fecha)
-                        actividadPorDia[diaFormateado] = (actividadPorDia[diaFormateado] ?: 0) + 1
-                    }
-                }
-                
-                // Procesar datos para el informe
-                val informe = StringBuilder().apply {
-                    appendLine("=====================================================")
-                    appendLine("   INFORME DE ESTADÍSTICAS DEL SISTEMA UME EGUNERO   ")
-                    appendLine("=====================================================")
-                    appendLine("Fecha de generación: ${dateFormatter.format(Date())}")
-                    appendLine()
-                    
-                    appendLine("1. RESUMEN GENERAL:")
-                    appendLine("------------------")
-                    appendLine("• Total de Centros: ${centros.size()}")
-                    appendLine("• Total de Usuarios: ${usuarios.size()}")
-                    appendLine()
-                    
-                    appendLine("2. DISTRIBUCIÓN DE USUARIOS:")
-                    appendLine("--------------------------")
-                    appendLine("• Profesores: ${profesores.size} (${calcularPorcentaje(profesores.size, usuarios.size())}%)")
-                    appendLine("• Alumnos: ${alumnos.size} (${calcularPorcentaje(alumnos.size, usuarios.size())}%)")
-                    appendLine("• Familiares: ${familiares.size} (${calcularPorcentaje(familiares.size, usuarios.size())}%)")
-                    appendLine()
-                    
-                    appendLine("3. ACTIVIDAD DEL SISTEMA:")
-                    appendLine("-----------------------")
-                    appendLine("• Total de actividades registradas: ${actividades.size()}")
-                    appendLine("• Registros diarios generados: ${registrosDiarios.size()}")
-                    appendLine()
-                    
-                    appendLine("4. DISTRIBUCIÓN DE ACTIVIDADES POR TIPO:")
-                    appendLine("--------------------------------------")
-                    tiposActividad.entries.sortedByDescending { it.value }.forEach { (tipo, cantidad) ->
-                        appendLine("• $tipo: $cantidad (${calcularPorcentaje(cantidad, actividades.size())}%)")
-                    }
-                    appendLine()
-                    
-                    appendLine("5. GRÁFICO DE ACTIVIDAD (ÚLTIMOS 30 DÍAS):")
-                    appendLine("---------------------------------------")
-                    
-                    // Crear un gráfico ASCII simple
-                    val maxActividad = actividadPorDia.values.maxOrNull() ?: 0
-                    val escala = if (maxActividad > 0) 20.0 / maxActividad else 1.0
-                    
-                    for ((fecha, cantidad) in actividadPorDia.entries.sortedBy { it.key }) {
-                        val barras = (cantidad * escala).toInt()
-                        appendLine("$fecha | ${"█".repeat(barras)} $cantidad")
-                    }
-                    appendLine()
-                    
-                    appendLine("6. ACTIVIDADES RECIENTES:")
-                    appendLine("------------------------")
-                    actividades.documents.take(15).forEach { doc ->
-                        val fecha = doc.getTimestamp("fecha")?.toDate()?.let { dateFormatter.format(it) } ?: "Fecha desconocida"
-                        val descripcion = doc.getString("descripcion") ?: "Sin descripción"
-                        val usuario = doc.getString("usuarioId") ?: "Usuario desconocido"
-                        appendLine("• [$fecha] $usuario: $descripcion")
-                    }
-                    appendLine()
-                    
-                    appendLine("7. CONCLUSIONES Y RECOMENDACIONES:")
-                    appendLine("----------------------------------")
-                    
-                    // Generar algunas conclusiones básicas basadas en los datos
-                    val ratioFamiliarAlumno = if (alumnos.size > 0) familiares.size.toFloat() / alumnos.size else 0f
-                    
-                    appendLine("• Ratio familiar/alumno: ${String.format("%.2f", ratioFamiliarAlumno)} familiares por alumno")
-                    
-                    if (ratioFamiliarAlumno < 1.0f) {
-                        appendLine("  → Se recomienda promover la participación de más familiares en la plataforma")
-                    } else if (ratioFamiliarAlumno > 1.5f) {
-                        appendLine("  → Excelente participación familiar, se recomienda mantener las estrategias actuales")
-                    }
-                    
-                    appendLine()
-                    appendLine("=====================================================")
-                    appendLine("                FIN DEL INFORME                     ")
-                    appendLine("=====================================================")
-                }.toString()
-                
-                // Guardar el informe en Firestore con un ID más descriptivo
-                val informeId = "informe_${System.currentTimeMillis()}"
-                firestore.collection("informes")
-                    .document(informeId)
-                    .set(mapOf(
-                        "contenido" to informe,
-                        "fechaGeneracion" to com.google.firebase.Timestamp.now(),
-                        "tipo" to "estadisticas",
-                        "nombre" to "Informe de Estadísticas",
-                        "centros" to centros.size(),
-                        "usuarios" to usuarios.size(),
-                        "profesores" to profesores.size,
-                        "alumnos" to alumnos.size,
-                        "familiares" to familiares.size
-                    ))
-                    .await()
-                
+                if (informeGenerado) {
+                    _uiState.update { it.copy(
+                        informeGenerado = true,
+                        error = "",
+                        isLoading = false
+                    ) }
+                } else {
                 _uiState.update { it.copy(
-                    isLoading = false,
-                    informeGenerado = true,
-                    informeContenido = informe
-                ) }
-                
-                Timber.d("Informe generado y guardado correctamente con ID: $informeId")
+                        error = "Error al generar el informe",
+                        isLoading = false
+                    ) }
+                }
             } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = e.message ?: "Error al generar informe"
-                ) }
                 Timber.e(e, "Error al generar informe")
+                _uiState.update { it.copy(
+                    error = "Error: ${e.message}",
+                    isLoading = false
+                ) }
             }
         }
     }
@@ -798,77 +674,71 @@ class EstadisticasViewModel @Inject constructor(
     }
 
     /**
-     * Descarga el informe generado al almacenamiento del dispositivo.
-     * @param context Contexto de Android necesario para acceder al almacenamiento
+     * Descarga el informe generado como archivo PDF
      */
     fun descargarInforme(context: Context) {
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isLoading = true) }
+                // Asegurarse de que haya un informe para descargar
+                val contenidoInforme = estadisticasRepository.getInformeContenido()
                 
-                // Verificar que haya un informe generado
-                if (uiState.value.informeContenido.isEmpty()) {
-                    throw IOException("No hay informe generado para descargar")
+                if (contenidoInforme.isBlank()) {
+                    // Si no hay informe generado previamente, intentar generarlo primero
+                    generarInforme()
+                    delay(1000) // Dar tiempo para que se genere
                 }
                 
-                // Crear nombre de archivo único
-                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale("es", "ES")).format(Date())
-                val fileName = "informe_estadisticas_$timeStamp.txt"
+                // Obtener el contenido actualizado
+                val informeActualizado = estadisticasRepository.getInformeContenido()
                 
-                var uri: Uri? = null
-                var outputStream: OutputStream? = null
-                var success = false
-                
-                try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        // Usar MediaStore para Android 10 y superior
-                        val contentValues = ContentValues().apply {
-                            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                if (informeActualizado.isBlank()) {
+                    _uiState.update { it.copy(
+                        error = "No hay informe disponible para descargar"
+                    ) }
+                    return@launch
                         }
                         
-                        val resolver = context.contentResolver
-                        uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-                        if (uri != null) {
-                            outputStream = resolver.openOutputStream(uri)
-                            outputStream?.write(uiState.value.informeContenido.toByteArray())
-                            success = true
-                            Timber.d("Informe guardado en MediaStore: $uri")
-                        }
-                    } else {
-                        // Método tradicional para Android 9 y anteriores
-                        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                        if (!downloadsDir.exists()) {
-                            downloadsDir.mkdirs()
-                        }
-                        
-                        val file = File(downloadsDir, fileName)
-                        outputStream = FileOutputStream(file)
-                        outputStream.write(uiState.value.informeContenido.toByteArray())
-                        success = true
-                        Timber.d("Informe guardado en la carpeta de descargas: ${file.absolutePath}")
-                    }
-                } finally {
-                    outputStream?.close()
-                }
+                val descargado = estadisticasRepository.exportarInformeComoPDF(
+                    context = context, 
+                    contenido = informeActualizado,
+                    nombreArchivo = "Estadisticas_UmeEgunero_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.pdf"
+                )
                 
-                if (!success) {
-                    throw IOException("No se pudo guardar el archivo")
-                }
-                
-                // Actualizar estado
+                if (descargado) {
                 _uiState.update { it.copy(
-                    isLoading = false,
                     informeDescargado = true,
                     error = ""
                 ) }
+                    
+                    // Mostrar toast de éxito
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "Informe descargado correctamente",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    
+                    Timber.d("Informe descargado correctamente")
+                } else {
+                    _uiState.update { it.copy(
+                        error = "Error al descargar el informe"
+                    ) }
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Error al descargar informe")
                 _uiState.update { it.copy(
-                    isLoading = false,
-                    error = "Error al descargar informe: ${e.message}"
+                    error = "Error: ${e.message}"
                 ) }
+                
+                // Mostrar toast de error
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "Error al descargar el informe: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }

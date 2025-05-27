@@ -1,5 +1,12 @@
 package com.tfg.umeegunero.feature.profesor.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,25 +36,37 @@ import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -60,11 +79,13 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.profesor.viewmodel.ChatContactsViewModel
 import com.tfg.umeegunero.feature.profesor.viewmodel.FamiliarContacto
 import com.tfg.umeegunero.feature.profesor.viewmodel.ProfesorContacto
+import com.tfg.umeegunero.ui.theme.ProfesorColor
 import kotlinx.coroutines.delay
 
 /**
- * Pantalla de contactos para iniciar un chat (versión temporal)
+ * Pantalla de contactos para iniciar un chat (versión mejorada)
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatContactsScreen(
     navController: NavController,
@@ -72,6 +93,7 @@ fun ChatContactsScreen(
 ) {
     val viewModel: ChatContactsViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
     
     // Efecto para recargar los mensajes no leídos cuando la pantalla se vuelva activa
     LaunchedEffect(Unit) {
@@ -90,7 +112,19 @@ fun ChatContactsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "Contactos") },
+                title = { 
+                    Column {
+                        Text(
+                            text = "Nuevo mensaje",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Text(
+                            text = "Selecciona un contacto",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -98,13 +132,24 @@ fun ChatContactsScreen(
                             contentDescription = "Volver"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ProfesorColor,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         },
         floatingActionButton = {
-            if (uiState.filteredContacts.isNotEmpty()) {
+            AnimatedVisibility(
+                visible = uiState.filteredContacts.isNotEmpty(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
                 FloatingActionButton(
-                    onClick = { navController.navigate(chatRouteName) }
+                    onClick = { navController.navigate(chatRouteName) },
+                    containerColor = ProfesorColor,
+                    contentColor = Color.White
                 ) {
                     Icon(
                         imageVector = Icons.Default.GroupAdd,
@@ -121,11 +166,15 @@ fun ChatContactsScreen(
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .size(50.dp)
-                            .align(Alignment.Center)
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(50.dp),
+                            color = ProfesorColor
+                        )
+                    }
                 }
                 uiState.error != null -> {
                     Column(
@@ -138,21 +187,28 @@ fun ChatContactsScreen(
                         Icon(
                             imageVector = Icons.Default.Error,
                             contentDescription = null,
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Error",
-                            style = MaterialTheme.typography.titleLarge
+                            text = "Error al cargar contactos",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = uiState.error ?: "Error desconocido",
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(24.dp))
-                        Button(onClick = { viewModel.loadContacts() }) {
+                        Button(
+                            onClick = { viewModel.loadContacts() },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = ProfesorColor
+                            )
+                        ) {
                             Text(text = "Reintentar")
                         }
                     }
@@ -161,8 +217,16 @@ fun ChatContactsScreen(
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        // Barra de búsqueda
+                        SearchBar(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it }
+                        )
+                        
                         // Para usuarios tipo familia, mostrar selector de hijos
-                        if (uiState.userType == TipoUsuario.FAMILIAR && uiState.hijos.isNotEmpty()) {
+                        AnimatedVisibility(
+                            visible = uiState.userType == TipoUsuario.FAMILIAR && uiState.hijos.isNotEmpty()
+                        ) {
                             HijosSelector(
                                 hijos = uiState.hijos,
                                 hijoSeleccionado = uiState.hijoSeleccionado,
@@ -171,7 +235,9 @@ fun ChatContactsScreen(
                         }
                         
                         // Para profesores y administradores, mostrar filtros
-                        if (uiState.userType == TipoUsuario.PROFESOR || uiState.userType == TipoUsuario.ADMIN_CENTRO) {
+                        AnimatedVisibility(
+                            visible = uiState.userType == TipoUsuario.PROFESOR || uiState.userType == TipoUsuario.ADMIN_CENTRO
+                        ) {
                             FiltersSection(
                                 cursos = uiState.availableCourses,
                                 clases = uiState.availableClasses,
@@ -182,12 +248,35 @@ fun ChatContactsScreen(
                             )
                         }
                         
+                        // Lista de contactos filtrada por búsqueda
+                        val filteredContacts = if (searchQuery.isEmpty()) {
+                            uiState.filteredContacts
+                        } else {
+                            uiState.filteredContacts.filter { contact ->
+                                when (contact) {
+                                    is ProfesorContacto -> {
+                                        "${contact.nombre} ${contact.apellidos}".contains(searchQuery, ignoreCase = true)
+                                    }
+                                    is FamiliarContacto -> {
+                                        "${contact.nombre} ${contact.apellidos}".contains(searchQuery, ignoreCase = true)
+                                    }
+                                    else -> false
+                                }
+                            }
+                        }
+                        
                         // Lista de contactos
                         ContactsList(
-                            contacts = uiState.filteredContacts,
-                            administratorContacts = uiState.administratorContacts,
-                            teacherContacts = uiState.teacherContacts,
-                            familyContacts = uiState.familyContacts,
+                            contacts = filteredContacts,
+                            administratorContacts = uiState.administratorContacts.filter { contact ->
+                                searchQuery.isEmpty() || "${contact.nombre} ${contact.apellidos}".contains(searchQuery, ignoreCase = true)
+                            },
+                            teacherContacts = uiState.teacherContacts.filter { contact ->
+                                searchQuery.isEmpty() || "${contact.nombre} ${contact.apellidos}".contains(searchQuery, ignoreCase = true)
+                            },
+                            familyContacts = uiState.familyContacts.filter { contact ->
+                                searchQuery.isEmpty() || "${contact.nombre} ${contact.apellidos}".contains(searchQuery, ignoreCase = true)
+                            },
                             navController = navController,
                             chatRouteName = chatRouteName,
                             viewModel = viewModel
@@ -200,6 +289,36 @@ fun ChatContactsScreen(
 }
 
 @Composable
+fun SearchBar(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = { Text("Buscar contacto...") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Buscar",
+                tint = ProfesorColor
+            )
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = TextFieldDefaults.colors(
+            focusedIndicatorColor = ProfesorColor,
+            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
+@Composable
 fun HijosSelector(
     hijos: List<com.tfg.umeegunero.data.model.Alumno>,
     hijoSeleccionado: com.tfg.umeegunero.data.model.Alumno?,
@@ -209,7 +328,8 @@ fun HijosSelector(
         Text(
             text = "Selecciona un hijo para ver sus profesores:",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
         )
         
         LazyRow(
@@ -220,22 +340,40 @@ fun HijosSelector(
                 val isSelected = hijoSeleccionado?.dni == alumno.dni
                 
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer 
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (isSelected) ProfesorColor 
                            else MaterialTheme.colorScheme.surfaceVariant,
-                    border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                    border = if (isSelected) BorderStroke(2.dp, ProfesorColor) else null,
                     modifier = Modifier
-                        .padding(4.dp)
                         .clickable { onHijoSelected(alumno) }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) Color.White 
+                                    else ProfesorColor.copy(alpha = 0.2f)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = alumno.nombre.first().toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) ProfesorColor else ProfesorColor
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = alumno.nombre,
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -253,20 +391,27 @@ fun FiltersSection(
     onCursoSelected: (String) -> Unit,
     onClaseSelected: (String) -> Unit
 ) {
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(16.dp)
+    ) {
         Text(
-            text = "Filtrar contactos:",
+            text = "Filtrar contactos",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
         )
         
         // Selector de cursos
         if (cursos.isNotEmpty()) {
             Text(
-                text = "Curso:",
+                text = "Por curso:",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             LazyRow(
@@ -277,24 +422,23 @@ fun FiltersSection(
                     val isSelected = cursoSeleccionado == curso.id
                     
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer 
-                               else MaterialTheme.colorScheme.surfaceVariant,
-                        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isSelected) ProfesorColor 
+                               else MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(
+                            1.dp, 
+                            if (isSelected) ProfesorColor else MaterialTheme.colorScheme.outline
+                        ),
                         modifier = Modifier
-                            .padding(4.dp)
                             .clickable { onCursoSelected(curso.id) }
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = curso.nombre,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
+                        Text(
+                            text = curso.nombre,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
@@ -303,10 +447,11 @@ fun FiltersSection(
         // Selector de clases
         if (clases.isNotEmpty()) {
             Text(
-                text = "Clase:",
+                text = "Por clase:",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             LazyRow(
@@ -317,24 +462,23 @@ fun FiltersSection(
                     val isSelected = claseSeleccionada == clase.id
                     
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer 
-                               else MaterialTheme.colorScheme.surfaceVariant,
-                        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isSelected) ProfesorColor 
+                               else MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(
+                            1.dp, 
+                            if (isSelected) ProfesorColor else MaterialTheme.colorScheme.outline
+                        ),
                         modifier = Modifier
-                            .padding(4.dp)
                             .clickable { onClaseSelected(clase.id) }
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = clase.nombre,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
+                        Text(
+                            text = clase.nombre,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
@@ -366,13 +510,14 @@ fun ContactsList(
                 Icon(
                     imageVector = Icons.Default.PersonSearch,
                     contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    modifier = Modifier.size(80.dp),
+                    tint = ProfesorColor.copy(alpha = 0.5f)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "No hay contactos disponibles",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -380,7 +525,7 @@ fun ContactsList(
                     text = "Prueba con otros filtros o selecciona otro curso/clase",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -389,22 +534,26 @@ fun ContactsList(
     
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 90.dp) // Espacio para no tapar el FAB
+        contentPadding = PaddingValues(bottom = 90.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Sección de administradores
         if (administratorContacts.isNotEmpty()) {
             item {
                 ContactSectionHeader(
                     title = "Administración",
-                    icon = Icons.Default.AdminPanelSettings
+                    icon = Icons.Default.AdminPanelSettings,
+                    count = administratorContacts.size
                 )
             }
             
             items(administratorContacts) { contact ->
                 ContactItem(
                     name = "${contact.nombre} ${contact.apellidos}",
-                    description = "Administrador",
+                    description = contact.descripcion ?: "Administrador del centro",
                     unreadCount = contact.unreadCount,
+                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconColor = MaterialTheme.colorScheme.primary,
                     onContactClick = {
                         viewModel.startConversation(
                             contactId = contact.dni,
@@ -422,7 +571,8 @@ fun ContactsList(
             item {
                 ContactSectionHeader(
                     title = "Profesores",
-                    icon = Icons.Default.School
+                    icon = Icons.Default.School,
+                    count = teacherContacts.size
                 )
             }
             
@@ -431,6 +581,8 @@ fun ContactsList(
                     name = "${contact.nombre} ${contact.apellidos}",
                     description = contact.descripcion ?: "Profesor",
                     unreadCount = contact.unreadCount,
+                    backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+                    iconColor = MaterialTheme.colorScheme.secondary,
                     onContactClick = {
                         viewModel.startConversation(
                             contactId = contact.dni,
@@ -448,7 +600,8 @@ fun ContactsList(
             item {
                 ContactSectionHeader(
                     title = "Familias",
-                    icon = Icons.Default.People
+                    icon = Icons.Default.People,
+                    count = familyContacts.size
                 )
             }
             
@@ -457,6 +610,8 @@ fun ContactsList(
                     name = "${contact.nombre} ${contact.apellidos}",
                     description = "Familia de ${contact.alumnoNombre ?: "Alumno"}",
                     unreadCount = contact.unreadCount,
+                    backgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    iconColor = MaterialTheme.colorScheme.tertiary,
                     onContactClick = {
                         viewModel.startConversation(
                             contactId = contact.dni,
@@ -475,26 +630,41 @@ fun ContactsList(
 @Composable
 fun ContactSectionHeader(
     title: String,
-    icon: ImageVector
+    icon: ImageVector,
+    count: Int
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary
+            tint = ProfesorColor,
+            modifier = Modifier.size(24.dp)
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
+        Spacer(modifier = Modifier.weight(1f))
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = ProfesorColor.copy(alpha = 0.1f)
+        ) {
+            Text(
+                text = count.toString(),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = ProfesorColor
+            )
+        }
     }
 }
 
@@ -502,16 +672,31 @@ fun ContactSectionHeader(
 fun ContactItem(
     name: String,
     description: String,
-    onContactClick: () -> Unit,
-    unreadCount: Int = 0
+    unreadCount: Int,
+    backgroundColor: Color,
+    iconColor: Color,
+    onContactClick: () -> Unit
 ) {
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(300),
+        label = "scale"
+    )
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = 16.dp)
+            .scale(scale)
             .clickable { onContactClick() },
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 8.dp
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Row(
             modifier = Modifier
@@ -519,33 +704,35 @@ fun ContactItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Avatar con inicial
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(backgroundColor),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = name.firstOrNull()?.toString() ?: "?",
+                    text = name.first().toString().uppercase(),
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White
+                    fontWeight = FontWeight.Bold,
+                    color = iconColor
                 )
             }
             
             Spacer(modifier = Modifier.width(16.dp))
             
+            // Información del contacto
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodyMedium,
@@ -555,33 +742,29 @@ fun ContactItem(
                 )
             }
             
-            Spacer(modifier = Modifier.width(8.dp))
-            
+            // Badge de mensajes no leídos
             if (unreadCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp)
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
+                BadgedBox(
+                    badge = {
+                        Badge(
+                            containerColor = ProfesorColor,
+                            contentColor = Color.White
+                        ) {
+                            Text(
+                                text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
                 ) {
-                    Text(
-                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = Icons.Default.Chat,
+                        contentDescription = "Mensajes no leídos",
+                        tint = ProfesorColor,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-                
-                Spacer(modifier = Modifier.width(4.dp))
             }
-            
-            Icon(
-                imageVector = Icons.Default.Chat,
-                contentDescription = "Iniciar chat",
-                tint = MaterialTheme.colorScheme.primary
-            )
         }
     }
 } 

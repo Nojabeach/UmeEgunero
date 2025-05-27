@@ -5,13 +5,18 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.model.Comunicado
+import com.tfg.umeegunero.data.model.EstadisticasComunicado
+import com.tfg.umeegunero.data.model.MessageStatus
+import com.tfg.umeegunero.data.model.MessageType
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.UnifiedMessage
+import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.tfg.umeegunero.util.Result
 
 /**
  * Modelo para estadísticas de lectura de un comunicado
@@ -52,13 +57,16 @@ data class EstadisticasComunicado(
  * @property firestore Instancia de FirebaseFirestore para operaciones de base de datos
  * @property authRepository Repositorio de autenticación para identificar al usuario actual
  * @property notificacionRepository Repositorio para enviar notificaciones relacionadas
+ * @property unifiedMessageRepository Repositorio para enviar mensajes unificados
  *
  * @author Maitane Ibañez Irazabal (2º DAM Online)
  * @since 2024
  */
 @Singleton
 class ComunicadoRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val notificacionRepository: NotificacionRepository,
+    private val unifiedMessageRepository: UnifiedMessageRepository?
 ) {
     
     private val comunicadosCollection = firestore.collection("comunicados")
@@ -111,14 +119,58 @@ class ComunicadoRepository @Inject constructor(
     }
     
     /**
-     * Crea un nuevo comunicado
+     * Crea un nuevo comunicado y envía notificaciones a los destinatarios
+     * 
+     * @param comunicado Objeto Comunicado a crear
+     * @return Resultado que indica éxito o error
      */
     suspend fun crearComunicado(comunicado: Comunicado): Result<Unit> = try {
+        // Primero guardamos el comunicado en Firestore
         comunicadosCollection.document(comunicado.id).set(comunicado).await()
+        
+        // Después creamos notificaciones para cada tipo de destinatario
+        enviarNotificacionesComunicado(comunicado)
+        
         Result.Success(Unit)
     } catch (e: Exception) {
         Timber.e(e, "Error al crear comunicado")
         Result.Error(e)
+    }
+    
+    /**
+     * Envía notificaciones a los destinatarios del comunicado
+     * 
+     * @param comunicado El comunicado del que se enviarán notificaciones
+     */
+    private suspend fun enviarNotificacionesComunicado(comunicado: Comunicado) {
+        try {
+            // Por cada tipo de destinatario, creamos una notificación
+            comunicado.tiposDestinatarios.forEach { tipoDestinatario ->
+                // En un sistema real, aquí obtendríamos la lista de usuarios de este tipo
+                // y crearíamos una notificación para cada uno.
+                // Por ahora, creamos una notificación genérica para el tipo de usuario
+                
+                val notificacionResult = notificacionRepository.crearNotificacionMensaje(
+                    titulo = "Nuevo comunicado: ${comunicado.titulo}",
+                    mensaje = "Remitente: ${comunicado.remitente}",
+                    tipo = "comunicado",
+                    destinatarioId = "", // En un sistema real, aquí iría el ID de cada destinatario
+                    destinatarioTipo = tipoDestinatario,
+                    origenId = comunicado.id,
+                    // Acción a realizar cuando se pulsa la notificación (navegar al detalle del comunicado)
+                    accion = "detalle_comunicado/${comunicado.id}"
+                )
+                
+                if (notificacionResult is Result.Error) {
+                    Timber.e(notificacionResult.exception, 
+                        "Error al crear notificación para comunicado ${comunicado.id}")
+                }
+            }
+            
+            Timber.d("Notificaciones enviadas para el comunicado ${comunicado.id}")
+        } catch (e: Exception) {
+            Timber.e(e, "Error al enviar notificaciones del comunicado")
+        }
     }
     
     /**
@@ -171,7 +223,7 @@ class ComunicadoRepository @Inject constructor(
                 
                 // Actualiza la lista de usuarios que han leído (añade sin duplicar)
                 comunicadoRef.update(
-                    "usuariosQueHanLeido", FieldValue.arrayUnion(usuarioId)
+                    "usuariosLeidos", FieldValue.arrayUnion(usuarioId)
                 ).await()
                 
                 Result.Success(Unit)
@@ -203,7 +255,7 @@ class ComunicadoRepository @Inject constructor(
                 
                 // Actualiza la lista de usuarios que han confirmado (añade sin duplicar)
                 comunicadoRef.update(
-                    "usuariosQueHanConfirmado", FieldValue.arrayUnion(usuarioId)
+                    "usuariosConfirmados", FieldValue.arrayUnion(usuarioId)
                 ).await()
                 
                 Result.Success(Unit)
@@ -233,7 +285,7 @@ class ComunicadoRepository @Inject constructor(
                     return@withContext Result.Error(Exception("El comunicado no existe"))
                 }
                 
-                val usuariosLeido = comunicadoSnapshot.get("usuariosQueHanLeido") as? List<String> ?: emptyList()
+                val usuariosLeido = comunicadoSnapshot.get("usuariosLeidos") as? List<String> ?: emptyList()
                 Result.Success(usuariosLeido.contains(usuarioId))
             } catch (e: Exception) {
                 Timber.e(e, "Error al verificar si el comunicado ha sido leído")
@@ -261,7 +313,7 @@ class ComunicadoRepository @Inject constructor(
                     return@withContext Result.Error(Exception("El comunicado no existe"))
                 }
                 
-                val usuariosConfirmado = comunicadoSnapshot.get("usuariosQueHanConfirmado") as? List<String> ?: emptyList()
+                val usuariosConfirmado = comunicadoSnapshot.get("usuariosConfirmados") as? List<String> ?: emptyList()
                 Result.Success(usuariosConfirmado.contains(usuarioId))
             } catch (e: Exception) {
                 Timber.e(e, "Error al verificar si el comunicado ha sido confirmado")
@@ -322,6 +374,48 @@ class ComunicadoRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener estadísticas de comunicado")
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Envía un comunicado y lo registra también como mensaje unificado
+     */
+    suspend fun enviarComunicado(comunicado: Comunicado): Result<String> {
+        return try {
+            // 1. Guardar el comunicado en su colección
+            val docRef = comunicadosCollection.document()
+            val comunicadoConId = comunicado.copy(id = docRef.id)
+            docRef.set(comunicadoConId).await()
+            
+            // 2. Crear mensajes unificados para cada tipo de destinatario
+            for (tipoDestinatario in comunicado.tiposDestinatarios) {
+                val unifiedMessage = UnifiedMessage(
+                    senderId = comunicado.creadoPor,
+                    senderName = comunicado.remitente,
+                    receiverId = "", // Vacío para comunicados generales
+                    title = comunicado.titulo,
+                    content = comunicado.mensaje,
+                    type = MessageType.ANNOUNCEMENT, // Usar ANNOUNCEMENT para comunicados
+                    timestamp = comunicado.fechaCreacion,
+                    status = MessageStatus.UNREAD,
+                    metadata = mapOf(
+                        "comunicadoId" to docRef.id,
+                        "requiereConfirmacion" to comunicado.requiereConfirmacion.toString(),
+                        "tipoDestinatario" to tipoDestinatario.toString()
+                    )
+                )
+                
+                // Guardar en mensajes unificados
+                unifiedMessageRepository?.sendMessage(unifiedMessage)
+            }
+            
+            // 3. También enviar notificaciones como estaba antes
+            enviarNotificacionesComunicado(comunicadoConId)
+            
+            Result.Success(docRef.id)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al enviar comunicado")
             Result.Error(e)
         }
     }

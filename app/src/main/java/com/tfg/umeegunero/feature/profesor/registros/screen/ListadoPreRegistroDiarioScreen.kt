@@ -60,6 +60,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 /**
  * Extensión para convertir LocalDate a Date
@@ -188,12 +190,25 @@ fun ListadoPreRegistroDiarioScreen(
             )
         },
         floatingActionButton = {
+            val alumnosSeleccionadosConRegistro = uiState.alumnosSeleccionados.count { alumno ->
+                uiState.alumnosConRegistro.contains(alumno.id)
+            }
+            val alumnosSeleccionadosSinRegistro = uiState.alumnosSeleccionados.count { alumno ->
+                !uiState.alumnosConRegistro.contains(alumno.id)
+            }
+            
             if (uiState.alumnosSeleccionados.isNotEmpty()) {
                 PresentesFAB(
                     selectedCount = uiState.alumnosSeleccionados.size,
                     totalCount = uiState.alumnos.size,
                     alumnosSinRegistro = uiState.alumnos.count { !uiState.alumnosConRegistro.contains(it.id) },
-                    onFabClick = { viewModel.iniciarRegistroDiario() }
+                    alumnosSeleccionadosConRegistro = alumnosSeleccionadosConRegistro,
+                    alumnosSeleccionadosSinRegistro = alumnosSeleccionadosSinRegistro,
+                    onFabClick = { 
+                        if (alumnosSeleccionadosSinRegistro > 0) {
+                            viewModel.iniciarRegistroDiario()
+                        }
+                    }
                 )
             }
         },
@@ -310,7 +325,8 @@ fun ListadoPreRegistroDiarioScreen(
                                 viewModel.deseleccionarAlumno(alumno)
                             }
                         },
-                        tieneRegistro = uiState.alumnosConRegistro.contains(alumno.id)
+                        tieneRegistro = uiState.alumnosConRegistro.contains(alumno.id),
+                        onEliminarRegistro = { id -> viewModel.eliminarRegistro(id) }
                     )
                 }
             }
@@ -454,206 +470,177 @@ fun AssistanceFilterChip(
 }
 
 /**
- * Componente que representa un chip de selección de alumno
+ * Chip para seleccionar un alumno
  */
 @Composable
 fun AlumnoSelectionChip(
     alumno: Alumno,
     isSelected: Boolean,
     onSelectionChanged: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    tieneRegistro: Boolean = false
+    tieneRegistro: Boolean,
+    onEliminarRegistro: (String) -> Unit
 ) {
-    var showEliminarRegistroDialog by remember { mutableStateOf(false) }
-    val viewModel = hiltViewModel<ListadoPreRegistroDiarioViewModel>()
+    val haptic = LocalHapticFeedback.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
     
     // Diálogo de confirmación para eliminar registro
-    if (showEliminarRegistroDialog) {
+    if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showEliminarRegistroDialog = false },
+            onDismissRequest = { showDeleteDialog = false },
             title = { Text("Eliminar registro") },
-            text = { Text("¿Estás seguro de que quieres eliminar el registro de ${alumno.nombre}? Esta acción no se puede deshacer.") },
+            text = { 
+                Text("¿Estás seguro de que quieres eliminar el registro de ${alumno.nombre} para hoy?") 
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showEliminarRegistroDialog = false
-                        // Llamar a función en ViewModel para eliminar el registro
-                        viewModel.eliminarRegistro(alumno.id)
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
+                        showDeleteDialog = false
+                        onEliminarRegistro(alumno.id)
+                    }
                 ) {
-                    Text("Eliminar")
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEliminarRegistroDialog = false }) {
+                TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Cancelar")
                 }
             }
         )
     }
     
-    Surface(
-        modifier = modifier
+    Card(
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onSelectionChanged(!isSelected)
+            },
         shape = RoundedCornerShape(12.dp),
-        color = when {
-            tieneRegistro -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
-            isSelected -> ProfesorColor.copy(alpha = 0.1f)
-            else -> MaterialTheme.colorScheme.surface
-        },
+        colors = CardDefaults.cardColors(
+            containerColor = when {
+                tieneRegistro && isSelected -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                tieneRegistro -> MaterialTheme.colorScheme.secondaryContainer
+                isSelected -> ProfesorColor.copy(alpha = 0.1f)
+                else -> MaterialTheme.colorScheme.surface
+            }
+        ),
         border = when {
-            tieneRegistro -> BorderStroke(2.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f))
+            tieneRegistro && isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+            tieneRegistro -> BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
             isSelected -> BorderStroke(2.dp, ProfesorColor)
             else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-        },
-        tonalElevation = if (tieneRegistro) 0.dp else 2.dp
+        }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { 
-                    if (tieneRegistro) {
-                        showEliminarRegistroDialog = true
-                    } else {
-                        onSelectionChanged(!isSelected) 
-                    }
-                }
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
+            // Checkbox o indicador de estado
+            Box(
+                modifier = Modifier.size(24.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Avatar con inicial y badge de estado
-                Box {
-                    Surface(
-                        shape = CircleShape,
-                        color = when {
-                            tieneRegistro -> MaterialTheme.colorScheme.tertiary
-                            isSelected -> ProfesorColor
-                            else -> MaterialTheme.colorScheme.surfaceVariant
-                        },
-                        modifier = Modifier.size(48.dp)
-                    ) {
+                when {
+                    tieneRegistro -> {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Registro completado",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    isSelected -> {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Seleccionado",
+                            tint = ProfesorColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    else -> {
                         Box(
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = alumno.nombre.first().toString().uppercase(),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (tieneRegistro || isSelected) 
-                                    Color.White 
-                                else 
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    
-                    // Badge indicador de registro completado
-                    if (tieneRegistro) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier
-                                .size(20.dp)
-                                .align(Alignment.BottomEnd),
-                            shadowElevation = 2.dp
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Registro completado",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(14.dp)
+                                .size(24.dp)
+                                .border(
+                                    width = 2.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = CircleShape
                                 )
-                            }
-                        }
-                    }
-                }
-                
-                // Información del alumno
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = "${alumno.nombre} ${alumno.apellidos}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (tieneRegistro) FontWeight.Medium else FontWeight.Normal,
-                        color = if (tieneRegistro)
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        else
-                            MaterialTheme.colorScheme.onSurface
-                    )
-                    
-                    // Mensaje de estado
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (tieneRegistro) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "Registro completado • Toca para eliminar",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.tertiary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        } else {
-                            Text(
-                                text = "DNI: ${alumno.dni}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        )
                     }
                 }
             }
             
-            // Icono de acción
-            Surface(
-                shape = CircleShape,
-                color = when {
-                    tieneRegistro -> MaterialTheme.colorScheme.errorContainer
-                    isSelected -> ProfesorColor
-                    else -> Color.Transparent
-                },
-                modifier = Modifier.size(40.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Información del alumno
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${alumno.nombre} ${alumno.apellidos}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                if (tieneRegistro) {
+                    Text(
+                        text = "Registro completado hoy",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            // Indicador de estado o botón de eliminar
+            if (tieneRegistro) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = when {
-                            tieneRegistro -> Icons.Default.Delete
-                            isSelected -> Icons.Default.Check
-                            else -> Icons.Default.RadioButtonUnchecked
-                        },
-                        contentDescription = when {
-                            tieneRegistro -> "Eliminar registro"
-                            isSelected -> "Alumno seleccionado"
-                            else -> "Alumno no seleccionado"
-                        },
-                        tint = when {
-                            tieneRegistro -> MaterialTheme.colorScheme.error
-                            isSelected -> Color.White
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        },
-                        modifier = Modifier.size(24.dp)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            text = "Registrado",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar registro",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            } else {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (alumno.presente) 
+                        MaterialTheme.colorScheme.primaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Text(
+                        text = if (alumno.presente) "Presente" else "Ausente",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (alumno.presente) 
+                            MaterialTheme.colorScheme.onPrimaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
@@ -669,6 +656,8 @@ fun PresentesFAB(
     selectedCount: Int,
     totalCount: Int,
     alumnosSinRegistro: Int,
+    alumnosSeleccionadosConRegistro: Int,
+    alumnosSeleccionadosSinRegistro: Int,
     onFabClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -692,13 +681,23 @@ fun PresentesFAB(
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text(
-                        text = "$selectedCount de $alumnosSinRegistro alumnos disponibles seleccionados",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    if (alumnosSeleccionadosSinRegistro > 0) {
+                        Text(
+                            text = "$alumnosSeleccionadosSinRegistro alumno${if (alumnosSeleccionadosSinRegistro != 1) "s" else ""} para crear registro",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    if (alumnosSeleccionadosConRegistro > 0) {
+                        Text(
+                            text = "$alumnosSeleccionadosConRegistro alumno${if (alumnosSeleccionadosConRegistro != 1) "s" else ""} ya con registro",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (totalCount - alumnosSinRegistro > 0) {
                         Text(
-                            text = "${totalCount - alumnosSinRegistro} ya tienen registro",
+                            text = "${totalCount - alumnosSinRegistro} en total ya tienen registro hoy",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -724,8 +723,8 @@ fun PresentesFAB(
                         }
                     )
                 },
-            containerColor = ProfesorColor,
-            contentColor = Color.White
+            containerColor = if (alumnosSeleccionadosSinRegistro > 0) ProfesorColor else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (alumnosSeleccionadosSinRegistro > 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -737,7 +736,11 @@ fun PresentesFAB(
                     contentDescription = null
                 )
                 Text(
-                    text = "Crear Registro ($selectedCount)",
+                    text = if (alumnosSeleccionadosSinRegistro > 0) {
+                        "Crear Registro ($alumnosSeleccionadosSinRegistro)"
+                    } else {
+                        "Sin alumnos nuevos"
+                    },
                     style = MaterialTheme.typography.labelLarge
                 )
             }

@@ -202,6 +202,25 @@ fun CentroDashboardScreen(
         perfil.tipo == TipoUsuario.ADMIN_CENTRO 
     }?.centroId ?: ""
 
+    // Añadir una variable para controlar la visibilidad del diálogo de error de índice
+    var showIndexErrorDialog by remember { mutableStateOf(false) }
+    var indexErrorException by remember { mutableStateOf<Exception?>(null) }
+
+    // Verificar si hay errores de índice en las colecciones clave
+    LaunchedEffect(Unit) {
+        val errorMessages = listOf(
+            "FAILED_PRECONDITION: The query requires an index",
+            "requires an index"
+        )
+        
+        viewModel.errorEvents.collect { error ->
+            if (error != null && errorMessages.any { error.message?.contains(it) == true }) {
+                indexErrorException = error
+                showIndexErrorDialog = true
+            }
+        }
+    }
+
     // Diálogo de confirmación para cerrar sesión
     if (showLogoutDialog) {
         AlertDialog(
@@ -584,6 +603,17 @@ fun CentroDashboardScreen(
                 }
             }
         )
+    }
+
+    // Añadir el diálogo de error de índice
+    if (showIndexErrorDialog && indexErrorException != null) {
+        indexErrorException?.let { exception ->
+            com.tfg.umeegunero.util.FirestoreIndexErrorHandler.showIndexErrorDialog(
+                context = LocalContext.current,
+                error = exception,
+                onDismiss = { showIndexErrorDialog = false }
+            )
+        }
     }
 
     // Funciones de navegación locales actualizadas
@@ -1029,22 +1059,28 @@ fun SolicitudVinculacionItem(
             // Información del alumno
             Text(
                 text = "Alumno: ${solicitud.alumnoNombre}",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold
             )
-            
             Spacer(modifier = Modifier.height(4.dp))
             
+            // Información del familiar
             Text(
-                text = "DNI: ${solicitud.alumnoDni}",
+                text = "Familiar: ${solicitud.nombreFamiliar}",
                 style = MaterialTheme.typography.bodyMedium
             )
             
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // Fecha de solicitud formateada
+            // Tipo de relación
             Text(
-                text = "Fecha: ${formatearFecha(solicitud.fechaSolicitud.toDate())}",
+                text = "Relación: ${solicitud.tipoRelacion}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            
+            // Fecha de solicitud
+            Text(
+                text = "Fecha: ${solicitud.fechaSolicitud.toDate().let { 
+                    SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(it) 
+                }}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1154,7 +1190,7 @@ fun SolicitudItem(
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text("Familiar: ${solicitud.nombreFamiliar}", fontWeight = FontWeight.Bold)
-        Text("Alumno DNI: ${solicitud.alumnoDni}")
+        Text("Alumno ID: ${solicitud.alumnoId}")
         Text("Relación: ${solicitud.tipoRelacion}", fontWeight = FontWeight.Bold)
         Text("Fecha: ${solicitud.fechaSolicitud.toDate().let { SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(it) }}")
         Row(modifier = Modifier.padding(top = 8.dp)) {

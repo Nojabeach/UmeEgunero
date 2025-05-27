@@ -1,14 +1,17 @@
 package com.tfg.umeegunero.data.model
 
 /**
- * Tipo de mensaje unificado en el sistema
+ * Tipos de mensajes en el sistema de mensajería unificada
  */
 enum class MessageType {
-    CHAT,               // Mensajes de chat entre usuarios
-    NOTIFICATION,       // Notificaciones del sistema
-    ANNOUNCEMENT,       // Comunicados/anuncios oficiales
-    INCIDENT,           // Incidencias reportadas
-    ATTENDANCE,         // Notificaciones de asistencia/ausencia
-    DAILY_RECORD,       // Actualizaciones de registro diario
-    SYSTEM              // Mensajes del sistema
+    CHAT,           // Mensaje de chat individual
+    GROUP_CHAT,     // Mensaje de chat grupal
+    ANNOUNCEMENT,   // Anuncio o comunicado oficial
+    NOTIFICATION,   // Notificación del sistema
+    TASK,           // Tarea asignada
+    EVENT,          // Evento o recordatorio
+    SYSTEM,         // Mensaje del sistema
+    INCIDENT,       // Incidencia
+    ATTENDANCE,     // Asistencia
+    DAILY_RECORD    // Registro diario
 } 

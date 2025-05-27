@@ -30,7 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Alumno
-import com.tfg.umeegunero.data.model.Asistencia
+import com.tfg.umeegunero.data.model.EstadoAsistencia
 import com.tfg.umeegunero.feature.profesor.viewmodel.AsistenciaViewModel
 import com.tfg.umeegunero.ui.theme.ProfesorColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
@@ -223,13 +223,13 @@ fun AsistenciaScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(uiState.alumnos) { alumno ->
-                            val estadoAsistencia = uiState.estadosAsistencia[alumno.dni]
+                            val estadoAsistencia = uiState.estadosAsistencia[alumno.id]
                             
                             AlumnoAsistenciaItem(
                                 alumno = alumno,
-                                estadoAsistencia = estadoAsistencia ?: Asistencia.PRESENTE,
+                                estadoAsistencia = estadoAsistencia ?: EstadoAsistencia.PRESENTE,
                                 onEstadoAsistenciaChange = { nuevoEstado ->
-                                    viewModel.actualizarEstadoAsistencia(alumno.dni, nuevoEstado)
+                                    viewModel.actualizarEstadoAsistencia(alumno.id, nuevoEstado)
                                 }
                             )
                             
@@ -285,8 +285,8 @@ fun LeyendaItem(
 @Composable
 fun AlumnoAsistenciaItem(
     alumno: Alumno,
-    estadoAsistencia: Asistencia,
-    onEstadoAsistenciaChange: (Asistencia) -> Unit
+    estadoAsistencia: EstadoAsistencia,
+    onEstadoAsistenciaChange: (EstadoAsistencia) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -331,7 +331,7 @@ fun AlumnoAsistenciaItem(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             EstadoAsistenciaButton(
-                estado = Asistencia.PRESENTE,
+                estado = EstadoAsistencia.PRESENTE,
                 estadoActual = estadoAsistencia,
                 onEstadoChange = onEstadoAsistenciaChange,
                 color = MaterialTheme.colorScheme.primary,
@@ -339,7 +339,7 @@ fun AlumnoAsistenciaItem(
             )
             
             EstadoAsistenciaButton(
-                estado = Asistencia.AUSENTE,
+                estado = EstadoAsistencia.AUSENTE,
                 estadoActual = estadoAsistencia,
                 onEstadoChange = onEstadoAsistenciaChange,
                 color = Color.Red.copy(alpha = 0.7f),
@@ -347,7 +347,7 @@ fun AlumnoAsistenciaItem(
             )
             
             EstadoAsistenciaButton(
-                estado = Asistencia.RETRASADO,
+                estado = EstadoAsistencia.RETRASADO,
                 estadoActual = estadoAsistencia,
                 onEstadoChange = onEstadoAsistenciaChange,
                 color = Color.Yellow.copy(alpha = 0.7f),
@@ -359,9 +359,9 @@ fun AlumnoAsistenciaItem(
 
 @Composable
 fun EstadoAsistenciaButton(
-    estado: Asistencia,
-    estadoActual: Asistencia,
-    onEstadoChange: (Asistencia) -> Unit,
+    estado: EstadoAsistencia,
+    estadoActual: EstadoAsistencia,
+    onEstadoChange: (EstadoAsistencia) -> Unit,
     color: Color,
     icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {

@@ -9,101 +9,55 @@ import java.util.UUID
  * 
  * Esta clase representa un modelo unificado para todos los tipos de comunicaciones
  * en la aplicación, incluyendo notificaciones, mensajes, chats y comunicados.
- *
- * @property id Identificador único del mensaje
- * @property title Título o asunto del mensaje
- * @property content Contenido principal del mensaje
- * @property type Tipo de mensaje (chat, notificación, comunicado, etc.)
- * @property priority Prioridad del mensaje (normal, alta, urgente, etc.)
- * @property senderId ID del remitente
- * @property senderName Nombre del remitente
- * @property receiverId ID del destinatario principal (si es individual)
- * @property receiversIds Lista de IDs de destinatarios (si es grupal)
- * @property timestamp Fecha y hora del mensaje
- * @property status Estado del mensaje (leído, no leído, entregado, etc.)
- * @property readTimestamp Fecha y hora de lectura (si aplica)
- * @property metadata Datos adicionales específicos según el tipo de mensaje
- * @property relatedEntityId ID de la entidad relacionada (alumno, clase, etc.)
- * @property relatedEntityType Tipo de la entidad relacionada
- * @property attachments Lista de adjuntos (URLs, referencias, etc.)
- * @property actions Acciones disponibles para este mensaje
- * @property conversationId ID de la conversación (para mensajes de chat)
- * @property replyToId ID del mensaje al que responde (si es una respuesta)
  */
 data class UnifiedMessage(
-    @DocumentId val id: String = UUID.randomUUID().toString(),
-    val title: String = "",
-    val content: String = "",
-    val type: MessageType = MessageType.CHAT,
-    val priority: MessagePriority = MessagePriority.NORMAL,
+    @DocumentId 
+    val id: String = "",
     val senderId: String = "",
     val senderName: String = "",
     val receiverId: String = "",
-    val receiversIds: List<String> = emptyList(),
+    val receiverType: String = "",
+    val title: String = "",
+    val content: String = "",
+    val type: MessageType = MessageType.CHAT,
     val timestamp: Timestamp = Timestamp.now(),
     val status: MessageStatus = MessageStatus.UNREAD,
-    val readTimestamp: Timestamp? = null,
+    val attachments: List<String> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),
-    val relatedEntityId: String = "",
-    val relatedEntityType: String = "",
-    val attachments: List<Map<String, String>> = emptyList(),
-    val actions: List<MessageAction> = emptyList(),
+    val isRead: Boolean = false,
+    val isArchived: Boolean = false,
+    val isDeleted: Boolean = false,
     val conversationId: String = "",
-    val replyToId: String = ""
+    val priority: MessagePriority = MessagePriority.NORMAL,
+    val receiversIds: List<String> = emptyList(),
+    val relatedEntityId: String = "",
+    val relatedEntityType: String = ""
 ) {
     /**
      * Convierte el mensaje a un mapa para Firestore
      */
     fun toMap(): Map<String, Any?> = mapOf(
-        "title" to title,
-        "content" to content,
-        "type" to type.name,
-        "priority" to priority.name,
+        "id" to id,
         "senderId" to senderId,
         "senderName" to senderName,
         "receiverId" to receiverId,
-        "receiversIds" to receiversIds,
+        "receiverType" to receiverType,
+        "title" to title,
+        "content" to content,
+        "type" to type.name,
         "timestamp" to timestamp,
         "status" to status.name,
-        "readTimestamp" to readTimestamp,
-        "metadata" to metadata,
-        "relatedEntityId" to relatedEntityId,
-        "relatedEntityType" to relatedEntityType,
         "attachments" to attachments,
-        "actions" to actions.map { it.toMap() },
+        "metadata" to metadata,
+        "isRead" to isRead,
+        "isArchived" to isArchived,
+        "isDeleted" to isDeleted,
         "conversationId" to conversationId,
-        "replyToId" to replyToId
+        "priority" to priority.value,
+        "receiversIds" to receiversIds,
+        "relatedEntityId" to relatedEntityId,
+        "relatedEntityType" to relatedEntityType
     )
-    
-    /**
-     * Indica si el mensaje es personal (dirigido a un único usuario)
-     */
-    val isPersonal: Boolean
-        get() = receiverId.isNotEmpty() && receiversIds.isEmpty()
-    
-    /**
-     * Indica si el mensaje es grupal (dirigido a múltiples usuarios)
-     */
-    val isGroup: Boolean
-        get() = receiversIds.isNotEmpty()
-    
-    /**
-     * Indica si el mensaje es de alta prioridad
-     */
-    val isHighPriority: Boolean
-        get() = priority == MessagePriority.HIGH || priority == MessagePriority.URGENT
-    
-    /**
-     * Indica si el mensaje es urgente
-     */
-    val isUrgent: Boolean
-        get() = priority == MessagePriority.URGENT
-        
-    /**
-     * Indica si el mensaje está leído
-     */
-    val isRead: Boolean
-        get() = status == MessageStatus.READ
     
     /**
      * Retorna el color asociado al tipo de mensaje,
@@ -111,13 +65,16 @@ data class UnifiedMessage(
      */
     val typeColor: String
         get() = when(type) {
-            MessageType.INCIDENT -> "#e53935" // Rojo
-            MessageType.ATTENDANCE -> "#1e88e5" // Azul
             MessageType.ANNOUNCEMENT -> "#43a047" // Verde
-            MessageType.DAILY_RECORD -> "#fb8c00" // Naranja
             MessageType.CHAT -> "#8e24aa" // Púrpura
+            MessageType.GROUP_CHAT -> "#673ab7" // Morado
             MessageType.NOTIFICATION -> "#546e7a" // Gris azulado
             MessageType.SYSTEM -> "#757575" // Gris
+            MessageType.TASK -> "#f57c00" // Naranja
+            MessageType.EVENT -> "#039be5" // Azul claro
+            MessageType.INCIDENT -> "#d32f2f" // Rojo
+            MessageType.ATTENDANCE -> "#fbc02d" // Amarillo
+            MessageType.DAILY_RECORD -> "#1976d2" // Azul
         }
     
     /**
@@ -126,13 +83,16 @@ data class UnifiedMessage(
      */
     val typeIcon: String
         get() = when(type) {
-            MessageType.INCIDENT -> "incident"
-            MessageType.ATTENDANCE -> "attendance"
             MessageType.ANNOUNCEMENT -> "announcement"
-            MessageType.DAILY_RECORD -> "assignment"
             MessageType.CHAT -> "chat"
+            MessageType.GROUP_CHAT -> "group"
             MessageType.NOTIFICATION -> "notifications"
             MessageType.SYSTEM -> "system_update"
+            MessageType.TASK -> "assignment"
+            MessageType.EVENT -> "event"
+            MessageType.INCIDENT -> "warning"
+            MessageType.ATTENDANCE -> "people"
+            MessageType.DAILY_RECORD -> "book"
         }
     
     companion object {
@@ -141,33 +101,30 @@ data class UnifiedMessage(
          */
         fun fromMap(id: String, data: Map<String, Any?>): UnifiedMessage {
             val typeStr = data["type"] as? String ?: MessageType.CHAT.name
-            val priorityStr = data["priority"] as? String ?: MessagePriority.NORMAL.name
             val statusStr = data["status"] as? String ?: MessageStatus.UNREAD.name
-            
-            @Suppress("UNCHECKED_CAST")
-            val actionsData = data["actions"] as? List<Map<String, Any?>> ?: emptyList()
-            val actions = actionsData.mapNotNull { MessageAction.fromMap(it) }
+            val priorityValue = (data["priority"] as? Number)?.toInt() ?: MessagePriority.NORMAL.value
             
             return UnifiedMessage(
                 id = id,
-                title = data["title"] as? String ?: "",
-                content = data["content"] as? String ?: "",
-                type = try { MessageType.valueOf(typeStr) } catch (e: Exception) { MessageType.CHAT },
-                priority = try { MessagePriority.valueOf(priorityStr) } catch (e: Exception) { MessagePriority.NORMAL },
                 senderId = data["senderId"] as? String ?: "",
                 senderName = data["senderName"] as? String ?: "",
                 receiverId = data["receiverId"] as? String ?: "",
-                receiversIds = getStringList(data["receiversIds"]),
+                receiverType = data["receiverType"] as? String ?: "",
+                title = data["title"] as? String ?: "",
+                content = data["content"] as? String ?: "",
+                type = try { MessageType.valueOf(typeStr) } catch (e: Exception) { MessageType.CHAT },
                 timestamp = data["timestamp"] as? Timestamp ?: Timestamp.now(),
                 status = try { MessageStatus.valueOf(statusStr) } catch (e: Exception) { MessageStatus.UNREAD },
-                readTimestamp = data["readTimestamp"] as? Timestamp,
+                attachments = getStringList(data["attachments"]),
                 metadata = getStringMap(data["metadata"]),
-                relatedEntityId = data["relatedEntityId"] as? String ?: "",
-                relatedEntityType = data["relatedEntityType"] as? String ?: "",
-                attachments = getMapList(data["attachments"]),
-                actions = actions,
+                isRead = data["isRead"] as? Boolean ?: false,
+                isArchived = data["isArchived"] as? Boolean ?: false,
+                isDeleted = data["isDeleted"] as? Boolean ?: false,
                 conversationId = data["conversationId"] as? String ?: "",
-                replyToId = data["replyToId"] as? String ?: ""
+                priority = MessagePriority.fromInt(priorityValue),
+                receiversIds = getStringList(data["receiversIds"]),
+                relatedEntityId = data["relatedEntityId"] as? String ?: "",
+                relatedEntityType = data["relatedEntityType"] as? String ?: ""
             )
         }
         
@@ -192,18 +149,6 @@ data class UnifiedMessage(
                 data as? Map<String, String> ?: emptyMap()
             } catch (e: Exception) {
                 emptyMap()
-            }
-        }
-        
-        /**
-         * Convierte de forma segura un Any? a List<Map<String, String>>
-         */
-        private fun getMapList(data: Any?): List<Map<String, String>> {
-            return try {
-                @Suppress("UNCHECKED_CAST")
-                data as? List<Map<String, String>> ?: emptyList()
-            } catch (e: Exception) {
-                emptyList()
             }
         }
     }

@@ -1,12 +1,12 @@
 package com.tfg.umeegunero.data.model
 
 /**
- * Estado del mensaje
+ * Estados posibles para un mensaje en el sistema
  */
 enum class MessageStatus {
-    UNREAD,
-    READ,
-    PENDING,
-    DELIVERED,
-    FAILED
+    READ,       // Mensaje leído por el destinatario
+    UNREAD,     // Mensaje no leído aún
+    ARCHIVED,   // Mensaje archivado
+    DELETED,    // Mensaje eliminado
+    CONFIRMED   // Mensaje confirmado por el destinatario
 } 

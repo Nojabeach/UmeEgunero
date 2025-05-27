@@ -279,7 +279,7 @@ class AlumnoRepositoryImpl @Inject constructor(
     override suspend fun obtenerAlumnosPorClase(claseId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
         try {
             val query = firestore.collection(COLLECTION_ALUMNOS)
-                .whereEqualTo("aulaId", claseId)
+                .whereEqualTo("claseId", claseId)
                 .get()
                 .await()
 
@@ -336,7 +336,7 @@ class AlumnoRepositoryImpl @Inject constructor(
     override suspend fun getAlumnosByClaseId(claseId: String): Result<List<Alumno>> = withContext(Dispatchers.IO) {
         try {
             val query = firestore.collection(COLLECTION_ALUMNOS)
-                .whereEqualTo("aulaId", claseId)
+                .whereEqualTo("claseId", claseId)
                 .get()
                 .await()
 
@@ -355,6 +355,7 @@ class AlumnoRepositoryImpl @Inject constructor(
      * @param dni DNI o documento de identidad
      * @param fechaNacimiento Fecha de nacimiento en formato string
      * @param cursoId ID del curso al que pertenece
+     * @param claseId ID de la clase a la que se asignará (opcional)
      * @return ID del alumno creado
      */
     override suspend fun crearAlumno(
@@ -411,9 +412,8 @@ class AlumnoRepositoryImpl @Inject constructor(
                 apellidos = apellidos,
                 centroId = centroId,
                 curso = cursoNombre,
-                aulaId = claseId, // Asignar directamente el claseId como aulaId
+                claseId = claseId,
                 clase = claseNombre,
-                claseId = claseId, // También mantener claseId por compatibilidad
                 profesorId = profesorId,
                 fechaNacimiento = fechaNacimiento,
                 activo = true
@@ -461,7 +461,7 @@ class AlumnoRepositoryImpl @Inject constructor(
                 Timber.d("No se proporcionó claseId, no se actualiza ninguna clase")
             }
                 
-            Timber.d("Alumno creado exitosamente con DNI: $dni, centroId: $centroId, aulaId: $claseId")
+            Timber.d("Alumno creado exitosamente con DNI: $dni, centroId: $centroId, claseId: $claseId")
             return@withContext Result.Success(dni) // Devolver el DNI como ID
         } catch (e: Exception) {
             Timber.e(e, "Error al crear alumno")
@@ -596,25 +596,16 @@ class AlumnoRepositoryImpl @Inject constructor(
         try {
             Timber.d("AlumnoRepositoryImpl: getAlumnosPorClase recibió claseId: $claseId")
             
-            // 1. Buscar alumnos por aulaId (nueva estructura)
-            val queryAula = firestore.collection(COLLECTION_ALUMNOS)
-                .whereEqualTo("aulaId", claseId)
-                .get()
-                .await()
-
-            val alumnosAula = queryAula.toObjects(Alumno::class.java)
-            Timber.d("Encontrados ${alumnosAula.size} alumnos con aulaId=$claseId")
-            
-            // 2. Buscar alumnos por claseId (estructura anterior)
-            val queryClase = firestore.collection(COLLECTION_ALUMNOS)
+            // Buscar alumnos por claseId
+            val query = firestore.collection(COLLECTION_ALUMNOS)
                 .whereEqualTo("claseId", claseId)
                 .get()
                 .await()
-                
-            val alumnosClase = queryClase.toObjects(Alumno::class.java)
-            Timber.d("Encontrados ${alumnosClase.size} alumnos con claseId=$claseId")
+
+            val alumnosEncontrados = query.toObjects(Alumno::class.java)
+            Timber.d("Encontrados ${alumnosEncontrados.size} alumnos con claseId=$claseId")
             
-            // 3. Obtener la clase para verificar los alumnos listados en alumnosIds
+            // Obtener la clase para verificar los alumnos listados en alumnosIds
             val alumnosDesdeClase = try {
                 val claseDoc = firestore.collection("clases").document(claseId).get().await()
                 if (claseDoc.exists()) {
@@ -628,7 +619,7 @@ class AlumnoRepositoryImpl @Inject constructor(
                     
                     if (alumnosIds.isNotEmpty()) {
                         // Obtener alumnos por sus IDs
-                        val alumnos = mutableListOf<Alumno>()
+                        val alumnosEncontrados = mutableListOf<Alumno>()
                         for (id in alumnosIds) {
                             try {
                                 Timber.d("AlumnoRepositoryImpl: Buscando alumno con DNI: $id (desde alumnosIds de la clase $claseId)")
@@ -642,7 +633,7 @@ class AlumnoRepositoryImpl @Inject constructor(
                                     val alumno = alumnoQuery.toObjects(Alumno::class.java).first()
                                     if (alumno != null) {
                                         Timber.d("AlumnoRepositoryImpl: Encontrado alumno: ${alumno.nombre} ${alumno.apellidos} con DNI $id")
-                                        alumnos.add(alumno)
+                                        alumnosEncontrados.add(alumno)
                                     } else {
                                         Timber.w("AlumnoRepositoryImpl: Alumno con DNI $id encontrado pero no se pudo convertir a objeto.")
                                     }
@@ -653,7 +644,7 @@ class AlumnoRepositoryImpl @Inject constructor(
                                 Timber.e(e, "AlumnoRepositoryImpl: Error al obtener alumno con DNI $id")
                             }
                         }
-                        alumnos
+                        alumnosEncontrados
                     } else {
                         Timber.d("AlumnoRepositoryImpl: La clase $claseId no tiene alumnosIds.")
                         emptyList()
@@ -668,7 +659,7 @@ class AlumnoRepositoryImpl @Inject constructor(
             }
 
             // Combinar resultados eliminando duplicados
-            val todosLosAlumnos = (alumnosAula + alumnosClase + alumnosDesdeClase).distinctBy { it.dni }
+            val todosLosAlumnos = (alumnosEncontrados + alumnosDesdeClase).distinctBy { it.dni }
             
             Timber.d("Total de ${todosLosAlumnos.size} alumnos encontrados para la clase $claseId")
             return@withContext todosLosAlumnos
@@ -962,12 +953,9 @@ class AlumnoRepositoryImpl @Inject constructor(
                 return@withContext Result.Error(Exception("Alumno no encontrado"))
             }
             
-            // Obtener la referencia al documento y actualizar el campo aulaId
+            // Obtener la referencia al documento y actualizar el campo claseId
             val documentRef = query.documents.first().reference
-            documentRef.update("aulaId", claseId).await()
-            
-            // También guardarlo en el array aulaIds si existe
-            documentRef.update("aulaIds", com.google.firebase.firestore.FieldValue.arrayUnion(claseId)).await()
+            documentRef.update("claseId", claseId).await()
             
             Timber.d("Clase actualizada correctamente para el alumno $alumnoId")
             return@withContext Result.Success(Unit)
@@ -1065,39 +1053,22 @@ class AlumnoRepositoryImpl @Inject constructor(
      */
     private suspend fun desasignarClaseDeDocumento(documentSnapshot: com.google.firebase.firestore.DocumentSnapshot, docRef: com.google.firebase.firestore.DocumentReference, claseId: String) {
         // Verificar el contenido actual para debugging
-        val aulaId = documentSnapshot.getString("aulaId")
-        val aulaIdsAny = documentSnapshot.get("aulaIds")
-        val aulaIds = when {
-            aulaIdsAny is List<*> -> aulaIdsAny.filterIsInstance<String>()
-            else -> emptyList()
-        }
-        
-        Timber.d("AlumnoRepository: Estado actual - aulaId=$aulaId, aulaIds=$aulaIds")
-        
-        // 1. Eliminar el campo aulaId si coincide con la clase que queremos desasignar
-        if (aulaId == claseId) {
-            docRef.update("aulaId", null).await()
-            Timber.d("AlumnoRepository: Campo aulaId eliminado")
-        }
-        
-        // 2. Eliminar el ID de la clase del array aulaIds si existe
-        if (aulaIds.contains(claseId)) {
-            docRef.update("aulaIds", com.google.firebase.firestore.FieldValue.arrayRemove(claseId)).await()
-            Timber.d("AlumnoRepository: ClaseId eliminado del array aulaIds")
-        }
-        
-        // 3. Eliminar referencias en campos antiguos (claseId, claseIds)
         val claseIdField = documentSnapshot.getString("claseId")
-        if (claseIdField == claseId) {
-            docRef.update("claseId", null).await()
-            Timber.d("AlumnoRepository: Campo claseId eliminado")
-        }
-        
         val claseIdsAny = documentSnapshot.get("claseIds")
         val claseIds = when {
             claseIdsAny is List<*> -> claseIdsAny.filterIsInstance<String>()
             else -> emptyList()
         }
+        
+        Timber.d("AlumnoRepository: Estado actual - claseId=$claseIdField, claseIds=$claseIds")
+        
+        // 1. Eliminar el campo claseId si coincide con la clase que queremos desasignar
+        if (claseIdField == claseId) {
+            docRef.update("claseId", null).await()
+            Timber.d("AlumnoRepository: Campo claseId eliminado")
+        }
+        
+        // 2. Eliminar el ID de la clase del array claseIds si existe
         if (claseIds.contains(claseId)) {
             docRef.update("claseIds", com.google.firebase.firestore.FieldValue.arrayRemove(claseId)).await()
             Timber.d("AlumnoRepository: ClaseId eliminado del array claseIds")
@@ -1124,25 +1095,14 @@ class AlumnoRepositoryImpl @Inject constructor(
             val alumnosPorClase = mutableMapOf<String, MutableList<String>>()
             
             for (alumno in alumnos) {
-                // Verificar aulaId (campo principal)
-                if (!alumno.aulaId.isNullOrBlank()) {
-                    val claseId = alumno.aulaId
-                    if (!alumnosPorClase.containsKey(claseId)) {
-                        alumnosPorClase[claseId] = mutableListOf()
-                    }
-                    alumnosPorClase[claseId]!!.add(alumno.dni)
-                    Timber.d("📝 Alumno ${alumno.dni} asignado a clase $claseId (via aulaId)")
-                }
-                // También verificar claseId (campo legacy)
-                else if (!alumno.claseId.isNullOrBlank()) {
+                // Verificar claseId
+                if (!alumno.claseId.isNullOrBlank()) {
                     val claseId = alumno.claseId
                     if (!alumnosPorClase.containsKey(claseId)) {
                         alumnosPorClase[claseId] = mutableListOf()
                     }
-                    if (!alumnosPorClase[claseId]!!.contains(alumno.dni)) {
-                        alumnosPorClase[claseId]!!.add(alumno.dni)
-                        Timber.d("📝 Alumno ${alumno.dni} asignado a clase $claseId (via claseId)")
-                    }
+                    alumnosPorClase[claseId]!!.add(alumno.dni)
+                    Timber.d("📝 Alumno ${alumno.dni} asignado a clase $claseId")
                 }
             }
             
@@ -1159,7 +1119,10 @@ class AlumnoRepositoryImpl @Inject constructor(
                     
                     if (claseDoc.exists()) {
                         // Obtener la lista actual de alumnosIds
-                        val alumnosIdsActuales = claseDoc.get("alumnosIds") as? List<String> ?: emptyList()
+                        val alumnosIdsActuales = when (val alumnosIdsAny = claseDoc.get("alumnosIds")) {
+                            is List<*> -> alumnosIdsAny.filterIsInstance<String>()
+                            else -> emptyList()
+                        }
                         
                         // Combinar y eliminar duplicados
                         val alumnosIdsCombinados = (alumnosIdsActuales + alumnosIds).distinct()
